@@ -4,8 +4,8 @@ import { Home as HomeIcon, LogIn } from "lucide-react";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br ">
-      <div className=" mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12 lg:py-16">
+    <div className="min-h-screen bg-white">
+      <div className="mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12 lg:py-16">
         {/* Header */}
         <div className="text-center mb-8 md:mb-12 lg:mb-16">
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-3 md:mb-4 px-2">

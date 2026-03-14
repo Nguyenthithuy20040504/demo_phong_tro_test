@@ -18,7 +18,11 @@ export interface IKhachThue extends Document {
   trangThai: 'dangThue' | 'daTraPhong' | 'chuaThue';
   ngayTao: Date;
   ngayCapNhat: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  lastLogin?: Date;
   vaiTro: 'khachThue';
+  nguoiQuanLy: mongoose.Types.ObjectId;
 }
 
 const AnhCCCDSchema = new Schema({
@@ -96,9 +100,18 @@ const KhachThueSchema = new Schema<IKhachThue>({
     type: String,
     enum: ['dangThue', 'daTraPhong', 'chuaThue'],
     default: 'chuaThue'
+  },
+  nguoiQuanLy: {
+    type: Schema.Types.ObjectId,
+    ref: 'NguoiDung',
+    required: [true, 'Người quản lý (Chủ nhà) là bắt buộc']
+  },
+  lastLogin: {
+    type: Date,
+    default: null
   }
 }, {
-  timestamps: { createdAt: 'ngayTao', updatedAt: 'ngayCapNhat' }
+  timestamps: true // Tự tạo createdAt và updatedAt
 });
 
 // Middleware để hash mật khẩu trước khi lưu

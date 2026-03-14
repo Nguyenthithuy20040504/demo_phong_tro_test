@@ -117,20 +117,19 @@ export default function CaiDatPage() {
     const root = window.document.documentElement;
     if (theme === 'dark') {
       root.classList.add('dark');
+      root.classList.remove('light');
       root.style.colorScheme = 'dark';
-    } else if (theme === 'light') {
-      root.classList.remove('dark');
-      root.style.colorScheme = 'light';
     } else if (theme === 'auto') {
       // Auto theme based on system preference
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) {
-        root.classList.add('dark');
-        root.style.colorScheme = 'dark';
-      } else {
-        root.classList.remove('dark');
-        root.style.colorScheme = 'light';
-      }
+      root.classList.toggle('dark', prefersDark);
+      root.classList.toggle('light', !prefersDark);
+      root.style.colorScheme = prefersDark ? 'dark' : 'light';
+    } else {
+      // light hoặc bất kỳ giá trị nào khác → sáng
+      root.classList.remove('dark');
+      root.classList.add('light');
+      root.style.colorScheme = 'light';
     }
   };
 

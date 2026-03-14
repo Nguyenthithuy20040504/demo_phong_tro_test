@@ -39,6 +39,7 @@ import {
   UserCheck,
   UserX,
   Search,
+  RefreshCw,
 } from "lucide-react"
 import {
   ColumnDef,
@@ -286,18 +287,36 @@ const createColumns = (props: UserTableProps): ColumnDef<User>[] => [
     accessorKey: "createdAt",
     header: "Ngày tạo",
     cell: ({ row }) => {
-      // Mongoose returns 'ngayTao' due to timestamp config
       const dateStr = row.original.createdAt || row.original.ngayTao;
-      const displayDate = dateStr 
-        ? new Date(dateStr).toLocaleDateString('vi-VN') 
-        : 'Chưa cập nhật';
+      if (!dateStr) return <span className="text-muted-foreground text-sm">Chưa cập nhật</span>;
       
+      const date = new Date(dateStr);
       return (
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm">
-            {displayDate !== 'Invalid Date' ? displayDate : 'Chưa cập nhật'}
-          </span>
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-3 w-3 text-muted-foreground" />
+            <span className="text-sm font-medium">{date.toLocaleDateString('vi-VN')}</span>
+          </div>
+          <span className="text-[10px] text-muted-foreground ml-5">{date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "lastLogin",
+    header: "Đăng nhập cuối",
+    cell: ({ row }) => {
+      const dateStr = row.original.lastLogin;
+      if (!dateStr) return <span className="text-muted-foreground text-sm">Chưa có thông tin</span>;
+      
+      const date = new Date(dateStr);
+      return (
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <RefreshCw className="h-3 w-3 text-muted-foreground" />
+            <span className="text-sm font-medium">{date.toLocaleDateString('vi-VN')}</span>
+          </div>
+          <span className="text-[10px] text-muted-foreground ml-5">{date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
       );
     },

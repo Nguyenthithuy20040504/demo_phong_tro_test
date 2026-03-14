@@ -1,9 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
-import { SessionProvider } from 'next-auth/react';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { SessionProvider, useSession } from 'next-auth/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { AppSidebar } from '@/components/app-sidebar';
 import {
@@ -13,7 +11,6 @@ import {
 } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import { DynamicBreadcrumb } from '@/components/ui/dynamic-breadcrumb';
-import { PageProgress } from '@/components/ui/page-progress';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -21,53 +18,56 @@ interface DashboardLayoutProps {
 
 function DashboardLayoutContent({ children }: DashboardLayoutProps) {
   const { data: session, status } = useSession();
-  const router = useRouter();
-
- /* useEffect(() => {
-  console.log("session data:", session);
-  console.log("status:", status);
-    if (status === 'loading') return;
-    
-    if (!session) {
-      router.push('/dang-nhap');
-      console.log("toang r ô cháu ạ");
-      return;
-    }
-  }, [session, status, router]);*/
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Đang tải...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center space-y-4"
+        >
+          <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary/40" />
+          <p className="text-sm font-medium text-muted-foreground tracking-widest uppercase">Đang khởi tạo...</p>
+        </motion.div>
       </div>
     );
   }
 
-  if (!session) {
-    return null;
-  }
+  if (!session) return null;
 
   return (
     <SidebarProvider>
-      {/* Premium Clean Background */}
-      <div className="fixed inset-0 bg-background transition-colors duration-300 -z-10" />
+      <div className="fixed inset-0 bg-[radial-gradient(circle_at_top_right,oklch(0.98_0.02_250),transparent)] -z-10" />
       
-      <AppSidebar className="glass-panel border-r-0" />
+      <AppSidebar className="border-r hairline-t bg-background/50 backdrop-blur-md" />
       
-      <SidebarInset className="overflow-hidden bg-transparent transition-all duration-300">
-        <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border/50 bg-background/60 backdrop-blur-xl px-4 shadow-sm transition-all duration-300">
-          <PageProgress />
-          <SidebarTrigger className="-ml-1 text-foreground hover:bg-muted/50 transition-colors rounded-full" />
-          <Separator orientation="vertical" className="h-6 bg-border" />
-          <div className="flex-1">
+      <SidebarInset className="bg-transparent">
+        <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-2 px-6 bg-background/40 backdrop-blur-xl hairline-b">
+          <div className="flex items-center gap-4">
+            <SidebarTrigger className="hover:bg-primary/5 transition-colors rounded-full" />
+            <Separator orientation="vertical" className="h-4 bg-border/50" />
             <DynamicBreadcrumb />
           </div>
+          
+          <div className="flex items-center gap-4">
+            {/* Action Area for Notifications if needed */}
+          </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {children}
+
+        <main className="flex-1 relative">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key="content"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              className="p-6 md:p-8 lg:p-12"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </SidebarInset>
     </SidebarProvider>

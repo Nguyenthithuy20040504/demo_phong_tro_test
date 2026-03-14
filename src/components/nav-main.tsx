@@ -50,10 +50,13 @@ export function NavMain({
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Menu</SidebarGroupLabel>
-      <SidebarMenu>
+      <SidebarGroupLabel className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground/50 uppercase py-4">
+        Điều hướng chính
+      </SidebarGroupLabel>
+      <SidebarMenu className="gap-1">
         {items.map((item) => {
-          // Khi sidebar collapsed và không phải mobile, dùng DropdownMenu
+          const isMainActive = item.url === pathname || item.items?.some(sub => sub.url === pathname)
+
           if (state === "collapsed" && !isMobile) {
             return (
               <SidebarMenuItem key={item.title}>
@@ -65,38 +68,33 @@ export function NavMain({
                 >
                   <DropdownMenuTrigger asChild>
                     <SidebarMenuButton
-                      className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                      className={`transition-all duration-300 ${isMainActive ? "bg-primary/10 text-primary font-semibold" : "hover:bg-primary/5"}`}
                     >
-                      {item.icon && <item.icon />}
+                      {item.icon && <item.icon className="size-4" />}
                       <span>{item.title}</span>
                     </SidebarMenuButton>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
-                    className="min-w-48 rounded-lg"
+                    className="min-w-48 rounded-xl bg-background/80 backdrop-blur-xl border-border/40 shadow-premium"
                     side="right"
                     align="start"
-                    sideOffset={4}
-                    onCloseAutoFocus={(e) => e.preventDefault()}
+                    sideOffset={12}
                   >
-                    <DropdownMenuLabel className="flex items-center gap-2">
-                      {item.icon && <item.icon className="h-4 w-4" />}
+                    <DropdownMenuLabel className="flex items-center gap-2 text-[10px] font-bold tracking-widest uppercase text-muted-foreground/60 p-3">
+                      {item.icon && <item.icon className="h-3.5 w-3.5" />}
                       {item.title}
                     </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
+                    <DropdownMenuSeparator className="bg-border/40" />
                     {item.items?.map((subItem) => {
                       const isActive = pathname === subItem.url
                       return (
                         <DropdownMenuItem 
                           key={subItem.title} 
                           asChild
-                          onSelect={() => {
-                            setOpenDropdown(null)
-                          }}
+                          onSelect={() => setOpenDropdown(null)}
+                          className={`m-1 rounded-lg transition-colors ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-primary/10"}`}
                         >
-                          <Link 
-                            href={subItem.url}
-                            className={isActive ? "bg-sidebar-accent" : ""}
-                          >
+                          <Link href={subItem.url} className="text-xs font-medium py-2 px-3">
                             {subItem.title}
                           </Link>
                         </DropdownMenuItem>
@@ -108,31 +106,37 @@ export function NavMain({
             )
           }
 
-          // Khi sidebar expanded hoặc mobile, dùng Collapsible
           return (
             <Collapsible
               key={item.title}
               asChild
-              defaultOpen={item.isActive}
+              defaultOpen={item.isActive || isMainActive}
               className="group/collapsible"
             >
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
-                  <SidebarMenuButton tooltip={item.title}>
-                    {item.icon && <item.icon />}
-                    <span>{item.title}</span>
-                    <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                  <SidebarMenuButton 
+                    tooltip={item.title}
+                    className={`h-11 transition-all duration-300 ${isMainActive ? "bg-primary/10 text-primary font-semibold" : "hover:bg-primary/5"}`}
+                  >
+                    {item.icon && <item.icon className="size-4" />}
+                    <span className="text-xs font-bold tracking-wider">{item.title}</span>
+                    <ChevronRight className="ml-auto size-3.5 transition-transform duration-300 group-data-[state=open]/collapsible:rotate-90 opacity-40" />
                   </SidebarMenuButton>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <SidebarMenuSub>
+                  <SidebarMenuSub className="border-l-0 ml-4 pl-4 border-l border-border/20 gap-1 mt-1">
                     {item.items?.map((subItem) => {
                       const isActive = pathname === subItem.url
                       return (
                         <SidebarMenuSubItem key={subItem.title}>
-                          <SidebarMenuSubButton asChild isActive={isActive}>
+                          <SidebarMenuSubButton 
+                            asChild 
+                            isActive={isActive}
+                            className={`h-9 transition-all duration-300 rounded-lg px-4 ${isActive ? "bg-primary/10 text-primary font-bold shadow-[inset_0_0_0_1px_oklch(var(--primary)/0.2)]" : "text-muted-foreground/70 hover:text-foreground hover:bg-primary/5"}`}
+                          >
                             <Link href={subItem.url}>
-                              <span>{subItem.title}</span>
+                              <span className="text-[11px] uppercase tracking-widest">{subItem.title}</span>
                             </Link>
                           </SidebarMenuSubButton>
                         </SidebarMenuSubItem>

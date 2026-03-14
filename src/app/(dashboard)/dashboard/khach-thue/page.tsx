@@ -1,16 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useCache } from '@/hooks/use-cache';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -29,7 +30,6 @@ import {
   Search, 
   Edit, 
   Trash2, 
-  EyeIcon,
   Users, 
   Phone,
   Mail,
@@ -38,16 +38,47 @@ import {
   Info,
   CreditCard,
   RefreshCw,
-  Copy
+  Copy,
+  ArrowRight,
+  ShieldCheck,
+  UserCheck,
+  UserX,
+  Sparkles
 } from 'lucide-react';
 import { KhachThue } from '@/types';
 import { KhachThueDataTable } from './table';
 import { CCCDUpload } from '@/components/ui/cccd-upload';
-import { DeleteConfirmPopover } from '@/components/ui/delete-confirm-popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
+// Animation variants
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2
+    }
+  }
+}
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 100,
+      damping: 15
+    }
+  }
+}
+
 export default function KhachThuePage() {
+  const { data: session } = useSession();
+  const isNhanVien = session?.user?.role === 'nhanVien';
   const cache = useCache<{ khachThueList: KhachThue[] }>({ key: 'khach-thue-data', duration: 300000 });
   const [khachThueList, setKhachThueList] = useState<KhachThue[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,11 +86,10 @@ export default function KhachThuePage() {
   const [selectedTrangThai, setSelectedTrangThai] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingKhachThue, setEditingKhachThue] = useState<KhachThue | null>(null);
-  const [isFormSubmitting, setIsFormSubmitting] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = 'Quản lý Khách thuê';
+    document.title = 'Quản lý Khách thuê | Impeccable';
   }, []);
 
   useEffect(() => {
@@ -70,7 +100,6 @@ export default function KhachThuePage() {
     try {
       setLoading(true);
       
-      // Thử load từ cache trước
       if (!forceRefresh) {
         const cachedData = cache.getCache();
         if (cachedData) {
@@ -93,12 +122,12 @@ export default function KhachThuePage() {
         }
       }
       
-      // Lưu cache với data mới
       if (khachThueData.length > 0) {
         cache.setCache({ khachThueList: khachThueData });
       }
     } catch (error) {
       console.error('Error fetching khach thue:', error);
+      toast.error('Lỗi kết nối dữ liệu');
     } finally {
       setLoading(false);
     }
@@ -108,11 +137,10 @@ export default function KhachThuePage() {
     cache.setIsRefreshing(true);
     await fetchKhachThue(true);
     cache.setIsRefreshing(false);
-    toast.success('Đã tải dữ liệu mới nhất');
+    toast.success('Dữ liệu đã được đồng bộ');
   };
 
   useEffect(() => {
-    // Khi filter thay đổi, cần force refresh để lấy data mới theo filter
     if (selectedTrangThai) {
       fetchKhachThue(true);
     }
@@ -131,343 +159,230 @@ export default function KhachThuePage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Bạn có chắc chắn muốn xóa khách thuê này?')) {
+    try {
       setActionLoading(`delete-${id}`);
-      try {
-        const response = await fetch(`/api/khach-thue/${id}`, {
-          method: 'DELETE',
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success) {
-            cache.clearCache();
-            setKhachThueList(prev => prev.filter(khachThue => khachThue._id !== id));
-            toast.success('Xóa khách thuê thành công!');
-          } else {
-            toast.error(result.message || 'Có lỗi xảy ra');
-          }
-        } else {
-          const error = await response.json();
-          toast.error(error.message || 'Có lỗi xảy ra');
-        }
-      } catch (error) {
-        console.error('Error deleting khach thue:', error);
-        toast.error('Có lỗi xảy ra khi xóa khách thuê');
-      } finally {
-        setActionLoading(null);
+      const response = await fetch(`/api/khach-thue/${id}`, { method: 'DELETE' });
+      
+      if (response.ok) {
+        cache.clearCache();
+        setKhachThueList(prev => prev.filter(kt => kt._id !== id));
+        toast.success('Chủ thể đã được gỡ bỏ khỏi hệ thống');
       }
+    } catch (error) {
+      toast.error('Thao tác gỡ bỏ thất bại');
+    } finally {
+      setActionLoading(null);
     }
   };
 
-
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div className="h-8 bg-gray-200 rounded w-48 animate-pulse"></div>
-          <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
-        </div>
-        <div className="h-96 bg-gray-200 rounded animate-pulse"></div>
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+        <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+        <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground animate-pulse">Synchronizing Nodes...</span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">Quản lý khách thuê</h1>
-          <p className="text-xs md:text-sm text-gray-600">Danh sách tất cả khách thuê trong hệ thống</p>
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="space-y-12"
+    >
+      {/* Editorial Header */}
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div className="space-y-2">
+           <div className="flex items-center gap-3">
+              <span className="h-px w-8 bg-primary/40" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-primary/60">Module Định danh</span>
+           </div>
+           <h1 className="text-4xl md:text-5xl font-['Playfair_Display'] italic text-foreground tracking-tight">Cư trú & Liên lạc</h1>
+           <p className="text-sm text-muted-foreground max-w-md font-medium leading-relaxed">
+             Quản lý vòng đời cư trú của khách hàng, hồ sơ định danh và các kênh giao thức liên lạc.
+           </p>
         </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={cache.isRefreshing}
-            className="flex-1 sm:flex-none"
-          >
-            <RefreshCw className={`h-4 w-4 sm:mr-2 ${cache.isRefreshing ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">{cache.isRefreshing ? 'Đang tải...' : 'Tải mới'}</span>
-          </Button>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" onClick={() => setEditingKhachThue(null)} className="flex-1 sm:flex-none">
-                <Plus className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Thêm khách thuê</span>
-                <span className="sm:hidden">Thêm</span>
-              </Button>
-            </DialogTrigger>
-          <DialogContent className="w-[95vw] md:w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingKhachThue ? 'Chỉnh sửa khách thuê' : 'Thêm khách thuê mới'}
-              </DialogTitle>
-              <DialogDescription>
-                {editingKhachThue ? 'Cập nhật thông tin khách thuê' : 'Nhập thông tin khách thuê mới'}
-              </DialogDescription>
-            </DialogHeader>
+
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={cache.isRefreshing}
+              className="h-11 px-5 rounded-2xl bg-background/50 backdrop-blur-md border-border/40 text-[10px] font-bold uppercase tracking-widest hover:bg-secondary/40 transition-all flex-1 sm:flex-none"
+            >
+              <RefreshCw className={`size-3.5 mr-2 ${cache.isRefreshing ? 'animate-spin' : ''}`} />
+              Đồng bộ dữ liệu
+            </Button>
             
-            <KhachThueForm 
-              khachThue={editingKhachThue}
-              onClose={() => setIsDialogOpen(false)}
-              onSuccess={(newKhachThue) => {
-                cache.clearCache();
-                setIsDialogOpen(false);
-                if (newKhachThue) {
-                  if (editingKhachThue) {
-                    // Cập nhật khách thuê hiện có
-                    setKhachThueList(prev => prev.map(kt => 
-                      kt._id === editingKhachThue._id ? newKhachThue : kt
-                    ));
-                  } else {
-                    // Thêm khách thuê mới
-                    setKhachThueList(prev => [newKhachThue, ...prev]);
-                  }
-                } else {
-                  // Fallback: refresh data nếu không có dữ liệu trả về
-                  fetchKhachThue();
-                }
-                toast.success(editingKhachThue ? 'Cập nhật khách thuê thành công!' : 'Thêm khách thuê thành công!');
-              }}
-              isSubmitting={isFormSubmitting}
-              setIsSubmitting={setIsFormSubmitting}
-            />
-            </DialogContent>
-          </Dialog>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" onClick={() => setEditingKhachThue(null)} className="h-11 px-6 rounded-2xl bg-primary shadow-premium hover:shadow-premium-hover transition-all text-[10px] font-bold uppercase tracking-widest gap-2 flex-1 sm:flex-none">
+                  <Plus className="size-4" />
+                  Ghi danh chủ thể
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-background/80 backdrop-blur-2xl border-border/40 rounded-[2.5rem] p-8">
+                <DialogHeader className="mb-8">
+                  <DialogTitle className="text-3xl font-bold italic tracking-tight font-['Playfair_Display']">
+                    {editingKhachThue ? 'Cập nhật định danh' : 'Ghi danh chủ thể mới'}
+                  </DialogTitle>
+                  <DialogDescription className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">
+                    {editingKhachThue ? 'Hiệu chỉnh thông số hồ sơ cư trú' : 'Thiết lập định danh ban đầu cho khách hàng'}
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <KhachThueForm 
+                  khachThue={editingKhachThue}
+                  onClose={() => setIsDialogOpen(false)}
+                  onSuccess={() => {
+                    cache.clearCache();
+                    setIsDialogOpen(false);
+                    fetchKhachThue(true);
+                    toast.success(editingKhachThue ? 'Đã cập nhật hồ sơ' : 'Đã ghi danh thành công');
+                  }}
+                />
+              </DialogContent>
+            </Dialog>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 md:gap-4 lg:gap-6">
-        <Card className="p-2 md:p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Tổng khách thuê</p>
-              <p className="text-base md:text-2xl font-bold">{khachThueList.length}</p>
-            </div>
-            <Users className="h-3 w-3 md:h-4 md:w-4 text-gray-500" />
-          </div>
-        </Card>
-
-        <Card className="p-2 md:p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Đang thuê</p>
-              <p className="text-base md:text-2xl font-bold text-blue-600">
-                {khachThueList.filter(k => k.trangThai === 'dangThue').length}
-              </p>
-            </div>
-            <Users className="h-3 w-3 md:h-4 md:w-4 text-blue-600" />
-          </div>
-        </Card>
-
-        <Card className="p-2 md:p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Đã trả phòng</p>
-              <p className="text-base md:text-2xl font-bold text-gray-600">
-                {khachThueList.filter(k => k.trangThai === 'daTraPhong').length}
-              </p>
-            </div>
-            <Users className="h-3 w-3 md:h-4 md:w-4 text-gray-600" />
-          </div>
-        </Card>
-
-        <Card className="p-2 md:p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Chưa thuê</p>
-              <p className="text-base md:text-2xl font-bold text-orange-600">
-                {khachThueList.filter(k => k.trangThai === 'chuaThue').length}
-              </p>
-            </div>
-            <Users className="h-3 w-3 md:h-4 md:w-4 text-orange-600" />
-          </div>
-        </Card>
-      </div>
-
-      {/* Desktop Table */}
-      <Card className="hidden md:block">
-        <CardHeader>
-          <CardTitle>Danh sách khách thuê</CardTitle>
-          <CardDescription>
-            {filteredKhachThue.length} khách thuê được tìm thấy
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          <KhachThueDataTable
-            data={filteredKhachThue}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            actionLoading={actionLoading}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            selectedTrangThai={selectedTrangThai}
-            onTrangThaiChange={setSelectedTrangThai}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Mobile Cards */}
-      <div className="md:hidden">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold">Danh sách khách thuê</h2>
-          <span className="text-sm text-gray-500">{filteredKhachThue.length} khách thuê</span>
-        </div>
-        
-        {/* Mobile Filters */}
-        <div className="space-y-2 mb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Tìm kiếm khách thuê..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 text-sm"
-            />
-          </div>
-          <Select value={selectedTrangThai} onValueChange={setSelectedTrangThai}>
-            <SelectTrigger className="text-sm">
-              <SelectValue placeholder="Trạng thái" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="text-sm">Tất cả</SelectItem>
-              <SelectItem value="dangThue" className="text-sm">Đang thuê</SelectItem>
-              <SelectItem value="daTraPhong" className="text-sm">Đã trả phòng</SelectItem>
-              <SelectItem value="chuaThue" className="text-sm">Chưa thuê</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Mobile Card List */}
-        <div className="space-y-3">
-          {filteredKhachThue.map((khachThue) => (
-            <Card key={khachThue._id} className="p-4">
-              <div className="space-y-3">
-                {/* Header with name and status */}
-                <div className="flex justify-between items-start">
+      {/* Stats Section with Glassmorphism */}
+      <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { label: 'Tổng chủ thể', value: khachThueList.length, icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/5' },
+            { label: 'Đang khai thác', value: khachThueList.filter(k => k.trangThai === 'dangThue').length, icon: UserCheck, color: 'text-emerald-500', bg: 'bg-emerald-500/5' },
+            { label: 'Hết hiệu lực', value: khachThueList.filter(k => k.trangThai === 'daTraPhong').length, icon: UserX, color: 'text-slate-500', bg: 'bg-slate-500/5' },
+            { label: 'Node chờ', value: khachThueList.filter(k => k.trangThai === 'chuaThue').length, icon: Sparkles, color: 'text-amber-500', bg: 'bg-amber-500/5' },
+          ].map((stat, i) => (
+            <Card key={i} className="group relative overflow-hidden border-none bg-background/40 backdrop-blur-md rounded-3xl p-6 hover:shadow-premium transition-all duration-500">
+               <div className={`absolute top-0 right-0 size-24 ${stat.bg} rounded-bl-full opacity-50 group-hover:scale-110 transition-transform duration-500`} />
+               <div className="relative flex flex-col gap-4">
+                  <div className={`size-10 rounded-2xl ${stat.bg} flex items-center justify-center border border-border/20`}>
+                     <stat.icon className={`size-5 ${stat.color}`} />
+                  </div>
                   <div>
-                    <h3 className="font-medium text-gray-900">{khachThue.hoTen}</h3>
-                    <p className="text-sm text-gray-500 capitalize">{khachThue.gioiTinh}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">{stat.label}</p>
+                    <p className="text-3xl font-bold tracking-tighter text-foreground">{stat.value}</p>
                   </div>
-                  <div className="flex gap-2">
-                    {(() => {
-                      switch (khachThue.trangThai) {
-                        case 'dangThue':
-                          return <Badge variant="default" className="text-xs">Đang thuê</Badge>;
-                        case 'daTraPhong':
-                          return <Badge variant="secondary" className="text-xs">Đã trả phòng</Badge>;
-                        case 'chuaThue':
-                          return <Badge variant="outline" className="text-xs">Chưa thuê</Badge>;
-                        default:
-                          return <Badge variant="outline" className="text-xs">{khachThue.trangThai}</Badge>;
-                      }
-                    })()}
-                  </div>
-                </div>
-
-                {/* Contact info */}
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Phone className="h-3 w-3 text-gray-400" />
-                    <span>{khachThue.soDienThoai}</span>
-                  </div>
-                  {khachThue.email && (
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <Mail className="h-3 w-3" />
-                      <span className="truncate">{khachThue.email}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <CreditCard className="h-3 w-3" />
-                    <span className="font-mono">{khachThue.cccd}</span>
-                  </div>
-                </div>
-
-                {/* Additional info */}
-                <div className="space-y-1 text-xs text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-3 w-3" />
-                    <span>Ngày sinh: {new Date(khachThue.ngaySinh).toLocaleDateString('vi-VN')}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-3 w-3" />
-                    <span className="truncate">{khachThue.queQuan}</span>
-                  </div>
-                  {khachThue.ngheNghiep && (
-                    <div className="flex items-center gap-2">
-                      <Users className="h-3 w-3" />
-                      <span>{khachThue.ngheNghiep}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Room info if available */}
-                {(khachThue as any).hopDongHienTai?.phong && (
-                  <div className="border-t pt-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Users className="h-3 w-3 text-green-600" />
-                      <span className="font-medium">Phòng: {(khachThue as any).hopDongHienTai.phong.maPhong}</span>
-                    </div>
-                    {(khachThue as any).hopDongHienTai.phong.toaNha && (
-                      <div className="flex items-center gap-2 text-xs text-gray-500 ml-5">
-                        <span>{(khachThue as any).hopDongHienTai.phong.toaNha.tenToaNha}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Action buttons */}
-                <div className="flex justify-between items-center pt-2 border-t">
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const publicUrl = `${window.location.origin}/khach-thue/dang-nhap`;
-                        navigator.clipboard.writeText(publicUrl);
-                        toast.success('Đã sao chép link đăng nhập khách thuê');
-                      }}
-                      className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                      title="Copy link đăng nhập khách thuê"
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(khachThue)}
-                      disabled={actionLoading === `edit-${khachThue._id}`}
-                    >
-                      <Edit className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDelete(khachThue._id!)}
-                    disabled={actionLoading === `delete-${khachThue._id}`}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
+               </div>
             </Card>
           ))}
+      </motion.div>
+
+      {/* Desktop Table Container */}
+      <motion.div variants={itemVariants} className="hidden md:block">
+        <Card className="border-none bg-background/40 backdrop-blur-xl rounded-[2.5rem] shadow-premium-subtle overflow-hidden">
+          <CardContent className="p-10">
+            <KhachThueDataTable
+              data={filteredKhachThue}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              actionLoading={actionLoading}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              selectedTrangThai={selectedTrangThai}
+              onTrangThaiChange={setSelectedTrangThai}
+            />
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Mobile Experience - Redesigned Editorial Cards */}
+      <motion.div variants={itemVariants} className="md:hidden space-y-8">
+        <div className="flex items-center justify-between px-2">
+            <div className="flex flex-col">
+               <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Identity Cluster</span>
+               <span className="text-lg font-bold italic font-['Playfair_Display'] tracking-tight">Thực thể cư trú</span>
+            </div>
+            <Badge variant="outline" className="h-7 rounded-full px-3 text-[10px] font-bold border-border/40">{filteredKhachThue.length} NODES</Badge>
         </div>
 
-        {filteredKhachThue.length === 0 && (
-          <div className="text-center py-8">
-            <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">Không có khách thuê nào</p>
-          </div>
-        )}
-      </div>
-    </div>
+        <div className="space-y-4 px-2">
+           <div className="relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/40" />
+              <Input
+                placeholder="Truy vấn thực thể..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-12 h-12 bg-secondary/20 border-transparent rounded-[1.25rem] text-sm"
+              />
+           </div>
+        </div>
+        
+        <AnimatePresence mode="popLayout">
+          {filteredKhachThue.length === 0 ? (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-20 flex flex-col items-center justify-center gap-4 opacity-40">
+              <Users className="size-12 stroke-[1]" />
+              <p className="text-xs font-bold uppercase tracking-widest">No nodes discovered</p>
+            </motion.div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 px-2">
+              {filteredKhachThue.map((kt) => (
+                <motion.div 
+                  layout
+                  key={kt._id}
+                  variants={itemVariants}
+                  className="group relative overflow-hidden bg-background/60 backdrop-blur-xl border border-border/20 rounded-[2rem] p-6 shadow-sm active:scale-[0.98] transition-all"
+                >
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="flex items-center gap-4">
+                       <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
+                          <Users className="size-5 text-primary/60" />
+                       </div>
+                       <div className="space-y-0.5">
+                          <h3 className="text-xl font-bold tracking-tight text-foreground">{kt.hoTen}</h3>
+                          <span className="text-[10px] font-bold uppercase tracking-widest opacity-40">{kt.gioiTinh}</span>
+                       </div>
+                    </div>
+                    {/* Status Indicator */}
+                    <div className={`px-3 py-1.5 rounded-full border text-[9px] font-bold uppercase tracking-widest ${
+                       kt.trangThai === 'dangThue' ? 'bg-emerald-500/5 text-emerald-600 border-emerald-500/10' :
+                       kt.trangThai === 'daTraPhong' ? 'bg-slate-500/5 text-slate-500 border-slate-500/10' :
+                       'bg-amber-500/5 text-amber-600 border-amber-500/10'
+                    }`}>
+                        {kt.trangThai === 'dangThue' ? 'Active' : kt.trangThai === 'daTraPhong' ? 'Inactive' : 'Pending'}
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-4 mb-8">
+                      <div className="flex items-center gap-3 p-4 bg-secondary/10 rounded-2xl">
+                         <Phone className="size-3.5 text-muted-foreground/60" />
+                         <span className="text-sm font-mono font-medium tracking-tight whitespace-nowrap">{kt.soDienThoai}</span>
+                      </div>
+                      <div className="flex items-center gap-3 p-4 bg-secondary/10 rounded-2xl">
+                         <MapPin className="size-3.5 text-muted-foreground/60" />
+                         <span className="text-sm font-medium tracking-tight truncate">{kt.queQuan}</span>
+                      </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      className="flex-1 h-12 rounded-2xl bg-secondary/10 hover:bg-secondary/20 text-xs font-bold uppercase tracking-widest gap-2"
+                      onClick={() => handleEdit(kt)}
+                    >
+                      <Edit className="size-3.5" />
+                      Hiệu chỉnh
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-12 rounded-2xl bg-rose-500/5 hover:bg-rose-500/10 group"
+                      onClick={() => handleDelete(kt._id!)}
+                      disabled={actionLoading === `delete-${kt._id}`}
+                    >
+                      <Trash2 className="size-4 text-rose-500/40 group-hover:text-rose-500 transition-colors" />
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -475,15 +390,11 @@ export default function KhachThuePage() {
 function KhachThueForm({ 
   khachThue, 
   onClose, 
-  onSuccess,
-  isSubmitting,
-  setIsSubmitting
+  onSuccess 
 }: { 
   khachThue: KhachThue | null;
   onClose: () => void;
   onSuccess: (newKhachThue?: KhachThue) => void;
-  isSubmitting: boolean;
-  setIsSubmitting: (value: boolean) => void;
 }) {
   const [formData, setFormData] = useState({
     hoTen: khachThue?.hoTen || '',
@@ -494,25 +405,22 @@ function KhachThueForm({
     gioiTinh: khachThue?.gioiTinh || 'nam',
     queQuan: khachThue?.queQuan || '',
     anhCCCD: {
-      matTruoc: khachThue?.anhCCCD.matTruoc || '',
-      matSau: khachThue?.anhCCCD.matSau || '',
+      matTruoc: khachThue?.anhCCCD?.matTruoc || '',
+      matSau: khachThue?.anhCCCD?.matSau || '',
     },
     ngheNghiep: khachThue?.ngheNghiep || '',
     matKhau: '',
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (isSubmitting) return; // Ngăn submit nhiều lần
-    
     setIsSubmitting(true);
-    
     try {
       const url = khachThue ? `/api/khach-thue/${khachThue._id}` : '/api/khach-thue';
       const method = khachThue ? 'PUT' : 'POST';
 
-      // Chỉ gửi matKhau khi nó được nhập
       const submitData = { ...formData };
       if (!submitData.matKhau || submitData.matKhau.trim() === '') {
         delete (submitData as any).matKhau;
@@ -520,192 +428,174 @@ function KhachThueForm({
 
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(submitData),
       });
 
       if (response.ok) {
         const result = await response.json();
-        if (result.success) {
-          onSuccess(result.data);
-        } else {
-          toast.error(result.message || 'Có lỗi xảy ra');
-        }
+        onSuccess(result.data);
       } else {
         const error = await response.json();
-        toast.error(error.message || 'Có lỗi xảy ra');
+        toast.error(error.message || 'Thao tác không thành công');
       }
     } catch (error) {
-      console.error('Error submitting form:', error);
-      toast.error('Có lỗi xảy ra khi gửi form');
+      toast.error('Lỗi kết nối máy chủ');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-10">
       <Tabs defaultValue="thong-tin" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="thong-tin" className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
-            <Info className="h-3 w-3 md:h-4 md:w-4" />
-            <span className="hidden sm:inline">Thông tin</span>
-            <span className="sm:hidden">Thông tin</span>
+        <TabsList className="bg-secondary/20 p-1.5 rounded-2xl mb-8 flex w-fit gap-1">
+          <TabsTrigger value="thong-tin" className="rounded-xl px-6 py-2 text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-background data-[state=active]:shadow-premium transition-all">
+            Hồ sơ chủ thể
           </TabsTrigger>
-          <TabsTrigger value="anh-cccd" className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
-            <CreditCard className="h-3 w-3 md:h-4 md:w-4" />
-            <span className="hidden sm:inline">Ảnh CCCD</span>
-            <span className="sm:hidden">CCCD</span>
+          <TabsTrigger value="anh-cccd" className="rounded-xl px-6 py-2 text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-background data-[state=active]:shadow-premium transition-all">
+            Số hóa CCCD
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="thong-tin" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="hoTen" className="text-xs md:text-sm">Họ tên</Label>
+        <TabsContent value="thong-tin" className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Danh xưng đầy đủ</Label>
               <Input
-                id="hoTen"
                 value={formData.hoTen}
                 onChange={(e) => setFormData(prev => ({ ...prev, hoTen: e.target.value }))}
                 required
-                className="text-sm"
+                className="h-12 bg-secondary/10 border-transparent rounded-2xl focus:bg-background transition-all"
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="soDienThoai" className="text-xs md:text-sm">Số điện thoại</Label>
+            <div className="space-y-3">
+              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Phân tuyến Liên lạc</Label>
               <Input
-                id="soDienThoai"
                 value={formData.soDienThoai}
                 onChange={(e) => setFormData(prev => ({ ...prev, soDienThoai: e.target.value }))}
                 required
-                className="text-sm"
+                className="h-12 bg-secondary/10 border-transparent rounded-2xl focus:bg-background transition-all font-mono"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-xs md:text-sm">Email</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Kênh Email</Label>
               <Input
-                id="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                className="text-sm"
+                className="h-12 bg-secondary/10 border-transparent rounded-2xl focus:bg-background transition-all"
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="cccd" className="text-xs md:text-sm">CCCD</Label>
+            <div className="space-y-3">
+              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Mã định danh (CCCD)</Label>
               <Input
-                id="cccd"
                 value={formData.cccd}
                 onChange={(e) => setFormData(prev => ({ ...prev, cccd: e.target.value }))}
                 required
-                className="text-sm"
+                className="h-12 bg-secondary/10 border-transparent rounded-2xl focus:bg-background transition-all font-mono"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="ngaySinh" className="text-xs md:text-sm">Ngày sinh</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Tọa độ thời gian (Ngày sinh)</Label>
               <Input
-                id="ngaySinh"
                 type="date"
                 value={formData.ngaySinh}
                 onChange={(e) => setFormData(prev => ({ ...prev, ngaySinh: e.target.value }))}
                 required
-                className="text-sm"
+                className="h-12 bg-secondary/10 border-transparent rounded-2xl focus:bg-background transition-all"
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="gioiTinh" className="text-xs md:text-sm">Giới tính</Label>
-              <Select value={formData.gioiTinh} onValueChange={(value) => setFormData(prev => ({ ...prev, gioiTinh: value as 'nam' | 'nu' }))}>
-                <SelectTrigger className="text-sm">
+            <div className="space-y-3">
+              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Phân loại giới tính</Label>
+              <Select value={formData.gioiTinh} onValueChange={(value) => setFormData(prev => ({ ...prev, gioiTinh: value as 'nam' | 'nu' | 'khac' }))}>
+                <SelectTrigger className="h-12 bg-secondary/10 border-transparent rounded-2xl focus:bg-background transition-all">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="nam" className="text-sm">Nam</SelectItem>
-                  <SelectItem value="nu" className="text-sm">Nữ</SelectItem>
-                  <SelectItem value="khac" className="text-sm">Khác</SelectItem>
+                <SelectContent className="bg-background/80 backdrop-blur-2xl border-border/40 rounded-2xl">
+                  <SelectItem value="nam" className="rounded-lg">Nam</SelectItem>
+                  <SelectItem value="nu" className="rounded-lg">Nữ</SelectItem>
+                  <SelectItem value="khac" className="rounded-lg">Khác</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="queQuan" className="text-xs md:text-sm">Quê quán</Label>
-            <Input
-              id="queQuan"
-              value={formData.queQuan}
-              onChange={(e) => setFormData(prev => ({ ...prev, queQuan: e.target.value }))}
-              required
-              className="text-sm"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <div className="space-y-3">
+               <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Cội nguồn (Quê quán)</Label>
+               <Input
+                 value={formData.queQuan}
+                 onChange={(e) => setFormData(prev => ({ ...prev, queQuan: e.target.value }))}
+                 required
+                 className="h-12 bg-secondary/10 border-transparent rounded-2xl focus:bg-background transition-all"
+               />
+             </div>
+             <div className="space-y-3">
+               <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Chuyên môn vận hành</Label>
+               <Input
+                 value={formData.ngheNghiep}
+                 onChange={(e) => setFormData(prev => ({ ...prev, ngheNghiep: e.target.value }))}
+                 className="h-12 bg-secondary/10 border-transparent rounded-2xl focus:bg-background transition-all"
+               />
+             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="ngheNghiep" className="text-xs md:text-sm">Nghề nghiệp</Label>
+          <div className="space-y-3">
+            <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Khóa truy cập hệ thống</Label>
             <Input
-              id="ngheNghiep"
-              value={formData.ngheNghiep}
-              onChange={(e) => setFormData(prev => ({ ...prev, ngheNghiep: e.target.value }))}
-              className="text-sm"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="matKhau" className="text-xs md:text-sm">Mật khẩu đăng nhập</Label>
-            <Input
-              id="matKhau"
               type="password"
               value={formData.matKhau}
               onChange={(e) => setFormData(prev => ({ ...prev, matKhau: e.target.value }))}
-              placeholder={khachThue && khachThue.matKhau ? "Để trống nếu không muốn thay đổi" : "Nhập mật khẩu (tối thiểu 6 ký tự)"}
-              className="text-sm"
+              placeholder={khachThue ? "Giữ nguyên nếu không thay đổi" : "Khởi tạo khóa truy cập (min 6 ký tự)"}
+              className="h-12 bg-secondary/10 border-transparent rounded-2xl focus:bg-background transition-all"
             />
-            <p className="text-[10px] md:text-xs text-muted-foreground">
-              {khachThue && khachThue.matKhau 
-                ? "Khách thuê đã có tài khoản đăng nhập. Để trống nếu không muốn thay đổi mật khẩu."
-                : "Tạo mật khẩu để khách thuê có thể đăng nhập vào hệ thống."
-              }
-            </p>
+            <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest ml-1 pt-1">Security Node Token</p>
           </div>
         </TabsContent>
         
-        <TabsContent value="anh-cccd" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
-          <CCCDUpload
-            anhCCCD={formData.anhCCCD}
-            onCCCDChange={(anhCCCD) => setFormData(prev => ({ ...prev, anhCCCD }))}
-            className="w-full"
-          />
+        <TabsContent value="anh-cccd" className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+           <div className="bg-secondary/5 rounded-[2.5rem] p-8 border border-border/10">
+              <CCCDUpload
+                anhCCCD={formData.anhCCCD}
+                onCCCDChange={(anhCCCD) => setFormData(prev => ({ ...prev, anhCCCD }))}
+                className="w-full"
+              />
+           </div>
         </TabsContent>
       </Tabs>
 
-      <DialogFooter className="flex-col sm:flex-row gap-2">
-        <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting} className="w-full sm:w-auto">
-          Hủy
+      <div className="flex gap-4 pt-10 border-t border-border/10">
+        <Button 
+          type="button" 
+          variant="ghost" 
+          onClick={onClose} 
+          disabled={isSubmitting}
+          className="h-14 flex-1 rounded-2xl text-[11px] font-bold uppercase tracking-widest"
+        >
+          Hủy bỏ
         </Button>
-        <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
+        <Button 
+          type="submit" 
+          disabled={isSubmitting}
+          className="h-14 flex-[2] rounded-2xl bg-primary text-[11px] font-bold uppercase tracking-widest shadow-premium hover:shadow-premium-hover transition-all"
+        >
           {isSubmitting ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              <span className="hidden sm:inline">{khachThue ? 'Đang cập nhật...' : 'Đang thêm...'}</span>
-              <span className="sm:hidden">{khachThue ? 'Đang cập nhật...' : 'Đang thêm...'}</span>
-            </>
+             <RefreshCw className="size-4 animate-spin" />
           ) : (
-            <>
-              <span className="hidden sm:inline">{khachThue ? 'Cập nhật' : 'Thêm mới'}</span>
-              <span className="sm:hidden">{khachThue ? 'Cập nhật' : 'Thêm mới'}</span>
-            </>
+             khachThue ? 'Cập nhật định danh' : 'Xác thực & Ghi danh'
           )}
         </Button>
-      </DialogFooter>
+      </div>
     </form>
   );
 }

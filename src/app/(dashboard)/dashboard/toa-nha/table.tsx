@@ -34,8 +34,6 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Home,
-  Users,
   Search,
 } from "lucide-react"
 import {
@@ -62,6 +60,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -89,7 +88,6 @@ const formatAddress = (diaChi: ToaNha['diaChi']) => {
   return `${diaChi.soNha} ${diaChi.duong}, ${diaChi.phuong}, ${diaChi.quan}, ${diaChi.thanhPho}`
 }
 
-// Create a separate component for the drag handle
 function DragHandle({ id }: { id: string }) {
   const { attributes, listeners } = useSortable({
     id,
@@ -101,10 +99,9 @@ function DragHandle({ id }: { id: string }) {
       {...listeners}
       variant="ghost"
       size="icon"
-      className="text-muted-foreground size-7 hover:bg-transparent"
+      className="text-muted-foreground/30 size-7 hover:bg-transparent hover:text-primary transition-colors"
     >
-      <GripVertical className="text-muted-foreground size-3" />
-      <span className="sr-only">Kéo để sắp xếp</span>
+      <GripVertical className="size-3.5" />
     </Button>
   )
 }
@@ -113,6 +110,7 @@ type ToaNhaTableProps = {
   onView?: (toaNha: ToaNha) => void
   onEdit: (toaNha: ToaNha) => void
   onDelete: (id: string) => void
+  canEdit?: boolean
 }
 
 const createColumns = (props: ToaNhaTableProps): ColumnDef<ToaNha>[] => [
@@ -123,153 +121,109 @@ const createColumns = (props: ToaNhaTableProps): ColumnDef<ToaNha>[] => [
     enableHiding: false,
   },
   {
-    id: "select",
-    header: ({ table }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Chọn tất cả"
-        />
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Chọn hàng"
-        />
-      </div>
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
     accessorKey: "tenToaNha",
-    header: "Tên tòa nhà",
+    header: "Tòa nhà",
     cell: ({ row }) => (
-      <div className="flex items-center gap-2 min-w-40">
-        <Building2 className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium">{row.original.tenToaNha}</span>
+      <div className="flex flex-col gap-0.5 min-w-[200px] py-1">
+        <span className="font-bold text-foreground tracking-tight leading-none">{row.original.tenToaNha}</span>
+        <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1 font-medium">
+          <Building2 className="h-2.5 w-2.5" />
+          MÃ CHUỖI: {row.original._id?.slice(-6).toUpperCase()}
+        </span>
       </div>
     ),
     enableHiding: false,
   },
   {
     accessorKey: "diaChi",
-    header: "Địa chỉ",
+    header: "Vị trí địa lý",
     cell: ({ row }) => (
-      <div className="flex items-center gap-2 min-w-64">
-        <MapPin className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm">{formatAddress(row.original.diaChi)}</span>
+      <div className="flex items-start gap-1.5 min-w-[280px] group">
+        <MapPin className="h-3.5 w-3.5 mt-0.5 text-muted-foreground/40 group-hover:text-primary transition-colors" />
+        <span className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{formatAddress(row.original.diaChi)}</span>
       </div>
     ),
   },
   {
     accessorKey: "tongSoPhong",
-    header: () => <div className="text-center">Tổng phòng</div>,
+    header: () => <div className="text-center font-bold tracking-widest uppercase text-[10px]">TỔNG PHÒNG</div>,
     cell: ({ row }) => (
-      <div className="text-center font-medium">
+      <div className="text-center font-bold text-base tracking-tighter">
         {row.original.tongSoPhong}
       </div>
     ),
   },
   {
-    id: "phongTrong",
-    header: () => <div className="text-center">Phòng trống</div>,
+    id: "trangThai",
+    header: () => <div className="text-center font-bold tracking-widest uppercase text-[10px]">HIỆU SUẤT</div>,
     cell: ({ row }) => {
       const phongTrong = (row.original as any).phongTrong || 0
       const total = row.original.tongSoPhong
       const percentage = total > 0 ? Math.round((phongTrong / total) * 100) : 0
       return (
-        <div className="text-center">
-          <div className="font-medium text-green-600">{phongTrong}</div>
-          <div className="text-xs text-muted-foreground">({percentage}%)</div>
-        </div>
-      )
-    },
-  },
-  {
-    id: "phongDangThue",
-    header: () => <div className="text-center">Đang thuê</div>,
-    cell: ({ row }) => {
-      const phongDangThue = (row.original as any).phongDangThue || 0
-      const total = row.original.tongSoPhong
-      const percentage = total > 0 ? Math.round((phongDangThue / total) * 100) : 0
-      return (
-        <div className="text-center">
-          <div className="font-medium text-blue-600">{phongDangThue}</div>
-          <div className="text-xs text-muted-foreground">({percentage}%)</div>
+        <div className="flex flex-col items-center gap-1">
+          <div className="text-xs font-bold text-primary italic leading-none">{100 - percentage}% lấp đầy</div>
+          <div className="w-16 h-1 bg-border/40 rounded-full overflow-hidden">
+            <div className="h-full bg-primary" style={{ width: `${100 - percentage}%` }} />
+          </div>
         </div>
       )
     },
   },
   {
     accessorKey: "tienNghiChung",
-    header: "Tiện nghi",
+    header: "Hạ tầng",
     cell: ({ row }) => (
-      <div className="flex flex-wrap gap-1 max-w-48">
+      <div className="flex flex-wrap gap-1 max-w-[180px]">
         {row.original.tienNghiChung.slice(0, 2).map((tienNghi) => (
-          <Badge key={tienNghi} variant="secondary" className="text-xs">
+          <Badge key={tienNghi} variant="outline" className="text-[9px] uppercase tracking-tighter px-1.5 py-0 bg-secondary/30 border-secondary/50 font-bold">
             {tienNghi}
           </Badge>
         ))}
         {row.original.tienNghiChung.length > 2 && (
-          <Badge variant="outline" className="text-xs">
-            +{row.original.tienNghiChung.length - 2}
-          </Badge>
+          <span className="text-[10px] font-bold text-muted-foreground/40">+{row.original.tienNghiChung.length - 2}</span>
         )}
       </div>
     ),
   },
   {
-    accessorKey: "ngayTao",
-    header: "Ngày tạo",
-    cell: ({ row }) => (
-      <span className="text-sm">
-        {new Date(row.original.ngayTao).toLocaleDateString('vi-VN')}
-      </span>
-    ),
-  },
-  {
     id: "actions",
     cell: ({ row }) => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
-            size="icon"
-          >
-            <MoreVertical className="size-4" />
-            <span className="sr-only">Mở menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          {props.onView && (
-            <DropdownMenuItem onClick={() => props.onView!(row.original)}>
-              <Eye className="mr-2 h-4 w-4" />
-              Xem chi tiết
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuItem onClick={() => props.onEdit(row.original)}>
-            <Edit className="mr-2 h-4 w-4" />
-            Chỉnh sửa
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem 
-            className="text-destructive"
-            onClick={() => props.onDelete(row.original._id!)}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Xóa
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="hover:bg-primary/5 text-muted-foreground/40 transition-colors size-8 rounded-full"
+              size="icon"
+            >
+              <MoreVertical className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56 rounded-xl bg-background/80 backdrop-blur-xl border-border/40 shadow-premium p-2">
+            {props.onView && (
+              <DropdownMenuItem onClick={() => props.onView!(row.original)} className="rounded-lg py-2 focus:bg-primary/10 transition-colors">
+                <Eye className="mr-3 h-3.5 w-3.5 opacity-60" />
+                <span className="text-xs font-medium">Chi tiết vận hành</span>
+              </DropdownMenuItem>
+            )}
+            {props.canEdit !== false && (
+              <>
+                <DropdownMenuItem onClick={() => props.onEdit(row.original)} className="rounded-lg py-2 focus:bg-primary/10 transition-colors">
+                  <Edit className="mr-3 h-3.5 w-3.5 opacity-60" />
+                  <span className="text-xs font-medium">Hiệu chỉnh thông tin</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-border/30 m-2" />
+                <DropdownMenuItem 
+                  className="text-destructive rounded-lg py-2 focus:bg-destructive/10 focus:text-destructive transition-colors"
+                  onClick={() => props.onDelete(row.original._id!)}
+                >
+                  <Trash2 className="mr-3 h-3.5 w-3.5 opacity-60" />
+                  <span className="text-xs font-bold uppercase tracking-widest">Ngừng quản lý</span>
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
     ),
     enableHiding: false,
   },
@@ -285,14 +239,14 @@ function DraggableRow({ row }: { row: Row<ToaNha> }) {
       data-state={row.getIsSelected() && "selected"}
       data-dragging={isDragging}
       ref={setNodeRef}
-      className="relative z-0 data-[dragging=true]:z-10 data-[dragging=true]:opacity-80"
+      className={`relative z-0 group transition-colors duration-300 ${isDragging ? "opacity-50 !bg-primary/5" : "hover:bg-primary/5 border-border/20"}`}
       style={{
         transform: CSS.Transform.toString(transform),
         transition: transition,
       }}
     >
       {row.getVisibleCells().map((cell) => (
-        <TableCell key={cell.id}>
+        <TableCell key={cell.id} className="py-4 border-b border-border/20">
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
         </TableCell>
       ))}
@@ -321,7 +275,6 @@ export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
     pageSize: 10,
   })
   
-  // Sync data when prop changes
   React.useEffect(() => {
     setData(initialData)
   }, [initialData])
@@ -379,33 +332,30 @@ export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
   const selectedCount = table.getFilteredSelectedRowModel().rows.length
 
   return (
-    <div className="w-full space-y-4">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        {/* Tìm kiếm bên trái */}
-        <div className="flex-1 w-full sm:max-w-sm">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Tìm kiếm theo tên, địa chỉ..."
-              value={searchTerm || ''}
-              onChange={(e) => onSearchChange?.(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+    <div className="w-full space-y-8">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-6 px-4">
+        <div className="relative w-full sm:max-w-md group">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
+          <Input
+            placeholder="Tìm kiếm thực thể..."
+            value={searchTerm || ''}
+            onChange={(e) => onSearchChange?.(e.target.value)}
+            className="pl-11 h-11 bg-secondary/50 border-transparent focus:border-primary/20 focus:bg-background rounded-xl transition-all"
+          />
         </div>
         
-        {/* Tùy chỉnh cột bên phải */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Columns className="mr-2 h-4 w-4" />
-                <span className="hidden lg:inline">Tùy chỉnh cột</span>
-                <span className="lg:hidden">Cột</span>
-                <ChevronDown className="ml-2 h-4 w-4" />
+              <Button variant="outline" size="sm" className="h-11 rounded-xl border-border/40 font-bold uppercase tracking-widest text-[10px]">
+                <Columns className="mr-3 h-3.5 w-3.5 opacity-40" />
+                Cấu hình hiển thị
+                <ChevronDown className="ml-3 h-3 size-3 opacity-20" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-64 rounded-xl bg-background/80 backdrop-blur-xl border-border/40 shadow-premium p-2">
+              <DropdownMenuLabel className="text-[10px] font-bold tracking-widest uppercase p-3 text-muted-foreground/60">Cột dữ liệu</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-border/30 m-1" />
               {table
                 .getAllColumns()
                 .filter(
@@ -417,13 +367,13 @@ export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
                   return (
                     <DropdownMenuCheckboxItem
                       key={column.id}
-                      className="capitalize"
+                      className="capitalize m-1 rounded-lg focus:bg-primary/10"
                       checked={column.getIsVisible()}
                       onCheckedChange={(value) =>
                         column.toggleVisibility(!!value)
                       }
                     >
-                      {column.id}
+                      <span className="text-xs font-medium">{column.id}</span>
                     </DropdownMenuCheckboxItem>
                   )
                 })}
@@ -432,7 +382,7 @@ export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
         </div>
       </div>
       
-      <div className="overflow-hidden rounded-lg border">
+      <div className="relative">
         <DndContext
           collisionDetection={closestCenter}
           modifiers={[restrictToVerticalAxis]}
@@ -440,13 +390,13 @@ export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
           sensors={sensors}
           id={sortableId}
         >
-          <Table>
-            <TableHeader className="bg-muted sticky top-0 z-10">
+          <Table className="border-collapse border-b-0">
+            <TableHeader className="bg-transparent border-b-2 border-primary/10">
               {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
+                <TableRow key={headerGroup.id} className="hover:bg-transparent border-none">
                   {headerGroup.headers.map((header) => {
                     return (
-                      <TableHead key={header.id} colSpan={header.colSpan}>
+                      <TableHead key={header.id} colSpan={header.colSpan} className="h-14 font-bold tracking-widest uppercase text-[10px] text-muted-foreground/40">
                         {header.isPlaceholder
                           ? null
                           : flexRender(
@@ -473,9 +423,9 @@ export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
                 <TableRow>
                   <TableCell
                     colSpan={columns.length}
-                    className="h-24 text-center"
+                    className="h-40 text-center text-muted-foreground/40 italic text-sm"
                   >
-                    Không có dữ liệu
+                    Hệ thống chưa ghi nhận thực thể nào phù hợp.
                   </TableCell>
                 </TableRow>
               )}
@@ -484,83 +434,55 @@ export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
         </DndContext>
       </div>
       
-      <div className="flex items-center justify-between px-4">
-        <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
+      <div className="flex items-center justify-between px-6 py-4 bg-secondary/20 rounded-2xl">
+        <div className="text-muted-foreground/60 hidden flex-1 text-[10px] font-bold tracking-widest uppercase lg:flex">
           {selectedCount > 0 ? (
-            <>Đã chọn {selectedCount} trong {table.getFilteredRowModel().rows.length} hàng</>
+            <>Đã chọn {selectedCount} / {table.getFilteredRowModel().rows.length}</>
           ) : (
-            <>Hiển thị {table.getFilteredRowModel().rows.length} hàng</>
+            <>Sơ đồ {table.getFilteredRowModel().rows.length} thực thể</>
           )}
         </div>
-        <div className="flex w-full items-center gap-8 lg:w-fit">
-          <div className="hidden items-center gap-2 lg:flex">
-            <Label htmlFor="rows-per-page" className="text-sm font-medium">
-              Số hàng mỗi trang
-            </Label>
+        <div className="flex w-full items-center gap-12 lg:w-fit">
+          <div className="hidden items-center gap-3 lg:flex">
+            <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground/40">Mật độ hiển thị</span>
             <Select
               value={`${table.getState().pagination.pageSize}`}
-              onValueChange={(value) => {
-                table.setPageSize(Number(value))
-              }}
+              onValueChange={(value) => table.setPageSize(Number(value))}
             >
-              <SelectTrigger size="sm" className="w-20" id="rows-per-page">
-                <SelectValue
-                  placeholder={table.getState().pagination.pageSize}
-                />
+              <SelectTrigger className="h-9 w-16 bg-background rounded-lg border-border/40 text-[10px] font-bold">
+                <SelectValue placeholder={table.getState().pagination.pageSize} />
               </SelectTrigger>
-              <SelectContent side="top">
-                {[10, 20, 30, 40, 50].map((pageSize) => (
-                  <SelectItem key={pageSize} value={`${pageSize}`}>
+              <SelectContent side="top" className="rounded-xl border-border/40 shadow-premium">
+                {[10, 20, 30].map((pageSize) => (
+                  <SelectItem key={pageSize} value={`${pageSize}`} className="text-xs">
                     {pageSize}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <div className="flex w-fit items-center justify-center text-sm font-medium">
-            Trang {table.getState().pagination.pageIndex + 1} /{" "}
-            {table.getPageCount()}
-          </div>
-          <div className="ml-auto flex items-center gap-2 lg:ml-0">
-            <Button
-              variant="outline"
-              className="hidden h-8 w-8 p-0 lg:flex"
-              onClick={() => table.setPageIndex(0)}
-              disabled={!table.getCanPreviousPage()}
-            >
-              <span className="sr-only">Trang đầu</span>
-              <ChevronsLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              className="size-8"
-              size="icon"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              <span className="sr-only">Trang trước</span>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              className="size-8"
-              size="icon"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              <span className="sr-only">Trang sau</span>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              className="hidden size-8 lg:flex"
-              size="icon"
-              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-              disabled={!table.getCanNextPage()}
-            >
-              <span className="sr-only">Trang cuối</span>
-              <ChevronsRight className="h-4 w-4" />
-            </Button>
+          <div className="flex items-center gap-1">
+             <Button
+                variant="ghost"
+                size="icon"
+                className="size-9 rounded-full hover:bg-primary/10 transition-colors"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="px-4 text-[11px] font-bold tracking-widest uppercase text-primary italic">
+                {table.getState().pagination.pageIndex + 1} <span className="mx-2 text-muted-foreground/30">/</span> {table.getPageCount()}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-9 rounded-full hover:bg-primary/10 transition-colors"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
           </div>
         </div>
       </div>

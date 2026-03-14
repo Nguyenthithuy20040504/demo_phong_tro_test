@@ -8,6 +8,7 @@ import Phong from '@/models/Phong';
 import { updateKhachThueStatus } from '@/lib/status-utils';
 import { getAccessibleKhachThueIds } from '@/lib/auth-utils';
 import { z } from 'zod';
+import mongoose from 'mongoose';
 
 const khachThueSchema = z.object({
   hoTen: z.string().min(2, 'Họ tên phải có ít nhất 2 ký tự'),
@@ -173,11 +174,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let nguoiQuanLyId = session.user.id;
+    if (session.user.role === 'nhanVien') {
+      const nhanVien = await mongoose.model('NguoiDung').findById(session.user.id).select('nguoiQuanLy');
+      if (nhanVien && nhanVien.nguoiQuanLy) {
+        nguoiQuanLyId = nhanVien.nguoiQuanLy.toString();
+      }
+    }
+
     const newKhachThue = new KhachThue({
       ...validatedData,
       ngaySinh: new Date(validatedData.ngaySinh),
       anhCCCD: validatedData.anhCCCD || { matTruoc: '', matSau: '' },
       trangThai: 'chuaThue', // Mặc định là chưa thuê, sẽ được cập nhật tự động
+      nguoiQuanLy: new mongoose.Types.ObjectId(nguoiQuanLyId)
     });
 
     await newKhachThue.save();

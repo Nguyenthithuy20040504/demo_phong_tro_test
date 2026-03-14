@@ -4,18 +4,11 @@ import * as React from "react"
 import { useSession } from "next-auth/react"
 import {
   Building2,
-  DoorOpen,
-  Users,
-  FileText,
   Receipt,
-  CreditCard,
   AlertTriangle,
-  Bell,
   Settings,
   Shield,
-  Home,
   Building,
-  Globe,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -34,95 +27,63 @@ import {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession()
   
-  // Tạo navigation items dựa trên role
   const navMain = React.useMemo(() => {
     const baseItems = [
       {
-        title: "Quản lý cơ bản",
+        title: "TỔNG QUAN",
+        url: "/dashboard",
+        icon: Building2,
+        isActive: true,
+        items: [],
+      },
+      {
+        title: "QUẢN LÝ CƠ BẢN",
         url: "#",
         icon: Building,
-        isActive: true,
         items: [
-          {
-            title: "Tòa nhà",
-            url: "/dashboard/toa-nha",
-          },
-          {
-            title: "Phòng",
-            url: "/dashboard/phong",
-          },
-          {
-            title: "Khách thuê",
-            url: "/dashboard/khach-thue",
-          },
+          { title: "Tòa nhà", url: "/dashboard/toa-nha" },
+          { title: "Phòng", url: "/dashboard/phong" },
+          { title: "Khách thuê", url: "/dashboard/khach-thue" },
         ],
       },
       {
-        title: "Tài chính",
+        title: "TÀI CHÍNH",
         url: "#",
         icon: Receipt,
         items: [
-          {
-            title: "Hợp đồng",
-            url: "/dashboard/hop-dong",
-          },
-          {
-            title: "Hóa đơn",
-            url: "/dashboard/hoa-don",
-          },
-          {
-            title: "Thanh toán",
-            url: "/dashboard/thanh-toan",
-          },
+          { title: "Hợp đồng", url: "/dashboard/hop-dong" },
+          { title: "Hóa đơn", url: "/dashboard/hoa-don" },
+          { title: "Thanh toán", url: "/dashboard/thanh-toan" },
         ],
       },
       {
-        title: "Vận hành",
+        title: "VẬN HÀNH",
         url: "#",
         icon: AlertTriangle,
         items: [
-          {
-            title: "Sự cố",
-            url: "/dashboard/su-co",
-          },
-          {
-            title: "Xem Web",
-            url: "/dashboard/xem-web",
-          },
-          {
-            title: "Thông báo ZNS",
-            url: "/dashboard/thong-bao-zalo",
-          },
+          { title: "Sự cố", url: "/dashboard/su-co" },
+          { title: "Xem Web", url: "/dashboard/xem-web" },
+          { title: "Thông báo Zalo", url: "/dashboard/thong-bao-zalo" },
         ],
       },
       {
-        title: "Cài đặt",
+        title: "HỆ THỐNG",
         url: "#",
         icon: Settings,
         items: [
-          {
-            title: "Hồ sơ",
-            url: "/dashboard/ho-so",
-          },
-          {
-            title: "Cài đặt",
-            url: "/dashboard/cai-dat",
-          },
+          { title: "Hồ sơ", url: "/dashboard/ho-so" },
+          { title: "Cài đặt", url: "/dashboard/cai-dat" },
         ],
       },
     ]
 
-    // Thêm mục quản lý admin nếu là admin hoặc chuNha
     if (session?.user?.role === 'admin' || session?.user?.role === 'chuNha') {
-      baseItems.splice(3, 0, {
-        title: "Quản trị",
+      baseItems.push({
+        title: "QUẢN TRỊ",
         url: "#",
         icon: Shield,
         items: [
-          {
-            title: "Quản lý tài khoản",
-            url: "/dashboard/quan-ly-tai-khoan",
-          },
+          { title: "Quản lý tài khoản", url: "/dashboard/quan-ly-tai-khoan" },
         ],
       })
     }
@@ -137,28 +98,30 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }), [session])
 
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
+    <Sidebar collapsible="icon" {...props} className="border-r border-border/40">
+      <SidebarHeader className="p-6">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <a href="/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <Building2 className="size-4" />
+            <SidebarMenuButton size="lg" asChild className="hover:bg-transparent">
+              <a href="/dashboard" className="flex items-center gap-3 group">
+                <div className="flex aspect-square size-10 items-center justify-center rounded-xl bg-primary/10 text-primary transition-all group-hover:bg-primary group-hover:text-primary-foreground">
+                  <Building2 className="size-5" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">Phòng trọ</span>
-                  <span className="truncate text-xs">Quản lý</span>
+                  <span className="truncate font-heading font-bold text-lg text-foreground tracking-tight">Phòng trọ</span>
+                  <span className="truncate text-[10px] uppercase font-bold tracking-[0.2em] text-muted-foreground/60">Quản lý <span className="text-primary italic">Editorial</span></span>
                 </div>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
+      
+      <SidebarContent className="px-3">
         <NavMain items={navMain} />
       </SidebarContent>
-      <SidebarFooter>
+      
+      <SidebarFooter className="p-4 hairline-t border-border/30">
         <NavUser user={userData} />
       </SidebarFooter>
       <SidebarRail />

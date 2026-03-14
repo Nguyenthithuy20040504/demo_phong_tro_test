@@ -545,21 +545,27 @@ export default function AccountManagementPage() {
                   </div>
 
                   {/* Contact info */}
-                  <div className="space-y-1 text-sm border-t pt-2">
+                  <div className="space-y-1.5 text-xs border-t pt-2">
                     {getUserPhone(user) && (
                       <div className="flex items-center gap-2 text-gray-600">
                         <Phone className="h-3 w-3" />
                         <span>{getUserPhone(user)}</span>
                       </div>
                     )}
-                    <div className="flex items-center gap-2 text-gray-500 text-xs">
+                    <div className="flex items-center gap-2 text-gray-500">
                       <Calendar className="h-3 w-3" />
                       <span>Tham gia: {
                         (user.createdAt || user.ngayTao) 
-                          ? new Date(user.createdAt || user.ngayTao!).toLocaleDateString('vi-VN') 
+                          ? new Date(user.createdAt || user.ngayTao!).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) 
                           : 'Chưa cập nhật'
                       }</span>
                     </div>
+                    {user.lastLogin && (
+                      <div className="flex items-center gap-2 text-blue-500 font-medium">
+                        <RefreshCw className="h-3 w-3" />
+                        <span>Đăng nhập cuối: {new Date(user.lastLogin).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Status */}

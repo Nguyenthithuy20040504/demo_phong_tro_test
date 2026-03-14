@@ -348,7 +348,7 @@ export default function ProfilePage() {
                   <div>
                     <p className="text-xs md:text-sm font-medium">Ngày tạo tài khoản</p>
                     <p className="text-xs md:text-sm text-gray-600">
-                      {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString('vi-VN') : 'N/A'}
+                      {profile?.createdAt ? new Date(profile.createdAt).toLocaleString('vi-VN') : 'Chưa có thông tin'}
                     </p>
                   </div>
                 </div>
@@ -357,7 +357,7 @@ export default function ProfilePage() {
                   <div>
                     <p className="text-xs md:text-sm font-medium">Lần đăng nhập cuối</p>
                     <p className="text-xs md:text-sm text-gray-600">
-                      {profile?.lastLogin ? new Date(profile.lastLogin).toLocaleDateString('vi-VN') : 'N/A'}
+                      {profile?.lastLogin ? new Date(profile.lastLogin).toLocaleString('vi-VN') : 'Chưa có thông tin'}
                     </p>
                   </div>
                 </div>

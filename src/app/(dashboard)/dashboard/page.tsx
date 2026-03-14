@@ -1,265 +1,239 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { 
   Building2, 
   DoorOpen, 
-  Users, 
-  Receipt, 
-  AlertTriangle, 
   TrendingUp,
+  AlertTriangle,
   Calendar,
-  Clock
+  Clock,
+  ArrowRight
 } from 'lucide-react';
 import { DashboardStats } from '@/types';
+
+// Animation variants
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2
+    }
+  }
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.5, ease: "circOut" as any }
+  }
+};
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = 'Dashboard';
-  }, []);
-
-  useEffect(() => {
+    document.title = 'Dashboard | Quản lý phòng trọ';
     const fetchStats = async () => {
       try {
         const response = await fetch('/api/dashboard/stats');
         if (response.ok) {
           const result = await response.json();
-          if (result.success) {
-            setStats(result.data);
-          }
+          if (result.success) setStats(result.data);
         }
       } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
+        console.error('Error stats:', error);
       } finally {
         setLoading(false);
       }
     };
-
     fetchStats();
   }, []);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(amount);
-  };
+  const formatVND = (val: number) => 
+    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader className="pb-2">
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-full"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+    </div>
+  );
 
   if (!stats) return null;
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl md:text-2xl lg:text-3xl font-extrabold font-heading text-foreground drop-shadow-sm">Dashboard</h1>
-        <p className="text-xs md:text-sm text-muted-foreground mt-1">Tổng quan hệ thống quản lý phòng trọ</p>
-      </div>
+    <motion.div 
+      className="max-w-[1400px] mx-auto p-4 md:p-8 space-y-12"
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+    >
+      {/* Editorial Header */}
+      <motion.header variants={itemVariants} className="space-y-2">
+        <h1 className="text-fluid-2xl font-heading text-foreground tracking-tight">
+          Hệ thống <span className="text-primary italic">Tổng quan</span>
+        </h1>
+        <div className="flex items-center gap-4 text-sm text-muted-foreground uppercase tracking-widest font-medium">
+          <span>{new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+          <span className="w-1 h-1 bg-border rounded-full" />
+          <span>Real-time Insights</span>
+        </div>
+      </motion.header>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 md:gap-4 lg:gap-6">
-        <Card className="p-2 md:p-4 premium-card border-none">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Tổng phòng</p>
-              <p className="text-base md:text-2xl font-bold">{stats.tongSoPhong}</p>
-              <p className="text-[8px] md:text-xs text-gray-500">
-                {stats.phongDangThue} đang thuê
-              </p>
-            </div>
-            <Building2 className="h-3 w-3 md:h-4 md:w-4 text-gray-500" />
+      {/* Hero Stats Section - Asymmetric */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Main Hero Metric */}
+        <motion.div 
+          variants={itemVariants}
+          className="lg:col-span-8 p-8 glass-premium rounded-2xl flex flex-col justify-between min-h-[320px] relative overflow-hidden group"
+        >
+          <div className="absolute top-0 right-0 p-8 text-primary/10 group-hover:text-primary/20 transition-colors">
+            <Building2 size={160} strokeWidth={1} />
           </div>
-        </Card>
-
-        <Card className="p-2 md:p-4 premium-card border-none">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Phòng trống</p>
-              <p className="text-base md:text-2xl font-bold text-green-600">{stats.phongTrong}</p>
-              <p className="text-[8px] md:text-xs text-gray-500">
-                {((stats.phongTrong / stats.tongSoPhong) * 100).toFixed(1)}% tổng
-              </p>
+          
+          <div className="relative z-10">
+            <p className="text-sm font-medium uppercase tracking-wider text-muted-foreground mb-4">Quy mô quản lý</p>
+            <div className="flex items-baseline gap-4">
+              <span className="text-7xl md:text-8xl font-black tracking-tighter text-foreground">{stats.tongSoPhong}</span>
+              <span className="text-2xl font-heading text-muted-foreground">Phòng</span>
             </div>
-            <DoorOpen className="h-3 w-3 md:h-4 md:w-4 text-green-600" />
           </div>
-        </Card>
 
-        <Card className="p-2 md:p-4 premium-card border-none">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Doanh thu</p>
-              <p className="text-base md:text-2xl font-bold">{formatCurrency(stats.doanhThuThang)}</p>
-              <p className="text-[8px] md:text-xs text-gray-500">
-                +12% tháng trước
-              </p>
+          <div className="relative z-10 flex flex-wrap gap-8 pt-8 hairline-t">
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Đang thuê</p>
+              <p className="text-xl font-bold">{stats.phongDangThue}</p>
             </div>
-            <TrendingUp className="h-3 w-3 md:h-4 md:w-4 text-green-600" />
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Bảo trì</p>
+              <p className="text-xl font-bold">{stats.phongBaoTri}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Trống</p>
+              <p className="text-xl font-bold text-accent">{stats.phongTrong}</p>
+            </div>
           </div>
-        </Card>
+        </motion.div>
 
-        <Card className="p-2 md:p-4 premium-card border-none">
+        {/* Highlight Stats Column */}
+        <div className="lg:col-span-4 space-y-8">
+          <motion.div 
+            variants={itemVariants}
+            className="p-6 border hairline-t border-border/50 rounded-xl space-y-4 hover:bg-secondary/50 transition-colors cursor-pointer group"
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider italic">Doanh thu tháng</p>
+              <TrendingUp className="text-accent" size={18} />
+            </div>
+            <p className="text-3xl font-bold tracking-tight">{formatVND(stats.doanhThuThang)}</p>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="text-accent font-bold">+12.5%</span>
+              <span>so với tháng trước</span>
+            </div>
+          </motion.div>
+
+          <motion.div 
+            variants={itemVariants}
+            className="p-6 bg-foreground text-background rounded-xl space-y-4 shadow-premium group cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium opacity-60 uppercase tracking-wider">Sự cố cần xử lý</p>
+              <AlertTriangle className="text-destructive" size={18} />
+            </div>
+            <p className="text-5xl font-black">{stats.suCoCanXuLy}</p>
+            <div className="flex items-center justify-between text-xs pt-2">
+              <span className="opacity-80">Yêu cầu ưu tiên</span>
+              <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Data Insight Grid */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {[
+          { label: 'Hóa đơn đến hạn', val: stats.hoaDonSapDenHan, icon: Calendar, color: 'text-orange-500' },
+          { label: 'Hợp đồng hết hạn', val: stats.hopDongSapHetHan, icon: Clock, color: 'text-yellow-500' },
+          { label: 'Doanh thu năm', val: formatVND(stats.doanhThuNam), icon: TrendingUp, color: 'text-primary' }
+        ].map((stat, i) => (
+          <motion.div 
+            key={i}
+            variants={itemVariants}
+            className="p-6 border border-border/40 rounded-lg hover:border-primary/40 transition-colors"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <stat.icon className={stat.color} size={16} />
+              <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{stat.label}</span>
+            </div>
+            <p className="text-2xl font-bold tracking-tight">{stat.val}</p>
+          </motion.div>
+        ))}
+      </section>
+
+      {/* Bottom Insights */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-12 pt-12 hairline-t">
+        <motion.div variants={itemVariants} className="space-y-6">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Sự cố</p>
-              <p className="text-base md:text-2xl font-bold text-red-600">{stats.suCoCanXuLy}</p>
-              <p className="text-[8px] md:text-xs text-gray-500">
-                Cần xử lý
-              </p>
-            </div>
-            <AlertTriangle className="h-3 w-3 md:h-4 md:w-4 text-red-600" />
+            <h3 className="text-xl font-heading">Hoạt động mới</h3>
+            <span className="text-xs text-primary font-bold cursor-pointer hover:underline">Xem tất cả</span>
           </div>
-        </Card>
-      </div>
-
-      {/* Secondary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6">
-        <Card className="p-3 md:p-4 premium-card border-none">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs md:text-sm font-medium text-gray-600">Hóa đơn sắp đến hạn</p>
-              <p className="text-lg md:text-2xl font-bold text-orange-600">{stats.hoaDonSapDenHan}</p>
-              <p className="text-[8px] md:text-xs text-gray-500">
-                Cần theo dõi
-              </p>
-            </div>
-            <Calendar className="h-4 w-4 text-orange-600" />
-          </div>
-        </Card>
-
-        <Card className="p-3 md:p-4 premium-card border-none">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs md:text-sm font-medium text-gray-600">Hợp đồng sắp hết hạn</p>
-              <p className="text-lg md:text-2xl font-bold text-yellow-600">{stats.hopDongSapHetHan}</p>
-              <p className="text-[8px] md:text-xs text-gray-500">
-                Cần gia hạn
-              </p>
-            </div>
-            <Clock className="h-4 w-4 text-yellow-600" />
-          </div>
-        </Card>
-
-        <Card className="p-3 md:p-4 premium-card border-none">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs md:text-sm font-medium text-gray-600">Doanh thu năm</p>
-              <p className="text-lg md:text-2xl font-bold">{formatCurrency(stats.doanhThuNam)}</p>
-              <p className="text-[8px] md:text-xs text-gray-500">
-                Tổng doanh thu
-              </p>
-            </div>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </div>
-        </Card>
-      </div>
-
-      {/* Recent Activities */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        <Card className="premium-card border-none">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base md:text-lg font-heading text-foreground">Hoạt động gần đây</CardTitle>
-            <CardDescription className="text-xs md:text-sm text-muted-foreground">
-              Các hoạt động mới nhất trong hệ thống
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs md:text-sm font-medium truncate">Khách thuê mới đăng ký</p>
-                <p className="text-[10px] md:text-xs text-muted-foreground truncate">Nguyễn Văn A - Phòng P101</p>
-              </div>
-              <Badge variant="secondary" className="text-[10px] md:text-xs">Mới</Badge>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs md:text-sm font-medium truncate">Thanh toán thành công</p>
-                <p className="text-[10px] md:text-xs text-muted-foreground truncate">Phòng P102 - 2,500,000 VNĐ</p>
-              </div>
-              <Badge variant="outline" className="text-[10px] md:text-xs">Hoàn thành</Badge>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-orange-500 rounded-full flex-shrink-0"></div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs md:text-sm font-medium truncate">Báo cáo sự cố</p>
-                <p className="text-[10px] md:text-xs text-muted-foreground truncate">Phòng P105 - Hỏng điều hòa</p>
-              </div>
-              <Badge variant="destructive" className="text-[10px] md:text-xs">Cần xử lý</Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="premium-card border-none">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base md:text-lg font-heading text-foreground">Thống kê phòng</CardTitle>
-            <CardDescription className="text-xs md:text-sm text-muted-foreground">
-              Tình trạng sử dụng phòng
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
-                  <span className="text-xs md:text-sm">Phòng trống</span>
-                </div>
-                <span className="text-xs md:text-sm font-medium">{stats.phongTrong}</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
-                  <span className="text-xs md:text-sm">Đang thuê</span>
-                </div>
-                <span className="text-xs md:text-sm font-medium">{stats.phongDangThue}</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2.5 h-2.5 bg-yellow-500 rounded-full"></div>
-                  <span className="text-xs md:text-sm">Bảo trì</span>
-                </div>
-                <span className="text-xs md:text-sm font-medium">{stats.phongBaoTri}</span>
-              </div>
-              
-              <div className="pt-2 border-t">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs md:text-sm font-medium">Tổng cộng</span>
-                  <span className="text-xs md:text-sm font-medium">{stats.tongSoPhong}</span>
+          <div className="space-y-4">
+            {[
+              { type: 'Mới', title: 'Khách thuê: Nguyễn Văn A', detail: 'Phòng P101 - Vừa đăng ký', color: 'bg-primary' },
+              { type: 'Xong', title: 'Thanh toán: 2,500,000đ', detail: 'Phòng P102 - Chuyển khoản', color: 'bg-accent' },
+              { type: 'Lỗi', title: 'Sự cố: Hỏng điều hòa', detail: 'Phòng P105 - Cần thợ điện', color: 'bg-destructive' }
+            ].map((act, i) => (
+              <div key={i} className="flex gap-4 group">
+                <div className={`w-1 shrink-0 ${act.color} group-hover:scale-x-150 transition-transform origin-left`} />
+                <div>
+                  <p className="text-sm font-bold">{act.title}</p>
+                  <p className="text-xs text-muted-foreground">{act.detail}</p>
                 </div>
               </div>
+            ))}
+          </div>
+        </motion.div>
+
+        <motion.div variants={itemVariants} className="space-y-6">
+          <h3 className="text-xl font-heading">Tỷ lệ sử dụng</h3>
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs font-medium">
+                <span>PHÒNG ĐÃ THUÊ</span>
+                <span>{((stats.phongDangThue / stats.tongSoPhong) * 100).toFixed(0)}%</span>
+              </div>
+              <div className="h-1 bg-muted rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(stats.phongDangThue / stats.tongSoPhong) * 100}%` }}
+                  transition={{ duration: 1, delay: 0.5 }}
+                  className="h-full bg-primary"
+                />
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs font-medium">
+                <span>PHÒNG TRỐNG</span>
+                <span>{((stats.phongTrong / stats.tongSoPhong) * 100).toFixed(0)}%</span>
+              </div>
+              <div className="h-1 bg-muted rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(stats.phongTrong / stats.tongSoPhong) * 100}%` }}
+                  transition={{ duration: 1, delay: 0.7 }}
+                  className="h-full bg-accent"
+                />
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+    </motion.div>
   );
 }

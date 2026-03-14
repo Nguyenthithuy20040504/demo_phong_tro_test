@@ -14,11 +14,14 @@ export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions);
     
     if (!session) {
+      console.log('Dashboard Stats: No session found');
       return NextResponse.json(
         { message: 'Unauthorized' },
         { status: 401 }
       );
     }
+
+    console.log('Dashboard Stats: User role:', session.user.role, 'ID:', session.user.id);
 
     await dbConnect();
 
@@ -64,7 +67,11 @@ export async function GET(request: NextRequest) {
       
       const hopDongs = await HopDong.find({ phong: { $in: phongIds } }).select('_id');
       const hopDongIds = hopDongs.map(hd => hd._id);
-      thanhToanQuery.hopDong = { $in: hopDongIds };
+      
+      // Fix: ThanhToan model belongs to HoaDon, which belongs to HopDong
+      const hoaDons = await HoaDon.find({ hopDong: { $in: hopDongIds } }).select('_id');
+      const hoaDonIds = hoaDons.map(hd => hd._id);
+      thanhToanQuery.hoaDon = { $in: hoaDonIds };
     }
 
     // Get room stats

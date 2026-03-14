@@ -24,13 +24,34 @@ export async function getAccessibleToaNhaIds(user: any): Promise<mongoose.Types.
 
   let toaNhas = [];
   try {
+    const userId = new mongoose.Types.ObjectId(user.id);
+    
     if (user.role === 'chuNha') {
-      toaNhas = await ToaNha.find({ chuSoHuu: user.id }).select('_id');
+      toaNhas = await ToaNha.find({ chuSoHuu: userId }).select('_id');
     } else if (user.role === 'nhanVien') {
-      toaNhas = await ToaNha.find({ nguoiQuanLy: user.id }).select('_id');
+      // Nhân viên có thể xem các tòa nhà họ được gán trực tiếp
+      // HOẶC tất cả tòa nhà của chủ nhà (nguoiQuanLy của họ)
+      const managedBuildings = await ToaNha.find({ 
+        $or: [
+          { nguoiQuanLy: userId },
+          { chuSoHuu: user.id } // dự phòng
+        ]
+      }).select('_id');
+      
+      // Lấy thêm thông tin người quản lý của nhân viên
+      const nhanVien = await mongoose.model('NguoiDung').findById(userId).select('nguoiQuanLy');
+      if (nhanVien && nhanVien.nguoiQuanLy) {
+        const ownersBuildings = await ToaNha.find({ chuSoHuu: nhanVien.nguoiQuanLy }).select('_id');
+        toaNhas = [...managedBuildings, ...ownersBuildings];
+      } else {
+        toaNhas = managedBuildings;
+      }
     }
     
-    return toaNhas.map(tn => tn._id);
+    const uniqueIds = Array.from(new Set(toaNhas.map(tn => tn._id.toString())))
+      .map(id => new mongoose.Types.ObjectId(id));
+      
+    return uniqueIds;
   } catch (error) {
     console.error('Error fetching accessible ToaNha ids:', error);
     return [];
@@ -62,8 +83,23 @@ export async function getAccessibleKhachThueIds(user: any): Promise<mongoose.Typ
       return acc.concat(hd.khachThueId || []);
     }, []);
 
+    // Lấy thêm các khách thuê thuộc quyền quản lý trực tiếp (kèm những người chưa có hợp đồng)
+    let chuNhaId = user.id;
+    if (user.role === 'nhanVien') {
+      // Tìm Chủ Nhà của nhân viên này
+      const nhanVien = await mongoose.model('NguoiDung').findById(user.id).select('nguoiQuanLy');
+      if (nhanVien && nhanVien.nguoiQuanLy) {
+         chuNhaId = nhanVien.nguoiQuanLy.toString();
+      }
+    }
+    const managedKhachThues = await mongoose.model('KhachThue').find({ nguoiQuanLy: chuNhaId }).select('_id');
+    const managedKhachThueIds = managedKhachThues.map(k => k._id);
+    
+    // Gộp tất cả và bỏ ID trùng
+    const allKhachThueIds = [...khachThueIds, ...managedKhachThueIds];
+
     // Remove duplicates
-    const uniqueIds = Array.from<string>(new Set(khachThueIds.map((id: any) => id.toString())))
+    const uniqueIds = Array.from<string>(new Set(allKhachThueIds.map((id: any) => id.toString())))
       .map((idStr: string) => new mongoose.Types.ObjectId(idStr));
 
     return uniqueIds;
