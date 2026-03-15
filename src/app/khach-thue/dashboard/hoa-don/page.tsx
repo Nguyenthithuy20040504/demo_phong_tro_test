@@ -1,9 +1,22 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Receipt, Calendar, CreditCard, Loader2, X, Zap, Droplets, Home, FileText } from 'lucide-react';
+import { 
+  Receipt, 
+  Calendar, 
+  CreditCard, 
+  Loader2, 
+  Zap, 
+  Droplets, 
+  Home, 
+  FileText, 
+  Filter, 
+  Download,
+  FileSpreadsheet,
+  FileAsPdf
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { HoaDon } from '@/types';
@@ -22,11 +35,41 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import { saveAs } from 'file-saver';
+
+// Extend jsPDF for autotable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
 
 export default function HoaDonKhachThuePage() {
   const [hoaDons, setHoaDons] = useState<HoaDon[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedHoaDon, setSelectedHoaDon] = useState<HoaDon | null>(null);
+
+  // Filter States
+  const [filterMonth, setFilterMonth] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterYear, setFilterYear] = useState<string>(new Date().getFullYear().toString());
 
   useEffect(() => {
     document.title = 'Hóa đơn - Khách thuê';
@@ -51,6 +94,15 @@ export default function HoaDonKhachThuePage() {
     }
   };
 
+  const filteredHoaDons = useMemo(() => {
+    return hoaDons.filter((hd) => {
+      const matchMonth = filterMonth === 'all' || hd.thang.toString() === filterMonth;
+      const matchStatus = filterStatus === 'all' || hd.trangThai === filterStatus;
+      const matchYear = filterYear === 'all' || hd.nam.toString() === filterYear;
+      return matchMonth && matchStatus && matchYear;
+    });
+  }, [hoaDons, filterMonth, filterStatus, filterYear]);
+
   const fmt = (amount: number) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount ?? 0);
 
@@ -71,6 +123,82 @@ export default function HoaDonKhachThuePage() {
     }
   };
 
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'daThanhToan': return 'Đã thanh toán';
+      case 'chuaThanhToan': return 'Chưa thanh toán';
+      case 'daThanhToanMotPhan': return 'Một phần';
+      case 'quaHan': return 'Quá hạn';
+      default: return status;
+    }
+  };
+
+  // Export Functions
+  const exportToExcel = () => {
+    if (filteredHoaDons.length === 0) {
+      toast.error('Không có dữ liệu để xuất');
+      return;
+    }
+
+    const headers = ['Mã hóa đơn', 'Kỳ', 'Tiền phòng', 'Tiền điện', 'Tiền nước', 'Tổng tiền', 'Hạn thanh toán', 'Trạng thái'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredHoaDons.map(hd => [
+        hd.maHoaDon,
+        `Tháng ${hd.thang}/${hd.nam}`,
+        hd.tienPhong,
+        hd.tienDien,
+        hd.tienNuoc,
+        hd.tongTien,
+        fmtDate(hd.hanThanhToan),
+        getStatusText(hd.trangThai)
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    saveAs(blob, `hoa_don_thue_phong_${new Date().getTime()}.csv`);
+    toast.success('Đã xuất file Excel (CSV) thành công');
+  };
+
+  const exportToPDF = () => {
+    if (filteredHoaDons.length === 0) {
+      toast.error('Không có dữ liệu để xuất');
+      return;
+    }
+
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(18);
+    doc.text('DANH SACH HOA DON THUE PHONG', 14, 22);
+    doc.setFontSize(11);
+    doc.text(`Ngay xuat: ${fmtDate(new Date())}`, 14, 30);
+    
+    const tableColumn = ["Ma HD", "Ky", "Tien Phong", "Tien Dien", "Tien Nuoc", "Tong Tien", "Han TT", "Trang Thai"];
+    const tableRows = filteredHoaDons.map(hd => [
+      hd.maHoaDon,
+      `${hd.thang}/${hd.nam}`,
+      fmt(hd.tienPhong),
+      fmt(hd.tienDien),
+      fmt(hd.tienNuoc),
+      fmt(hd.tongTien),
+      fmtDate(hd.hanThanhToan),
+      getStatusText(hd.trangThai)
+    ]);
+
+    doc.autoTable({
+      head: [tableColumn],
+      body: tableRows,
+      startY: 35,
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [79, 70, 229] } // Primary color
+    });
+
+    doc.save(`danh_sach_hoa_don_${new Date().getTime()}.pdf`);
+    toast.success('Đã xuất file PDF thành công');
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -82,21 +210,124 @@ export default function HoaDonKhachThuePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Quản lý hóa đơn</h1>
-        <p className="text-gray-500">Theo dõi và thanh toán các hóa đơn hàng tháng · Click vào hàng để xem chi tiết</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Quản lý hóa đơn</h1>
+          <p className="text-gray-500">Theo dõi và thanh toán các hóa đơn hàng tháng · Click vào hàng để xem chi tiết</p>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="rounded-xl gap-2 border-gray-200">
+                <Download className="size-4" />
+                <span>Xuất file</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 rounded-xl">
+              <DropdownMenuLabel>Định dạng xuất</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={exportToPDF} className="gap-2 focus:bg-primary/5 cursor-pointer">
+                <FileText className="size-4 text-rose-500" />
+                <span>Xuất PDF</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportToExcel} className="gap-2 focus:bg-primary/5 cursor-pointer">
+                <FileSpreadsheet className="size-4 text-emerald-500" />
+                <span>Xuất Excel (CSV)</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
-      {hoaDons.length === 0 ? (
+      {/* Filter Bar */}
+      <Card className="border-none shadow-sm rounded-2xl bg-white overflow-visible">
+        <CardContent className="p-4 flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2 text-sm font-medium text-gray-500 mr-2">
+            <Filter className="size-4" />
+            <span>Bộ lọc:</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Filter Tháng */}
+            <Select value={filterMonth} onValueChange={setFilterMonth}>
+              <SelectTrigger className="w-[140px] rounded-xl bg-gray-50/50 border-gray-100">
+                <SelectValue placeholder="Chọn tháng" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả tháng</SelectItem>
+                {Array.from({ length: 12 }, (_, i) => (
+                  <SelectItem key={i + 1} value={(i + 1).toString()}>Tháng {i + 1}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Filter Năm */}
+            <Select value={filterYear} onValueChange={setFilterYear}>
+              <SelectTrigger className="w-[120px] rounded-xl bg-gray-50/50 border-gray-100">
+                <SelectValue placeholder="Chọn năm" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả năm</SelectItem>
+                <SelectItem value="2024">Năm 2024</SelectItem>
+                <SelectItem value="2025">Năm 2025</SelectItem>
+                <SelectItem value="2026">Năm 2026</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Filter Trạng thái */}
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[160px] rounded-xl bg-gray-50/50 border-gray-100">
+                <SelectValue placeholder="Trạng thái" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                <SelectItem value="daThanhToan">Đã thanh toán</SelectItem>
+                <SelectItem value="chuaThanhToan">Chưa thanh toán</SelectItem>
+                <SelectItem value="quaHan">Quá hạn</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => {
+                setFilterMonth('all');
+                setFilterStatus('all');
+                setFilterYear(new Date().getFullYear().toString());
+              }}
+              className="text-xs text-primary hover:bg-primary/5 rounded-lg"
+            >
+              Đặt lại
+            </Button>
+          </div>
+
+          <div className="flex-1 text-right text-xs text-gray-400 font-medium hidden sm:block">
+            Hiển thị {filteredHoaDons.length} / {hoaDons.length} hóa đơn
+          </div>
+        </CardContent>
+      </Card>
+
+      {filteredHoaDons.length === 0 ? (
         <Card className="border-none shadow-sm bg-white/60 rounded-2xl overflow-hidden">
           <CardContent className="flex flex-col items-center justify-center py-20 text-center px-4">
             <div className="bg-blue-50 p-8 rounded-full mb-6">
               <Receipt className="h-16 w-16 text-blue-500/60" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">Chưa có hóa đơn nào</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">Không tìm thấy hóa đơn</h2>
             <p className="text-gray-500 max-w-md mx-auto leading-relaxed">
-              Hóa đơn sẽ hiển thị tại đây khi tới hạn thanh toán hàng tháng.
+              Thử thay đổi bộ lọc hoặc kiểm tra lại sau.
             </p>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setFilterMonth('all');
+                setFilterStatus('all');
+              }}
+              className="mt-6 rounded-xl"
+            >
+              Xóa tất cả bộ lọc
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -117,7 +348,7 @@ export default function HoaDonKhachThuePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {hoaDons.map((hd) => (
+                  {filteredHoaDons.map((hd) => (
                     <TableRow
                       key={hd._id}
                       className="hover:bg-primary/5 transition-colors cursor-pointer"
@@ -185,14 +416,27 @@ export default function HoaDonKhachThuePage() {
           {selectedHoaDon && (
             <>
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-3">
-                  <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                    <Receipt className="size-5" />
+                <DialogTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                      <Receipt className="size-5" />
+                    </div>
+                    <div>
+                      <div className="text-lg font-bold">{selectedHoaDon.maHoaDon}</div>
+                      <div className="text-sm text-gray-500 font-normal">Hóa đơn tháng {selectedHoaDon.thang}/{selectedHoaDon.nam}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-lg font-bold">{selectedHoaDon.maHoaDon}</div>
-                    <div className="text-sm text-gray-500 font-normal">Hóa đơn tháng {selectedHoaDon.thang}/{selectedHoaDon.nam}</div>
-                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => {
+                      // Logic xuất PDF riêng cho 1 hóa đơn nếu cần
+                      toast.info('Tính năng in lẻ đang được cập nhật');
+                    }}
+                    className="rounded-full text-gray-400 hover:text-primary"
+                  >
+                    <Download className="size-4" />
+                  </Button>
                 </DialogTitle>
               </DialogHeader>
 
@@ -302,7 +546,7 @@ export default function HoaDonKhachThuePage() {
                 </div>
               )}
 
-              <Button variant="outline" className="w-full" onClick={() => setSelectedHoaDon(null)}>
+              <Button variant="outline" className="w-full rounded-xl" onClick={() => setSelectedHoaDon(null)}>
                 Đóng
               </Button>
             </>
