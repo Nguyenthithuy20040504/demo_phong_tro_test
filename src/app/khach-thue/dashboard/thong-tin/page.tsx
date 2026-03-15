@@ -38,7 +38,7 @@ export default function ThongTinKhachThuePage() {
   // Form states
   const [editForm, setEditForm] = useState({ hoTen: '', soDienThoai: '' });
   const [passForm, setPassForm] = useState({ matKhauCu: '', matKhauMoi: '', matKhauMoiInit: '' });
-  const [docRequest, setDocRequest] = useState({ tieuDe: '', moTa: '', images: [] as string[] });
+  const [docRequest, setDocRequest] = useState({ tieuDe: '', moTa: '', anhMatTruoc: '', anhMatSau: '' });
   const [submitting, setSubmitting] = useState(false);
   
   // Danh sách yêu cầu hồ sơ
@@ -147,10 +147,10 @@ export default function ThongTinKhachThuePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phong: profile?.hopDongHienTai?.phong?._id || profile?._id, // Fallback nếu không có phòng
+          phong: profile?.hopDongHienTai?.phong?._id || profile?._id,
           tieuDe: docRequest.tieuDe,
           moTa: docRequest.moTa,
-          anhSuCo: docRequest.images,
+          anhSuCo: [docRequest.anhMatTruoc, docRequest.anhMatSau].filter(Boolean),
           loaiSuCo: 'hoSo',
           mucDoUuTien: 'trungBinh'
         })
@@ -158,7 +158,7 @@ export default function ThongTinKhachThuePage() {
       const result = await response.json();
       if (result.success) {
         toast.success('Yêu cầu đã được gửi tới chủ nhà');
-        setDocRequest({ tieuDe: '', moTa: '', images: [] });
+        setDocRequest({ tieuDe: '', moTa: '', anhMatTruoc: '', anhMatSau: '' });
         fetchRequests();
         setOpenRequestDocs(false);
       } else {
@@ -488,13 +488,93 @@ export default function ThongTinKhachThuePage() {
                           required
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label>Ảnh minh họa / Tài liệu đính kèm</Label>
-                        <SuCoImageUpload 
-                          images={docRequest.images} 
-                          onImagesChange={(imgs) => setDocRequest(p => ({...p, images: imgs}))} 
-                          maxImages={3}
-                        />
+                      <div className="space-y-3">
+                        <Label>Ảnh Căn cước công dân (CCCD)</Label>
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* Mặt trước */}
+                          <div className="space-y-2">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase text-center">Mặt trước</p>
+                            <div className="relative aspect-[3/2] rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center overflow-hidden group/img">
+                              {docRequest.anhMatTruoc ? (
+                                <>
+                                  <img src={docRequest.anhMatTruoc} className="w-full h-full object-cover" />
+                                  <button 
+                                    type="button"
+                                    onClick={() => setDocRequest(p => ({...p, anhMatTruoc: ''}))}
+                                    className="absolute top-2 right-2 size-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity"
+                                  >
+                                    <Trash2 className="size-3" />
+                                  </button>
+                                </>
+                              ) : (
+                                <label className="flex flex-col items-center justify-center cursor-pointer w-full h-full">
+                                  <Camera className="size-6 text-gray-300 mb-2" />
+                                  <span className="text-[10px] text-gray-400 font-medium">Tải ảnh lên</span>
+                                  <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    const formData = new FormData();
+                                    formData.append('file', file);
+                                    try {
+                                      toast.loading('Đang tải ảnh...');
+                                      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                                      const data = await res.json();
+                                      if (data.success) {
+                                        setDocRequest(p => ({...p, anhMatTruoc: data.data.url}));
+                                      }
+                                      toast.dismiss();
+                                    } catch (err) {
+                                      toast.dismiss();
+                                      toast.error('Lỗi upload');
+                                    }
+                                  }} />
+                                </label>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Mặt sau */}
+                          <div className="space-y-2">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase text-center">Mặt sau</p>
+                            <div className="relative aspect-[3/2] rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center overflow-hidden group/img">
+                              {docRequest.anhMatSau ? (
+                                <>
+                                  <img src={docRequest.anhMatSau} className="w-full h-full object-cover" />
+                                  <button 
+                                    type="button"
+                                    onClick={() => setDocRequest(p => ({...p, anhMatSau: ''}))}
+                                    className="absolute top-2 right-2 size-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity"
+                                  >
+                                    <Trash2 className="size-3" />
+                                  </button>
+                                </>
+                              ) : (
+                                <label className="flex flex-col items-center justify-center cursor-pointer w-full h-full">
+                                  <Camera className="size-6 text-gray-300 mb-2" />
+                                  <span className="text-[10px] text-gray-400 font-medium">Tải ảnh lên</span>
+                                  <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    const formData = new FormData();
+                                    formData.append('file', file);
+                                    try {
+                                      toast.loading('Đang tải ảnh...');
+                                      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                                      const data = await res.json();
+                                      if (data.success) {
+                                        setDocRequest(p => ({...p, anhMatSau: data.data.url}));
+                                      }
+                                      toast.dismiss();
+                                    } catch (err) {
+                                      toast.dismiss();
+                                      toast.error('Lỗi upload');
+                                    }
+                                  }} />
+                                </label>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                       <DialogFooter className="pt-4">
                         <Button type="submit" disabled={submitting} className="w-full rounded-xl h-12">
