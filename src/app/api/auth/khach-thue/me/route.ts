@@ -135,3 +135,91 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// PUT - Cập nhật thông tin cá nhân hoặc mật khẩu
+export async function PUT(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+    const body = await request.json();
+    const { 
+      hoTen, 
+      soDienThoai, 
+      anhDaiDien, 
+      matKhauMoi, 
+      matKhauCu 
+    } = body;
+
+    await dbConnect();
+
+    // 1. Tìm bản ghi NguoiDung liên kết
+    const NguoiDung = (await import('@/models/NguoiDung')).default;
+    const user = await NguoiDung.findById(userId);
+    if (!user) {
+      return NextResponse.json({ success: false, message: "Không tìm thấy người dùng" }, { status: 404 });
+    }
+
+    // 2. Xử lý đổi mật khẩu nếu có yêu cầu
+    if (matKhauMoi) {
+      if (!matKhauCu) {
+        return NextResponse.json({ success: false, message: "Vui lòng nhập mật khẩu cũ" }, { status: 400 });
+      }
+      
+      const isMatch = await user.comparePassword(matKhauCu);
+      if (!isMatch) {
+        return NextResponse.json({ success: false, message: "Mật khẩu cũ không chính xác" }, { status: 400 });
+      }
+
+      user.matKhau = matKhauMoi;
+      user.password = matKhauMoi; // Đồng bộ trường tiếng Anh
+    }
+
+    // 3. Cập nhật thông tin cơ bản trên NguoiDung
+    if (hoTen) user.ten = hoTen;
+    if (soDienThoai) user.soDienThoai = soDienThoai;
+    if (anhDaiDien) user.anhDaiDien = anhDaiDien;
+
+    await user.save();
+
+    // 4. Đồng bộ sang bản ghi KhachThue (nếu có)
+    const khachThue = await KhachThue.findOne({ 
+      $or: [
+        { _id: userId },
+        { soDienThoai: user.soDienThoai },
+        { email: user.email }
+      ]
+    });
+
+    if (khachThue) {
+      if (hoTen) khachThue.hoTen = hoTen;
+      if (soDienThoai) khachThue.soDienThoai = soDienThoai;
+      // KhachThue model không có mật khẩu trực tiếp (dùng chung với NguoiDung)
+      // nhưng nếu có trường avatar thì cập nhật
+      if (anhDaiDien && (khachThue as any).anhDaiDien !== undefined) {
+        (khachThue as any).anhDaiDien = anhDaiDien;
+      }
+      await khachThue.save();
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Cập nhật tài khoản thành công",
+      data: {
+        ten: user.ten,
+        soDienThoai: user.soDienThoai,
+        anhDaiDien: user.anhDaiDien
+      }
+    });
+
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    return NextResponse.json(
+      { success: false, message: 'Có lỗi xảy ra khi cập nhật' },
+      { status: 500 }
+    );
+  }
+}

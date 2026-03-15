@@ -6,7 +6,7 @@ export interface ISuCo extends Document {
   tieuDe: string;
   moTa: string;
   anhSuCo: string[];
-  loaiSuCo: 'dienNuoc' | 'noiThat' | 'vesinh' | 'anNinh' | 'khac';
+  loaiSuCo: 'dienNuoc' | 'noiThat' | 'vesinh' | 'anNinh' | 'hoSo' | 'khac';
   mucDoUuTien: 'thap' | 'trungBinh' | 'cao' | 'khancap';
   trangThai: 'moi' | 'dangXuLy' | 'daXong' | 'daHuy';
   nguoiXuLy?: mongoose.Types.ObjectId;
@@ -48,7 +48,7 @@ const SuCoSchema = new Schema<ISuCo>({
   }],
   loaiSuCo: {
     type: String,
-    enum: ['dienNuoc', 'noiThat', 'vesinh', 'anNinh', 'khac'],
+    enum: ['dienNuoc', 'noiThat', 'vesinh', 'anNinh', 'hoSo', 'khac'],
     required: [true, 'Loại sự cố là bắt buộc']
   },
   mucDoUuTien: {
