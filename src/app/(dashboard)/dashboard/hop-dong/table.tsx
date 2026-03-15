@@ -2,25 +2,6 @@
 
 import * as React from "react"
 import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type UniqueIdentifier,
-} from "@dnd-kit/core"
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import {
   Edit,
   Trash2,
   Download,
@@ -28,7 +9,6 @@ import {
   Calendar,
   FileText,
   CreditCard,
-  GripVertical,
   MoreVertical,
   Columns,
   ChevronDown,
@@ -69,6 +49,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -131,26 +119,6 @@ const isExpiringSoon = (ngayKetThuc: Date | string) => {
   return diffDays <= 30 && diffDays > 0
 }
 
-// Create a separate component for the drag handle
-function DragHandle({ id }: { id: string }) {
-  const { attributes, listeners } = useSortable({
-    id,
-  })
-
-  return (
-    <Button
-      {...attributes}
-      {...listeners}
-      variant="ghost"
-      size="icon"
-      className="text-muted-foreground size-7 hover:bg-transparent"
-    >
-      <GripVertical className="text-muted-foreground size-3" />
-      <span className="sr-only">Kéo để sắp xếp</span>
-    </Button>
-  )
-}
-
 type HopDongTableProps = {
   phongList: Phong[]
   khachThueList: KhachThue[]
@@ -194,39 +162,7 @@ const getToaNhaName = (phong: string | { toaNha?: { tenToaNha: string } | string
   return toaNhaObj?.tenToaNha || 'N/A'
 }
 
-const createColumns = (props: HopDongTableProps): ColumnDef<HopDong>[] => [
-  {
-    id: "drag",
-    header: () => null,
-    cell: ({ row }) => <DragHandle id={row.original._id!} />,
-    enableHiding: false,
-  },
-  {
-    id: "select",
-    header: ({ table }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Chọn tất cả"
-        />
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Chọn hàng"
-        />
-      </div>
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
+const createColumns = (props: HopDongTableProps & { setHopDongToDelete: (h: HopDong) => void; setIsDeleteDialogOpen: (o: boolean) => void }): ColumnDef<HopDong>[] => [
   {
     accessorKey: "maHopDong",
     header: "Mã hợp đồng",
@@ -316,32 +252,48 @@ const createColumns = (props: HopDongTableProps): ColumnDef<HopDong>[] => [
             variant="ghost"
             className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
             size="icon"
+            onClick={(e) => e.stopPropagation()}
           >
             <MoreVertical className="size-4" />
             <span className="sr-only">Mở menu</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem onClick={() => props.onView(row.original)}>
+          <DropdownMenuItem onClick={(e) => {
+            e.stopPropagation();
+            props.onView(row.original);
+          }}>
             <Eye className="mr-2 h-4 w-4" />
             Xem chi tiết
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => props.onEdit(row.original)}>
+          <DropdownMenuItem onClick={(e) => {
+            e.stopPropagation();
+            props.onEdit(row.original);
+          }}>
             <Edit className="mr-2 h-4 w-4" />
             Chỉnh sửa
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => props.onDownload(row.original)}>
+          <DropdownMenuItem onClick={(e) => {
+            e.stopPropagation();
+            props.onDownload(row.original);
+          }}>
             <Download className="mr-2 h-4 w-4" />
             Tải xuống
           </DropdownMenuItem>
           {row.original.trangThai === 'hoatDong' && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => props.onGiaHan(row.original)}>
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation();
+                props.onGiaHan(row.original);
+              }}>
                 <Calendar className="mr-2 h-4 w-4" />
                 Gia hạn
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => props.onHuy(row.original)}>
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation();
+                props.onHuy(row.original);
+              }}>
                 <FileText className="mr-2 h-4 w-4" />
                 Hủy hợp đồng
               </DropdownMenuItem>
@@ -350,7 +302,11 @@ const createColumns = (props: HopDongTableProps): ColumnDef<HopDong>[] => [
           <DropdownMenuSeparator />
           <DropdownMenuItem 
             className="text-destructive"
-            onClick={() => props.onDelete(row.original._id!)}
+            onClick={(e) => {
+              e.stopPropagation();
+              props.setHopDongToDelete(row.original);
+              props.setIsDeleteDialogOpen(true);
+            }}
           >
             <Trash2 className="mr-2 h-4 w-4" />
             Xóa
@@ -362,21 +318,10 @@ const createColumns = (props: HopDongTableProps): ColumnDef<HopDong>[] => [
   },
 ]
 
-function DraggableRow({ row }: { row: Row<HopDong> }) {
-  const { transform, transition, setNodeRef, isDragging } = useSortable({
-    id: row.original._id!,
-  })
-
+function HopDongTableRow({ row }: { row: Row<HopDong> }) {
   return (
     <TableRow
       data-state={row.getIsSelected() && "selected"}
-      data-dragging={isDragging}
-      ref={setNodeRef}
-      className="relative z-0 data-[dragging=true]:z-10 data-[dragging=true]:opacity-80"
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition: transition,
-      }}
     >
       {row.getVisibleCells().map((cell) => (
         <TableCell key={cell.id}>
@@ -401,6 +346,8 @@ type HopDongDataTableProps = HopDongTableProps & {
 export function HopDongDataTable(props: HopDongDataTableProps) {
   const { data: initialData, searchTerm, onSearchChange, statusFilter, onStatusChange, toaNhaFilter, onToaNhaChange, allToaNhaList, ...tableProps } = props
   const [data, setData] = React.useState(() => initialData)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [hopDongToDelete, setHopDongToDelete] = React.useState<HopDong | null>(null);
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
@@ -418,19 +365,11 @@ export function HopDongDataTable(props: HopDongDataTableProps) {
     setData(initialData)
   }, [initialData])
   
-  const columns = React.useMemo(() => createColumns(tableProps), [tableProps])
-  
-  const sortableId = React.useId()
-  const sensors = useSensors(
-    useSensor(MouseSensor, {}),
-    useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {})
-  )
-
-  const dataIds = React.useMemo<UniqueIdentifier[]>(
-    () => data?.map(({ _id }) => _id!) || [],
-    [data]
-  )
+  const columns = React.useMemo(() => createColumns({
+    ...tableProps,
+    setHopDongToDelete,
+    setIsDeleteDialogOpen
+  }), [tableProps])
 
   const table = useReactTable({
     data,
@@ -456,17 +395,6 @@ export function HopDongDataTable(props: HopDongDataTableProps) {
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (active && over && active.id !== over.id) {
-      setData((data) => {
-        const oldIndex = dataIds.indexOf(active.id)
-        const newIndex = dataIds.indexOf(over.id)
-        return arrayMove(data, oldIndex, newIndex)
-      })
-    }
-  }
 
   return (
     <div className="w-full space-y-4">
@@ -549,56 +477,74 @@ export function HopDongDataTable(props: HopDongDataTableProps) {
       </div>
       
       <div className="overflow-hidden rounded-lg border">
-        <DndContext
-          collisionDetection={closestCenter}
-          modifiers={[restrictToVerticalAxis]}
-          onDragEnd={handleDragEnd}
-          sensors={sensors}
-          id={sortableId}
-        >
-          <Table>
-            <TableHeader className="bg-muted sticky top-0 z-10">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead key={header.id} colSpan={header.colSpan}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </TableHead>
-                    )
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody className="**:data-[slot=table-cell]:first:w-8">
-              {table.getRowModel().rows?.length ? (
-                <SortableContext
-                  items={dataIds}
-                  strategy={verticalListSortingStrategy}
+        <Table>
+          <TableHeader className="bg-muted sticky top-0 z-10">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id} colSpan={header.colSpan}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody className="**:data-[slot=table-cell]:first:w-8">
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <HopDongTableRow key={row.id} row={row} />
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
                 >
-                  {table.getRowModel().rows.map((row) => (
-                    <DraggableRow key={row.id} row={row} />
-                  ))}
-                </SortableContext>
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
-                  >
-                    Không có dữ liệu
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </DndContext>
+                  Không có dữ liệu
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn xóa hợp đồng <strong>{hopDongToDelete?.maHopDong}</strong>? Hành động này không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (hopDongToDelete) {
+                  tableProps.onDelete(hopDongToDelete._id!);
+                  setIsDeleteDialogOpen(false);
+                  setHopDongToDelete(null);
+                }
+              }}
+            >
+              Xác nhận xóa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <div className="flex items-center justify-between px-4">
         <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
@@ -693,7 +639,10 @@ function HopDongCellViewer({
     <Button 
       variant="link" 
       className="text-foreground w-fit px-0 text-left font-medium"
-      onClick={() => onView(hopDong)}
+      onClick={(e) => {
+        e.stopPropagation();
+        onView(hopDong);
+      }}
     >
       {hopDong.maHopDong}
     </Button>

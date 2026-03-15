@@ -2,30 +2,10 @@
 
 import * as React from "react"
 import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type UniqueIdentifier,
-} from "@dnd-kit/core"
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import {
   Edit,
   Trash2,
   Eye,
   Calendar,
-  GripVertical,
   MoreVertical,
   Columns,
   ChevronDown,
@@ -69,6 +49,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -161,26 +149,6 @@ const getPriorityBadge = (priority: string) => {
   }
 }
 
-// Create a separate component for the drag handle
-function DragHandle({ id }: { id: string }) {
-  const { attributes, listeners } = useSortable({
-    id,
-  })
-
-  return (
-    <Button
-      {...attributes}
-      {...listeners}
-      variant="ghost"
-      size="icon"
-      className="text-muted-foreground size-7 hover:bg-transparent"
-    >
-      <GripVertical className="text-muted-foreground size-3" />
-      <span className="sr-only">Kéo để sắp xếp</span>
-    </Button>
-  )
-}
-
 type SuCoTableProps = {
   phongList: Phong[]
   khachThueList: KhachThue[]
@@ -206,39 +174,7 @@ const getKhachThueName = (khachThue: string | { hoTen: string }, khachThueList: 
   return khachThue?.hoTen || 'N/A'
 }
 
-const createColumns = (props: SuCoTableProps): ColumnDef<SuCo>[] => [
-  {
-    id: "drag",
-    header: () => null,
-    cell: ({ row }) => <DragHandle id={row.original._id!} />,
-    enableHiding: false,
-  },
-  {
-    id: "select",
-    header: ({ table }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Chọn tất cả"
-        />
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Chọn hàng"
-        />
-      </div>
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
+const createColumns = (props: SuCoTableProps & { setSuCoToDelete: (s: SuCo) => void; setIsDeleteDialogOpen: (o: boolean) => void }): ColumnDef<SuCo>[] => [
   {
     accessorKey: "tieuDe",
     header: "Tiêu đề",
@@ -268,13 +204,13 @@ const createColumns = (props: SuCoTableProps): ColumnDef<SuCo>[] => [
     accessorKey: "khachThue",
     header: "Khách thuê",
     cell: ({ row }) => {
-      const khachThue = row.original.khachThue
+      const khachThue = row.original.khachThue as (string | KhachThue)
       return (
         <div className="min-w-32">
           <div className="font-medium">
             {getKhachThueName(khachThue, props.khachThueList)}
           </div>
-          {typeof khachThue === 'object' && khachThue?.soDienThoai && (
+          {typeof khachThue === 'object' && khachThue !== null && 'soDienThoai' in khachThue && (
             <div className="text-xs text-muted-foreground">
               {khachThue.soDienThoai}
             </div>
@@ -299,7 +235,7 @@ const createColumns = (props: SuCoTableProps): ColumnDef<SuCo>[] => [
     cell: ({ row }) => {
       const suCo = row.original
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           {getStatusBadge(suCo.trangThai)}
           {suCo.trangThai === 'moi' && (
             <Select
@@ -354,6 +290,7 @@ const createColumns = (props: SuCoTableProps): ColumnDef<SuCo>[] => [
             variant="ghost"
             className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
             size="icon"
+            onClick={(e) => e.stopPropagation()}
           >
             <MoreVertical className="size-4" />
             <span className="sr-only">Mở menu</span>
@@ -361,19 +298,29 @@ const createColumns = (props: SuCoTableProps): ColumnDef<SuCo>[] => [
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
           {props.onView && (
-            <DropdownMenuItem onClick={() => props.onView!(row.original)}>
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              props.onView!(row.original);
+            }}>
               <Eye className="mr-2 h-4 w-4" />
               Xem chi tiết
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onClick={() => props.onEdit(row.original)}>
+          <DropdownMenuItem onClick={(e) => {
+            e.stopPropagation();
+            props.onEdit(row.original);
+          }}>
             <Edit className="mr-2 h-4 w-4" />
             Chỉnh sửa
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem 
             className="text-destructive"
-            onClick={() => props.onDelete(row.original._id!)}
+            onClick={(e) => {
+              e.stopPropagation();
+              props.setSuCoToDelete(row.original);
+              props.setIsDeleteDialogOpen(true);
+            }}
           >
             <Trash2 className="mr-2 h-4 w-4" />
             Xóa
@@ -385,21 +332,10 @@ const createColumns = (props: SuCoTableProps): ColumnDef<SuCo>[] => [
   },
 ]
 
-function DraggableRow({ row }: { row: Row<SuCo> }) {
-  const { transform, transition, setNodeRef, isDragging } = useSortable({
-    id: row.original._id!,
-  })
-
+function SuCoTableRow({ row }: { row: Row<SuCo> }) {
   return (
     <TableRow
       data-state={row.getIsSelected() && "selected"}
-      data-dragging={isDragging}
-      ref={setNodeRef}
-      className="relative z-0 data-[dragging=true]:z-10 data-[dragging=true]:opacity-80"
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition: transition,
-      }}
     >
       {row.getVisibleCells().map((cell) => (
         <TableCell key={cell.id}>
@@ -425,6 +361,8 @@ type SuCoDataTableProps = SuCoTableProps & {
 export function SuCoDataTable(props: SuCoDataTableProps) {
   const { data: initialData, searchTerm, onSearchChange, statusFilter, onStatusFilterChange, typeFilter, onTypeChange, priorityFilter, onPriorityChange, ...tableProps } = props
   const [data, setData] = React.useState(() => initialData)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [suCoToDelete, setSuCoToDelete] = React.useState<SuCo | null>(null);
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
@@ -442,19 +380,11 @@ export function SuCoDataTable(props: SuCoDataTableProps) {
     setData(initialData)
   }, [initialData])
   
-  const columns = React.useMemo(() => createColumns(tableProps), [tableProps])
-  
-  const sortableId = React.useId()
-  const sensors = useSensors(
-    useSensor(MouseSensor, {}),
-    useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {})
-  )
-
-  const dataIds = React.useMemo<UniqueIdentifier[]>(
-    () => data?.map(({ _id }) => _id!) || [],
-    [data]
-  )
+  const columns = React.useMemo(() => createColumns({
+    ...tableProps,
+    setSuCoToDelete,
+    setIsDeleteDialogOpen
+  }), [tableProps])
 
   const table = useReactTable({
     data,
@@ -480,17 +410,6 @@ export function SuCoDataTable(props: SuCoDataTableProps) {
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (active && over && active.id !== over.id) {
-      setData((data) => {
-        const oldIndex = dataIds.indexOf(active.id)
-        const newIndex = dataIds.indexOf(over.id)
-        return arrayMove(data, oldIndex, newIndex)
-      })
-    }
-  }
 
   const selectedCount = table.getFilteredSelectedRowModel().rows.length
 
@@ -588,56 +507,74 @@ export function SuCoDataTable(props: SuCoDataTableProps) {
       </div>
       
       <div className="overflow-hidden rounded-lg border">
-        <DndContext
-          collisionDetection={closestCenter}
-          modifiers={[restrictToVerticalAxis]}
-          onDragEnd={handleDragEnd}
-          sensors={sensors}
-          id={sortableId}
-        >
-          <Table>
-            <TableHeader className="bg-muted sticky top-0 z-10">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead key={header.id} colSpan={header.colSpan}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </TableHead>
-                    )
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody className="**:data-[slot=table-cell]:first:w-8">
-              {table.getRowModel().rows?.length ? (
-                <SortableContext
-                  items={dataIds}
-                  strategy={verticalListSortingStrategy}
+        <Table>
+          <TableHeader className="bg-muted sticky top-0 z-10">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id} colSpan={header.colSpan}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody className="**:data-[slot=table-cell]:first:w-8">
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <SuCoTableRow key={row.id} row={row} />
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
                 >
-                  {table.getRowModel().rows.map((row) => (
-                    <DraggableRow key={row.id} row={row} />
-                  ))}
-                </SortableContext>
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
-                  >
-                    Không có dữ liệu
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </DndContext>
+                  Không có dữ liệu
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn xóa sự cố <strong>{suCoToDelete?.tieuDe}</strong>? Hành động này không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (suCoToDelete) {
+                  tableProps.onDelete(suCoToDelete._id!);
+                  setIsDeleteDialogOpen(false);
+                  setSuCoToDelete(null);
+                }
+              }}
+            >
+              Xác nhận xóa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <div className="flex items-center justify-between px-4">
         <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">

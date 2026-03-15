@@ -2,32 +2,12 @@
 
 import * as React from "react"
 import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type UniqueIdentifier,
-} from "@dnd-kit/core"
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import {
   Edit,
   Trash2,
   Download,
   Eye,
   Calendar,
   CreditCard,
-  GripVertical,
   MoreVertical,
   Columns,
   ChevronDown,
@@ -60,7 +40,6 @@ import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -69,6 +48,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -129,26 +116,6 @@ const getMethodBadge = (method: string) => {
   }
 }
 
-// Create a separate component for the drag handle
-function DragHandle({ id }: { id: string }) {
-  const { attributes, listeners } = useSortable({
-    id,
-  })
-
-  return (
-    <Button
-      {...attributes}
-      {...listeners}
-      variant="ghost"
-      size="icon"
-      className="text-muted-foreground size-7 hover:bg-transparent"
-    >
-      <GripVertical className="text-muted-foreground size-3" />
-      <span className="sr-only">Kéo để sắp xếp</span>
-    </Button>
-  )
-}
-
 type ThanhToanTableProps = {
   hoaDonList: HoaDon[]
   onView?: (thanhToan: ThanhToanPopulated) => void
@@ -168,39 +135,7 @@ const getHoaDonInfo = (hoaDon: string | HoaDon, hoaDonList: HoaDon[]) => {
   return 'N/A'
 }
 
-const createColumns = (props: ThanhToanTableProps): ColumnDef<ThanhToanPopulated>[] => [
-  {
-    id: "drag",
-    header: () => null,
-    cell: ({ row }) => <DragHandle id={row.original._id!} />,
-    enableHiding: false,
-  },
-  {
-    id: "select",
-    header: ({ table }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Chọn tất cả"
-        />
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Chọn hàng"
-        />
-      </div>
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
+const createColumns = (props: ThanhToanTableProps & { setThanhToanToDelete: (t: ThanhToanPopulated) => void; setIsDeleteDialogOpen: (o: boolean) => void }): ColumnDef<ThanhToanPopulated>[] => [
   {
     accessorKey: "hoaDon",
     header: "Hóa đơn",
@@ -314,6 +249,7 @@ const createColumns = (props: ThanhToanTableProps): ColumnDef<ThanhToanPopulated
             variant="ghost"
             className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
             size="icon"
+            onClick={(e) => e.stopPropagation()}
           >
             <MoreVertical className="size-4" />
             <span className="sr-only">Mở menu</span>
@@ -321,17 +257,26 @@ const createColumns = (props: ThanhToanTableProps): ColumnDef<ThanhToanPopulated
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
           {props.onView && (
-            <DropdownMenuItem onClick={() => props.onView!(row.original)}>
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              props.onView!(row.original);
+            }}>
               <Eye className="mr-2 h-4 w-4" />
               Xem chi tiết
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onClick={() => props.onEdit(row.original)}>
+          <DropdownMenuItem onClick={(e) => {
+            e.stopPropagation();
+            props.onEdit(row.original);
+          }}>
             <Edit className="mr-2 h-4 w-4" />
             Chỉnh sửa
           </DropdownMenuItem>
           {row.original.anhBienLai && props.onDownload && (
-            <DropdownMenuItem onClick={() => props.onDownload!(row.original)}>
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              props.onDownload!(row.original);
+            }}>
               <Download className="mr-2 h-4 w-4" />
               Tải biên lai
             </DropdownMenuItem>
@@ -339,7 +284,11 @@ const createColumns = (props: ThanhToanTableProps): ColumnDef<ThanhToanPopulated
           <DropdownMenuSeparator />
           <DropdownMenuItem 
             className="text-destructive"
-            onClick={() => props.onDelete(row.original._id!)}
+            onClick={(e) => {
+              e.stopPropagation();
+              props.setThanhToanToDelete(row.original);
+              props.setIsDeleteDialogOpen(true);
+            }}
           >
             <Trash2 className="mr-2 h-4 w-4" />
             Xóa
@@ -350,31 +299,6 @@ const createColumns = (props: ThanhToanTableProps): ColumnDef<ThanhToanPopulated
     enableHiding: false,
   },
 ]
-
-function DraggableRow({ row }: { row: Row<ThanhToanPopulated> }) {
-  const { transform, transition, setNodeRef, isDragging } = useSortable({
-    id: row.original._id!,
-  })
-
-  return (
-    <TableRow
-      data-state={row.getIsSelected() && "selected"}
-      data-dragging={isDragging}
-      ref={setNodeRef}
-      className="relative z-0 data-[dragging=true]:z-10 data-[dragging=true]:opacity-80"
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition: transition,
-      }}
-    >
-      {row.getVisibleCells().map((cell) => (
-        <TableCell key={cell.id}>
-          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-        </TableCell>
-      ))}
-    </TableRow>
-  )
-}
 
 type ThanhToanDataTableProps = ThanhToanTableProps & {
   data: ThanhToanPopulated[]
@@ -389,6 +313,8 @@ type ThanhToanDataTableProps = ThanhToanTableProps & {
 export function ThanhToanDataTable(props: ThanhToanDataTableProps) {
   const { data: initialData, searchTerm, onSearchChange, methodFilter, onMethodChange, dateFilter, onDateChange, ...tableProps } = props
   const [data, setData] = React.useState(() => initialData)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [thanhToanToDelete, setThanhToanToDelete] = React.useState<ThanhToanPopulated | null>(null);
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
@@ -406,19 +332,11 @@ export function ThanhToanDataTable(props: ThanhToanDataTableProps) {
     setData(initialData)
   }, [initialData])
   
-  const columns = React.useMemo(() => createColumns(tableProps), [tableProps])
-  
-  const sortableId = React.useId()
-  const sensors = useSensors(
-    useSensor(MouseSensor, {}),
-    useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {})
-  )
-
-  const dataIds = React.useMemo<UniqueIdentifier[]>(
-    () => data?.map(({ _id }) => _id!) || [],
-    [data]
-  )
+  const columns = React.useMemo(() => createColumns({
+    ...tableProps,
+    setThanhToanToDelete,
+    setIsDeleteDialogOpen
+  }), [tableProps])
 
   const table = useReactTable({
     data,
@@ -444,17 +362,6 @@ export function ThanhToanDataTable(props: ThanhToanDataTableProps) {
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (active && over && active.id !== over.id) {
-      setData((data) => {
-        const oldIndex = dataIds.indexOf(active.id)
-        const newIndex = dataIds.indexOf(over.id)
-        return arrayMove(data, oldIndex, newIndex)
-      })
-    }
-  }
 
   const selectedCount = table.getFilteredSelectedRowModel().rows.length
 
@@ -537,56 +444,83 @@ export function ThanhToanDataTable(props: ThanhToanDataTableProps) {
       </div>
       
       <div className="overflow-hidden rounded-lg border">
-        <DndContext
-          collisionDetection={closestCenter}
-          modifiers={[restrictToVerticalAxis]}
-          onDragEnd={handleDragEnd}
-          sensors={sensors}
-          id={sortableId}
-        >
-          <Table>
-            <TableHeader className="bg-muted sticky top-0 z-10">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead key={header.id} colSpan={header.colSpan}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </TableHead>
-                    )
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody className="**:data-[slot=table-cell]:first:w-8">
-              {table.getRowModel().rows?.length ? (
-                <SortableContext
-                  items={dataIds}
-                  strategy={verticalListSortingStrategy}
+        <Table>
+          <TableHeader className="bg-muted sticky top-0 z-10">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id} colSpan={header.colSpan}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody className="**:data-[slot=table-cell]:first:w-8">
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
                 >
-                  {table.getRowModel().rows.map((row) => (
-                    <DraggableRow key={row.id} row={row} />
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
                   ))}
-                </SortableContext>
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
-                  >
-                    Không có dữ liệu
-                  </TableCell>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </DndContext>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  Không có dữ liệu
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn xóa giao dịch thanh toán cho hóa đơn <strong>{getHoaDonInfo(thanhToanToDelete?.hoaDon || '', props.hoaDonList)}</strong>? Hành động này không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (thanhToanToDelete) {
+                  tableProps.onDelete(thanhToanToDelete._id!);
+                  setIsDeleteDialogOpen(false);
+                  setThanhToanToDelete(null);
+                }
+              }}
+            >
+              Xác nhận xóa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <div className="flex items-center justify-between px-4">
         <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">

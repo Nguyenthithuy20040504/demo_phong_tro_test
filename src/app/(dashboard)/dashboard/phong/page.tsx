@@ -55,6 +55,7 @@ import { PhongDataTable } from './table';
 import { PhongImageUpload } from '@/components/ui/phong-image-upload';
 import { DeleteConfirmPopover } from '@/components/ui/delete-confirm-popover';
 import { toast } from 'sonner';
+import { PhongDetailDialog } from '@/components/ui/phong-detail-dialog';
 
 export default function PhongPage() {
   const { data: session } = useSession();
@@ -79,6 +80,8 @@ export default function PhongPage() {
   const [isTenantsViewerOpen, setIsTenantsViewerOpen] = useState(false);
   const [viewingTenants, setViewingTenants] = useState<any[]>([]);
   const [viewingTenantsPhongName, setViewingTenantsPhongName] = useState('');
+  const [viewingDetailPhong, setViewingDetailPhong] = useState<Phong | null>(null);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 
   useEffect(() => {
     document.title = 'Quản lý Phòng';
@@ -201,6 +204,11 @@ export default function PhongPage() {
     } else {
       toast.info('Phòng này hiện chưa có ảnh nào để hiển thị.');
     }
+  };
+
+  const handleViewDetail = (phong: Phong) => {
+    setViewingDetailPhong(phong);
+    setIsDetailDialogOpen(true);
   };
 
   const handleViewTenants = (phong: Phong) => {
@@ -345,6 +353,7 @@ export default function PhongPage() {
             toaNhaList={toaNhaList}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onView={handleViewDetail}
             onViewImages={handleViewImages}
             onViewTenants={handleViewTenants}
             searchTerm={searchTerm}
@@ -436,7 +445,7 @@ export default function PhongPage() {
               };
 
               return (
-                <Card key={phong._id} className="hover:shadow-md transition-shadow">
+                <Card key={phong._id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleViewDetail(phong)}>
                   <CardContent className="p-3">
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex-1">
@@ -491,7 +500,10 @@ export default function PhongPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleViewImages(phong)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewImages(phong);
+                            }}
                             className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                             title="Xem ảnh phòng"
                           >
@@ -501,7 +513,8 @@ export default function PhongPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             const publicUrl = `${window.location.origin}/xem-phong`;
                             navigator.clipboard.writeText(publicUrl);
                             toast.success('Đã sao chép đường dẫn xem phòng!');
@@ -516,25 +529,33 @@ export default function PhongPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleEdit(phong)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(phong);
+                              }}
                               className="flex-1 text-xs"
                             >
                               <Edit className="h-3.5 w-3.5 mr-1" />
                               Sửa
                             </Button>
-                            <DeleteConfirmPopover
-                              onConfirm={() => handleDelete(phong._id!)}
-                              title="Xóa phòng"
-                              description="Bạn có chắc chắn muốn xóa phòng này không?"
-                              className="text-black hover:text-red-700 hover:bg-red-50"
-                            />
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <DeleteConfirmPopover
+                                onConfirm={() => handleDelete(phong._id!)}
+                                title="Xóa phòng"
+                                description="Bạn có chắc chắn muốn xóa phòng này không?"
+                                className="text-black hover:text-red-700 hover:bg-red-50"
+                              />
+                            </div>
                           </>
                         )}
                         {isNhanVien && (
                            <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleViewTenants(phong)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewTenants(phong);
+                              }}
                               className="flex-1 text-xs"
                             >
                               <Users className="h-3.5 w-3.5 mr-1" />
@@ -648,6 +669,14 @@ export default function PhongPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Room Detail Dialog */}
+      <PhongDetailDialog
+        phong={viewingDetailPhong}
+        isOpen={isDetailDialogOpen}
+        onClose={() => setIsDetailDialogOpen(false)}
+        toaNhaList={toaNhaList}
+      />
     </div>
   );
 }

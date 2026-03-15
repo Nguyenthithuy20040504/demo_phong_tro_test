@@ -2,31 +2,11 @@
 
 import * as React from "react"
 import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type UniqueIdentifier,
-} from "@dnd-kit/core"
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import {
   Edit,
   Trash2,
   Eye,
   MapPin,
   Building2,
-  GripVertical,
   MoreVertical,
   Columns,
   ChevronDown,
@@ -35,6 +15,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Search,
+  AlertCircle,
+  CheckCircle2,
 } from "lucide-react"
 import {
   ColumnDef,
@@ -54,7 +36,6 @@ import {
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -64,6 +45,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -82,28 +71,11 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import type { ToaNha } from '@/types'
+import { ToaNhaDetailDialog } from "@/components/ui/toa-nha-detail-dialog"
 
 // Helper functions
 const formatAddress = (diaChi: ToaNha['diaChi']) => {
   return `${diaChi.soNha} ${diaChi.duong}, ${diaChi.phuong}, ${diaChi.quan}, ${diaChi.thanhPho}`
-}
-
-function DragHandle({ id }: { id: string }) {
-  const { attributes, listeners } = useSortable({
-    id,
-  })
-
-  return (
-    <Button
-      {...attributes}
-      {...listeners}
-      variant="ghost"
-      size="icon"
-      className="text-muted-foreground/30 size-7 hover:bg-transparent hover:text-primary transition-colors"
-    >
-      <GripVertical className="size-3.5" />
-    </Button>
-  )
 }
 
 type ToaNhaTableProps = {
@@ -113,13 +85,7 @@ type ToaNhaTableProps = {
   canEdit?: boolean
 }
 
-const createColumns = (props: ToaNhaTableProps): ColumnDef<ToaNha>[] => [
-  {
-    id: "drag",
-    header: () => null,
-    cell: ({ row }) => <DragHandle id={row.original._id!} />,
-    enableHiding: false,
-  },
+const createColumns = (props: ToaNhaTableProps & { setToaNhaToDelete: (t: ToaNha) => void; setIsDeleteDialogOpen: (o: boolean) => void }): ColumnDef<ToaNha>[] => [
   {
     accessorKey: "tenToaNha",
     header: "Tòa nhà",
@@ -157,14 +123,24 @@ const createColumns = (props: ToaNhaTableProps): ColumnDef<ToaNha>[] => [
     id: "trangThai",
     header: "Tình trạng",
     cell: ({ row }) => {
-      const phongTrong = (row.original as any).phongTrong || 0
-      const total = row.original.tongSoPhong
-      const dangThue = total - phongTrong > 0
+      const suCoCount = (row.original as any).suCoCount || 0
+      const phongBaoTri = (row.original as any).phongBaoTri || 0
+      const isDamaged = suCoCount > 0 || phongBaoTri > 0
+      
       return (
         <div className="flex justify-center">
-          <Badge variant={dangThue ? "default" : "secondary"} className="gap-1">
-            <span className={`size-1.5 rounded-full ${dangThue ? 'bg-white' : 'bg-slate-400'}`} />
-            {dangThue ? 'Đang thuê' : 'Chưa thuê'}
+          <Badge variant={isDamaged ? "destructive" : "default"} className="gap-1">
+            {isDamaged ? (
+              <>
+                <AlertCircle className="size-3" />
+                Hỏng hóc
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="size-3" />
+                Bình thường
+              </>
+            )}
           </Badge>
         </div>
       )
@@ -189,62 +165,64 @@ const createColumns = (props: ToaNhaTableProps): ColumnDef<ToaNha>[] => [
   {
     id: "actions",
     cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="text-muted-foreground size-8"
-              size="icon"
-            >
-              <MoreVertical className="size-4" />
-              <span className="sr-only">Mở menu</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            {props.onView && (
-              <DropdownMenuItem onClick={() => props.onView!(row.original)}>
-                <Eye className="mr-2 h-4 w-4" />
-                Xem chi tiết
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            className="text-muted-foreground size-8"
+            size="icon"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <MoreVertical className="size-4" />
+            <span className="sr-only">Mở menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          {props.onView && (
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              props.onView!(row.original);
+            }}>
+              <Eye className="mr-2 h-4 w-4" />
+              Xem chi tiết
+            </DropdownMenuItem>
+          )}
+          {props.canEdit !== false && (
+            <>
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation();
+                props.onEdit(row.original);
+              }}>
+                <Edit className="mr-2 h-4 w-4" />
+                Chỉnh sửa
               </DropdownMenuItem>
-            )}
-            {props.canEdit !== false && (
-              <>
-                <DropdownMenuItem onClick={() => props.onEdit(row.original)}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Chỉnh sửa
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  className="text-destructive"
-                  onClick={() => props.onDelete(row.original._id!)}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Xóa
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                className="text-destructive"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  props.setToaNhaToDelete(row.original);
+                  props.setIsDeleteDialogOpen(true);
+                }}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Xóa
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     ),
     enableHiding: false,
   },
 ];
 
-function DraggableRow({ row }: { row: Row<ToaNha> }) {
-  const { transform, transition, setNodeRef, isDragging } = useSortable({
-    id: row.original._id!,
-  });
-
+function ToaNhaTableRow({ row, onClick }: { row: Row<ToaNha>, onClick: () => void }) {
   return (
     <TableRow
       data-state={row.getIsSelected() && "selected"}
-      data-dragging={isDragging}
-      ref={setNodeRef}
-      className={`relative z-0 ${isDragging ? "opacity-50" : ""}`}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition: transition,
-      }}
+      onClick={onClick}
+      className="cursor-pointer hover:bg-muted/50"
     >
       {row.getVisibleCells().map((cell) => (
         <TableCell key={cell.id}>
@@ -264,6 +242,10 @@ type ToaNhaDataTableProps = ToaNhaTableProps & {
 export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
   const { data: initialData, searchTerm, onSearchChange, ...tableProps } = props
   const [data, setData] = React.useState(() => initialData)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [toaNhaToDelete, setToaNhaToDelete] = React.useState<ToaNha | null>(null);
+  const [selectedToaNha, setSelectedToaNha] = React.useState<ToaNha | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = React.useState(false);
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
@@ -280,19 +262,11 @@ export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
     setData(initialData)
   }, [initialData])
   
-  const columns = React.useMemo(() => createColumns(tableProps), [tableProps])
-  
-  const sortableId = React.useId()
-  const sensors = useSensors(
-    useSensor(MouseSensor, {}),
-    useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {})
-  )
-
-  const dataIds = React.useMemo<UniqueIdentifier[]>(
-    () => data?.map(({ _id }) => _id!) || [],
-    [data]
-  )
+  const columns = React.useMemo(() => createColumns({
+    ...tableProps,
+    setToaNhaToDelete,
+    setIsDeleteDialogOpen
+  }), [tableProps])
 
   const table = useReactTable({
     data,
@@ -318,17 +292,6 @@ export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (active && over && active.id !== over.id) {
-      setData((data) => {
-        const oldIndex = dataIds.indexOf(active.id)
-        const newIndex = dataIds.indexOf(over.id)
-        return arrayMove(data, oldIndex, newIndex)
-      })
-    }
-  }
 
   const selectedCount = table.getFilteredSelectedRowModel().rows.length
 
@@ -389,56 +352,87 @@ export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
       </div>
       
       <div className="overflow-hidden rounded-lg border">
-        <DndContext
-          collisionDetection={closestCenter}
-          modifiers={[restrictToVerticalAxis]}
-          onDragEnd={handleDragEnd}
-          sensors={sensors}
-          id={sortableId}
-        >
-          <Table>
-            <TableHeader className="bg-muted sticky top-0 z-10">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead key={header.id} colSpan={header.colSpan}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </TableHead>
-                    )
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody className="**:data-[slot=table-cell]:first:w-8">
-              {table.getRowModel().rows?.length ? (
-                <SortableContext
-                  items={dataIds}
-                  strategy={verticalListSortingStrategy}
+        <Table>
+          <TableHeader className="bg-muted sticky top-0 z-10">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id} colSpan={header.colSpan}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody className="**:data-[slot=table-cell]:first:w-8">
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <ToaNhaTableRow 
+                  key={row.id} 
+                  row={row} 
+                  onClick={() => {
+                    setSelectedToaNha(row.original);
+                    setIsDetailOpen(true);
+                  }}
+                />
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
                 >
-                  {table.getRowModel().rows.map((row) => (
-                    <DraggableRow key={row.id} row={row} />
-                  ))}
-                </SortableContext>
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
-                  >
-                    Không có dữ liệu
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </DndContext>
+                  Không có dữ liệu
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
+
+      <ToaNhaDetailDialog 
+        toaNha={selectedToaNha}
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+      />
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn xóa tòa nhà <strong>{toaNhaToDelete?.tenToaNha}</strong>? Hành động này không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (toaNhaToDelete) {
+                  tableProps.onDelete(toaNhaToDelete._id!);
+                  setIsDeleteDialogOpen(false);
+                  setToaNhaToDelete(null);
+                }
+              }}
+            >
+              Xác nhận xóa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <div className="flex items-center justify-between px-4">
         <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">

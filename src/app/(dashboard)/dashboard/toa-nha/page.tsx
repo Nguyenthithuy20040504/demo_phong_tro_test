@@ -23,6 +23,7 @@ import {
   Search, 
   Building2, 
   RefreshCw,
+  AlertCircle,
 } from 'lucide-react';
 import { ToaNha } from '@/types';
 import { toast } from 'sonner';
@@ -218,12 +219,12 @@ export default function ToaNhaPage() {
         <Card className="p-2 md:p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Tình trạng</p>
-              <p className="text-base md:text-2xl font-bold text-purple-600">
-                {Math.round((toaNhaList.reduce((sum, toaNha) => sum + ((toaNha as any).phongDangThue || 0), 0) / (toaNhaList.reduce((sum, toaNha) => sum + toaNha.tongSoPhong, 0) || 1)) * 100)}%
+              <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Hỏng hóc</p>
+              <p className="text-base md:text-2xl font-bold text-red-600">
+                {Math.round((toaNhaList.filter(t => (t as any).suCoCount > 0).length / (toaNhaList.length || 1)) * 100)}%
               </p>
             </div>
-            <RefreshCw className="h-3 w-3 md:h-4 md:w-4 text-purple-600" />
+            <AlertCircle className="h-3 w-3 md:h-4 md:w-4 text-red-600" />
           </div>
         </Card>
       </div>
