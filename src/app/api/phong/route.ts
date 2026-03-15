@@ -5,9 +5,11 @@ import dbConnect from '@/lib/mongodb';
 import Phong from '@/models/Phong';
 import ToaNha from '@/models/ToaNha';
 import HopDong from '@/models/HopDong';
+import KhachThue from '@/models/KhachThue';
 import { updatePhongStatus } from '@/lib/status-utils';
 import { getAccessibleToaNhaIds } from '@/lib/auth-utils';
 import { z } from 'zod';
+import mongoose from 'mongoose';
 
 const phongSchema = z.object({
   maPhong: z.string().min(1, 'Số phòng là bắt buộc'),
@@ -91,25 +93,54 @@ export async function GET(request: NextRequest) {
       .skip((page - 1) * limit)
       .limit(limit);
 
-    // Thêm thông tin hợp đồng và khách thuê cho mỗi phòng
+    // Thêm thông tin hợp đồng và khách thuê cho mỗi phòng (với hỗ trợ polymorphic tenants)
     const phongListWithContracts = await Promise.all(
-      updatedPhongList.map(async (phong) => {
-        const hopDong = await HopDong.findOne({
+      updatedPhongList.map(async (phongDoc) => {
+        const phong = phongDoc.toObject();
+        const hopDongRaw: any = await HopDong.findOne({
           phong: phong._id,
           trangThai: 'hoatDong',
           $or: [
             {
               ngayBatDau: { $lte: new Date() },
               ngayKetThuc: { $gte: new Date() }
+            },
+            {
+              ngayBatDau: { $gt: new Date() } // Cho phép cả hợp đồng đã đặt nhưng chưa đến ngày
             }
           ]
-        })
-        .populate('khachThueId', 'hoTen soDienThoai')
-        .populate('nguoiDaiDien', 'hoTen soDienThoai');
-        
+        }).lean();
+
+        if (hopDongRaw) {
+          // Thủ công populate khachThueId và nguoiDaiDien
+          const ktIds = hopDongRaw.khachThueId || [];
+          const [ktFromKT, ktFromND] = await Promise.all([
+            KhachThue.find({ _id: { $in: ktIds } }).select('hoTen soDienThoai').lean(),
+            mongoose.model('NguoiDung').find({ _id: { $in: ktIds }, role: 'khachThue' }).select('hoTen soDienThoai').lean()
+          ]);
+          const allKt: any[] = [...ktFromKT, ...ktFromND.map((u: any) => ({ ...u, hoTen: u.hoTen }))];
+          
+          let nguoiDaiDien = null;
+          if (hopDongRaw.nguoiDaiDien) {
+            nguoiDaiDien = await KhachThue.findById(hopDongRaw.nguoiDaiDien).select('hoTen soDienThoai').lean();
+            if (!nguoiDaiDien) {
+              nguoiDaiDien = await mongoose.model('NguoiDung').findOne({ _id: hopDongRaw.nguoiDaiDien, role: 'khachThue' }).select('hoTen soDienThoai').lean();
+            }
+          }
+
+          return {
+            ...phong,
+            hopDongHienTai: {
+              ...hopDongRaw,
+              khachThueId: allKt,
+              nguoiDaiDien: nguoiDaiDien
+            }
+          };
+        }
+
         return {
-          ...phong.toObject(),
-          hopDongHienTai: hopDong
+          ...phong,
+          hopDongHienTai: null
         };
       })
     );

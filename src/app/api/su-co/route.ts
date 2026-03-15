@@ -7,10 +7,11 @@ import Phong from '@/models/Phong';
 import KhachThue from '@/models/KhachThue';
 import { getAccessibleToaNhaIds } from '@/lib/auth-utils';
 import { z } from 'zod';
+import mongoose from 'mongoose';
 
 const suCoSchema = z.object({
   phong: z.string().min(1, 'Phòng là bắt buộc'),
-  khachThue: z.string().min(1, 'Khách thuê là bắt buộc'),
+  khachThue: z.string().nullable().optional(),
   tieuDe: z.string().min(1, 'Tiêu đề là bắt buộc'),
   moTa: z.string().min(1, 'Mô tả là bắt buộc'),
   anhSuCo: z.array(z.string()).optional(),
@@ -18,6 +19,9 @@ const suCoSchema = z.object({
   mucDoUuTien: z.enum(['thap', 'trungBinh', 'cao', 'khancap']).optional(),
   trangThai: z.enum(['moi', 'dangXuLy', 'daXong', 'daHuy']).optional(),
 });
+
+// Đảm bảo model NguoiDung được load
+import '@/models/NguoiDung';
 
 export async function GET(request: NextRequest) {
   try {
@@ -76,13 +80,25 @@ export async function GET(request: NextRequest) {
       query.phong = { $in: phongIds };
     }
 
-    const suCoList = await SuCo.find(query)
+    const suCoListRaw = await SuCo.find(query)
       .populate('phong', 'maPhong toaNha')
-      .populate('khachThue', 'hoTen soDienThoai')
       .populate('nguoiXuLy', 'ten email')
       .sort({ ngayBaoCao: -1 })
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(limit)
+      .lean();
+
+    // Thủ công populate khachThue từ cả 2 collection
+    const suCoList = await Promise.all(suCoListRaw.map(async (sc: any) => {
+      let khachThue = null;
+      if (sc.khachThue) {
+        khachThue = await KhachThue.findById(sc.khachThue).select('hoTen soDienThoai').lean();
+        if (!khachThue) {
+          khachThue = await mongoose.model('NguoiDung').findOne({ _id: sc.khachThue, role: 'khachThue' }).select('hoTen soDienThoai').lean();
+        }
+      }
+      return { ...sc, khachThue };
+    }));
 
     const total = await SuCo.countDocuments(query);
 
@@ -131,13 +147,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if khach thue exists
-    const khachThue = await KhachThue.findById(validatedData.khachThue);
-    if (!khachThue) {
-      return NextResponse.json(
-        { message: 'Khách thuê không tồn tại' },
-        { status: 400 }
-      );
+    // Check if khach thue exists (only if provided)
+    if (validatedData.khachThue) {
+      const khachThueKT = await KhachThue.findById(validatedData.khachThue);
+      const khachThueND = !khachThueKT ? await mongoose.model('NguoiDung').findOne({ _id: validatedData.khachThue, role: 'khachThue' }) : null;
+      
+      if (!khachThueKT && !khachThueND) {
+        return NextResponse.json(
+          { message: 'Khách thuê không tồn tại' },
+          { status: 400 }
+        );
+      }
     }
 
     const newSuCo = new SuCo({

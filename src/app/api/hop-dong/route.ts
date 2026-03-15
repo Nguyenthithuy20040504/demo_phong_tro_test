@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
       query.phong = { $in: phongIds };
     }
 
-    const hopDongList = await HopDong.find(query)
+    const hopDongListRaw = await HopDong.find(query)
       .populate({
         path: 'phong',
         select: 'maPhong toaNha',
@@ -91,11 +91,36 @@ export async function GET(request: NextRequest) {
           select: 'tenToaNha'
         }
       })
-      .populate('khachThueId', 'hoTen soDienThoai')
-      .populate('nguoiDaiDien', 'hoTen soDienThoai')
       .sort({ ngayTao: -1 })
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(limit)
+      .lean();
+
+    // Thủ công populate khachThueId và nguoiDaiDien từ cả 2 collection
+    const hopDongList = await Promise.all(hopDongListRaw.map(async (hd) => {
+      // 1. Populate khachThueId
+      const ktIds = hd.khachThueId || [];
+      const [ktFromKT, ktFromND] = await Promise.all([
+        KhachThue.find({ _id: { $in: ktIds } }).select('hoTen soDienThoai').lean(),
+        mongoose.model('NguoiDung').find({ _id: { $in: ktIds }, role: 'khachThue' }).select('hoTen soDienThoai').lean()
+      ]);
+      const allKt: any[] = [...ktFromKT, ...ktFromND.map(u => ({ ...u, hoTen: u.hoTen }))];
+      
+      // 2. Populate nguoiDaiDien
+      let nguoiDaiDien = null;
+      if (hd.nguoiDaiDien) {
+        nguoiDaiDien = await KhachThue.findById(hd.nguoiDaiDien).select('hoTen soDienThoai').lean();
+        if (!nguoiDaiDien) {
+          nguoiDaiDien = await mongoose.model('NguoiDung').findOne({ _id: hd.nguoiDaiDien, role: 'khachThue' }).select('hoTen soDienThoai').lean();
+        }
+      }
+
+      return {
+        ...hd,
+        khachThueId: allKt,
+        nguoiDaiDien: nguoiDaiDien
+      };
+    }));
 
     const total = await HopDong.countDocuments(query);
 

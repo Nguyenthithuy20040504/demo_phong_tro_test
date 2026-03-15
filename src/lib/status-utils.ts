@@ -1,6 +1,7 @@
 import HopDong from '@/models/HopDong';
 import Phong from '@/models/Phong';
 import KhachThue from '@/models/KhachThue';
+import mongoose from 'mongoose';
 
 /**
  * Tính trạng thái phòng dựa trên hợp đồng
@@ -101,7 +102,18 @@ export async function updatePhongStatus(phongId: string): Promise<void> {
 export async function updateKhachThueStatus(khachThueId: string): Promise<void> {
   try {
     const newStatus = await calculateKhachThueStatus(khachThueId);
-    await KhachThue.findByIdAndUpdate(khachThueId, { trangThai: newStatus });
+    
+    // Thử cập nhật trong collection KhachThue
+    const ktResult = await KhachThue.findByIdAndUpdate(khachThueId, { trangThai: newStatus });
+    
+    // Nếu không tìm thấy, thử cập nhật trong collection NguoiDung (với role khachThue)
+    if (!ktResult) {
+       const NguoiDung = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+       await NguoiDung.findOneAndUpdate(
+         { _id: khachThueId, role: 'khachThue' }, 
+         { trangThai: newStatus === 'chuaThue' ? 'khoa' : 'hoatDong' } 
+       );
+    }
   } catch (error) {
     console.error('Error updating khach thue status:', error);
   }

@@ -297,15 +297,6 @@ const createColumns = (props: SuCoTableProps & { setSuCoToDelete: (s: SuCo) => v
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          {props.onView && (
-            <DropdownMenuItem onClick={(e) => {
-              e.stopPropagation();
-              props.onView!(row.original);
-            }}>
-              <Eye className="mr-2 h-4 w-4" />
-              Xem chi tiết
-            </DropdownMenuItem>
-          )}
           <DropdownMenuItem onClick={(e) => {
             e.stopPropagation();
             props.onEdit(row.original);
@@ -332,10 +323,12 @@ const createColumns = (props: SuCoTableProps & { setSuCoToDelete: (s: SuCo) => v
   },
 ]
 
-function SuCoTableRow({ row }: { row: Row<SuCo> }) {
+function SuCoTableRow({ row, onView }: { row: Row<SuCo>, onView?: (suCo: SuCo) => void }) {
   return (
     <TableRow
       data-state={row.getIsSelected() && "selected"}
+      onClick={() => onView?.(row.original)}
+      className="cursor-pointer hover:bg-muted/50 transition-colors"
     >
       {row.getVisibleCells().map((cell) => (
         <TableCell key={cell.id}>
@@ -529,7 +522,7 @@ export function SuCoDataTable(props: SuCoDataTableProps) {
           <TableBody className="**:data-[slot=table-cell]:first:w-8">
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <SuCoTableRow key={row.id} row={row} />
+                <SuCoTableRow key={row.id} row={row} onView={tableProps.onView} />
               ))
             ) : (
               <TableRow>

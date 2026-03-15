@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ISuCo extends Document {
   phong: mongoose.Types.ObjectId;
-  khachThue: mongoose.Types.ObjectId;
+  khachThue?: mongoose.Types.ObjectId | null;
   tieuDe: string;
   moTa: string;
   anhSuCo: string[];
@@ -27,7 +27,8 @@ const SuCoSchema = new Schema<ISuCo>({
   khachThue: {
     type: Schema.Types.ObjectId,
     ref: 'KhachThue',
-    required: [true, 'Khách thuê là bắt buộc']
+    required: false,
+    default: null
   },
   tieuDe: {
     type: String,
@@ -105,4 +106,9 @@ SuCoSchema.pre('save', function(next) {
   next();
 });
 
-export default mongoose.models.SuCo || mongoose.model<ISuCo>('SuCo', SuCoSchema);
+// Xử lý lỗi model already exists trong Next.js dev mode
+if (mongoose.models && mongoose.models.SuCo) {
+  delete mongoose.models.SuCo;
+}
+
+export default mongoose.model<ISuCo>('SuCo', SuCoSchema);
