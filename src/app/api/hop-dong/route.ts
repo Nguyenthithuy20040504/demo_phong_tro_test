@@ -68,7 +68,20 @@ export async function GET(request: NextRequest) {
     }
 
     const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
-    if (accessibleToaNhaIds !== null) {
+    
+    if (session.user.role === 'khachThue') {
+      // Khách thuê chỉ xem hợp đồng của mình
+      const userId = session.user.id;
+      const KhachThueModel = (await import('@/models/KhachThue')).default;
+      let ktRecord = await KhachThueModel.findOne({
+        $or: [
+          { _id: userId },
+          { soDienThoai: session.user.phone }
+        ]
+      }).select('_id');
+      const ktId = ktRecord ? ktRecord._id : new mongoose.Types.ObjectId(userId);
+      query.khachThueId = { $in: [new mongoose.Types.ObjectId(userId), ktId] };
+    } else if (accessibleToaNhaIds !== null) {
       if (accessibleToaNhaIds.length === 0) {
          return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
       }
@@ -102,16 +115,32 @@ export async function GET(request: NextRequest) {
       const ktIds = hd.khachThueId || [];
       const [ktFromKT, ktFromND] = await Promise.all([
         KhachThue.find({ _id: { $in: ktIds } }).select('hoTen soDienThoai').lean(),
-        mongoose.model('NguoiDung').find({ _id: { $in: ktIds }, role: 'khachThue' }).select('hoTen soDienThoai').lean()
+        mongoose.model('NguoiDung').find({ _id: { $in: ktIds }, role: 'khachThue' }).select('ten name soDienThoai phone').lean()
       ]);
-      const allKt: any[] = [...ktFromKT, ...ktFromND.map(u => ({ ...u, hoTen: u.hoTen }))];
+      
+      const allKt: any[] = [
+        ...ktFromKT, 
+        ...(ktFromND as any[]).map(u => ({ 
+          _id: u._id,
+          hoTen: u.ten || u.name, 
+          soDienThoai: u.soDienThoai || u.phone 
+        }))
+      ];
       
       // 2. Populate nguoiDaiDien
       let nguoiDaiDien = null;
       if (hd.nguoiDaiDien) {
         nguoiDaiDien = await KhachThue.findById(hd.nguoiDaiDien).select('hoTen soDienThoai').lean();
         if (!nguoiDaiDien) {
-          nguoiDaiDien = await mongoose.model('NguoiDung').findOne({ _id: hd.nguoiDaiDien, role: 'khachThue' }).select('hoTen soDienThoai').lean();
+          const u = await mongoose.model('NguoiDung').findOne({ _id: hd.nguoiDaiDien, role: 'khachThue' }).select('ten name soDienThoai phone').lean();
+          if (u) {
+            const usr = u as any;
+            nguoiDaiDien = {
+              _id: usr._id,
+              hoTen: usr.ten || usr.name,
+              soDienThoai: usr.soDienThoai || usr.phone
+            };
+          }
         }
       }
 

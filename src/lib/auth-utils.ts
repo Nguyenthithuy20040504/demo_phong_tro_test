@@ -14,11 +14,13 @@ import mongoose from 'mongoose';
  * @returns Array ObjectId hoặc null (nếu là Admin)
  */
 export async function getAccessibleToaNhaIds(user: any): Promise<mongoose.Types.ObjectId[] | null> {
+  console.log('getAccessibleToaNhaIds called for user:', user?.email, 'role:', user?.role, 'id:', user?.id);
   if (!user || user.role === 'khachThue') {
     return [];
   }
 
   if (user.role === 'admin') {
+    console.log('User is admin, returning null (all access)');
     return null; // Null đại diện cho việc query toàn bộ
   }
 
@@ -56,6 +58,17 @@ export async function getAccessibleToaNhaIds(user: any): Promise<mongoose.Types.
     console.error('Error fetching accessible ToaNha ids:', error);
     return [];
   }
+}
+
+/**
+ * Kiểm tra xem User có quyền truy cập vào 1 Tòa Nhà cụ thể hay không.
+ */
+export async function isToaNhaAccessible(user: any, toaNhaId: string | mongoose.Types.ObjectId): Promise<boolean> {
+  const accessibleIds = await getAccessibleToaNhaIds(user);
+  if (accessibleIds === null) return true; // Admin
+  
+  const targetIdStr = toaNhaId.toString();
+  return accessibleIds.some(id => id.toString() === targetIdStr);
 }
 
 /**

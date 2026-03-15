@@ -45,22 +45,46 @@ export async function GET(request: NextRequest) {
 
     await dbConnect();
 
-    // Lấy thông tin khách thuê (ĐỔI: dùng userId từ session thay vì decoded.id)
-    const khachThue = await KhachThue.findById(userId);
-
-    if (!khachThue) {
-      return NextResponse.json(
-        { success: false, message: 'Khách thuê không tồn tại' },
-        { status: 404 }
-      );
+    // Lấy thông tin khách thuê
+    // Ưu tiên tìm trong bảng KhachThue bằng userId (trường hợp ID trùng)
+    // Hoặc tìm bằng số điện thoại của user
+    let khachThue = await KhachThue.findById(userId);
+    
+    if (!khachThue && session.user.phone) {
+      khachThue = await KhachThue.findOne({ soDienThoai: session.user.phone });
     }
 
-    // Lấy hợp đồng hiện tại (GIỮ NGUYÊN LOGIC CỦA BẠN)
-    const hopDongHienTai = await HopDong.findOne({
-      khachThueId: khachThue._id,
-      trangThai: 'hoatDong',
-      ngayBatDau: { $lte: new Date() },
-      ngayKetThuc: { $gte: new Date() }
+    // Xác định list IDs có thể liên kết với hợp đồng
+    // Một số hợp đồng dùng ID của NguoiDung, một số dùng ID của KhachThue
+    const linkedIds = [new mongoose.Types.ObjectId(userId)];
+    if (khachThue && khachThue._id.toString() !== userId) {
+      linkedIds.push(khachThue._id);
+    }
+
+    // Nếu không tìm thấy record trong KhachThue, tạo object giả từ session để frontend không lỗi
+    const khachThueDisplay = khachThue ? {
+      _id: khachThue._id,
+      hoTen: khachThue.hoTen,
+      soDienThoai: khachThue.soDienThoai,
+      email: khachThue.email,
+      cccd: khachThue.cccd,
+      ngaySinh: khachThue.ngaySinh,
+      gioiTinh: khachThue.gioiTinh,
+      queQuan: khachThue.queQuan,
+      ngheNghiep: khachThue.ngheNghiep,
+      trangThai: khachThue.trangThai,
+    } : {
+      _id: userId,
+      hoTen: session.user.name || session.user.email || 'Khách thuê',
+      soDienThoai: session.user.phone || '',
+      email: session.user.email || '',
+      trangThai: 'dangThue', // Giả định đang thuê nếu có hợp đồng
+    };
+
+    // Lấy tất cả hợp đồng hiện tại - Tìm theo bất kỳ ID nào trong linkedIds
+    const hopDongList = await HopDong.find({
+      khachThueId: { $in: linkedIds },
+      trangThai: 'hoatDong'
     })
       .populate('phong', 'maPhong dienTich giaThue tienCoc toaNha')
       .populate({
@@ -69,17 +93,25 @@ export async function GET(request: NextRequest) {
           path: 'toaNha',
           select: 'tenToaNha diaChi'
         }
-      });
+      })
+      .sort({ ngayTao: -1 });
 
-    // Đếm số hóa đơn chưa thanh toán
+    const hopDongHienTai = hopDongList.length > 0 ? hopDongList[0] : null;
+
+    // Cập nhật trạng thái hiển thị nếu tìm thấy hợp đồng
+    if (hopDongHienTai && khachThueDisplay.trangThai === 'chuaThue') {
+       (khachThueDisplay as any).trangThai = 'dangThue';
+    }
+
+    // Đếm số hóa đơn chưa thanh toán - Dùng các IDs liên quan
     const soHoaDonChuaThanhToan = await HoaDon.countDocuments({
-      khachThue: khachThue._id,
+      khachThue: { $in: linkedIds },
       trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan', 'quaHan'] }
     });
 
     // Lấy hóa đơn gần nhất
     const hoaDonGanNhat = await HoaDon.findOne({
-      khachThue: khachThue._id
+      khachThue: { $in: linkedIds }
     })
       .sort({ ngayTao: -1 })
       .populate('phong', 'maPhong');
@@ -87,19 +119,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        khachThue: {
-          _id: khachThue._id,
-          hoTen: khachThue.hoTen,
-          soDienThoai: khachThue.soDienThoai,
-          email: khachThue.email,
-          cccd: khachThue.cccd,
-          ngaySinh: khachThue.ngaySinh,
-          gioiTinh: khachThue.gioiTinh,
-          queQuan: khachThue.queQuan,
-          ngheNghiep: khachThue.ngheNghiep,
-          trangThai: khachThue.trangThai,
-        },
+        khachThue: khachThueDisplay,
         hopDongHienTai,
+        hopDongList,
         soHoaDonChuaThanhToan,
         hoaDonGanNhat
       }

@@ -64,6 +64,8 @@ export async function GET(request: NextRequest) {
       .skip((page - 1) * limit)
       .limit(limit);
 
+    console.log('GET /api/toa-nha: Found', toaNhaList.length, 'buildings for query:', JSON.stringify(query));
+
     // Tính tổng số phòng và thống kê trạng thái cho mỗi tòa nhà
     const toaNhaWithStats = await Promise.all(
       toaNhaList.map(async (toaNha) => {

@@ -64,10 +64,10 @@ const getPhongName = (phongId: string | Phong, phongList: Phong[]) => {
   return 'N/A';
 };
 
-const getKhachThueName = (khachThueId: string | KhachThue, khachThueList: KhachThue[]) => {
+const getKhachThueName = (khachThueId: string | any, khachThueList: KhachThue[]) => {
   if (!khachThueId) return 'N/A';
-  if (typeof khachThueId === 'object' && khachThueId.hoTen) {
-    return khachThueId.hoTen;
+  if (typeof khachThueId === 'object' && khachThueId) {
+    return khachThueId.hoTen || khachThueId.ten || khachThueId.name || 'Khách thuê';
   }
   if (typeof khachThueId === 'string') {
     const khachThue = khachThueList.find(k => k._id === khachThueId);

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import SuCo from '@/models/SuCo';
+import { isToaNhaAccessible } from '@/lib/auth-utils';
 import { z } from 'zod';
 
 const updateSuCoSchema = z.object({
@@ -18,7 +19,7 @@ const updateSuCoSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -31,8 +32,9 @@ export async function GET(
     }
 
     await dbConnect();
+    const { id } = await params;
 
-    const suCo = await SuCo.findById(params.id)
+    const suCo = await SuCo.findById(id)
       .populate('phong', 'maPhong toaNha')
       .populate('khachThue', 'hoTen soDienThoai')
       .populate('nguoiXuLy', 'ten email');
@@ -41,6 +43,16 @@ export async function GET(
       return NextResponse.json(
         { message: 'Sự cố không tồn tại' },
         { status: 404 }
+      );
+    }
+
+    // Kiểm tra quyền truy cập thông qua tòa nhà của phòng
+    const toaNhaId = (suCo.phong as any).toaNha || suCo.phong;
+    const hasAccess = await isToaNhaAccessible(session.user, toaNhaId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { message: 'Bạn không có quyền truy cập sự cố của tòa nhà này' },
+        { status: 403 }
       );
     }
 
@@ -60,7 +72,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -76,21 +88,33 @@ export async function PUT(
     const validatedData = updateSuCoSchema.parse(body);
 
     await dbConnect();
+    const { id } = await params;
 
-    const suCo = await SuCo.findByIdAndUpdate(
-      params.id,
-      validatedData,
-      { new: true, runValidators: true }
-    ).populate('phong', 'maPhong toaNha')
-     .populate('khachThue', 'hoTen soDienThoai')
-     .populate('nguoiXuLy', 'ten email');
-
-    if (!suCo) {
+    const existingSuCo = await SuCo.findById(id).populate('phong');
+    if (!existingSuCo) {
       return NextResponse.json(
         { message: 'Sự cố không tồn tại' },
         { status: 404 }
       );
     }
+
+    // Kiểm tra quyền chỉnh sửa
+    const toaNhaId = (existingSuCo.phong as any).toaNha || existingSuCo.phong;
+    const hasAccess = await isToaNhaAccessible(session.user, toaNhaId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { message: 'Bạn không có quyền chỉnh sửa sự cố của tòa nhà này' },
+        { status: 403 }
+      );
+    }
+
+    const suCo = await SuCo.findByIdAndUpdate(
+      id,
+      validatedData,
+      { new: true, runValidators: true }
+    ).populate('phong', 'maPhong toaNha')
+     .populate('khachThue', 'hoTen soDienThoai')
+     .populate('nguoiXuLy', 'ten email');
 
     return NextResponse.json({
       success: true,
@@ -116,7 +140,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -129,8 +153,9 @@ export async function DELETE(
     }
 
     await dbConnect();
+    const { id } = await params;
 
-    const suCo = await SuCo.findById(params.id);
+    const suCo = await SuCo.findById(id).populate('phong');
     if (!suCo) {
       return NextResponse.json(
         { message: 'Sự cố không tồn tại' },
@@ -138,7 +163,17 @@ export async function DELETE(
       );
     }
 
-    await SuCo.findByIdAndDelete(params.id);
+    // Kiểm tra quyền xóa
+    const toaNhaId = (suCo.phong as any).toaNha || suCo.phong;
+    const hasAccess = await isToaNhaAccessible(session.user, toaNhaId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { message: 'Bạn không có quyền xóa sự cố của tòa nhà này' },
+        { status: 403 }
+      );
+    }
+
+    await SuCo.findByIdAndDelete(id);
 
     return NextResponse.json({
       success: true,

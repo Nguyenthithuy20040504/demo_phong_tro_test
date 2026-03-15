@@ -66,7 +66,24 @@ export async function GET(request: NextRequest) {
     }
 
     const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
-    if (accessibleToaNhaIds !== null) {
+    
+    if (session.user.role === 'khachThue') {
+      const userId = session.user.id;
+      const linkedIds = [new mongoose.Types.ObjectId(userId)];
+      
+      const kt = await KhachThue.findOne({ 
+        $or: [
+          { _id: userId },
+          { soDienThoai: session.user.phone }
+        ]
+      }).select('_id');
+      
+      if (kt && kt._id.toString() !== userId) {
+        linkedIds.push(kt._id);
+      }
+      
+      query.khachThue = { $in: linkedIds };
+    } else if (accessibleToaNhaIds !== null) {
       if (accessibleToaNhaIds.length === 0) {
          return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
       }
@@ -81,14 +98,22 @@ export async function GET(request: NextRequest) {
     }
 
     const suCoListRaw = await SuCo.find(query)
-      .populate('phong', 'maPhong toaNha')
+      .populate({
+        path: 'phong',
+        select: 'maPhong toaNha',
+        populate: {
+          path: 'toaNha',
+          select: 'tenToaNha'
+        }
+      })
       .populate('nguoiXuLy', 'ten email')
       .sort({ ngayBaoCao: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean();
 
-    // Thủ công populate khachThue từ cả 2 collection
+    // Thủ công populate khachThue từ cả 2 collection và toaNha
+    const ToaNhaModel = mongoose.models.ToaNha || mongoose.model('ToaNha');
     const suCoList = await Promise.all(suCoListRaw.map(async (sc: any) => {
       let khachThue = null;
       if (sc.khachThue) {
@@ -97,6 +122,15 @@ export async function GET(request: NextRequest) {
           khachThue = await mongoose.model('NguoiDung').findOne({ _id: sc.khachThue, role: 'khachThue' }).select('hoTen soDienThoai').lean();
         }
       }
+      
+      // Xử lý an toàn cho Tòa nhà (trường hợp populate lồng nhau bị lỗi)
+      if (sc.phong && sc.phong.toaNha && typeof sc.phong.toaNha !== 'object') {
+        const toaNhaInfo = await ToaNhaModel.findById(sc.phong.toaNha).select('tenToaNha').lean();
+        if (toaNhaInfo) {
+          sc.phong.toaNha = toaNhaInfo;
+        }
+      }
+      
       return { ...sc, khachThue };
     }));
 
@@ -134,6 +168,52 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    
+    // Nếu là khách thuê, tự gán khachThue, nhưng cho phép chọn phòng từ hợp đồng đang hoạt động
+    if (session.user.role === 'khachThue') {
+      const userId = session.user.id;
+      
+      // Tìm khách thuê
+      let khachThue = await KhachThue.findOne({ 
+        $or: [
+          { _id: userId },
+          { soDienThoai: session.user.phone }
+        ]
+      }).select('_id');
+      
+      const ktId = khachThue ? khachThue._id : new mongoose.Types.ObjectId(userId);
+      
+      // Tìm tất cả hợp đồng hoạt động để xác thực phòng được chọn
+      const HopDong = (await import('@/models/HopDong')).default;
+      const activeContracts = await HopDong.find({
+        khachThueId: { $in: [new mongoose.Types.ObjectId(userId), ktId] },
+        trangThai: 'hoatDong'
+      }).select('phong');
+      
+      if (!activeContracts || activeContracts.length === 0) {
+        return NextResponse.json(
+          { message: 'Bạn không có hợp đồng thuê phòng nào đang hoạt động' },
+          { status: 400 }
+        );
+      }
+      
+      // Nếu client không gửi phòng, tự động lấy phòng đầu tiên
+      if (!body.phong) {
+        body.phong = activeContracts[0].phong.toString();
+      } else {
+        // Kiểm tra phòng client gửi phải thuộc hợp đồng của họ
+        const validPhongIds = activeContracts.map(c => c.phong.toString());
+        if (!validPhongIds.includes(body.phong)) {
+          return NextResponse.json(
+            { message: 'Phòng được chọn không thuộc hợp đồng của bạn' },
+            { status: 403 }
+          );
+        }
+      }
+      
+      body.khachThue = ktId.toString();
+    }
+
     const validatedData = suCoSchema.parse(body);
 
     await dbConnect();

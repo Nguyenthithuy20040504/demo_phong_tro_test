@@ -24,7 +24,7 @@ import {
   Calculator,
   RefreshCw
 } from 'lucide-react';
-import { HopDong, Phong, KhachThue } from '@/types';
+import { HopDong, Phong, KhachThue, ToaNha } from '@/types';
 import { toast } from 'sonner';
 
 // Helper functions
@@ -54,6 +54,7 @@ const getKhachThueName = (khachThueId: string | KhachThue, khachThueList: KhachT
 
 export default function ThemMoiHoaDonPage() {
   const router = useRouter();
+  const [toaNhaList, setToaNhaList] = useState<ToaNha[]>([]);
   const [hopDongList, setHopDongList] = useState<HopDong[]>([]);
   const [phongList, setPhongList] = useState<Phong[]>([]);
   const [khachThueList, setKhachThueList] = useState<KhachThue[]>([]);
@@ -62,6 +63,7 @@ export default function ThemMoiHoaDonPage() {
 
   const [formData, setFormData] = useState({
     maHoaDon: '',
+    toaNha: '',
     hopDong: '',
     phong: '',
     khachThue: '',
@@ -114,10 +116,11 @@ export default function ThemMoiHoaDonPage() {
 
   const fetchFormData = async () => {
     try {
-      const formDataResponse = await fetch('/api/hoa-don/form-data');
+      const formDataResponse = await fetch(`/api/hoa-don/form-data?t=${Date.now()}`, { cache: 'no-store' });
       if (formDataResponse.ok) {
         const formData = await formDataResponse.json();
         console.log('Form data loaded:', formData.data);
+        setToaNhaList(formData.data.toaNhaList || []);
         setHopDongList(formData.data.hopDongList || []);
         setPhongList(formData.data.phongList || []);
         setKhachThueList(formData.data.khachThueList || []);
@@ -151,6 +154,16 @@ export default function ThemMoiHoaDonPage() {
     }
   };
 
+  // Auto-select contract if room has only one active contract
+  useEffect(() => {
+    if (formData.phong && !formData.hopDong) {
+      const activeContracts = hopDongList.filter(hd => String(hd.phong) === String(formData.phong) && hd.trangThai === 'hoatDong');
+      if (activeContracts.length === 1) {
+        setFormData(prev => ({ ...prev, hopDong: activeContracts[0]._id! }));
+      }
+    }
+  }, [formData.phong, hopDongList]);
+
   // Auto-fill form data when contract is selected
   useEffect(() => {
     if (formData.hopDong) {
@@ -170,6 +183,7 @@ export default function ThemMoiHoaDonPage() {
           chiSoNuocBanDau: 0,
         }));
         
+        // Lấy chỉ số điện nước mới nhất
         fetchLatestElectricityReading(formData.hopDong, formData.thang, formData.nam);
       }
     }
@@ -351,7 +365,7 @@ export default function ThemMoiHoaDonPage() {
               </TabsList>
 
               <TabsContent value="thong-tin" className="space-y-3 md:space-y-4 mt-4 md:mt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
                   <div className="space-y-1">
                     <Label htmlFor="maHoaDon" className="text-xs md:text-sm">Mã hóa đơn</Label>
                     <div className="flex gap-2">
@@ -374,102 +388,108 @@ export default function ThemMoiHoaDonPage() {
                         <RefreshCw className="h-4 w-4" />
                       </Button>
                     </div>
-                    {formData.maHoaDon && (
-                      <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                        💡 Mã hóa đơn sẽ được tự động sinh nếu để trống
-                      </div>
-                    )}
                   </div>
                   
                   <div className="space-y-1">
-                    <Label htmlFor="hopDong" className="text-xs md:text-sm">Hợp đồng *</Label>
-                    <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded mb-1">
-                      {hopDongList.filter(hd => hd.trangThai === 'hoatDong').length} hợp đồng hoạt động
-                    </div>
-                    <Select value={formData.hopDong} onValueChange={(value) => setFormData(prev => ({ ...prev, hopDong: value }))}>
+                    <Label htmlFor="toaNha" className="text-xs md:text-sm">Tòa nhà *</Label>
+                    <Select 
+                      value={formData.toaNha} 
+                      onValueChange={(value) => {
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          toaNha: value,
+                          phong: '', // Reset phòng khi đổi tòa nhà
+                          hopDong: '', // Reset hợp đồng khi đổi tòa nhà
+                          khachThue: '',
+                          tienPhong: 0,
+                          phiDichVu: []
+                        }));
+                      }}
+                    >
                       <SelectTrigger className="h-10 text-sm">
-                        <SelectValue placeholder="Chọn hợp đồng" />
+                        <SelectValue placeholder="Chọn tòa nhà" />
                       </SelectTrigger>
-                      <SelectContent className="max-w-[500px]">
-                        {hopDongList.length === 0 ? (
-                          <div className="p-2 text-sm text-gray-500">Đang tải hợp đồng...</div>
-                        ) : (
-                          hopDongList
-                            .filter(hd => hd.trangThai === 'hoatDong')
-                            .map((hopDong) => {
-                              const phongObj = typeof hopDong.phong === 'object' ? (hopDong.phong as Phong) : null;
-                              const phongName = phongObj?.maPhong || getPhongName(hopDong.phong as string, phongList);
-                              const toaNhaName = phongObj?.toaNha && typeof phongObj.toaNha === 'object' 
-                                ? (phongObj.toaNha as any).tenToaNha 
-                                : 'N/A';
-                              const nguoiDaiDienName = getKhachThueName(hopDong.nguoiDaiDien, khachThueList);
-                              
-                              // Xử lý ngày tháng an toàn
-                              const formatDate = (date: any) => {
-                                try {
-                                  if (!date) return 'N/A';
-                                  const dateObj = new Date(date);
-                                  if (isNaN(dateObj.getTime())) return 'N/A';
-                                  return dateObj.toLocaleDateString('vi-VN');
-                                } catch (error) {
-                                  return 'N/A';
-                                }
-                              };
-                              
-                              const ngayBatDau = formatDate(hopDong.ngayBatDau);
-                              const ngayKetThuc = formatDate(hopDong.ngayKetThuc);
-                              
-                              return (
-                                <SelectItem 
-                                  key={hopDong._id} 
-                                  value={hopDong._id!}
-                                  className="cursor-pointer"
-                                >
-                                  <div className="flex flex-col gap-1 py-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-semibold text-blue-700">{hopDong.maHopDong}</span>
-                                      <span className="text-gray-400">•</span>
-                                      <span className="text-sm font-medium text-gray-700">Phòng {phongName}</span>
-                                      {toaNhaName !== 'N/A' && (
-                                        <>
-                                          <span className="text-gray-400">•</span>
-                                          <span className="text-sm text-gray-600">{toaNhaName}</span>
-                                        </>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-3 text-xs text-gray-500">
-                                      <span>👤 {nguoiDaiDienName}</span>
-                                      <span className="text-gray-400">•</span>
-                                      <span>📅 {ngayBatDau !== 'N/A' && ngayKetThuc !== 'N/A' ? `${ngayBatDau} → ${ngayKetThuc}` : 'Chưa có thông tin ngày'}</span>
-                                    </div>
-                                  </div>
-                                </SelectItem>
-                              );
-                            })
-                        )}
+                      <SelectContent>
+                        {toaNhaList.map((toaNha) => (
+                          <SelectItem key={toaNha._id} value={toaNha._id!}>
+                            {toaNha.tenToaNha}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="phong" className="text-xs md:text-sm">Phòng *</Label>
+                    <Select 
+                      value={formData.phong} 
+                      onValueChange={(value) => {
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          phong: value,
+                          hopDong: '', // Reset hợp đồng khi đổi phòng
+                          khachThue: '',
+                          tienPhong: 0,
+                          phiDichVu: []
+                        }));
+                      }}
+                      disabled={!formData.toaNha}
+                    >
+                      <SelectTrigger className="h-10 text-sm">
+                        <SelectValue placeholder={formData.toaNha ? "Chọn phòng" : "Vui lòng chọn tòa nhà trước"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {phongList
+                          .filter(p => p.toaNha === formData.toaNha)
+                          .map((phong) => (
+                            <SelectItem key={phong._id} value={phong._id!}>
+                              Phòng {phong.maPhong}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   <div className="space-y-1">
-                    <Label htmlFor="phong" className="text-sm">Phòng</Label>
-                    <Input
-                      id="phong"
-                      value={getPhongName(formData.phong, phongList)}
-                      disabled
-                      className="bg-gray-50 h-10"
-                    />
+                    <Label htmlFor="hopDong" className="text-xs md:text-sm">Hợp đồng *</Label>
+                    <Select 
+                      value={formData.hopDong} 
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, hopDong: value }))}
+                      disabled={!formData.phong}
+                    >
+                      <SelectTrigger className="h-10 text-sm">
+                        <SelectValue placeholder={formData.phong ? "Chọn hợp đồng" : "Vui lòng chọn phòng trước"} />
+                      </SelectTrigger>
+                      <SelectContent className="max-w-[500px]">
+                        {hopDongList
+                          .filter(hd => String(hd.phong) === String(formData.phong) && hd.trangThai === 'hoatDong')
+                          .map((hopDong) => {
+                            const nguoiDaiDienName = getKhachThueName(hopDong.nguoiDaiDien, khachThueList);
+                            return (
+                              <SelectItem key={hopDong._id} value={hopDong._id!}>
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="font-semibold text-blue-700">{hopDong.maHopDong}</span>
+                                  <span className="text-xs text-gray-500">👤 {nguoiDaiDienName}</span>
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
+                      </SelectContent>
+                    </Select>
+                    {formData.phong && hopDongList.filter(hd => String(hd.phong) === String(formData.phong) && hd.trangThai === 'hoatDong').length === 0 && (
+                      <p className="text-[10px] text-red-500 mt-1">Phòng này hiện chưa có hợp đồng hoạt động</p>
+                    )}
                   </div>
-                  
+
                   <div className="space-y-1">
-                    <Label htmlFor="khachThue" className="text-sm">Khách thuê</Label>
+                    <Label htmlFor="khachThue" className="text-xs md:text-sm">Khách thuê</Label>
                     <Input
                       id="khachThue"
                       value={getKhachThueName(formData.khachThue, khachThueList)}
                       disabled
-                      className="bg-gray-50 h-10"
+                      className="bg-gray-50 h-10 text-sm"
                     />
                   </div>
                 </div>

@@ -148,9 +148,9 @@ const getPhongName = (phong: string | { maPhong: string }, phongList: Phong[]) =
   return phongObj?.maPhong || 'N/A'
 }
 
-const getKhachThueName = (khachThue: string | { hoTen: string }, khachThueList: KhachThue[]) => {
-  if (typeof khachThue === 'object' && khachThue?.hoTen) {
-    return khachThue.hoTen
+const getKhachThueName = (khachThue: string | { hoTen?: string; ten?: string; name?: string }, khachThueList: KhachThue[]) => {
+  if (typeof khachThue === 'object' && khachThue) {
+    return khachThue.hoTen || khachThue.ten || khachThue.name || 'Khách thuê';
   }
   const khachThueObj = khachThueList.find(k => k._id === khachThue)
   return khachThueObj?.hoTen || 'N/A'

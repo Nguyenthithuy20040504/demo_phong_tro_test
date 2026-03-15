@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import Phong from '@/models/Phong';
 import ToaNha from '@/models/ToaNha';
+import { isToaNhaAccessible } from '@/lib/auth-utils';
 import { updatePhongStatus } from '@/lib/status-utils';
 import { z } from 'zod';
 
@@ -37,9 +38,6 @@ export async function GET(
     await dbConnect();
     const { id } = await params;
 
-    // Cập nhật trạng thái phòng trước khi trả về
-    await updatePhongStatus(id);
-
     const phong = await Phong.findById(id)
       .populate('toaNha', 'tenToaNha diaChi');
 
@@ -49,6 +47,18 @@ export async function GET(
         { status: 404 }
       );
     }
+
+    // Kiểm tra quyền truy cập thông qua tòa nhà
+    const hasAccess = await isToaNhaAccessible(session.user, (phong.toaNha as any)._id || phong.toaNha);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { message: 'Bạn không có quyền truy cập thông tin phòng này' },
+        { status: 403 }
+      );
+    }
+
+    // Cập nhật trạng thái phòng trước khi trả về
+    await updatePhongStatus(id);
 
     return NextResponse.json({
       success: true,
@@ -84,6 +94,35 @@ export async function PUT(
     await dbConnect();
     const { id } = await params;
 
+    // Check if room exists
+    const existingRoom = await Phong.findById(id);
+    if (!existingRoom) {
+      return NextResponse.json(
+        { message: 'Phòng không tồn tại' },
+        { status: 404 }
+      );
+    }
+
+    // Kiểm tra quyền chỉnh sửa thông qua tòa nhà HIỆN TẠI của phòng
+    const hasAccessToCurrent = await isToaNhaAccessible(session.user, existingRoom.toaNha);
+    if (!hasAccessToCurrent) {
+      return NextResponse.json(
+        { message: 'Bạn không có quyền chỉnh sửa phòng của tòa nhà này' },
+        { status: 403 }
+      );
+    }
+
+    // Nếu thay đổi tòa nhà, kiểm tra xem có quyền ở tòa nhà MỚI không
+    if (validatedData.toaNha && validatedData.toaNha.toString() !== existingRoom.toaNha.toString()) {
+      const hasAccessToNew = await isToaNhaAccessible(session.user, validatedData.toaNha);
+      if (!hasAccessToNew) {
+        return NextResponse.json(
+          { message: 'Bạn không có quyền chuyển phòng sang tòa nhà này' },
+          { status: 403 }
+        );
+      }
+    }
+
     // Check if toa nha exists
     const toaNha = await ToaNha.findById(validatedData.toaNha);
     if (!toaNha) {
@@ -94,13 +133,13 @@ export async function PUT(
     }
 
     // Check duplicate checking for PUT
-    const existingPhong = await Phong.findOne({
+    const duplicatePhong = await Phong.findOne({
       _id: { $ne: id },
       toaNha: validatedData.toaNha,
       maPhong: validatedData.maPhong.trim().toUpperCase()
     });
     
-    if (existingPhong) {
+    if (duplicatePhong) {
       return NextResponse.json(
         { message: 'Số phòng này đã tồn tại trong tòa nhà' },
         { status: 400 }
@@ -117,13 +156,6 @@ export async function PUT(
       },
       { new: true, runValidators: true }
     ).populate('toaNha', 'tenToaNha diaChi');
-
-    if (!phong) {
-      return NextResponse.json(
-        { message: 'Phòng không tồn tại' },
-        { status: 404 }
-      );
-    }
 
     // Cập nhật trạng thái dựa trên hợp đồng sau khi cập nhật phòng
     await updatePhongStatus(id);
@@ -176,6 +208,15 @@ export async function DELETE(
       return NextResponse.json(
         { message: 'Phòng không tồn tại' },
         { status: 404 }
+      );
+    }
+
+    // Kiểm tra quyền xóa thông qua tòa nhà
+    const hasAccess = await isToaNhaAccessible(session.user, phong.toaNha);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { message: 'Bạn không có quyền xóa phòng của tòa nhà này' },
+        { status: 403 }
       );
     }
 
