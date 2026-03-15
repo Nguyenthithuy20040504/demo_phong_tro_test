@@ -92,11 +92,18 @@ export async function getAccessibleKhachThueIds(user: any): Promise<mongoose.Typ
          chuNhaId = nhanVien.nguoiQuanLy.toString();
       }
     }
-    const managedKhachThues = await mongoose.model('KhachThue').find({ nguoiQuanLy: chuNhaId }).select('_id');
+    
+    // Tìm trong cả KhachThue model và NguoiDung model (role khachThue)
+    const [managedKhachThues, managedUserTenants] = await Promise.all([
+      mongoose.model('KhachThue').find({ nguoiQuanLy: chuNhaId }).select('_id'),
+      mongoose.model('NguoiDung').find({ nguoiQuanLy: chuNhaId, role: 'khachThue' }).select('_id')
+    ]);
+
     const managedKhachThueIds = managedKhachThues.map(k => k._id);
+    const managedUserTenantIds = managedUserTenants.map(u => u._id);
     
     // Gộp tất cả và bỏ ID trùng
-    const allKhachThueIds = [...khachThueIds, ...managedKhachThueIds];
+    const allKhachThueIds = [...khachThueIds, ...managedKhachThueIds, ...managedUserTenantIds];
 
     // Remove duplicates
     const uniqueIds = Array.from<string>(new Set(allKhachThueIds.map((id: any) => id.toString())))

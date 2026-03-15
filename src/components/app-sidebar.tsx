@@ -82,10 +82,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "Thông báo",
             url: "/dashboard/thong-bao",
           },
-          {
-            title: "Xem Web",
-            url: "/dashboard/xem-web",
-          },
         ],
       },
       {

@@ -8,6 +8,7 @@ import KhachThue from '@/models/KhachThue';
 import { updatePhongStatus, updateAllKhachThueStatus } from '@/lib/status-utils';
 import { getAccessibleToaNhaIds } from '@/lib/auth-utils';
 import { z } from 'zod';
+import mongoose from 'mongoose';
 
 const phiDichVuSchema = z.object({
   ten: z.string().min(1, 'Tên dịch vụ là bắt buộc'),
@@ -143,9 +144,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if all khach thue exist
-    const khachThueList = await KhachThue.find({ _id: { $in: validatedData.khachThueId } });
-    if (khachThueList.length !== validatedData.khachThueId.length) {
+    // Check if all khach thue exist (in both KhachThue and NguoiDung collections)
+    const [khachThueFromKT, khachThueFromND] = await Promise.all([
+      KhachThue.find({ _id: { $in: validatedData.khachThueId } }).select('_id'),
+      mongoose.model('NguoiDung').find({ _id: { $in: validatedData.khachThueId }, role: 'khachThue' }).select('_id')
+    ]);
+    const totalFound = new Set([
+      ...khachThueFromKT.map((k: any) => k._id.toString()),
+      ...khachThueFromND.map((u: any) => u._id.toString())
+    ]);
+    if (totalFound.size !== validatedData.khachThueId.length) {
       return NextResponse.json(
         { message: 'Một hoặc nhiều khách thuê không tồn tại' },
         { status: 400 }
