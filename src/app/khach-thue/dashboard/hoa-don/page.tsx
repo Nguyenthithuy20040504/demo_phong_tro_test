@@ -12,8 +12,7 @@ import {
   FileText, 
   Filter, 
   Download,
-  FileSpreadsheet,
-  FileAsPdf
+  FileSpreadsheet
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState, useMemo } from 'react';
@@ -51,15 +50,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { saveAs } from 'file-saver';
-
-// Extend jsPDF for autotable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
 
 export default function HoaDonKhachThuePage() {
   const [hoaDons, setHoaDons] = useState<HoaDon[]>([]);
@@ -186,7 +178,7 @@ export default function HoaDonKhachThuePage() {
       getStatusText(hd.trangThai)
     ]);
 
-    doc.autoTable({
+    autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
       startY: 35,
@@ -474,8 +466,8 @@ export default function HoaDonKhachThuePage() {
                     <div>
                       <div className="text-sm font-medium text-gray-800">Tiền điện</div>
                       <div className="text-xs text-gray-400">
-                        {selectedHoaDon.chiSoDienCu ?? '?'} → {selectedHoaDon.chiSoDienMoi ?? '?'} · {selectedHoaDon.soDien} kWh
-                        {selectedHoaDon.giaDien ? ` · ${fmt(selectedHoaDon.giaDien)}/kWh` : ''}
+                        {selectedHoaDon.chiSoDienBanDau ?? '?'} → {selectedHoaDon.chiSoDienCuoiKy ?? '?'} · {selectedHoaDon.soDien} kWh
+                        {(selectedHoaDon as any).giaDien ? ` · ${fmt((selectedHoaDon as any).giaDien)}/kWh` : ''}
                       </div>
                     </div>
                   </div>
@@ -491,8 +483,8 @@ export default function HoaDonKhachThuePage() {
                     <div>
                       <div className="text-sm font-medium text-gray-800">Tiền nước</div>
                       <div className="text-xs text-gray-400">
-                        {selectedHoaDon.chiSoNuocCu ?? '?'} → {selectedHoaDon.chiSoNuocMoi ?? '?'} · {selectedHoaDon.soNuoc} m³
-                        {selectedHoaDon.giaNuoc ? ` · ${fmt(selectedHoaDon.giaNuoc)}/m³` : ''}
+                        {selectedHoaDon.chiSoNuocBanDau ?? '?'} → {selectedHoaDon.chiSoNuocCuoiKy ?? '?'} · {selectedHoaDon.soNuoc} m³
+                        {(selectedHoaDon as any).giaNuoc ? ` · ${fmt((selectedHoaDon as any).giaNuoc)}/m³` : ''}
                       </div>
                     </div>
                   </div>
@@ -500,9 +492,9 @@ export default function HoaDonKhachThuePage() {
                 </div>
 
                 {/* Phí dịch vụ khác nếu có */}
-                {selectedHoaDon.phiDichVuKhac && selectedHoaDon.phiDichVuKhac.length > 0 && (
+                {selectedHoaDon.phiDichVu && selectedHoaDon.phiDichVu.length > 0 && (
                   <>
-                    {selectedHoaDon.phiDichVuKhac.map((phi: any, i: number) => (
+                    {selectedHoaDon.phiDichVu.map((phi: any, i: number) => (
                       <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                         <div className="flex items-center gap-3">
                           <div className="size-8 rounded-lg bg-purple-100 flex items-center justify-center">
