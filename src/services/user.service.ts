@@ -132,4 +132,60 @@ export class UserService {
 
     return null;
   }
+
+  /**
+   * Đổi mật khẩu
+   */
+  static async changePassword(email: string, data: any) {
+    try {
+      await dbConnect();
+      
+      // Tìm trong NguoiDung trước
+      let user = await NguoiDung.findOne({ email });
+      let isKhachThue = false;
+      
+      if (!user) {
+        user = await KhachThue.findOne({ email });
+        isKhachThue = true;
+      }
+      
+      if (!user) {
+        return { success: false, message: 'Không tìm thấy người dùng' };
+      }
+      
+      // KhachThue schema might be different. Checking if it has comparePassword method.
+      // If not, we might need a custom compare logic for KhachThue or assume it uses standard bcrypt
+      let isMatch = false;
+      
+      if (typeof user.comparePassword === 'function') {
+        isMatch = await user.comparePassword(data.currentPassword);
+      } else {
+        // Fallback or specific logic for KhachThue if comparePassword isn't defined
+        const bcrypt = require('bcryptjs');
+        const passwordToCheck = user.matKhau || user.password;
+        if (passwordToCheck) {
+             isMatch = await bcrypt.compare(data.currentPassword, passwordToCheck);
+        }
+      }
+      
+      if (!isMatch) {
+         return { success: false, message: 'Mật khẩu hiện tại không đúng' };
+      }
+      
+      // Update password
+      if (user.matKhau !== undefined) {
+         user.matKhau = data.newPassword;
+      }
+      if (user.password !== undefined) {
+         user.password = data.newPassword;
+      }
+      
+      await user.save();
+      return { success: true, message: 'Đổi mật khẩu thành công' };
+      
+    } catch (error) {
+       console.error('Error changing password:', error);
+       return { success: false, message: 'Lỗi server' };
+    }
+  }
 }

@@ -114,12 +114,12 @@ export default function ChinhSuaHopDongPage() {
             trangThai: hopDongItem.trangThai || 'hoatDong',
           });
         } else {
-          toast.error('Không tìm thấy hợp đồng');
+          toast.error('Hệ thống không tìm thấy hợp đồng này rồi!');
           router.push('/dashboard/hop-dong');
           return;
         }
       } else {
-        toast.error('Lỗi khi tải thông tin hợp đồng');
+        toast.error('Có lỗi khi tải thông tin hợp đồng. Bạn thử lại sau nhé!');
         router.push('/dashboard/hop-dong');
         return;
       }
@@ -232,18 +232,17 @@ export default function ChinhSuaHopDongPage() {
         const result = await response.json();
         // Xóa cache để force refresh data
         sessionStorage.removeItem('hop-dong-data');
-        toast.success(result.message || 'Đã cập nhật hợp đồng thành công');
+        toast.success(result.message || 'Hợp đồng đã được cập nhật thành công rồi nhé!');
         // Sử dụng replace để không tạo history entry mới
         // và refresh để cập nhật dữ liệu server-side
         router.replace('/dashboard/hop-dong');
         router.refresh();
       } else {
         const errorData = await response.json();
-        toast.error(errorData.message || 'Có lỗi xảy ra');
+        toast.error(errorData.message || 'Ồ, chưa lưu được thay đổi cho hợp đồng này. Bạn thử lại nhé!');
       }
     } catch (error) {
-      console.error('Error submitting form:', error);
-      toast.error('Có lỗi xảy ra khi lưu hợp đồng');
+      toast.error('Lỗi kết nối khi gửi dữ liệu rồi.');
     } finally {
       setSubmitting(false);
     }

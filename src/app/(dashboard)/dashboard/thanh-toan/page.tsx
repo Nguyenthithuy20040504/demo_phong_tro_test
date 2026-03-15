@@ -123,7 +123,7 @@ export default function ThanhToanPage() {
     cache.setIsRefreshing(true);
     await fetchData(true);
     cache.setIsRefreshing(false);
-    toast.success('Đã tải dữ liệu mới nhất');
+    toast.success('Dữ liệu thanh toán đã được làm mới!');
   };
 
   const testPaymentAPI = async () => {
@@ -221,14 +221,13 @@ export default function ThanhToanPage() {
       if (response.ok) {
         cache.clearCache();
         setThanhToanList(prev => prev.filter(thanhToan => thanhToan._id !== id));
-        toast.success('Xóa thanh toán thành công');
-      } else{
+        toast.success('Đã xóa lịch sử thanh toán thành công!');
+      } else {
         const errorData = await response.json();
-        toast.error('Có lỗi xảy ra: ' + (errorData.message || 'Không thể xóa thanh toán'));
+        toast.error('Chưa xóa được giao dịch này. ' + (errorData.message || 'Bạn kiểm tra lại nhé!'));
       }
     } catch (error) {
-      console.error('Error deleting thanh toan:', error);
-      toast.error('Có lỗi xảy ra khi xóa thanh toán');
+      toast.error('Lỗi kết nối rồi. Bạn kiểm tra lại mạng xem sao!');
     }
   };
 
@@ -616,17 +615,14 @@ function ThanhToanForm({
       });
 
       if (response.ok) {
-        const result = await response.json();
-        console.log('Success:', result);
+        toast.success(thanhToan ? 'Cập nhật thông tin thanh toán thành công!' : 'Đã ghi nhận thanh toán thành công!');
         onSuccess();
       } else {
         const errorData = await response.json();
-        console.error('Error:', errorData);
-        alert('Có lỗi xảy ra: ' + (errorData.message || 'Không thể lưu dữ liệu'));
+        toast.error('Có chút trục trặc: ' + (errorData.message || 'không thể lưu dữ liệu nhé!'));
       }
     } catch (error) {
-      console.error('Error submitting form:', error);
-      alert('Có lỗi xảy ra khi gửi dữ liệu');
+      toast.error('Lỗi kết nối khi gửi dữ liệu thanh toán.');
     }
   };
 

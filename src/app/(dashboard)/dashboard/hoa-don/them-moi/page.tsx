@@ -214,22 +214,22 @@ export default function ThemMoiHoaDonPage() {
     
     // Kiểm tra validation trước khi submit
     if (formData.chiSoDienBanDau < 0 || formData.chiSoDienCuoiKy < 0) {
-      toast.error('Chỉ số điện không được âm');
+      toast.error('Chỉ số điện không được âm bạn nhé!');
       return;
     }
     
     if (formData.chiSoNuocBanDau < 0 || formData.chiSoNuocCuoiKy < 0) {
-      toast.error('Chỉ số nước không được âm');
+      toast.error('Chỉ số nước không được để giá trị âm đâu nè.');
       return;
     }
     
     if (formData.chiSoDienCuoiKy < formData.chiSoDienBanDau) {
-      toast.error('Chỉ số điện cuối kỳ phải lớn hơn hoặc bằng chỉ số ban đầu');
+      toast.error('Chỉ số điện cuối kỳ phải lớn hơn hoặc bằng chỉ số ban đầu mới đúng nhé!');
       return;
     }
     
     if (formData.chiSoNuocCuoiKy < formData.chiSoNuocBanDau) {
-      toast.error('Chỉ số nước cuối kỳ phải lớn hơn hoặc bằng chỉ số ban đầu');
+      toast.error('Bạn kiểm tra lại chỉ số nước nhé, số cuối kỳ phải lớn hơn số ban đầu.');
       return;
     }
     
@@ -255,18 +255,16 @@ export default function ThemMoiHoaDonPage() {
 
       if (response.ok) {
         const result = await response.json();
-        // Xóa cache
         sessionStorage.removeItem('hoa-don-data');
-        toast.success(result.message || 'Hóa đơn đã được tạo thành công');
+        toast.success(result.message || 'Tuyệt vời! Hóa đơn đã được tạo thành công.');
         router.replace('/dashboard/hoa-don');
         router.refresh();
       } else {
         const errorData = await response.json();
-        toast.error(errorData.message || 'Có lỗi xảy ra');
+        toast.error(errorData.message || 'Ồ, có lỗi khi tạo hóa đơn. Bạn thử lại xem sao!');
       }
     } catch (error) {
-      console.error('Error submitting form:', error);
-      toast.error('Có lỗi xảy ra khi gửi dữ liệu');
+      toast.error('Lỗi kết nối rồi. Bạn kiểm tra lại mạng nhé!');
     } finally {
       setSubmitting(false);
     }

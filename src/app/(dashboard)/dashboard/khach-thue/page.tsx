@@ -162,14 +162,22 @@ export default function KhachThuePage() {
     try {
       setActionLoading(`delete-${id}`);
       const response = await fetch(`/api/khach-thue/${id}`, { method: 'DELETE' });
+      const result = await response.json();
       
-      if (response.ok) {
+      if (response.ok && result.success) {
         cache.clearCache();
         setKhachThueList(prev => prev.filter(kt => kt._id !== id));
-        toast.success('Chủ thể đã được gỡ bỏ khỏi hệ thống');
+        toast.success('Đã xóa khách thuê thành công!');
+      } else {
+        const msg = (result.message || '').toLowerCase();
+        if (msg.includes('hop dong') || msg.includes('hợp đồng') || msg.includes('contract')) {
+          toast.error('Không thể xóa vì khách thuê này đang có hợp đồng hoạt động!');
+        } else {
+          toast.error('Xóa thất bại. Vui lòng thử lại sau.');
+        }
       }
     } catch (error) {
-      toast.error('Thao tác gỡ bỏ thất bại');
+      toast.error('Mất kết nối đến máy chủ. Kiểm tra mạng rồi thử lại nhé!');
     } finally {
       setActionLoading(null);
     }
@@ -179,7 +187,7 @@ export default function KhachThuePage() {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
         <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-        <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground animate-pulse">Synchronizing Nodes...</span>
+        <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground animate-pulse">Đang tải dữ liệu...</span>
       </div>
     );
   }
@@ -196,11 +204,11 @@ export default function KhachThuePage() {
         <div className="space-y-2">
            <div className="flex items-center gap-3">
               <span className="h-px w-8 bg-primary/40" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-primary/60">Module Định danh</span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-primary/60">Quản lý khách hàng</span>
            </div>
-           <h1 className="text-4xl md:text-5xl font-['Playfair_Display'] italic text-foreground tracking-tight">Cư trú & Liên lạc</h1>
+           <h1 className="text-4xl md:text-5xl font-['Playfair_Display'] italic text-foreground tracking-tight">Khách thuê</h1>
            <p className="text-sm text-muted-foreground max-w-md font-medium leading-relaxed">
-             Quản lý vòng đời cư trú của khách hàng, hồ sơ định danh và các kênh giao thức liên lạc.
+             Quản lý thông tin khách thuê, hợp đồng và lịch sử thanh toán.
            </p>
         </div>
 
@@ -213,23 +221,23 @@ export default function KhachThuePage() {
               className="h-11 px-5 rounded-2xl bg-background/50 backdrop-blur-md border-border/40 text-[10px] font-bold uppercase tracking-widest hover:bg-secondary/40 transition-all flex-1 sm:flex-none"
             >
               <RefreshCw className={`size-3.5 mr-2 ${cache.isRefreshing ? 'animate-spin' : ''}`} />
-              Đồng bộ dữ liệu
+              Tải mới
             </Button>
             
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="sm" onClick={() => setEditingKhachThue(null)} className="h-11 px-6 rounded-2xl bg-primary shadow-premium hover:shadow-premium-hover transition-all text-[10px] font-bold uppercase tracking-widest gap-2 flex-1 sm:flex-none">
                   <Plus className="size-4" />
-                  Ghi danh chủ thể
+                  Thêm khách thuê
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-background/80 backdrop-blur-2xl border-border/40 rounded-[2.5rem] p-8">
                 <DialogHeader className="mb-8">
                   <DialogTitle className="text-3xl font-bold italic tracking-tight font-['Playfair_Display']">
-                    {editingKhachThue ? 'Cập nhật định danh' : 'Ghi danh chủ thể mới'}
+                    {editingKhachThue ? 'Cập nhật thông tin' : 'Thêm khách thuê mới'}
                   </DialogTitle>
                   <DialogDescription className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">
-                    {editingKhachThue ? 'Hiệu chỉnh thông số hồ sơ cư trú' : 'Thiết lập định danh ban đầu cho khách hàng'}
+                    {editingKhachThue ? 'Cập nhật hồ sơ khách thuê' : 'Nhập thông tin cơ bản cho khách thuê mới'}
                   </DialogDescription>
                 </DialogHeader>
                 
@@ -240,7 +248,7 @@ export default function KhachThuePage() {
                     cache.clearCache();
                     setIsDialogOpen(false);
                     fetchKhachThue(true);
-                    toast.success(editingKhachThue ? 'Đã cập nhật hồ sơ' : 'Đã ghi danh thành công');
+                    toast.success(editingKhachThue ? 'Đã cập nhật hồ sơ' : 'Thêm khách thuê thành công');
                   }}
                 />
               </DialogContent>
@@ -251,10 +259,10 @@ export default function KhachThuePage() {
       {/* Stats Section with Glassmorphism */}
       <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Tổng chủ thể', value: khachThueList.length, icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/5' },
-            { label: 'Đang khai thác', value: khachThueList.filter(k => k.trangThai === 'dangThue').length, icon: UserCheck, color: 'text-emerald-500', bg: 'bg-emerald-500/5' },
-            { label: 'Hết hiệu lực', value: khachThueList.filter(k => k.trangThai === 'daTraPhong').length, icon: UserX, color: 'text-slate-500', bg: 'bg-slate-500/5' },
-            { label: 'Node chờ', value: khachThueList.filter(k => k.trangThai === 'chuaThue').length, icon: Sparkles, color: 'text-amber-500', bg: 'bg-amber-500/5' },
+            { label: 'Tổng khách', value: khachThueList.length, icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/5' },
+            { label: 'Đang thuê', value: khachThueList.filter(k => k.trangThai === 'dangThue').length, icon: UserCheck, color: 'text-emerald-500', bg: 'bg-emerald-500/5' },
+            { label: 'Đã trả phòng', value: khachThueList.filter(k => k.trangThai === 'daTraPhong').length, icon: UserX, color: 'text-slate-500', bg: 'bg-slate-500/5' },
+            { label: 'Chờ duyệt', value: khachThueList.filter(k => k.trangThai === 'chuaThue').length, icon: Sparkles, color: 'text-amber-500', bg: 'bg-amber-500/5' },
           ].map((stat, i) => (
             <Card key={i} className="group relative overflow-hidden border-none bg-background/40 backdrop-blur-md rounded-3xl p-6 hover:shadow-premium transition-all duration-500">
                <div className={`absolute top-0 right-0 size-24 ${stat.bg} rounded-bl-full opacity-50 group-hover:scale-110 transition-transform duration-500`} />
@@ -293,17 +301,17 @@ export default function KhachThuePage() {
       <motion.div variants={itemVariants} className="md:hidden space-y-8">
         <div className="flex items-center justify-between px-2">
             <div className="flex flex-col">
-               <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Identity Cluster</span>
-               <span className="text-lg font-bold italic font-['Playfair_Display'] tracking-tight">Thực thể cư trú</span>
+               <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Danh sách</span>
+               <span className="text-lg font-bold italic font-['Playfair_Display'] tracking-tight">Khách thuê</span>
             </div>
-            <Badge variant="outline" className="h-7 rounded-full px-3 text-[10px] font-bold border-border/40">{filteredKhachThue.length} NODES</Badge>
+            <Badge variant="outline" className="h-7 rounded-full px-3 text-[10px] font-bold border-border/40">{filteredKhachThue.length} Người</Badge>
         </div>
 
         <div className="space-y-4 px-2">
            <div className="relative group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/40" />
               <Input
-                placeholder="Truy vấn thực thể..."
+                placeholder="Tìm kiếm khách..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-12 h-12 bg-secondary/20 border-transparent rounded-[1.25rem] text-sm"
@@ -315,7 +323,7 @@ export default function KhachThuePage() {
           {filteredKhachThue.length === 0 ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-20 flex flex-col items-center justify-center gap-4 opacity-40">
               <Users className="size-12 stroke-[1]" />
-              <p className="text-xs font-bold uppercase tracking-widest">No nodes discovered</p>
+              <p className="text-xs font-bold uppercase tracking-widest">Không tìm thấy khách thuê</p>
             </motion.div>
           ) : (
             <div className="grid grid-cols-1 gap-6 px-2">
@@ -364,7 +372,7 @@ export default function KhachThuePage() {
                       onClick={() => handleEdit(kt)}
                     >
                       <Edit className="size-3.5" />
-                      Hiệu chỉnh
+                      Chỉnh sửa
                     </Button>
                     <Button
                       variant="ghost"
@@ -437,7 +445,18 @@ function KhachThueForm({
         onSuccess(result.data);
       } else {
         const error = await response.json();
-        toast.error(error.message || 'Thao tác không thành công');
+        const msg = (error.message || '').toLowerCase();
+        if (msg.includes('duplicate') || msg.includes('cccd') || msg.includes('phone') || msg.includes('sdt')) {
+          toast.error('Số điện thoại hoặc số CCCD đã được đăng ký trước đó. Vui lòng kiểm tra lại!');
+        } else if (msg.includes('email')) {
+          toast.error('Email này đã được sử dụng. Hãy dùng email khác!');
+        } else if (response.status === 400) {
+          toast.error('Thông tin chưa đầy đủ hoặc không hợp lệ. Kiểm tra lại nhé!');
+        } else if (response.status === 403) {
+          toast.error('Bạn không có quyền thực hiện thao tác này.');
+        } else {
+          toast.error(error.message || 'Có lỗi xảy ra. Vui lòng thử lại!');
+        }
       }
     } catch (error) {
       toast.error('Lỗi kết nối máy chủ');
@@ -451,17 +470,17 @@ function KhachThueForm({
       <Tabs defaultValue="thong-tin" className="w-full">
         <TabsList className="bg-secondary/20 p-1.5 rounded-2xl mb-8 flex w-fit gap-1">
           <TabsTrigger value="thong-tin" className="rounded-xl px-6 py-2 text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-background data-[state=active]:shadow-premium transition-all">
-            Hồ sơ chủ thể
+            Hồ sơ khách thuê
           </TabsTrigger>
           <TabsTrigger value="anh-cccd" className="rounded-xl px-6 py-2 text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-background data-[state=active]:shadow-premium transition-all">
-            Số hóa CCCD
+            Hình ảnh CCCD
           </TabsTrigger>
         </TabsList>
         
         <TabsContent value="thong-tin" className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
-              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Danh xưng đầy đủ</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Họ và tên</Label>
               <Input
                 value={formData.hoTen}
                 onChange={(e) => setFormData(prev => ({ ...prev, hoTen: e.target.value }))}
@@ -471,7 +490,7 @@ function KhachThueForm({
             </div>
             
             <div className="space-y-3">
-              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Phân tuyến Liên lạc</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Số điện thoại</Label>
               <Input
                 value={formData.soDienThoai}
                 onChange={(e) => setFormData(prev => ({ ...prev, soDienThoai: e.target.value }))}
@@ -483,7 +502,7 @@ function KhachThueForm({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
-              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Kênh Email</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Email</Label>
               <Input
                 type="email"
                 value={formData.email}
@@ -493,7 +512,7 @@ function KhachThueForm({
             </div>
             
             <div className="space-y-3">
-              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Mã định danh (CCCD)</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Số CCCD</Label>
               <Input
                 value={formData.cccd}
                 onChange={(e) => setFormData(prev => ({ ...prev, cccd: e.target.value }))}
@@ -505,7 +524,7 @@ function KhachThueForm({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
-              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Tọa độ thời gian (Ngày sinh)</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Ngày sinh</Label>
               <Input
                 type="date"
                 value={formData.ngaySinh}
@@ -516,7 +535,7 @@ function KhachThueForm({
             </div>
             
             <div className="space-y-3">
-              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Phân loại giới tính</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Giới tính</Label>
               <Select value={formData.gioiTinh} onValueChange={(value) => setFormData(prev => ({ ...prev, gioiTinh: value as 'nam' | 'nu' | 'khac' }))}>
                 <SelectTrigger className="h-12 bg-secondary/10 border-transparent rounded-2xl focus:bg-background transition-all">
                   <SelectValue />
@@ -532,7 +551,7 @@ function KhachThueForm({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
              <div className="space-y-3">
-               <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Cội nguồn (Quê quán)</Label>
+               <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Quê quán (Địa chỉ thường trú)</Label>
                <Input
                  value={formData.queQuan}
                  onChange={(e) => setFormData(prev => ({ ...prev, queQuan: e.target.value }))}
@@ -541,7 +560,7 @@ function KhachThueForm({
                />
              </div>
              <div className="space-y-3">
-               <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Chuyên môn vận hành</Label>
+               <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Nghề nghiệp / Nơi làm việc</Label>
                <Input
                  value={formData.ngheNghiep}
                  onChange={(e) => setFormData(prev => ({ ...prev, ngheNghiep: e.target.value }))}
@@ -551,15 +570,15 @@ function KhachThueForm({
           </div>
 
           <div className="space-y-3">
-            <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Khóa truy cập hệ thống</Label>
+            <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Mật khẩu đăng nhập</Label>
             <Input
               type="password"
               value={formData.matKhau}
               onChange={(e) => setFormData(prev => ({ ...prev, matKhau: e.target.value }))}
-              placeholder={khachThue ? "Giữ nguyên nếu không thay đổi" : "Khởi tạo khóa truy cập (min 6 ký tự)"}
+              placeholder={khachThue ? "Giữ nguyên nếu không thay đổi" : "Mật khẩu (ít nhất 6 ký tự)"}
               className="h-12 bg-secondary/10 border-transparent rounded-2xl focus:bg-background transition-all"
             />
-            <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest ml-1 pt-1">Security Node Token</p>
+            <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest ml-1 pt-1">Mật khẩu dùng để truy cập vào ứng dụng khách thuê</p>
           </div>
         </TabsContent>
         
@@ -592,7 +611,7 @@ function KhachThueForm({
           {isSubmitting ? (
              <RefreshCw className="size-4 animate-spin" />
           ) : (
-             khachThue ? 'Cập nhật định danh' : 'Xác thực & Ghi danh'
+             khachThue ? 'Cập nhật thông tin' : 'Thêm khách thuê'
           )}
         </Button>
       </div>

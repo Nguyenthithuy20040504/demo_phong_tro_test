@@ -106,6 +106,24 @@ export function NavMain({
             )
           }
 
+          // Direct link (no sub-items)
+          if (!item.items || item.items.length === 0) {
+            return (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton
+                  tooltip={item.title}
+                  asChild
+                  className={`h-11 transition-all duration-300 ${isMainActive ? "bg-primary/10 text-primary font-semibold" : "hover:bg-primary/5"}`}
+                >
+                  <Link href={item.url}>
+                    {item.icon && <item.icon className="size-4" />}
+                    <span className="text-xs font-bold tracking-wider">{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )
+          }
+
           return (
             <Collapsible
               key={item.title}

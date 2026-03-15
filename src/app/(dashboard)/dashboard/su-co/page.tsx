@@ -143,7 +143,7 @@ export default function SuCoPage() {
     cache.setIsRefreshing(true);
     await fetchData(true);
     cache.setIsRefreshing(false);
-    toast.success('Đã tải dữ liệu mới nhất');
+    toast.success('Dữ liệu đã được làm mới rồi nhé!');
   };
 
   const filteredSuCo = suCoList.filter(suCo => {
@@ -235,14 +235,12 @@ export default function SuCoPage() {
       if (result.success) {
         cache.clearCache();
         setSuCoList(prev => prev.filter(suCo => suCo._id !== id));
-        toast.success('Xóa sự cố thành công');
+        toast.success('Đã xóa sự cố này khỏi danh sách!');
       } else {
-        console.error('Error deleting su co:', result.message);
-        toast.error('Có lỗi xảy ra: ' + result.message);
+        toast.error('Hệ thống chưa xóa được sự cố này. Bạn thử lại sau ít phút nhé!');
       }
     } catch (error) {
-      console.error('Error deleting su co:', error);
-      toast.error('Có lỗi xảy ra khi xóa sự cố');
+      toast.error('Có lỗi xảy ra khi kết nối. Bạn kiểm tra lại mạng nhé!');
     }
   };
 
@@ -267,14 +265,12 @@ export default function SuCoPage() {
           }
           return suCo;
         }));
-        toast.success('Cập nhật trạng thái thành công');
+        toast.success('Đã cập nhật tình trạng xử lý sự cố mới nhất.');
       } else {
-        console.error('Error updating status:', result.message);
-        toast.error('Có lỗi xảy ra: ' + result.message);
+        toast.error('Chưa cập nhật được trạng thái. Bạn thử lại xem sao!');
       }
     } catch (error) {
-      console.error('Error updating status:', error);
-      toast.error('Có lỗi xảy ra khi cập nhật trạng thái');
+      toast.error('Lỗi kết nối rồi. Bạn kiểm tra lại mạng nhé!');
     }
   };
 
@@ -485,7 +481,7 @@ export default function SuCoPage() {
         <div className="space-y-3">
           {filteredSuCo.map((suCo) => {
             const phongInfo = typeof suCo.phong === 'object' ? suCo.phong : phongList.find(p => p._id === suCo.phong);
-            const khachThueInfo = typeof suCo.nguoiBaoCao === 'object' ? suCo.nguoiBaoCao : khachThueList.find(k => k._id === suCo.nguoiBaoCao);
+            const khachThueInfo = typeof suCo.khachThue === 'object' ? suCo.khachThue : khachThueList.find(k => k._id === suCo.khachThue);
             
             return (
               <Card key={suCo._id} className="p-4">
@@ -638,15 +634,13 @@ function SuCoForm({
       const result = await response.json();
 
       if (result.success) {
-        toast.success(suCo ? 'Cập nhật sự cố thành công' : 'Báo cáo sự cố thành công');
+        toast.success(suCo ? 'Thông tin sự cố đã được cập nhật!' : 'Gửi báo cáo sự cố thành công!');
         onSuccess();
       } else {
-        console.error('Error submitting form:', result.message);
-        toast.error('Có lỗi xảy ra: ' + result.message);
+        toast.error('Có chút trục trặc: ' + (result.message || 'vui lòng thử lại sau nhé!'));
       }
     } catch (error) {
-      console.error('Error submitting form:', error);
-      toast.error('Có lỗi xảy ra khi gửi form');
+      toast.error('Không gửi được dữ liệu. Bạn kiểm tra lại kết nối mạng nhé!');
     } finally {
       setIsSubmitting(false);
     }

@@ -61,8 +61,10 @@ const PhongSchema = new Schema<IPhong>({
   tienNghi: [{
     type: String,
     enum: [
-      'dieuhoa', 'nonglanh', 'tulanh', 'giuong', 'tuquanao', 'banlamviec',
-      'ghe', 'tivi', 'wifi', 'maygiat', 'bep', 'noi', 'chen', 'bat'
+      'dieuHoa', 'nongLanh', 'tuLanh', 'giuong', 'tuQuanAo', 'banlamviec', 'banGhe',
+      'tivi', 'wifi', 'mayGiat', 'bep', 'noi', 'chen', 'bat',
+      // Old lowercase values for backwards compatibility
+      'dieuhoa', 'nonglanh', 'tulanh', 'tuquanao', 'ghe', 'maygiat'
     ],
     trim: true
   }],

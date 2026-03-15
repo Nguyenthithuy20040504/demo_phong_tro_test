@@ -182,13 +182,21 @@ export default function PhongPage() {
   const handleDelete = async (id: string) => {
     try {
       const response = await fetch(`/api/phong/${id}`, { method: 'DELETE' })
-      if (response.ok) {
+      const result = await response.json()
+      if (response.ok && result.success) {
         cache.clearCache()
         setPhongList(prev => prev.filter(phong => phong._id !== id))
-        toast.success('Thực thể đã được gỡ bỏ khỏi hệ thống')
+        toast.success('Đã xóa phòng thành công!')
+      } else {
+        const msg = (result.message || '').toLowerCase()
+        if (msg.includes('hop dong') || msg.includes('hợp đồng') || msg.includes('contract') || msg.includes('khach thue')) {
+          toast.error('Không thể xóa vì phòng này đang có khách thuê. Hãy kết thúc hợp đồng trước!')
+        } else {
+          toast.error('Xóa phòng thất bại. Vui lòng thử lại sau.')
+        }
       }
     } catch (error) {
-      toast.error('Thao tác thất bại')
+      toast.error('Mất kết nối đến máy chủ. Kiểm tra mạng rồi thử lại nhé!')
     }
   }
 
@@ -198,7 +206,7 @@ export default function PhongPage() {
       setViewingPhongName(phong.maPhong)
       setIsImageViewerOpen(true)
     } else {
-      toast.info('Chưa có tư liệu hình ảnh')
+      toast.info('Phòng chưa có hình ảnh')
     }
   }
 
@@ -209,7 +217,7 @@ export default function PhongPage() {
       setViewingTenantsPhongName(phong.maPhong)
       setIsTenantsViewerOpen(true)
     } else {
-      toast.info('Không gian đang chờ vận hành')
+      toast.info('Phòng hiện đang trống')
     }
   }
 
@@ -217,7 +225,7 @@ export default function PhongPage() {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
         <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-        <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground animate-pulse">Initializing Nodes...</span>
+        <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground animate-pulse">Đang tải dữ liệu...</span>
       </div>
     )
   }
@@ -234,11 +242,11 @@ export default function PhongPage() {
         <div className="space-y-2">
            <div className="flex items-center gap-3">
               <span className="h-px w-8 bg-primary/40" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-primary/60">Module Vận hành</span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-primary/60">Quản lý</span>
            </div>
-           <h1 className="text-4xl md:text-5xl font-['Playfair_Display'] italic text-foreground tracking-tight">Kinh doanh Phòng</h1>
+           <h1 className="text-4xl md:text-5xl font-['Playfair_Display'] italic text-foreground tracking-tight">Danh sách Phòng</h1>
            <p className="text-sm text-muted-foreground max-w-md font-medium leading-relaxed">
-             Hệ thống quản lý thực thể không gian, tối ưu hóa công suất và theo dõi dòng tiền thuê.
+             Quản lý thông tin phòng trọ, tối ưu hóa công suất và theo dõi dòng tiền thuê.
            </p>
         </div>
 
@@ -251,7 +259,7 @@ export default function PhongPage() {
               className="h-11 px-5 rounded-2xl bg-background/50 backdrop-blur-md border-border/40 text-[10px] font-bold uppercase tracking-widest hover:bg-secondary/40 transition-all"
             >
               <RefreshCw className={`size-3.5 mr-2 ${cache.isRefreshing ? 'animate-spin' : ''}`} />
-              Đồng bộ dữ liệu
+              Tải mới
             </Button>
             
             {!isNhanVien && (
@@ -259,17 +267,17 @@ export default function PhongPage() {
                 <DialogTrigger asChild>
                    <Button size="sm" className="h-11 px-6 rounded-2xl bg-primary shadow-premium hover:shadow-premium-hover transition-all text-[10px] font-bold uppercase tracking-widest gap-2">
                       <Plus className="size-4" />
-                      Khởi tạo không gian
+                      Thêm phòng mới
                    </Button>
                 </DialogTrigger>
                 {/* PhongForm will be updated in another chunk or assumed consistent for now */}
                 <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto bg-background/80 backdrop-blur-2xl border-border/40 rounded-3xl p-8 scrollbar-hide">
                   <DialogHeader className="mb-8">
                     <DialogTitle className="text-2xl font-bold italic tracking-tight font-['Playfair_Display']">
-                      {editingPhong ? 'Hiệu chỉnh thực thể' : 'Khởi tạo thực thể mới'}
+                      {editingPhong ? 'Cập nhật phòng' : 'Thêm phòng mới'}
                     </DialogTitle>
                     <DialogDescription className="text-xs font-medium uppercase tracking-[0.2em]">
-                      {editingPhong ? 'Cập nhật thông số vận hành' : 'Thiết lập thông số cho không gian kinh doanh'}
+                      {editingPhong ? 'Cập nhật thông tin phòng' : 'Thiết lập thông tin cho phòng mới'}
                     </DialogDescription>
                   </DialogHeader>
                   
@@ -281,7 +289,7 @@ export default function PhongPage() {
                       cache.clearCache()
                       setIsDialogOpen(false)
                       fetchPhong(true)
-                      toast.success(editingPhong ? 'Đã cập nhật' : 'Đã khởi tạo')
+                      toast.success(editingPhong ? 'Cập nhật phòng thành công' : 'Thêm phòng thành công')
                     }}
                   />
                 </DialogContent>
@@ -293,7 +301,7 @@ export default function PhongPage() {
       {/* Stats Section with Glassmorphism */}
       <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Tổng số nút', value: phongList.length, icon: Home, color: 'text-blue-500', bg: 'bg-blue-500/5' },
+            { label: 'Tổng số phòng', value: phongList.length, icon: Home, color: 'text-blue-500', bg: 'bg-blue-500/5' },
             { label: 'Sẵn sàng', value: phongList.filter(p => p.trangThai === 'trong').length, icon: Sparkles, color: 'text-emerald-500', bg: 'bg-emerald-500/5' },
             { label: 'Đang khai thác', value: phongList.filter(p => p.trangThai === 'dangThue').length, icon: ShieldCheck, color: 'text-indigo-500', bg: 'bg-indigo-500/5' },
             { label: 'Cần bảo trì', value: phongList.filter(p => p.trangThai === 'baoTri').length, icon: Hammer, color: 'text-rose-500', bg: 'bg-rose-500/5' },
@@ -341,8 +349,8 @@ export default function PhongPage() {
       <motion.div variants={itemVariants} className="md:hidden space-y-6">
         <div className="flex items-center justify-between px-2">
             <div className="flex flex-col">
-               <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Catalog Nodes</span>
-               <span className="text-lg font-bold italic font-['Playfair_Display'] tracking-tight">Thực thể hiện hữu</span>
+               <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Danh sách</span>
+               <span className="text-lg font-bold italic font-['Playfair_Display'] tracking-tight">Phòng hiện tại</span>
             </div>
             <Badge variant="outline" className="h-7 rounded-full px-3 text-[10px] font-bold border-border/40">{filteredPhong.length} UNITS</Badge>
         </div>
@@ -352,7 +360,7 @@ export default function PhongPage() {
            <div className="relative group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/40" />
               <Input
-                placeholder="Truy vấn thực thể..."
+                placeholder="Tìm kiếm phòng..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-12 h-12 bg-secondary/20 border-transparent rounded-[1.25rem] text-sm"
@@ -364,7 +372,7 @@ export default function PhongPage() {
           {filteredPhong.length === 0 ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-20 flex flex-col items-center justify-center gap-4 opacity-40">
               <Home className="size-12 stroke-[1]" />
-              <p className="text-xs font-bold uppercase tracking-widest">Node not found</p>
+              <p className="text-xs font-bold uppercase tracking-widest">Không tìm thấy phòng</p>
             </motion.div>
           ) : (
             <div className="grid grid-cols-1 gap-4 px-2">
@@ -377,7 +385,7 @@ export default function PhongPage() {
                 >
                   <div className="flex justify-between items-start mb-6">
                     <div className="space-y-1">
-                       <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40">Thực thể</span>
+                       <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40">Phòng</span>
                        <h3 className="text-xl font-bold tracking-tight italic font-['Playfair_Display'] text-foreground">{phong.maPhong}</h3>
                     </div>
                     {/* Status Dot */}
@@ -392,18 +400,18 @@ export default function PhongPage() {
                   
                   <div className="grid grid-cols-2 gap-4 mb-8">
                      <div className="space-y-1">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40 block">Tầng khai thác</span>
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40 block">Tầng</span>
                         <span className="text-sm font-semibold tracking-tight">Tầng {phong.tang}</span>
                      </div>
                      <div className="space-y-1 text-right">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40 block">Mật độ diện tích</span>
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40 block">Diện tích</span>
                         <span className="text-sm font-semibold italic text-primary">{phong.dienTich} m²</span>
                      </div>
                   </div>
 
                   <div className="flex items-center justify-between p-4 bg-secondary/20 rounded-2xl mb-6">
                       <div className="space-y-0.5">
-                         <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 block">Định giá định kỳ</span>
+                         <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 block">Giá thuê</span>
                          <span className="text-lg font-bold tracking-tighter">
                             {new Intl.NumberFormat('vi-VN').format(phong.giaThue)} ₫
                          </span>
@@ -418,7 +426,7 @@ export default function PhongPage() {
                       onClick={() => handleEdit(phong)}
                     >
                       <Plus className="size-3.5" />
-                      Hiệu chỉnh
+                      Chỉnh sửa
                     </Button>
                     <Button
                       variant="ghost"
@@ -442,7 +450,7 @@ export default function PhongPage() {
           <DialogHeader className="mb-6">
             <DialogTitle className="flex items-center gap-3 text-white italic font-['Playfair_Display'] text-2xl">
               <ImageIcon className="h-6 w-6 text-primary" />
-              Tài sản hình ảnh {viewingPhongName}
+              Hình ảnh {viewingPhongName}
             </DialogTitle>
           </DialogHeader>
           
@@ -455,7 +463,7 @@ export default function PhongPage() {
                       <div className="flex items-center justify-center p-2">
                         <img
                           src={image}
-                          alt={`Node Capture ${index + 1}`}
+                          alt={`Room Image ${index + 1}`}
                           className="max-h-[60vh] w-auto object-contain rounded-3xl shadow-premium"
                         />
                       </div>
@@ -476,10 +484,10 @@ export default function PhongPage() {
           <DialogHeader className="mb-8">
             <DialogTitle className="flex items-center gap-3 italic font-['Playfair_Display'] text-3xl">
               <Users className="h-8 w-8 text-primary/60" />
-              Chủ thể cư trú
+              Khách thuê
             </DialogTitle>
             <DialogDescription className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-60">
-              Ghi danh {viewingTenants.length} thực thể đang khai thác không gian {viewingTenantsPhongName}
+              Danh sách {viewingTenants.length} khách thuê đang ở phòng {viewingTenantsPhongName}
             </DialogDescription>
           </DialogHeader>
           
@@ -492,11 +500,11 @@ export default function PhongPage() {
                 <div className="flex-1">
                    <h3 className="text-xl font-bold tracking-tight text-foreground">{tenant.hoTen}</h3>
                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Phone Terminal</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Số điện thoại</span>
                       <span className="text-xs font-mono font-medium text-primary">{tenant.soDienThoai}</span>
                    </div>
                 </div>
-                <Badge variant="outline" className="rounded-full h-8 px-4 text-[10px] font-bold opacity-40">NODE_ID_{index + 1}</Badge>
+                <Badge variant="outline" className="rounded-full h-8 px-4 text-[10px] font-bold opacity-40">KHACH_THUE_{index + 1}</Badge>
               </div>
             ))}
           </div>
@@ -521,7 +529,7 @@ function PhongForm({
 }) {
   const [formData, setFormData] = useState<Partial<Phong>>({
     maPhong: phong?.maPhong || '',
-    toaNhaId: (phong?.toaNhaId as any)?._id || (phong?.toaNhaId as any) || '',
+    toaNha: (phong?.toaNha as any)?._id || (phong?.toaNha as any) || '',
     tang: phong?.tang || 0,
     dienTich: phong?.dienTich || 0,
     giaThue: phong?.giaThue || 0,
@@ -548,11 +556,22 @@ function PhongForm({
         body: JSON.stringify(formData),
       })
 
-      if (response.ok) {
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        toast.success(phong ? 'Cập nhật thông tin phòng thành công!' : 'Đã thêm phòng mới vào hệ thống!')
         onSuccess()
       } else {
-        const error = await response.json()
-        toast.error(error.message || 'Thao tác không thành công')
+        const msg = (result.message || '').toLowerCase()
+        if (msg.includes('duplicate') || msg.includes('exists') || response.status === 409) {
+          toast.error('Mã phòng này đã tồn tại trong tòa nhà. Vui lòng kiểm tra lại!')
+        } else if (response.status === 400) {
+          toast.error('Thông tin chưa đúng hoặc còn thiếu. Bạn kiểm tra lại các trường nhé!')
+        } else if (response.status === 403) {
+          toast.error('Bạn không có quyền thay đổi thông tin phòng này.')
+        } else {
+          toast.error(result.message || 'Có lỗi xảy ra khi lưu thông tin. Thử lại sau nhé!')
+        }
       }
     } catch (error) {
       toast.error('Lỗi kết nối máy chủ')
@@ -596,17 +615,17 @@ function PhongForm({
       <Tabs defaultValue="thong-tin" className="w-full">
         <TabsList className="bg-secondary/20 p-1.5 rounded-2xl mb-8 flex w-fit gap-1">
           <TabsTrigger value="thong-tin" className="rounded-xl px-6 py-2 text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-background data-[state=active]:shadow-premium transition-all">
-            Thông số Node
+            Thông tin chung
           </TabsTrigger>
           <TabsTrigger value="anh-phong" className="rounded-xl px-6 py-2 text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-background data-[state=active]:shadow-premium transition-all">
-            Tư liệu Capture
+            Hình ảnh
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="thong-tin" className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-3">
-              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Mã định danh</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Mã phòng</Label>
               <Input
                 placeholder="P001, RM101..."
                 value={formData.maPhong}
@@ -617,10 +636,10 @@ function PhongForm({
             </div>
             
             <div className="space-y-3">
-              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Cụm Cluster</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Tòa nhà</Label>
               <Select 
-                value={formData.toaNhaId} 
-                onValueChange={(val) => setFormData(prev => ({ ...prev, toaNhaId: val }))}
+                value={formData.toaNha as string} 
+                onValueChange={(val) => setFormData(prev => ({ ...prev, toaNha: val }))}
               >
                 <SelectTrigger className="h-12 bg-secondary/10 border-transparent rounded-2xl focus:bg-background transition-all">
                   <SelectValue placeholder="Chọn tòa nhà" />
@@ -697,7 +716,7 @@ function PhongForm({
           </div>
 
           <div className="space-y-6">
-            <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Hạ tầng Hub</Label>
+            <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Tiện nghi</Label>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {tienNghiOptions.map((option) => (
                 <div 
@@ -723,9 +742,9 @@ function PhongForm({
           </div>
 
           <div className="space-y-3">
-             <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Mô tả cấu trúc</Label>
+             <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Mô tả phòng</Label>
              <Textarea
-                placeholder="Thông tin chi tiết về không gian..."
+                placeholder="Thông tin chi tiết về phòng..."
                 value={formData.moTa}
                 onChange={(e) => setFormData(prev => ({ ...prev, moTa: e.target.value }))}
                 rows={4}
@@ -763,7 +782,7 @@ function PhongForm({
           {isSubmitting ? (
              <RefreshCw className="size-4 animate-spin" />
           ) : (
-             phong ? 'Cập nhật hệ thống' : 'Triển khai Node mới'
+             phong ? 'Lưu cập nhật' : 'Tạo phòng'
           )}
         </Button>
       </div>

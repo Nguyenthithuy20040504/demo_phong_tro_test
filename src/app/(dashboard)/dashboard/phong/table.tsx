@@ -208,7 +208,7 @@ const createColumns = (props: PhongTableProps): ColumnDef<Phong>[] => [
                 onClick={() => props.onViewTenants?.(row.original)}
                 className="text-[9px] font-bold text-blue-500/60 uppercase tracking-widest hover:text-blue-500 transition-colors pl-7"
             >
-                +{soLuong - 1} Đồng cư dân
+                +{soLuong - 1} người khác
             </button>
           )}
         </div>
@@ -243,7 +243,7 @@ const createColumns = (props: PhongTableProps): ColumnDef<Phong>[] => [
             className="gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-destructive focus:bg-destructive/5"
           >
             <Trash2 className="size-4" />
-            <span className="text-xs font-semibold uppercase tracking-widest">Gỡ bỏ thực thể</span>
+            <span className="text-xs font-semibold uppercase tracking-widest">Xóa phòng</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -362,7 +362,7 @@ export function PhongDataTable(props: PhongDataTableProps) {
           <div className="relative group flex-1 md:w-80">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
             <Input
-              placeholder="Truy vấn mã phòng hoặc ghi chú..."
+              placeholder="Tìm kiếm mã phòng, ghi chú..."
               value={searchTerm || ''}
               onChange={(e) => onSearchChange?.(e.target.value)}
               className="pl-11 h-12 bg-secondary/20 border-transparent rounded-2xl focus:bg-background focus:ring-2 focus:ring-primary/20 transition-all text-sm font-medium"
@@ -374,7 +374,7 @@ export function PhongDataTable(props: PhongDataTableProps) {
                <SelectValue placeholder="Toàn bộ Tòa nhà" />
             </SelectTrigger>
             <SelectContent className="bg-background/80 backdrop-blur-xl border-border/40 rounded-2xl p-2">
-              <SelectItem value="all" className="rounded-xl text-xs font-bold uppercase tracking-widest">Mọi thực thể</SelectItem>
+              <SelectItem value="all" className="rounded-xl text-xs font-bold uppercase tracking-widest">Toàn bộ Tòa nhà</SelectItem>
               {allToaNhaList?.map((toaNha) => (
                 <SelectItem key={toaNha._id} value={toaNha._id!} className="rounded-xl text-xs font-medium">
                   {toaNha.tenToaNha}
@@ -398,7 +398,7 @@ export function PhongDataTable(props: PhongDataTableProps) {
         </div>
 
         <div className="flex items-center gap-3">
-            <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-[0.2em]">Tổng thực thể: {table.getFilteredRowModel().rows.length}</span>
+            <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-[0.2em]">Tổng số phòng: {table.getFilteredRowModel().rows.length}</span>
             <div className="h-4 w-px bg-border/40 mx-2" />
              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -459,7 +459,7 @@ export function PhongDataTable(props: PhongDataTableProps) {
                          <div className="size-16 rounded-full bg-secondary/20 flex items-center justify-center">
                             <Home className="size-8" />
                          </div>
-                         <span className="text-xs font-bold uppercase tracking-widest">Không có dữ liệu thực thể</span>
+                         <span className="text-xs font-bold uppercase tracking-widest">Không có dữ liệu phòng</span>
                     </div>
                   </TableCell>
                 </TableRow>

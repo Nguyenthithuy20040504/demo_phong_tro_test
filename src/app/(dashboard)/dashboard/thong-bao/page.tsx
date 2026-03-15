@@ -137,7 +137,7 @@ export default function ThongBaoPage() {
     cache.setIsRefreshing(true);
     await fetchData(true);
     cache.setIsRefreshing(false);
-    toast.success('Đã tải dữ liệu mới nhất');
+    toast.success('Danh sách thông báo đã được làm mới rồi nhé!');
   };
 
   const filteredThongBao = thongBaoList.filter(thongBao => {
@@ -204,13 +204,12 @@ export default function ThongBaoPage() {
         if (response.ok) {
           cache.clearCache();
           setThongBaoList(prev => prev.filter(thongBao => thongBao._id !== id));
-          toast.success('Xóa thông báo thành công');
+          toast.success('Xóa thông báo thành công rồi nhé!');
         } else {
-          toast.error('Có lỗi xảy ra khi xóa thông báo');
+          toast.error('Ồ, có chút lỗi khi xóa thông báo. Bạn thử lại xem sao!');
         }
       } catch (error) {
-        console.error('Error deleting thong bao:', error);
-        toast.error('Có lỗi xảy ra khi xóa thông báo');
+        toast.error('Có lỗi khi kết nối để xóa thông báo.');
       }
     }
   };
@@ -645,14 +644,13 @@ function ThongBaoForm({
       const result = await response.json();
 
       if (result.success) {
-        toast.success(thongBao ? 'Cập nhật thông báo thành công' : 'Tạo thông báo thành công');
+        toast.success(thongBao ? 'Tuyệt vời! Thông báo đã được cập nhật thành công.' : 'Chúc mừng! Bạn đã tạo một thông báo mới thành công.');
         onSuccess();
       } else {
-        toast.error(result.message || 'Có lỗi xảy ra');
+        toast.error(result.message || 'Ồ, chưa lưu được thông báo rồi. Bạn kiểm tra lại nhé!');
       }
     } catch (error) {
-      console.error('Error submitting form:', error);
-      toast.error('Có lỗi xảy ra khi gửi form');
+      toast.error('Lỗi kết nối khi gửi thông báo rồi.');
     }
   };
 

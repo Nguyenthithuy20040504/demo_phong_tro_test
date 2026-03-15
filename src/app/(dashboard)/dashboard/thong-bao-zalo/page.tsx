@@ -27,18 +27,18 @@ export default function ZaloNotificationPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Lỗi tạo hóa đơn');
+      if (!res.ok) throw new Error(data.error || 'Ồ, có lỗi khi tạo hóa đơn mất rồi.');
 
-      toast.success(data.message || `Đã quét và tạo ${data.count} Hóa đơn`);
+      toast.success(data.message || `Tuyệt vời! Hệ thống đã quét và tạo thành công ${data.count} hóa đơn rồi nhé.`);
     } catch (err: any) {
-      toast.error(err.message || 'Lỗi server');
+      toast.error(err.message || 'Lỗi kết nối server rồi. Bạn kiểm tra lại nhé!');
     } finally {
       setIsGenerating(false);
     }
   };
 
   const handleSendZNSMock = async () => {
-    toast.error('Giao diện đang trong chế độ Sandbox. Cần cấu hình Token để gọi API thật.');
+    toast.info('Giao diện đang trong chế độ thử nghiệm (Sandbox) thôi nhé. Bạn cần cấu hình Token để gọi API thực tế.');
   };
 
   if (session?.user?.role !== 'admin' && session?.user?.role !== 'chuNha') {

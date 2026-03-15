@@ -54,6 +54,13 @@ export default function ProfilePage() {
     avatar: ''
   });
 
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [changingPassword, setChangingPassword] = useState(false);
+
   useEffect(() => {
     document.title = 'Hồ sơ cá nhân';
   }, []);
@@ -78,8 +85,7 @@ export default function ProfilePage() {
         });
       }
     } catch (error) {
-      console.error('Error fetching profile:', error);
-      toast.error('Không thể tải thông tin hồ sơ');
+      toast.error('Ồ, không tải được thông tin hồ sơ của bạn rồi. Thử lại sau nhé!');
     } finally {
       setLoading(false);
     }
@@ -100,7 +106,7 @@ export default function ProfilePage() {
         const updatedProfile = await response.json();
         setProfile(updatedProfile);
         setIsEditing(false);
-        toast.success('Cập nhật hồ sơ thành công');
+        toast.success('Hồ sơ của bạn đã được cập nhật thành công rồi nhé!');
         
         // Update session
         await update({
@@ -112,11 +118,10 @@ export default function ProfilePage() {
           }
         });
       } else {
-        toast.error('Cập nhật hồ sơ thất bại');
+        toast.error('Ồ, chưa lưu được thay đổi cho hồ sơ rồi. Bạn kiểm tra lại nhé!');
       }
     } catch (error) {
-      console.error('Error updating profile:', error);
-      toast.error('Có lỗi xảy ra khi cập nhật hồ sơ');
+      toast.error('Lỗi kết nối khi cập nhật hồ sơ rồi!');
     } finally {
       setSaving(false);
     }
@@ -130,6 +135,42 @@ export default function ProfilePage() {
       avatar: profile?.avatar || ''
     });
     setIsEditing(false);
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('Mật khẩu xác nhận không khớp mất rồi. Bạn kiểm tra lại nhé!');
+      return;
+    }
+    
+    setChangingPassword(true);
+    try {
+      const response = await fetch('/api/user/change-password', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(passwordData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success(data.message || 'Chúc mừng! Bạn đã đổi mật khẩu thành công rồi.');
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+      } else {
+        toast.error(data.error || 'Đổi mật khẩu chưa thành công. Bạn kiểm tra lại mật khẩu hiện tại nhé!');
+      }
+    } catch (error) {
+      toast.error('Có lỗi xảy ra khi thực hiện đổi mật khẩu.');
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   const getRoleBadge = (role: string) => {
@@ -378,11 +419,50 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 md:space-y-4 p-4 md:p-6">
-              <div className="p-3 md:p-4 border rounded-lg bg-yellow-50 border-yellow-200">
-                <p className="text-xs md:text-sm text-yellow-800">
-                  Tính năng đổi mật khẩu sẽ được cập nhật trong phiên bản tiếp theo.
-                </p>
-              </div>
+              <form onSubmit={handlePasswordChange} className="space-y-4 max-w-md">
+                <div className="space-y-2">
+                  <Label htmlFor="currentPassword">Mật khẩu hiện tại</Label>
+                  <Input
+                    id="currentPassword"
+                    type="password"
+                    value={passwordData.currentPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">Mật khẩu mới</Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <Button type="submit" disabled={changingPassword}>
+                  {changingPassword ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    'Đổi mật khẩu'
+                  )}
+                </Button>
+              </form>
             </CardContent>
           </Card>
         </TabsContent>

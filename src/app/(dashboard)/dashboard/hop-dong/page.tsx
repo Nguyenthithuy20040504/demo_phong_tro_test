@@ -131,9 +131,9 @@ export default function HopDongPage() {
 
   const handleRefresh = async () => {
     cache.setIsRefreshing(true);
-    await fetchData(true); // Force refresh
+    await fetchData(true);
     cache.setIsRefreshing(false);
-    toast.success('Đã tải dữ liệu mới nhất');
+    toast.success('Dữ liệu hợp đồng đã được cập nhật mới nhất!');
   };
 
 
@@ -247,16 +247,14 @@ export default function HopDongPage() {
       });
       
       if (response.ok) {
-        // Xóa cache
         cache.clearCache();
         setHopDongList(prev => prev.filter(hopDong => hopDong._id !== id));
-        toast.success('Đã xóa hợp đồng thành công');
+        toast.success('Đã xóa hợp đồng thành công khỏi hệ thống!');
       } else {
-        toast.error('Có lỗi xảy ra khi xóa hợp đồng');
+        toast.error('Ồ, không xóa được hợp đồng này. Bạn thử lại sau nhé!');
       }
     } catch (error) {
-      console.error('Error deleting hop dong:', error);
-      toast.error('Có lỗi xảy ra khi xóa hợp đồng');
+      toast.error('Lỗi kết nối rồi. Bạn kiểm tra lại mạng nhé!');
     }
   };
 
@@ -806,10 +804,9 @@ export default function HopDongPage() {
       const blob = new Blob([uint8Array], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
       saveAs(blob, `hop-dong-${hopDong.maHopDong}.docx`);
       
-      toast.success('Đã tải xuống hợp đồng thành công!');
+      toast.success('Đã tải xuống file hợp đồng thành công!');
     } catch (error) {
-      console.error('Error generating Word document:', error);
-      toast.error('Có lỗi xảy ra khi tạo file Word');
+      toast.error('Chưa tạo được file Word. Bạn thử lại xem sao!');
     }
   };
 
@@ -830,19 +827,16 @@ export default function HopDongPage() {
         
         if (response.ok) {
           const result = await response.json();
-          // Xóa cache
           cache.clearCache();
-          // Cập nhật state trực tiếp thay vì reload
           setHopDongList(prev => prev.map(hd => 
             hd._id === hopDong._id ? result.data : hd
           ));
-          toast.success('Đã gia hạn hợp đồng thành công');
+          toast.success('Đã gia hạn hợp đồng thành công rồi nhé!');
         } else {
-          toast.error('Có lỗi xảy ra khi gia hạn hợp đồng');
+          toast.error('Không gia hạn được hợp đồng. Bạn kiểm tra lại thông tin nhé!');
         }
       } catch (error) {
-        console.error('Error extending contract:', error);
-        toast.error('Có lỗi xảy ra khi gia hạn hợp đồng');
+        toast.error('Lỗi kết nối khi gia hạn hợp đồng.');
       } finally {
         setActionLoading(null);
       }
@@ -865,19 +859,16 @@ export default function HopDongPage() {
         
         if (response.ok) {
           const result = await response.json();
-          // Xóa cache
           cache.clearCache();
-          // Cập nhật state trực tiếp thay vì reload
           setHopDongList(prev => prev.map(hd => 
             hd._id === hopDong._id ? result.data : hd
           ));
-          toast.success('Đã hủy hợp đồng thành công');
+          toast.success('Hợp đồng đã được hủy thành công!');
         } else {
-          toast.error('Có lỗi xảy ra khi hủy hợp đồng');
+          toast.error('Chưa hủy được hợp đồng này. Thử lại sau nhé!');
         }
       } catch (error) {
-        console.error('Error cancelling contract:', error);
-        toast.error('Có lỗi xảy ra khi hủy hợp đồng');
+        toast.error('Lỗi kết nối khi hủy hợp đồng.');
       } finally {
         setActionLoading(null);
       }

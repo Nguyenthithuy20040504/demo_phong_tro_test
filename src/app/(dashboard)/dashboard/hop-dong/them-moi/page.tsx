@@ -216,18 +216,17 @@ export default function ThemMoiHopDongPage() {
         const result = await response.json();
         // Xóa cache để force refresh data
         sessionStorage.removeItem('hop-dong-data');
-        toast.success(result.message || 'Đã tạo hợp đồng thành công');
+        toast.success(result.message || 'Chúc mừng! Hợp đồng mới đã được tạo thành công.');
         // Sử dụng replace để không tạo history entry mới
         // và refresh để cập nhật dữ liệu server-side
         router.replace('/dashboard/hop-dong');
         router.refresh();
       } else {
         const errorData = await response.json();
-        toast.error(errorData.message || 'Có lỗi xảy ra');
+        toast.error(errorData.message || 'Ồ, có lỗi khi tạo hợp đồng rồi. Bạn kiểm tra lại nhé!');
       }
     } catch (error) {
-      console.error('Error submitting form:', error);
-      toast.error('Có lỗi xảy ra khi lưu hợp đồng');
+      toast.error('Lỗi kết nối rồi. Bạn kiểm tra lại mạng xem sao!');
     } finally {
       setSubmitting(false);
     }

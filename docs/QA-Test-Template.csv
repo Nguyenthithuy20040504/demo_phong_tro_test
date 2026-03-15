@@ -1,0 +1,8 @@
+﻿Test Case ID,Tính năng / Module,Tên Test Case,Điều kiện tiền đề,Các bước thực hiện (Test Steps),Kết quả mong đợi (Expected Result),Kết quả thực tế (Actual),Trạng thái (Pass/Fail),Ngày Test,Người Test,Ghi chú / Link Bug
+TC_AUTH_01,Đăng nhập,Đăng nhập thành công với tài khoản Admin,Đã có trang login và TK Admin,1. Nhập email đúng / 2. Nhập mật khẩu đúng / 3. Bấm Đăng nhập,Vào được Dashboard và thấy Sidebar Admin,,,,
+TC_AUTH_02,Đăng nhập,Cảnh báo sai mật khẩu,Đang ở Login,1. Nhập email đúng / 2. Mật khẩu sai / 3. Bấm Đăng nhập,Hiện thông báo lỗi "Mật khẩu không đúng",,,,
+TC_PHONG_01,Quản lý Phòng,Thêm phòng mới thành công,Mở form Thêm phòng,1. Nhập mã P101 / 2. Chọn tầng 1 / 3... / 4. Bấm Lưu,Báo thêm thành công và P101 xuất hiện trên lưới dữ liệu,,,,
+TC_PHONG_02,Quản lý Phòng,Báo lỗi khi trùng mã phòng,Mở form Thêm phòng,1. Nhập mã P101 đã tồn tại / 2. Bấm Lưu,Hệ thống chặn không cho lưu và báo "Mã phòng đã tồn tại",,,,
+,,,,,,,,,,
+,,,,,,,,,,
+,,,,,,,,,,

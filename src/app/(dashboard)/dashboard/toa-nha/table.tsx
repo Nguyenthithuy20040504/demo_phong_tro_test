@@ -136,7 +136,7 @@ const createColumns = (props: ToaNhaTableProps): ColumnDef<ToaNha>[] => [
   },
   {
     accessorKey: "diaChi",
-    header: "Vị trí địa lý",
+    header: "Địa chỉ",
     cell: ({ row }) => (
       <div className="flex items-start gap-1.5 min-w-[280px] group">
         <MapPin className="h-3.5 w-3.5 mt-0.5 text-muted-foreground/40 group-hover:text-primary transition-colors" />
@@ -155,16 +155,20 @@ const createColumns = (props: ToaNhaTableProps): ColumnDef<ToaNha>[] => [
   },
   {
     id: "trangThai",
-    header: () => <div className="text-center font-bold tracking-widest uppercase text-[10px]">HIỆU SUẤT</div>,
+    header: () => <div className="text-center font-bold tracking-widest uppercase text-[10px]">TÌNH TRẠNG</div>,
     cell: ({ row }) => {
       const phongTrong = (row.original as any).phongTrong || 0
       const total = row.original.tongSoPhong
-      const percentage = total > 0 ? Math.round((phongTrong / total) * 100) : 0
+      const dangThue = total - phongTrong > 0
       return (
-        <div className="flex flex-col items-center gap-1">
-          <div className="text-xs font-bold text-primary italic leading-none">{100 - percentage}% lấp đầy</div>
-          <div className="w-16 h-1 bg-border/40 rounded-full overflow-hidden">
-            <div className="h-full bg-primary" style={{ width: `${100 - percentage}%` }} />
+        <div className="flex justify-center">
+          <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider ${
+            dangThue
+              ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+              : 'bg-slate-500/10 text-slate-500 border-slate-500/20'
+          }`}>
+            <span className={`size-1.5 rounded-full ${dangThue ? 'bg-blue-500' : 'bg-slate-400'}`} />
+            {dangThue ? 'Đang thuê' : 'Chưa thuê'}
           </div>
         </div>
       )
@@ -172,7 +176,7 @@ const createColumns = (props: ToaNhaTableProps): ColumnDef<ToaNha>[] => [
   },
   {
     accessorKey: "tienNghiChung",
-    header: "Hạ tầng",
+    header: "Tiện nghi",
     cell: ({ row }) => (
       <div className="flex flex-wrap gap-1 max-w-[180px]">
         {row.original.tienNghiChung.slice(0, 2).map((tienNghi) => (
@@ -203,14 +207,14 @@ const createColumns = (props: ToaNhaTableProps): ColumnDef<ToaNha>[] => [
             {props.onView && (
               <DropdownMenuItem onClick={() => props.onView!(row.original)} className="rounded-lg py-2 focus:bg-primary/10 transition-colors">
                 <Eye className="mr-3 h-3.5 w-3.5 opacity-60" />
-                <span className="text-xs font-medium">Chi tiết vận hành</span>
+                <span className="text-xs font-medium">Chi tiết tòa nhà</span>
               </DropdownMenuItem>
             )}
             {props.canEdit !== false && (
               <>
                 <DropdownMenuItem onClick={() => props.onEdit(row.original)} className="rounded-lg py-2 focus:bg-primary/10 transition-colors">
                   <Edit className="mr-3 h-3.5 w-3.5 opacity-60" />
-                  <span className="text-xs font-medium">Hiệu chỉnh thông tin</span>
+                  <span className="text-xs font-medium">Sửa thông tin</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-border/30 m-2" />
                 <DropdownMenuItem 
@@ -218,7 +222,7 @@ const createColumns = (props: ToaNhaTableProps): ColumnDef<ToaNha>[] => [
                   onClick={() => props.onDelete(row.original._id!)}
                 >
                   <Trash2 className="mr-3 h-3.5 w-3.5 opacity-60" />
-                  <span className="text-xs font-bold uppercase tracking-widest">Ngừng quản lý</span>
+                  <span className="text-xs font-bold uppercase tracking-widest">Xóa tòa nhà</span>
                 </DropdownMenuItem>
               </>
             )}
@@ -337,7 +341,7 @@ export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
         <div className="relative w-full sm:max-w-md group">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
           <Input
-            placeholder="Tìm kiếm thực thể..."
+            placeholder="Tìm kiếm tòa nhà..."
             value={searchTerm || ''}
             onChange={(e) => onSearchChange?.(e.target.value)}
             className="pl-11 h-11 bg-secondary/50 border-transparent focus:border-primary/20 focus:bg-background rounded-xl transition-all"
@@ -349,7 +353,7 @@ export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-11 rounded-xl border-border/40 font-bold uppercase tracking-widest text-[10px]">
                 <Columns className="mr-3 h-3.5 w-3.5 opacity-40" />
-                Cấu hình hiển thị
+                Cột hiển thị
                 <ChevronDown className="ml-3 h-3 size-3 opacity-20" />
               </Button>
             </DropdownMenuTrigger>
@@ -425,7 +429,7 @@ export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
                     colSpan={columns.length}
                     className="h-40 text-center text-muted-foreground/40 italic text-sm"
                   >
-                    Hệ thống chưa ghi nhận thực thể nào phù hợp.
+                    Chưa có tòa nhà nào phù hợp.
                   </TableCell>
                 </TableRow>
               )}
@@ -439,12 +443,12 @@ export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
           {selectedCount > 0 ? (
             <>Đã chọn {selectedCount} / {table.getFilteredRowModel().rows.length}</>
           ) : (
-            <>Sơ đồ {table.getFilteredRowModel().rows.length} thực thể</>
+            <>Tổng cộng {table.getFilteredRowModel().rows.length} tòa nhà</>
           )}
         </div>
         <div className="flex w-full items-center gap-12 lg:w-fit">
           <div className="hidden items-center gap-3 lg:flex">
-            <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground/40">Mật độ hiển thị</span>
+            <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground/40">Số dòng/trang</span>
             <Select
               value={`${table.getState().pagination.pageSize}`}
               onValueChange={(value) => table.setPageSize(Number(value))}

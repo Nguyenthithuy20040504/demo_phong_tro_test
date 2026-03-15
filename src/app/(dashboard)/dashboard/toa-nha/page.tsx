@@ -120,16 +120,21 @@ export default function ToaNhaPage() {
   const handleDelete = async (id: string) => {
     try {
       const response = await fetch(`/api/toa-nha/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          cache.clearCache();
-          setToaNhaList(prev => prev.filter(toaNha => toaNha._id !== id));
-          toast.success('Thực thể đã được gỡ bỏ');
+      const result = await response.json();
+      if (response.ok && result.success) {
+        cache.clearCache();
+        setToaNhaList(prev => prev.filter(toaNha => toaNha._id !== id));
+        toast.success('Đã xóa tòa nhà thành công!');
+      } else {
+        const msg = result.message || '';
+        if (msg.includes('phong') || msg.includes('room') || response.status === 409) {
+          toast.error('Không thể xóa vì tòa nhà này còn phòng. Hãy xóa hết các phòng trước!');
+        } else {
+          toast.error('Xóa tòa nhà thất bại. Vui lòng thử lại sau.');
         }
       }
     } catch (error) {
-      console.error('Error deleting toa nha:', error);
+      toast.error('Mất kết nối đến máy chủ. Kiểm tra mạng rồi thử lại nhé!');
     }
   };
 
@@ -137,7 +142,7 @@ export default function ToaNhaPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <RefreshCw className="h-8 w-8 animate-spin text-primary/20" />
-        <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-muted-foreground/40">Đang quét hạ tầng...</span>
+        <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-muted-foreground/40">Đang tải dữ liệu...</span>
       </div>
     );
   }
@@ -154,13 +159,13 @@ export default function ToaNhaPage() {
         <div className="space-y-4">
           <div className="flex items-center gap-3">
              <div className="h-px w-8 bg-primary/40" />
-             <span className="text-[10px] font-bold tracking-[0.4em] uppercase text-primary/60">Quản lý hạ tầng</span>
+             <span className="text-[10px] font-bold tracking-[0.4em] uppercase text-primary/60">Quản lý hệ thống</span>
           </div>
           <h1 className="text-4xl md:text-6xl font-heading font-bold tracking-tight text-foreground">
-            Quản lý <span className="text-primary italic">Tòa nhà</span>
+            Danh sách <span className="text-primary italic">Tòa nhà</span>
           </h1>
           <p className="text-muted-foreground/60 max-w-md text-sm leading-relaxed">
-            Hệ chỉnh thông tin các thực thể bất động sản, tối ưu hóa quy trình vận hành và theo dõi hiệu suất lấp đầy thực tế.
+            Quản lý thông tin các tòa nhà, tối ưu hóa quy trình vận hành và theo dõi tỷ lệ cho thuê thực tế.
           </p>
         </div>
         
@@ -172,35 +177,38 @@ export default function ToaNhaPage() {
             disabled={cache.isRefreshing}
             className="rounded-full h-14 px-8 border-border/40 hover:bg-primary/5 font-bold uppercase tracking-widest text-[10px]"
           >
-            {cache.isRefreshing ? <RefreshCw className="h-4 w-4 animate-spin mr-3" /> : 'Tải mới'}
+            <RefreshCw className={`h-4 w-4 mr-3 ${cache.isRefreshing ? 'animate-spin' : ''}`} />
+            Tải mới
           </Button>
           {!isNhanVien && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="lg" onClick={() => setEditingToaNha(null)} className="rounded-full h-14 px-10 font-bold uppercase tracking-widest text-[10px] shadow-premium">
                   <Plus className="h-4 w-4 mr-3" />
-                  Khai báo Tòa nhà
+                  Thêm Tòa nhà
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl bg-background/80 backdrop-blur-2xl border-border/40 rounded-3xl p-8">
-                <DialogHeader className="mb-6">
-                  <DialogTitle className="text-2xl font-heading font-bold">
-                    {editingToaNha ? 'Hiệu chỉnh Thực thể' : 'Khai báo Thực thể mới'}
+              <DialogContent className="max-w-xl bg-background/90 backdrop-blur-2xl border-border/40 rounded-2xl p-0 max-h-[90vh] flex flex-col">
+                <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/20 flex-shrink-0">
+                  <DialogTitle className="text-xl font-heading font-bold">
+                    {editingToaNha ? 'Cập nhật Tòa nhà' : 'Thêm Tòa nhà mới'}
                   </DialogTitle>
-                  <DialogDescription>
-                    {editingToaNha ? 'Cập nhật các thông số vận hành cho tòa nhà hiện hữu.' : 'Nhập các thông số cơ bản để khởi tạo thực thể quản lý mới.'}
+                  <DialogDescription className="text-xs">
+                    {editingToaNha ? 'Cập nhật thông tin cho tòa nhà này.' : 'Nhập các thông số cơ bản để tạo một tòa nhà mới.'}
                   </DialogDescription>
                 </DialogHeader>
                 
-                <ToaNhaForm 
-                  toaNha={editingToaNha}
-                  onClose={() => setIsDialogOpen(false)}
-                  onSuccess={() => {
-                    cache.clearCache();
-                    setIsDialogOpen(false);
-                    fetchToaNha(true);
-                  }}
-                />
+                <div className="overflow-y-auto flex-1 px-6">
+                  <ToaNhaForm 
+                    toaNha={editingToaNha}
+                    onClose={() => setIsDialogOpen(false)}
+                    onSuccess={() => {
+                      cache.clearCache();
+                      setIsDialogOpen(false);
+                      fetchToaNha(true);
+                    }}
+                  />
+                </div>
               </DialogContent>
             </Dialog>
           )}
@@ -213,10 +221,10 @@ export default function ToaNhaPage() {
           <div className="absolute top-0 right-0 p-8 opacity-5 transition-transform group-hover:scale-110">
             <Building2 className="size-24" />
           </div>
-          <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-primary/60">TỔNG THỰC THỂ</span>
+          <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-primary/60">TỔNG SỐ TÒA NHÀ</span>
           <p className="text-5xl font-bold mt-2 tracking-tighter">{toaNhaList.length}</p>
           <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-primary italic">
-             <span>Đã xác minh hạ tầng</span>
+             <span>Đang được quản lý</span>
           </div>
         </div>
         
@@ -226,12 +234,12 @@ export default function ToaNhaPage() {
                 {toaNhaList.reduce((sum, toaNha) => sum + ((toaNha as any).phongTrong || 0), 0)}
              </p>
              <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-green-600 italic">
-                <span>Khả năng lấp đầy còn lại</span>
+                <span>Phòng chưa cho thuê</span>
              </div>
         </div>
 
         <div className="p-8 rounded-3xl bg-secondary/30 border border-border/40 relative overflow-hidden">
-             <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground/60">ĐAN THUÊ</span>
+             <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground/60">ĐANG CHO THUÊ</span>
              <p className="text-5xl font-bold mt-2 tracking-tighter text-blue-600/80">
                 {toaNhaList.reduce((sum, toaNha) => sum + ((toaNha as any).phongDangThue || 0), 0)}
              </p>
@@ -292,6 +300,10 @@ function ToaNhaForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.tenToaNha.trim()) {
+      toast.error('Bạn chưa nhập tên tòa nhà!');
+      return;
+    }
     try {
       const submitData = {
         tenToaNha: formData.tenToaNha,
@@ -315,9 +327,25 @@ function ToaNhaForm({
         body: JSON.stringify(submitData),
       });
 
-      if (response.ok) onSuccess();
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        toast.success(toaNha ? 'Cập nhật tòa nhà thành công!' : 'Thêm tòa nhà mới thành công!');
+        onSuccess();
+      } else {
+        const msg = (result.message || '').toLowerCase();
+        if (msg.includes('duplicate') || msg.includes('exists') || response.status === 409) {
+          toast.error('Tòa nhà này đã tồn tại trong hệ thống. Hãy đặt tên khác!');
+        } else if (response.status === 400) {
+          toast.error('Thông tin chưa đầy đủ. Kiểm tra lại các trường bắt buộc nhé!');
+        } else if (response.status === 403) {
+          toast.error('Bạn không có quyền thực hiện thao tác này.');
+        } else {
+          toast.error('Có lỗi xảy ra. Vui lòng thử lại sau!');
+        }
+      }
     } catch (error) {
-      console.error('Error submitting form:', error);
+      toast.error('Mất kết nối đến máy chủ. Kiểm tra mạng rồi thử lại nhé!');
     }
   };
 
@@ -331,67 +359,63 @@ function ToaNhaForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="tenToaNha" className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Tên định danh tòa nhà</Label>
+    <form onSubmit={handleSubmit} className="space-y-4 py-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="tenToaNha" className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Tên tòa nhà</Label>
         <Input
           id="tenToaNha"
           value={formData.tenToaNha}
           onChange={(e) => setFormData(prev => ({ ...prev, tenToaNha: e.target.value }))}
+          placeholder="VD: Tòa nhà Hoàng Anh, KTX ABC..."
           required
-          className="h-12 bg-secondary/30 border-transparent rounded-xl focus:bg-background transition-all"
+          className="h-10 bg-secondary/30 border-transparent rounded-xl focus:bg-background transition-all"
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="soNha" className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Số nhà/Ngõ</Label>
-          <Input id="soNha" value={formData.soNha} onChange={(e) => setFormData(prev => ({ ...prev, soNha: e.target.value }))} required className="h-12 bg-secondary/30 border-transparent rounded-xl" />
+      <div className="space-y-1.5">
+        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Địa chỉ</Label>
+        <div className="grid grid-cols-2 gap-3">
+          <Input placeholder="Số nhà / Ngõ" value={formData.soNha} onChange={(e) => setFormData(prev => ({ ...prev, soNha: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
+          <Input placeholder="Tên đường" value={formData.duong} onChange={(e) => setFormData(prev => ({ ...prev, duong: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="duong" className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Tên đường</Label>
-          <Input id="duong" value={formData.duong} onChange={(e) => setFormData(prev => ({ ...prev, duong: e.target.value }))} required className="h-12 bg-secondary/30 border-transparent rounded-xl" />
+        <div className="grid grid-cols-3 gap-3">
+          <Input placeholder="Phường / Xã" value={formData.phuong} onChange={(e) => setFormData(prev => ({ ...prev, phuong: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
+          <Input placeholder="Quận / Huyện" value={formData.quan} onChange={(e) => setFormData(prev => ({ ...prev, quan: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
+          <Input placeholder="Thành phố" value={formData.thanhPho} onChange={(e) => setFormData(prev => ({ ...prev, thanhPho: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="phuong" className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Phường</Label>
-          <Input id="phuong" value={formData.phuong} onChange={(e) => setFormData(prev => ({ ...prev, phuong: e.target.value }))} required className="h-12 bg-secondary/30 border-transparent rounded-xl" />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="quan" className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Quận</Label>
-          <Input id="quan" value={formData.quan} onChange={(e) => setFormData(prev => ({ ...prev, quan: e.target.value }))} required className="h-12 bg-secondary/30 border-transparent rounded-xl" />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="thanhPho" className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Thành phố</Label>
-          <Input id="thanhPho" value={formData.thanhPho} onChange={(e) => setFormData(prev => ({ ...prev, thanhPho: e.target.value }))} required className="h-12 bg-secondary/30 border-transparent rounded-xl" />
-        </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="moTa" className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Mô tả (Ghi chú)</Label>
+        <Textarea id="moTa" value={formData.moTa} onChange={(e) => setFormData(prev => ({ ...prev, moTa: e.target.value }))} rows={2} placeholder="Ghi chú thêm về tòa nhà..." className="bg-secondary/30 border-transparent rounded-xl focus:bg-background transition-all resize-none" />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="moTa" className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Ghi chú vận hành</Label>
-        <Textarea id="moTa" value={formData.moTa} onChange={(e) => setFormData(prev => ({ ...prev, moTa: e.target.value }))} rows={3} className="bg-secondary/30 border-transparent rounded-xl focus:bg-background transition-all" />
-      </div>
-
-      <div className="space-y-4">
-        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Hạ tầng tiện ích chung</Label>
-        <div className="grid grid-cols-2 gap-3">
+        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Tiện ích chung</Label>
+        <div className="grid grid-cols-4 gap-2">
           {tienNghiOptions.map((option) => (
-            <div key={option.value} className="flex items-center space-x-3 p-3 rounded-xl bg-secondary/10 hover:bg-secondary/20 transition-colors cursor-pointer group" onClick={() => handleTienNghiChange(option.value, !formData.tienNghiChung.includes(option.value))}>
-              <div className={`w-4 h-4 rounded-full border-2 border-primary/20 flex items-center justify-center transition-all ${formData.tienNghiChung.includes(option.value) ? 'bg-primary border-primary scale-110' : 'group-hover:border-primary/40'}`}>
-                 {formData.tienNghiChung.includes(option.value) && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-              </div>
-              <span className="text-xs font-medium">{option.label}</span>
+            <div
+              key={option.value}
+              onClick={() => handleTienNghiChange(option.value, !formData.tienNghiChung.includes(option.value))}
+              className={`flex items-center gap-2 p-2 rounded-xl cursor-pointer transition-all text-xs font-medium select-none ${
+                formData.tienNghiChung.includes(option.value)
+                  ? 'bg-primary/10 text-primary border border-primary/20'
+                  : 'bg-secondary/20 text-muted-foreground hover:bg-secondary/40 border border-transparent'
+              }`}
+            >
+              <div className={`size-3 rounded-full flex-shrink-0 border ${
+                formData.tienNghiChung.includes(option.value) ? 'bg-primary border-primary' : 'border-muted-foreground/30'
+              }`} />
+              {option.label}
             </div>
           ))}
         </div>
       </div>
 
-      <DialogFooter className="gap-4 pt-4">
-        <Button type="button" variant="ghost" onClick={onClose} className="rounded-full h-12 px-8 font-bold text-xs uppercase tracking-widest">Hủy bỏ</Button>
-        <Button type="submit" className="rounded-full h-12 px-10 font-bold text-xs uppercase tracking-widest shadow-premium">
-          {toaNha ? 'Xác nhận hiệu chỉnh' : 'Khai báo thực thể'}
+      <DialogFooter className="gap-3 pt-4 pb-2 border-t border-border/10">
+        <Button type="button" variant="ghost" onClick={onClose} className="rounded-xl h-10 px-6 font-bold text-xs uppercase tracking-widest">Hủy</Button>
+        <Button type="submit" className="rounded-xl h-10 px-8 font-bold text-xs uppercase tracking-widest shadow-premium">
+          {toaNha ? 'Lưu thay đổi' : 'Thêm tòa nhà'}
         </Button>
       </DialogFooter>
     </form>
