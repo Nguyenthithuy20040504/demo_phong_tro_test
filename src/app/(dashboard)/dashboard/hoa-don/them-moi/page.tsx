@@ -72,10 +72,12 @@ export default function ThemMoiHoaDonPage() {
     soDien: 0,
     chiSoDienBanDau: 0,
     chiSoDienCuoiKy: 0,
+    giaDien: 0,
     tienNuoc: 0,
     soNuoc: 0,
     chiSoNuocBanDau: 0,
     chiSoNuocCuoiKy: 0,
+    giaNuoc: 0,
     phiDichVu: [] as Array<{ten: string, gia: number}>,
     tongTien: 0,
     daThanhToan: 0,
@@ -161,6 +163,8 @@ export default function ThemMoiHoaDonPage() {
           phong: selectedHopDong.phong as string,
           khachThue: selectedHopDong.nguoiDaiDien as string,
           tienPhong: selectedHopDong.giaThue,
+          giaDien: selectedHopDong.giaDien || 0,
+          giaNuoc: selectedHopDong.giaNuoc || 0,
           phiDichVu: selectedHopDong.phiDichVu || [],
           chiSoDienBanDau: 0,
           chiSoNuocBanDau: 0,
@@ -181,23 +185,19 @@ export default function ThemMoiHoaDonPage() {
   const calculateTotal = () => {
     const totalPhiDichVu = formData.phiDichVu.reduce((sum: number, phi) => sum + phi.gia, 0);
     
-    const soDien = formData.chiSoDienCuoiKy - formData.chiSoDienBanDau;
-    const soNuoc = formData.chiSoNuocCuoiKy - formData.chiSoNuocBanDau;
+    const soDien = Math.max(0, formData.chiSoDienCuoiKy - formData.chiSoDienBanDau);
+    const soNuoc = Math.max(0, formData.chiSoNuocCuoiKy - formData.chiSoNuocBanDau);
     
-    const selectedHopDong = hopDongList.find(hd => hd._id === formData.hopDong);
-    const giaDien = selectedHopDong?.giaDien || 0;
-    const giaNuoc = selectedHopDong?.giaNuoc || 0;
-    
-    const tienDienTinh = soDien * giaDien;
-    const tienNuocTinh = soNuoc * giaNuoc;
+    const tienDienTinh = soDien * formData.giaDien;
+    const tienNuocTinh = soNuoc * formData.giaNuoc;
     
     const total = formData.tienPhong + tienDienTinh + tienNuocTinh + totalPhiDichVu;
     const conLai = total - formData.daThanhToan;
     
     setFormData(prev => ({
       ...prev,
-      soDien: Math.max(0, soDien),
-      soNuoc: Math.max(0, soNuoc),
+      soDien,
+      soNuoc,
       tienDien: tienDienTinh,
       tienNuoc: tienNuocTinh,
       tongTien: total,
@@ -207,7 +207,7 @@ export default function ThemMoiHoaDonPage() {
 
   useEffect(() => {
     calculateTotal();
-  }, [formData.tienPhong, formData.chiSoDienBanDau, formData.chiSoDienCuoiKy, formData.chiSoNuocBanDau, formData.chiSoNuocCuoiKy, formData.phiDichVu, formData.daThanhToan, formData.hopDong, hopDongList]);
+  }, [formData.tienPhong, formData.chiSoDienBanDau, formData.chiSoDienCuoiKy, formData.chiSoNuocBanDau, formData.chiSoNuocCuoiKy, formData.giaDien, formData.giaNuoc, formData.phiDichVu, formData.daThanhToan, formData.hopDong, hopDongList]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -603,20 +603,18 @@ export default function ThemMoiHoaDonPage() {
                         <td className="border border-gray-200 px-4 py-3">
                           <Input
                             type="number"
-                            min="0"
+                            min={formData.chiSoDienBanDau}
                             value={formData.chiSoDienCuoiKy}
                             onChange={(e) => {
-                              const value = Math.max(0, parseInt(e.target.value) || 0);
-                              // Đảm bảo chỉ số cuối >= chỉ số đầu
-                              const finalValue = Math.max(value, formData.chiSoDienBanDau);
-                              setFormData(prev => ({ ...prev, chiSoDienCuoiKy: finalValue }));
+                              const value = parseInt(e.target.value) || 0;
+                              setFormData(prev => ({ ...prev, chiSoDienCuoiKy: value }));
                             }}
-                            className="h-8 w-20 text-center"
+                            className={`h-8 w-20 text-center ${formData.chiSoDienCuoiKy < formData.chiSoDienBanDau ? 'border-red-500' : ''}`}
                             placeholder="0"
                           />
                           <span className="text-xs text-gray-500 ml-1">kWh</span>
                           {formData.chiSoDienCuoiKy < formData.chiSoDienBanDau && (
-                            <div className="text-xs text-red-500 mt-1">⚠️ Phải ≥ chỉ số đầu</div>
+                            <div className="text-xs text-red-500 mt-1">⚠️ Phải ≥ {formData.chiSoDienBanDau}</div>
                           )}
                         </td>
                         <td className="border border-gray-200 px-4 py-3">
@@ -635,12 +633,14 @@ export default function ThemMoiHoaDonPage() {
                           </div>
                         </td>
                         <td className="border border-gray-200 px-4 py-3">
-                          <div className="flex items-center gap-1">
-                            <span className="font-medium">
-                              {hopDongList.find(hd => hd._id === formData.hopDong)?.giaDien || 0}
-                            </span>
-                            <span className="text-xs text-gray-500">VNĐ/kWh</span>
-                          </div>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={formData.giaDien}
+                            onChange={(e) => setFormData(prev => ({ ...prev, giaDien: parseInt(e.target.value) || 0 }))}
+                            className="h-8 w-20 text-center"
+                          />
+                          <span className="text-xs text-gray-500 ml-1">VNĐ/kWh</span>
                         </td>
                         <td className="border border-gray-200 px-4 py-3">
                           <div className="flex items-center gap-1">
@@ -683,20 +683,18 @@ export default function ThemMoiHoaDonPage() {
                         <td className="border border-gray-200 px-4 py-3">
                           <Input
                             type="number"
-                            min="0"
+                            min={formData.chiSoNuocBanDau}
                             value={formData.chiSoNuocCuoiKy}
                             onChange={(e) => {
-                              const value = Math.max(0, parseInt(e.target.value) || 0);
-                              // Đảm bảo chỉ số cuối >= chỉ số đầu
-                              const finalValue = Math.max(value, formData.chiSoNuocBanDau);
-                              setFormData(prev => ({ ...prev, chiSoNuocCuoiKy: finalValue }));
+                              const value = parseInt(e.target.value) || 0;
+                              setFormData(prev => ({ ...prev, chiSoNuocCuoiKy: value }));
                             }}
-                            className="h-8 w-20 text-center"
+                            className={`h-8 w-20 text-center ${formData.chiSoNuocCuoiKy < formData.chiSoNuocBanDau ? 'border-red-500' : ''}`}
                             placeholder="0"
                           />
                           <span className="text-xs text-gray-500 ml-1">m³</span>
                           {formData.chiSoNuocCuoiKy < formData.chiSoNuocBanDau && (
-                            <div className="text-xs text-red-500 mt-1">⚠️ Phải ≥ chỉ số đầu</div>
+                            <div className="text-xs text-red-500 mt-1">⚠️ Phải ≥ {formData.chiSoNuocBanDau}</div>
                           )}
                         </td>
                         <td className="border border-gray-200 px-4 py-3">
@@ -715,12 +713,14 @@ export default function ThemMoiHoaDonPage() {
                           </div>
                         </td>
                         <td className="border border-gray-200 px-4 py-3">
-                          <div className="flex items-center gap-1">
-                            <span className="font-medium">
-                              {hopDongList.find(hd => hd._id === formData.hopDong)?.giaNuoc || 0}
-                            </span>
-                            <span className="text-xs text-gray-500">VNĐ/m³</span>
-                          </div>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={formData.giaNuoc}
+                            onChange={(e) => setFormData(prev => ({ ...prev, giaNuoc: parseInt(e.target.value) || 0 }))}
+                            className="h-8 w-20 text-center"
+                          />
+                          <span className="text-xs text-gray-500 ml-1">VNĐ/m³</span>
                         </td>
                         <td className="border border-gray-200 px-4 py-3">
                           <div className="flex items-center gap-1">
@@ -802,6 +802,39 @@ export default function ThemMoiHoaDonPage() {
 
               <TabsContent value="tong-ket" className="space-y-4 mt-6">
                 <h3 className="text-base font-semibold">💰 Tổng kết</h3>
+                
+                {/* Chi tiết các khoản */}
+                <div className="space-y-2 p-4 bg-gray-50 rounded-lg border">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">🏠 Tiền phòng</span>
+                    <span className="font-medium">{formData.tienPhong.toLocaleString('vi-VN')} VNĐ</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">⚡ Tiền điện ({formData.soDien} kWh × {formData.giaDien.toLocaleString('vi-VN')}đ)</span>
+                    <span className="font-medium">{formData.tienDien.toLocaleString('vi-VN')} VNĐ</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">💧 Tiền nước ({formData.soNuoc} m³ × {formData.giaNuoc.toLocaleString('vi-VN')}đ)</span>
+                    <span className="font-medium">{formData.tienNuoc.toLocaleString('vi-VN')} VNĐ</span>
+                  </div>
+                  {formData.phiDichVu.length > 0 && (
+                    <>
+                      {formData.phiDichVu.map((phi, index) => (
+                        <div key={index} className="flex justify-between text-sm">
+                          <span className="text-gray-600">🔧 {phi.ten}</span>
+                          <span className="font-medium">{phi.gia.toLocaleString('vi-VN')} VNĐ</span>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  <div className="border-t pt-2 mt-2">
+                    <div className="flex justify-between text-sm font-semibold">
+                      <span>Phí dịch vụ ({formData.phiDichVu.length} khoản)</span>
+                      <span>{formData.phiDichVu.reduce((s, p) => s + p.gia, 0).toLocaleString('vi-VN')} VNĐ</span>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-3 gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border">
                   <div className="text-center">
                     <div className="text-xs text-gray-600 mb-1">Tổng tiền</div>
