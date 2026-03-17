@@ -64,10 +64,10 @@ const getPhongName = (phongId: string | Phong, phongList: Phong[]) => {
   return 'N/A';
 };
 
-const getKhachThueName = (khachThueId: string | KhachThue, khachThueList: KhachThue[]) => {
+const getKhachThueName = (khachThueId: string | any, khachThueList: KhachThue[]) => {
   if (!khachThueId) return 'N/A';
-  if (typeof khachThueId === 'object' && khachThueId.hoTen) {
-    return khachThueId.hoTen;
+  if (typeof khachThueId === 'object' && khachThueId) {
+    return khachThueId.hoTen || khachThueId.ten || khachThueId.name || 'Khách thuê';
   }
   if (typeof khachThueId === 'string') {
     const khachThue = khachThueList.find(k => k._id === khachThueId);
@@ -176,9 +176,9 @@ export default function HoaDonPage() {
 
   const handleRefresh = async () => {
     cache.setIsRefreshing(true);
-    await fetchData(true); // Force refresh
+    await fetchData(true);
     cache.setIsRefreshing(false);
-    toast.success('Đã tải dữ liệu mới nhất');
+    toast.success('Dữ liệu hóa đơn đã được cập nhật mới nhất!');
   };
 
   const filteredHoaDon = hoaDonList.filter(hoaDon => {
@@ -229,14 +229,13 @@ export default function HoaDonPage() {
       if (response.ok) {
         cache.clearCache();
         setHoaDonList(prev => prev.filter(hoaDon => hoaDon._id !== id));
-        toast.success('Hóa đơn đã được xóa thành công');
+        toast.success('Đã xóa hóa đơn thành công khỏi hệ thống!');
       } else {
         const errorData = await response.json();
-        toast.error(errorData.message || 'Có lỗi xảy ra khi xóa hóa đơn');
+        toast.error('Ồ, chưa xóa được hóa đơn này. ' + (errorData.message || 'Bạn thử lại sau nhé!'));
       }
     } catch (error) {
-      console.error('Error deleting hoa don:', error);
-      toast.error('Có lỗi xảy ra khi xóa hóa đơn');
+      toast.error('Lỗi kết nối rồi. Bạn kiểm tra lại mạng nhé!');
     }
   };
 
@@ -244,7 +243,6 @@ export default function HoaDonPage() {
     if (ids.length === 0) return;
     
     try {
-      // Xóa từng hóa đơn (có thể cải thiện bằng batch delete API)
       const deletePromises = ids.map(id => 
         fetch(`/api/hoa-don?id=${id}`, { method: 'DELETE' })
       );
@@ -255,13 +253,12 @@ export default function HoaDonPage() {
       if (failedDeletes.length === 0) {
         cache.clearCache();
         setHoaDonList(prev => prev.filter(hoaDon => !ids.includes(hoaDon._id!)));
-        toast.success(`Đã xóa thành công ${ids.length} hóa đơn`);
+        toast.success(`Tuyệt vời! Đã dọn dẹp xong ${ids.length} hóa đơn.`);
       } else {
-        toast.error(`Có ${failedDeletes.length} hóa đơn không thể xóa`);
+        toast.error(`Có ${failedDeletes.length} hóa đơn chưa xóa được. Bạn kiểm tra lại nhé!`);
       }
     } catch (error) {
-      console.error('Error deleting multiple hoa don:', error);
-      toast.error('Có lỗi xảy ra khi xóa hóa đơn');
+      toast.error('Có lỗi xảy ra khi kết nối. Một số hóa đơn có thể chưa được xóa.');
     }
   };
 
@@ -279,7 +276,7 @@ export default function HoaDonPage() {
     const publicUrl = `${window.location.origin}/hoa-don/${hoaDon._id}`;
     
     navigator.clipboard.writeText(publicUrl).then(() => {
-      toast.success('Đã sao chép link hóa đơn vào clipboard!');
+      toast.success('Đã sao chép link hóa đơn! Bạn có thể gửi cho khách ngay.');
     }).catch(() => {
       // Fallback: hiển thị modal với link
       const modal = document.createElement('div');
@@ -532,10 +529,9 @@ export default function HoaDonPage() {
 
       // Tải xuống PDF
       pdf.save(`hoa-don-${hoaDon.maHoaDon}.pdf`);
-      toast.success('Đã xuất hóa đơn thành PDF thành công!');
+      toast.success('Đã xuất file PDF hóa đơn thành công!');
     } catch (error) {
-      console.error('Error generating PDF:', error);
-      toast.error('Có lỗi xảy ra khi xuất PDF');
+      toast.error('Chưa xuất được PDF. Bạn thử lại xem sao!');
     }
   };
 
@@ -552,19 +548,17 @@ export default function HoaDonPage() {
 
       if (response.ok) {
         const result = await response.json();
-        toast.success(`Đã tạo ${result.data.createdInvoices} hóa đơn tự động`);
+        toast.success(`Hệ thống đã tự động tạo xong ${result.data.createdInvoices} hóa đơn cho bạn.`);
         if (result.data.errors.length > 0) {
-          toast.warning(`Một số lỗi xảy ra: ${result.data.errors.length} lỗi`);
-          console.warn('Chi tiết lỗi:', result.data.errors);
+          toast.warning(`Có ${result.data.errors.length} hóa đơn bị lỗi, bạn kiểm tra lại nhé.`);
         }
         fetchData(); // Refresh data
       } else {
         const errorData = await response.json();
-        toast.error(errorData.message || 'Có lỗi xảy ra khi tạo hóa đơn tự động');
+        toast.error(errorData.message || 'Chưa tạo được hóa đơn tự động. Có thể do dữ liệu chưa đủ!');
       }
     } catch (error) {
-      console.error('Error auto creating invoices:', error);
-      toast.error('Có lỗi xảy ra khi tạo hóa đơn tự động');
+      toast.error('Lỗi kết nối khi tạo hóa đơn tự động.');
     } finally {
       setIsAutoCreating(false);
     }
@@ -615,7 +609,7 @@ export default function HoaDonPage() {
         <Card className="p-2 md:p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Tổng hóa đơn</p>
+              <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Tổng hóa đơn</p>
               <p className="text-base md:text-2xl font-bold">{hoaDonList.length}</p>
             </div>
             <Receipt className="h-3 w-3 md:h-4 md:w-4 text-gray-500" />
@@ -625,7 +619,7 @@ export default function HoaDonPage() {
         <Card className="p-2 md:p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Chưa thanh toán</p>
+              <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Chưa thanh toán</p>
               <p className="text-base md:text-2xl font-bold text-red-600">
                 {hoaDonList.filter(h => h.trangThai === 'chuaThanhToan').length}
               </p>
@@ -637,7 +631,7 @@ export default function HoaDonPage() {
         <Card className="p-2 md:p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Quá hạn</p>
+              <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Quá hạn</p>
               <p className="text-base md:text-2xl font-bold text-orange-600">
                 {hoaDonList.filter(h => new Date(h.hanThanhToan) < new Date()).length}
               </p>
@@ -649,7 +643,7 @@ export default function HoaDonPage() {
         <Card className="p-2 md:p-4">
           <div className="flex items-center justify-between">
             <div className="min-w-0">
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Doanh thu</p>
+              <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Doanh thu</p>
               <p className="text-xs md:text-2xl font-bold text-green-600 truncate">
                 {formatCurrency(hoaDonList.reduce((sum, h) => sum + h.daThanhToan, 0))}
               </p>

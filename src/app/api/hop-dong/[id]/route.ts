@@ -6,6 +6,7 @@ import HopDong from '@/models/HopDong';
 import Phong from '@/models/Phong';
 import KhachThue from '@/models/KhachThue';
 import { updatePhongStatus, updateAllKhachThueStatus } from '@/lib/status-utils';
+import { isToaNhaAccessible } from '@/lib/auth-utils';
 import { z } from 'zod';
 
 const phiDichVuSchema = z.object({
@@ -40,8 +41,7 @@ const hopDongPartialSchema = hopDongSchema.partial();
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-)
- {
+) {
   try {
     const session = await getServerSession(authOptions);
     
@@ -64,6 +64,16 @@ export async function GET(
       return NextResponse.json(
         { message: 'Hợp đồng không tồn tại' },
         { status: 404 }
+      );
+    }
+
+    // Kiểm tra quyền truy cập thông qua tòa nhà của phòng
+    const toaNhaId = (hopDong.phong as any).toaNha || hopDong.phong;
+    const hasAccess = await isToaNhaAccessible(session.user, toaNhaId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { message: 'Bạn không có quyền truy cập hợp đồng này' },
+        { status: 403 }
       );
     }
 
@@ -102,7 +112,7 @@ export async function PUT(
     const { id } = await params;
 
     // Lấy hợp đồng hiện tại để kiểm tra
-    const existingHopDong = await HopDong.findById(id);
+    const existingHopDong = await HopDong.findById(id).populate('phong');
     if (!existingHopDong) {
       return NextResponse.json(
         { message: 'Hợp đồng không tồn tại' },
@@ -110,13 +120,31 @@ export async function PUT(
       );
     }
 
-    // Nếu có cập nhật phòng, kiểm tra phòng tồn tại
+    // Kiểm tra quyền chỉnh sửa tòa nhà hiện tại
+    const currentToaNhaId = (existingHopDong.phong as any).toaNha || existingHopDong.phong;
+    const hasAccess = await isToaNhaAccessible(session.user, currentToaNhaId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { message: 'Bạn không có quyền chỉnh sửa hợp đồng của tòa nhà này' },
+        { status: 403 }
+      );
+    }
+
+    // Nếu có cập nhật phòng, kiểm tra phòng tồn tại và quyền ở tòa nhà phòng mới
     if (validatedData.phong) {
       const phong = await Phong.findById(validatedData.phong);
       if (!phong) {
         return NextResponse.json(
           { message: 'Phòng không tồn tại' },
           { status: 400 }
+        );
+      }
+      
+      const hasAccessToNew = await isToaNhaAccessible(session.user, phong.toaNha);
+      if (!hasAccessToNew) {
+        return NextResponse.json(
+          { message: 'Bạn không có quyền chuyển hợp đồng sang tòa nhà này' },
+          { status: 403 }
         );
       }
     }
@@ -215,7 +243,7 @@ export async function DELETE(
     await dbConnect();
     const { id } = await params;
 
-    const hopDong = await HopDong.findById(id);
+    const hopDong = await HopDong.findById(id).populate('phong');
     if (!hopDong) {
       return NextResponse.json(
         { message: 'Hợp đồng không tồn tại' },
@@ -223,8 +251,18 @@ export async function DELETE(
       );
     }
 
+    // Kiểm tra quyền xóa
+    const toaNhaId = (hopDong.phong as any).toaNha || hopDong.phong;
+    const hasAccess = await isToaNhaAccessible(session.user, toaNhaId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { message: 'Bạn không có quyền xóa hợp đồng của tòa nhà này' },
+        { status: 403 }
+      );
+    }
+
     // Lưu thông tin phòng và khách thuê trước khi xóa
-    const phongId = hopDong.phong.toString();
+    const phongId = hopDong.phong._id.toString();
     const khachThueIds = hopDong.khachThueId.map((id: any) => id.toString());
 
     await HopDong.findByIdAndDelete(id);

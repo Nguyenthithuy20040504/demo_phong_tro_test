@@ -8,6 +8,7 @@ import Phong from '@/models/Phong';
 import { updateKhachThueStatus } from '@/lib/status-utils';
 import { getAccessibleKhachThueIds } from '@/lib/auth-utils';
 import { z } from 'zod';
+import mongoose from 'mongoose';
 
 const khachThueSchema = z.object({
   hoTen: z.string().min(2, 'Họ tên phải có ít nhất 2 ký tự'),
@@ -122,14 +123,50 @@ export async function GET(request: NextRequest) {
 
     const total = await KhachThue.countDocuments(query);
 
+    // Bổ sung thêm các tài khoản khách thuê từ NguoiDung model nếu chưa có trong KhachThue
+    // Lấy tất cả user có role khachThue thuộc quyền quản lý
+    const userQuery: any = { role: 'khachThue' };
+    if (accessibleKhachThueIds !== null) {
+      userQuery._id = { $in: accessibleKhachThueIds };
+    }
+    if (search) {
+      userQuery.$or = [
+        { ten: { $regex: search, $options: 'i' } },
+        { soDienThoai: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const userTenants = await mongoose.model('NguoiDung').find(userQuery).limit(limit);
+    
+    // Trộn và đảm bảo không trùng lặp theo ID hoặc SĐT
+    const finalData = [...khachThueListWithContracts];
+    userTenants.forEach(user => {
+      const exists = finalData.some(k => 
+        k._id?.toString() === user._id.toString() || 
+        k.soDienThoai === (user.soDienThoai || user.phone)
+      );
+      if (!exists) {
+        finalData.push({
+          _id: user._id,
+          hoTen: user.ten || user.name,
+          soDienThoai: user.soDienThoai || user.phone,
+          email: user.email,
+          trangThai: 'chuaThue',
+          vaiTro: 'khachThue',
+          anhDaiDien: user.anhDaiDien || user.avatar
+        });
+      }
+    });
+
     return NextResponse.json({
       success: true,
-      data: khachThueListWithContracts,
+      data: finalData,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        total: Math.max(total, finalData.length),
+        totalPages: Math.ceil(Math.max(total, finalData.length) / limit),
       },
     });
 
@@ -173,11 +210,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let nguoiQuanLyId = session.user.id;
+    if (session.user.role === 'nhanVien') {
+      const nhanVien = await mongoose.model('NguoiDung').findById(session.user.id).select('nguoiQuanLy');
+      if (nhanVien && nhanVien.nguoiQuanLy) {
+        nguoiQuanLyId = nhanVien.nguoiQuanLy.toString();
+      }
+    }
+
     const newKhachThue = new KhachThue({
       ...validatedData,
       ngaySinh: new Date(validatedData.ngaySinh),
       anhCCCD: validatedData.anhCCCD || { matTruoc: '', matSau: '' },
       trangThai: 'chuaThue', // Mặc định là chưa thuê, sẽ được cập nhật tự động
+      nguoiQuanLy: new mongoose.Types.ObjectId(nguoiQuanLyId)
     });
 
     await newKhachThue.save();

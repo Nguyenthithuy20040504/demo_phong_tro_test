@@ -6,6 +6,8 @@ import ToaNha from '@/models/ToaNha';
 import Phong from '@/models/Phong';
 import { z } from 'zod';
 
+import { isToaNhaAccessible } from '@/lib/auth-utils';
+
 const toaNhaSchema = z.object({
   tenToaNha: z.string().min(1, 'Tên tòa nhà là bắt buộc'),
   diaChi: z.object({
@@ -35,6 +37,15 @@ export async function GET(
 
     await dbConnect();
     const { id } = await params;
+
+    // Kiểm tra quyền truy cập
+    const hasAccess = await isToaNhaAccessible(session.user, id);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { message: 'Bạn không có quyền truy cập tòa nhà này' },
+        { status: 403 }
+      );
+    }
 
     const toaNha = await ToaNha.findById(id)
       .populate('chuSoHuu', 'ten email');
@@ -96,8 +107,9 @@ export async function PUT(
       );
     }
 
-    // Check if user has permission to update this toa nha
-    if (toaNha.chuSoHuu.toString() !== session.user.id && session.user.role !== 'admin') {
+    // Kiểm tra quyền chỉnh sửa
+    const hasAccess = await isToaNhaAccessible(session.user, id);
+    if (!hasAccess) {
       return NextResponse.json(
         { message: 'Bạn không có quyền chỉnh sửa tòa nhà này' },
         { status: 403 }
@@ -169,8 +181,9 @@ export async function DELETE(
       );
     }
 
-    // Check if user has permission to delete this toa nha
-    if (toaNha.chuSoHuu.toString() !== session.user.id && session.user.role !== 'admin') {
+    // Kiểm tra quyền xóa
+    const hasAccess = await isToaNhaAccessible(session.user, id);
+    if (!hasAccess) {
       return NextResponse.json(
         { message: 'Bạn không có quyền xóa tòa nhà này' },
         { status: 403 }
@@ -178,7 +191,6 @@ export async function DELETE(
     }
 
     // Check if toa nha has rooms
-    const Phong = (await import('@/models/Phong')).default;
     const roomCount = await Phong.countDocuments({ toaNha: id });
 
     if (roomCount > 0) {

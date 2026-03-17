@@ -4,8 +4,9 @@ import HoaDon from '@/models/HoaDon';
 import HopDong from '@/models/HopDong';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getAccessibleToaNhaIds } from '@/lib/auth-utils';
+import { getAccessibleToaNhaIds, isToaNhaAccessible } from '@/lib/auth-utils';
 import { PhiDichVu } from '@/types';
+import mongoose from 'mongoose';
 
 // GET - Lấy danh sách hóa đơn
 export async function GET(request: NextRequest) {
@@ -28,8 +29,7 @@ export async function GET(request: NextRequest) {
     if (id) {
       const hoaDon = await HoaDon.findById(id)
         .populate('hopDong', 'maHopDong')
-        .populate('phong', 'maPhong')
-        .populate('khachThue', 'hoTen soDienThoai');
+        .populate('phong', 'maPhong toaNha');
       
       if (!hoaDon) {
         return NextResponse.json(
@@ -38,7 +38,39 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // Kiểm tra quyền truy cập
+      const toaNhaId = (hoaDon.phong as any).toaNha || hoaDon.phong;
+      const hasAccess = await isToaNhaAccessible(session.user, toaNhaId);
+      if (!hasAccess && session.user.role !== 'khachThue') {
+         return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+      }
+      
+      // Nếu là khách thuê, kiểm tra xem có phải hóa đơn của mình không
+      if (session.user.role === 'khachThue' && hoaDon.khachThue.toString() !== session.user.id) {
+         // Cần kiểm tra kỹ hơn nếu dùng SĐT hoặc liên kết khác, tạm thời logic cơ bản
+         const userId = session.user.id;
+         if (hoaDon.khachThue.toString() !== userId) {
+            return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+         }
+      }
+
       const hoaDonObj = hoaDon.toObject();
+      
+      // Khôi phục thông tin Khách thuê
+      const KhachThueModel = (await import('@/models/KhachThue')).default;
+      const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+      let ktInfo: any = await KhachThueModel.findById(hoaDonObj.khachThue).select('hoTen soDienThoai').lean();
+      if (!ktInfo) {
+        const ndInfo: any = await NguoiDungModel.findById(hoaDonObj.khachThue).select('ten name soDienThoai phone').lean();
+        if (ndInfo) {
+          ktInfo = {
+            _id: ndInfo._id,
+            hoTen: ndInfo.ten || ndInfo.name || 'Khách thuê',
+            soDienThoai: ndInfo.soDienThoai || ndInfo.phone
+          };
+        }
+      }
+      (hoaDonObj as any).khachThue = ktInfo || { _id: hoaDonObj.khachThue, hoTen: 'N/A' };
       
       // Xử lý dữ liệu cũ không có chỉ số điện nước
       if (hoaDonObj.chiSoDienBanDau === undefined) {
@@ -69,7 +101,28 @@ export async function GET(request: NextRequest) {
     }
 
     const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
-    if (accessibleToaNhaIds !== null) {
+    
+    if (session.user.role === 'khachThue') {
+      // Logic dành cho khách thuê: Chỉ lấy hóa đơn của chính họ
+      const userId = session.user.id;
+      const linkedIds = [new mongoose.Types.ObjectId(userId)];
+      
+      // Tìm khách thuê theo phone nếu có
+      const KhachThueModel = (await import('@/models/KhachThue')).default;
+      const kt = await KhachThueModel.findOne({ 
+        $or: [
+          { _id: userId },
+          { soDienThoai: session.user.phone }
+        ]
+      }).select('_id');
+      
+      if (kt && kt._id.toString() !== userId) {
+        linkedIds.push(kt._id);
+      }
+      
+      query.khachThue = { $in: linkedIds };
+    } else if (accessibleToaNhaIds !== null) {
+      // Logic dành cho Admin/Chủ nhà/Nhân viên
       const phongs = await connectToDatabase().then((db) => db.model('Phong').find({ toaNha: { $in: accessibleToaNhaIds } }).select('_id'));
       const phongIds = phongs.map((p: any) => p._id);
       
@@ -85,14 +138,33 @@ export async function GET(request: NextRequest) {
     const hoaDons = await HoaDon.find(query)
       .populate('hopDong', 'maHopDong')
       .populate('phong', 'maPhong')
-      .populate('khachThue', 'hoTen soDienThoai')
       .sort({ nam: -1, thang: -1 })
       .skip(skip)
       .limit(limit);
 
-    // Xử lý dữ liệu cũ không có chỉ số điện nước
-    const processedHoaDons = hoaDons.map(hoaDon => {
+    // Chuẩn bị models cho KhachThue
+    const KhachThueModel = (await import('@/models/KhachThue')).default;
+    const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+
+    // Xử lý dữ liệu cũ không có chỉ số điện nước và lấy thông tin khách thuê
+    const processedHoaDons = await Promise.all(hoaDons.map(async (hoaDon) => {
       const hoaDonObj = hoaDon.toObject();
+      
+      // Map thông tin khách thuê
+      if (hoaDonObj.khachThue) {
+        let ktInfo: any = await KhachThueModel.findById(hoaDonObj.khachThue).select('hoTen soDienThoai').lean();
+        if (!ktInfo) {
+          const ndInfo: any = await NguoiDungModel.findById(hoaDonObj.khachThue).select('ten name soDienThoai phone').lean();
+          if (ndInfo) {
+            ktInfo = {
+              _id: ndInfo._id,
+              hoTen: ndInfo.ten || ndInfo.name || 'Khách thuê',
+              soDienThoai: ndInfo.soDienThoai || ndInfo.phone
+            };
+          }
+        }
+        (hoaDonObj as any).khachThue = ktInfo || { _id: hoaDonObj.khachThue, hoTen: 'N/A' };
+      }
       
       // Nếu không có chỉ số điện nước, tạo giá trị mặc định
       if (hoaDonObj.chiSoDienBanDau === undefined) {
@@ -109,7 +181,7 @@ export async function GET(request: NextRequest) {
       }
       
       return hoaDonObj;
-    });
+    }));
 
     const total = await HoaDon.countDocuments(query);
 
@@ -174,6 +246,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { message: 'Hợp đồng không tồn tại' },
         { status: 404 }
+      );
+    }
+
+    // Kiểm tra quyền truy cập tòa nhà
+    const toaNhaId = (hopDongData.phong as any).toaNha || hopDongData.phong;
+    const hasAccess = await isToaNhaAccessible(session.user, toaNhaId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { message: 'Bạn không có quyền tạo hóa đơn cho tòa nhà này' },
+        { status: 403 }
       );
     }
 
@@ -366,12 +448,22 @@ export async function PUT(request: NextRequest) {
 
     // Kiểm tra hóa đơn tồn tại
     console.log('Looking for hoa don with ID:', id);
-    const existingHoaDon = await HoaDon.findById(id);
+    const existingHoaDon = await HoaDon.findById(id).populate('phong');
     if (!existingHoaDon) {
       console.log('Hoa don not found');
       return NextResponse.json(
         { message: 'Hóa đơn không tồn tại' },
         { status: 404 }
+      );
+    }
+
+    // Kiểm tra quyền truy cập tòa nhà
+    const toaNhaId = (existingHoaDon.phong as any).toaNha || existingHoaDon.phong;
+    const hasAccess = await isToaNhaAccessible(session.user, toaNhaId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { message: 'Bạn không có quyền chỉnh sửa hóa đơn của tòa nhà này' },
+        { status: 403 }
       );
     }
 
@@ -467,13 +559,25 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const deletedHoaDon = await HoaDon.findByIdAndDelete(id);
-    if (!deletedHoaDon) {
+    const existingHoaDon = await HoaDon.findById(id).populate('phong');
+    if (!existingHoaDon) {
       return NextResponse.json(
         { message: 'Hóa đơn không tồn tại' },
         { status: 404 }
       );
     }
+
+    // Kiểm tra quyền truy cập tòa nhà
+    const toaNhaId = (existingHoaDon.phong as any).toaNha || existingHoaDon.phong;
+    const hasAccess = await isToaNhaAccessible(session.user, toaNhaId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { message: 'Bạn không có quyền xóa hóa đơn của tòa nhà này' },
+        { status: 403 }
+      );
+    }
+
+    await HoaDon.findByIdAndDelete(id);
 
     return NextResponse.json({
       success: true,

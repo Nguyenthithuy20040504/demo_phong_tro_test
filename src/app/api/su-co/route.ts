@@ -7,10 +7,11 @@ import Phong from '@/models/Phong';
 import KhachThue from '@/models/KhachThue';
 import { getAccessibleToaNhaIds } from '@/lib/auth-utils';
 import { z } from 'zod';
+import mongoose from 'mongoose';
 
 const suCoSchema = z.object({
   phong: z.string().min(1, 'Phòng là bắt buộc'),
-  khachThue: z.string().min(1, 'Khách thuê là bắt buộc'),
+  khachThue: z.string().nullable().optional(),
   tieuDe: z.string().min(1, 'Tiêu đề là bắt buộc'),
   moTa: z.string().min(1, 'Mô tả là bắt buộc'),
   anhSuCo: z.array(z.string()).optional(),
@@ -18,6 +19,9 @@ const suCoSchema = z.object({
   mucDoUuTien: z.enum(['thap', 'trungBinh', 'cao', 'khancap']).optional(),
   trangThai: z.enum(['moi', 'dangXuLy', 'daXong', 'daHuy']).optional(),
 });
+
+// Đảm bảo model NguoiDung được load
+import '@/models/NguoiDung';
 
 export async function GET(request: NextRequest) {
   try {
@@ -62,7 +66,24 @@ export async function GET(request: NextRequest) {
     }
 
     const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
-    if (accessibleToaNhaIds !== null) {
+    
+    if (session.user.role === 'khachThue') {
+      const userId = session.user.id;
+      const linkedIds = [new mongoose.Types.ObjectId(userId)];
+      
+      const kt = await KhachThue.findOne({ 
+        $or: [
+          { _id: userId },
+          { soDienThoai: session.user.phone }
+        ]
+      }).select('_id');
+      
+      if (kt && kt._id.toString() !== userId) {
+        linkedIds.push(kt._id);
+      }
+      
+      query.khachThue = { $in: linkedIds };
+    } else if (accessibleToaNhaIds !== null) {
       if (accessibleToaNhaIds.length === 0) {
          return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
       }
@@ -76,13 +97,42 @@ export async function GET(request: NextRequest) {
       query.phong = { $in: phongIds };
     }
 
-    const suCoList = await SuCo.find(query)
-      .populate('phong', 'maPhong toaNha')
-      .populate('khachThue', 'hoTen soDienThoai')
+    const suCoListRaw = await SuCo.find(query)
+      .populate({
+        path: 'phong',
+        select: 'maPhong toaNha',
+        populate: {
+          path: 'toaNha',
+          select: 'tenToaNha'
+        }
+      })
       .populate('nguoiXuLy', 'ten email')
       .sort({ ngayBaoCao: -1 })
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(limit)
+      .lean();
+
+    // Thủ công populate khachThue từ cả 2 collection và toaNha
+    const ToaNhaModel = mongoose.models.ToaNha || mongoose.model('ToaNha');
+    const suCoList = await Promise.all(suCoListRaw.map(async (sc: any) => {
+      let khachThue = null;
+      if (sc.khachThue) {
+        khachThue = await KhachThue.findById(sc.khachThue).select('hoTen soDienThoai').lean();
+        if (!khachThue) {
+          khachThue = await mongoose.model('NguoiDung').findOne({ _id: sc.khachThue, role: 'khachThue' }).select('hoTen soDienThoai').lean();
+        }
+      }
+      
+      // Xử lý an toàn cho Tòa nhà (trường hợp populate lồng nhau bị lỗi)
+      if (sc.phong && sc.phong.toaNha && typeof sc.phong.toaNha !== 'object') {
+        const toaNhaInfo = await ToaNhaModel.findById(sc.phong.toaNha).select('tenToaNha').lean();
+        if (toaNhaInfo) {
+          sc.phong.toaNha = toaNhaInfo;
+        }
+      }
+      
+      return { ...sc, khachThue };
+    }));
 
     const total = await SuCo.countDocuments(query);
 
@@ -118,6 +168,52 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    
+    // Nếu là khách thuê, tự gán khachThue, nhưng cho phép chọn phòng từ hợp đồng đang hoạt động
+    if (session.user.role === 'khachThue') {
+      const userId = session.user.id;
+      
+      // Tìm khách thuê
+      let khachThue = await KhachThue.findOne({ 
+        $or: [
+          { _id: userId },
+          { soDienThoai: session.user.phone }
+        ]
+      }).select('_id');
+      
+      const ktId = khachThue ? khachThue._id : new mongoose.Types.ObjectId(userId);
+      
+      // Tìm tất cả hợp đồng hoạt động để xác thực phòng được chọn
+      const HopDong = (await import('@/models/HopDong')).default;
+      const activeContracts = await HopDong.find({
+        khachThueId: { $in: [new mongoose.Types.ObjectId(userId), ktId] },
+        trangThai: 'hoatDong'
+      }).select('phong');
+      
+      if (!activeContracts || activeContracts.length === 0) {
+        return NextResponse.json(
+          { message: 'Bạn không có hợp đồng thuê phòng nào đang hoạt động' },
+          { status: 400 }
+        );
+      }
+      
+      // Nếu client không gửi phòng, tự động lấy phòng đầu tiên
+      if (!body.phong) {
+        body.phong = activeContracts[0].phong.toString();
+      } else {
+        // Kiểm tra phòng client gửi phải thuộc hợp đồng của họ
+        const validPhongIds = activeContracts.map(c => c.phong.toString());
+        if (!validPhongIds.includes(body.phong)) {
+          return NextResponse.json(
+            { message: 'Phòng được chọn không thuộc hợp đồng của bạn' },
+            { status: 403 }
+          );
+        }
+      }
+      
+      body.khachThue = ktId.toString();
+    }
+
     const validatedData = suCoSchema.parse(body);
 
     await dbConnect();
@@ -131,13 +227,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if khach thue exists
-    const khachThue = await KhachThue.findById(validatedData.khachThue);
-    if (!khachThue) {
-      return NextResponse.json(
-        { message: 'Khách thuê không tồn tại' },
-        { status: 400 }
-      );
+    // Check if khach thue exists (only if provided)
+    if (validatedData.khachThue) {
+      const khachThueKT = await KhachThue.findById(validatedData.khachThue);
+      const khachThueND = !khachThueKT ? await mongoose.model('NguoiDung').findOne({ _id: validatedData.khachThue, role: 'khachThue' }) : null;
+      
+      if (!khachThueKT && !khachThueND) {
+        return NextResponse.json(
+          { message: 'Khách thuê không tồn tại' },
+          { status: 400 }
+        );
+      }
     }
 
     const newSuCo = new SuCo({

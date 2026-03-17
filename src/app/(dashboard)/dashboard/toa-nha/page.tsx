@@ -1,19 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useCache } from '@/hooks/use-cache';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -23,33 +16,22 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Plus, 
   Search, 
-  Edit, 
-  Trash2, 
   Building2, 
-  MapPin,
-  Users,
-  Eye,
   RefreshCw,
-  Copy
+  AlertCircle,
 } from 'lucide-react';
 import { ToaNha } from '@/types';
-import { DeleteConfirmPopover } from '@/components/ui/delete-confirm-popover';
 import { toast } from 'sonner';
 import { ToaNhaDataTable } from './table';
 
 export default function ToaNhaPage() {
+  const { data: session } = useSession();
+  const isNhanVien = session?.user?.role === 'nhanVien';
   const cache = useCache<{ toaNhaList: ToaNha[] }>({ key: 'toa-nha-data', duration: 300000 });
   const [toaNhaList, setToaNhaList] = useState<ToaNha[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,7 +50,6 @@ export default function ToaNhaPage() {
   const fetchToaNha = async (forceRefresh = false) => {
     try {
       setLoading(true);
-      
       if (!forceRefresh) {
         const cachedData = cache.getCache();
         if (cachedData) {
@@ -98,7 +79,7 @@ export default function ToaNhaPage() {
     cache.setIsRefreshing(true);
     await fetchToaNha(true);
     cache.setIsRefreshing(false);
-    toast.success('Đã tải dữ liệu mới nhất');
+    toast.success('Dữ liệu đã được cập nhật mới nhất!');
   };
 
   const filteredToaNha = toaNhaList.filter(toaNha =>
@@ -114,53 +95,47 @@ export default function ToaNhaPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      const response = await fetch(`/api/toa-nha/${id}`, {
-        method: 'DELETE',
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          cache.clearCache();
-          setToaNhaList(prev => prev.filter(toaNha => toaNha._id !== id));
-          toast.success('Xóa tòa nhà thành công!');
-        } else {
-          toast.error(result.message || 'Có lỗi xảy ra khi xóa tòa nhà');
-        }
+      const response = await fetch(`/api/toa-nha/${id}`, { method: 'DELETE' });
+      const result = await response.json();
+      if (response.ok && result.success) {
+        cache.clearCache();
+        setToaNhaList(prev => prev.filter(toaNha => toaNha._id !== id));
+        toast.success('Đã xóa tòa nhà thành công!');
       } else {
-        const error = await response.json();
-        toast.error(error.message || 'Có lỗi xảy ra khi xóa tòa nhà');
+        const msg = result.message || '';
+        if (msg.includes('phong') || msg.includes('room') || response.status === 409) {
+          toast.error('Không thể xóa vì tòa nhà này còn phòng. Hãy xóa hết các phòng trước!');
+        } else {
+          toast.error('Xóa tòa nhà thất bại. Vui lòng thử lại sau.');
+        }
       }
     } catch (error) {
-      console.error('Error deleting toa nha:', error);
-      toast.error('Có lỗi xảy ra khi xóa tòa nhà');
+      toast.error('Mất kết nối đến máy chủ. Kiểm tra mạng rồi thử lại nhé!');
     }
-  };
-
-  const formatAddress = (diaChi: ToaNha['diaChi']) => {
-    return `${diaChi.soNha} ${diaChi.duong}, ${diaChi.phuong}, ${diaChi.quan}, ${diaChi.thanhPho}`;
   };
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div className="h-8 bg-gray-200 rounded w-48 animate-pulse"></div>
-          <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
-        </div>
-        <div className="h-96 bg-gray-200 rounded animate-pulse"></div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <RefreshCw className="h-8 w-8 animate-spin text-primary/20" />
+        <span className="text-sm text-muted-foreground">Đang tải dữ liệu...</span>
       </div>
     );
   }
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 md:gap-4">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">Quản lý tòa nhà</h1>
-          <p className="text-xs md:text-sm text-gray-600">Danh sách tất cả tòa nhà trong hệ thống</p>
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">
+            Quản lý tòa nhà
+          </h1>
+          <p className="text-xs md:text-sm text-gray-600">
+            Danh sách tất cả tòa nhà trong hệ thống
+          </p>
         </div>
+        
         <div className="flex gap-2 w-full sm:w-auto">
           <Button 
             variant="outline"
@@ -169,234 +144,105 @@ export default function ToaNhaPage() {
             disabled={cache.isRefreshing}
             className="flex-1 sm:flex-none"
           >
-            <RefreshCw className={`h-4 w-4 sm:mr-2 ${cache.isRefreshing ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline ml-2">{cache.isRefreshing ? 'Đang tải...' : 'Tải mới'}</span>
+            <RefreshCw className={`h-4 w-4 mr-2 ${cache.isRefreshing ? 'animate-spin' : ''}`} />
+            {cache.isRefreshing ? 'Đang tải...' : 'Làm mới'}
           </Button>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" onClick={() => setEditingToaNha(null)} className="flex-1 sm:flex-none">
-                <Plus className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Thêm tòa nhà</span>
-                <span className="sm:hidden">Thêm</span>
-              </Button>
-            </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] md:w-full">
-            <DialogHeader>
-              <DialogTitle className="text-base md:text-lg">
-                {editingToaNha ? 'Chỉnh sửa tòa nhà' : 'Thêm tòa nhà mới'}
-              </DialogTitle>
-              <DialogDescription className="text-xs md:text-sm">
-                {editingToaNha ? 'Cập nhật thông tin tòa nhà' : 'Nhập thông tin tòa nhà mới'}
-              </DialogDescription>
-            </DialogHeader>
-            
-            <ToaNhaForm 
-              toaNha={editingToaNha}
-              onClose={() => setIsDialogOpen(false)}
-              onSuccess={() => {
-                cache.clearCache();
-                setIsDialogOpen(false);
-                fetchToaNha(true);
-                toast.success(editingToaNha ? 'Cập nhật tòa nhà thành công!' : 'Thêm tòa nhà thành công!');
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+          {!isNhanVien && (
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" onClick={() => setEditingToaNha(null)} className="flex-1 sm:flex-none">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Thêm Tòa nhà
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-xl">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingToaNha ? 'Cập nhật Tòa nhà' : 'Thêm Tòa nhà mới'}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {editingToaNha ? 'Cập nhật thông tin cho tòa nhà này.' : 'Nhập các thông số cơ bản để tạo một tòa nhà mới.'}
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <ToaNhaForm 
+                  toaNha={editingToaNha}
+                  onClose={() => setIsDialogOpen(false)}
+                  onSuccess={() => {
+                    cache.clearCache();
+                    setIsDialogOpen(false);
+                    fetchToaNha(true);
+                  }}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Summary Panel */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 md:gap-4 lg:gap-6">
         <Card className="p-2 md:p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Tổng tòa nhà</p>
+              <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Tổng tòa nhà</p>
               <p className="text-base md:text-2xl font-bold">{toaNhaList.length}</p>
             </div>
             <Building2 className="h-3 w-3 md:h-4 md:w-4 text-gray-500" />
           </div>
         </Card>
-
+        
         <Card className="p-2 md:p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Phòng trống</p>
+              <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Phòng trống</p>
               <p className="text-base md:text-2xl font-bold text-green-600">
                 {toaNhaList.reduce((sum, toaNha) => sum + ((toaNha as any).phongTrong || 0), 0)}
               </p>
             </div>
-            <Users className="h-3 w-3 md:h-4 md:w-4 text-green-600" />
+            <Building2 className="h-3 w-3 md:h-4 md:w-4 text-green-600" />
           </div>
         </Card>
 
         <Card className="p-2 md:p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Đang thuê</p>
+              <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Đang cho thuê</p>
               <p className="text-base md:text-2xl font-bold text-blue-600">
                 {toaNhaList.reduce((sum, toaNha) => sum + ((toaNha as any).phongDangThue || 0), 0)}
               </p>
             </div>
-            <Users className="h-3 w-3 md:h-4 md:w-4 text-blue-600" />
+            <Building2 className="h-3 w-3 md:h-4 md:w-4 text-blue-600" />
           </div>
         </Card>
 
         <Card className="p-2 md:p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Tìm thấy</p>
-              <p className="text-base md:text-2xl font-bold">{filteredToaNha.length}</p>
+              <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Hỏng hóc</p>
+              <p className="text-base md:text-2xl font-bold text-red-600">
+                {Math.round((toaNhaList.filter(t => (t as any).suCoCount > 0).length / (toaNhaList.length || 1)) * 100)}%
+              </p>
             </div>
-            <Search className="h-3 w-3 md:h-4 md:w-4 text-gray-500" />
+            <AlertCircle className="h-3 w-3 md:h-4 md:w-4 text-red-600" />
           </div>
         </Card>
       </div>
 
-      {/* Desktop Table View */}
-      <Card className="hidden md:block">
-        <CardHeader>
-          <CardTitle>Danh sách tòa nhà</CardTitle>
-          <CardDescription>
-            {filteredToaNha.length} tòa nhà được tìm thấy
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          <ToaNhaDataTable
-            data={filteredToaNha}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Mobile Card View */}
-      <div className="md:hidden space-y-3">
-        <div className="flex justify-between items-center">
-          <h2 className="text-base font-semibold">Danh sách tòa nhà</h2>
-          <span className="text-xs text-gray-600">{filteredToaNha.length} tòa nhà</span>
-        </div>
-
-        {/* Mobile Filters */}
-        <div className="space-y-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Tìm kiếm tòa nhà..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 text-sm"
-            />
-          </div>
-        </div>
-        
-        {filteredToaNha.length === 0 ? (
-          <Card className="p-6 text-center">
-            <Building2 className="h-10 w-10 mx-auto text-gray-400 mb-3" />
-            <h3 className="text-base font-medium text-gray-900 mb-1">Không tìm thấy tòa nhà nào</h3>
-            <p className="text-sm text-gray-600">Thử thay đổi tìm kiếm</p>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 gap-3">
-            {filteredToaNha.map((toaNha) => {
-              const phongTrong = (toaNha as any).phongTrong || 0;
-              const phongDangThue = (toaNha as any).phongDangThue || 0;
-              const tongPhong = toaNha.tongSoPhong;
-              
-              return (
-                <Card key={toaNha._id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-3">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Building2 className="h-4 w-4 text-blue-600" />
-                          <h3 className="font-semibold text-base">{toaNha.tenToaNha}</h3>
-                        </div>
-                        <div className="flex items-start gap-1.5 text-xs text-gray-600">
-                          <MapPin className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                          <span className="line-clamp-2">{formatAddress(toaNha.diaChi)}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-3 gap-2 mb-3 p-2 bg-gray-50 rounded-md">
-                      <div className="text-center">
-                        <div className="text-xs text-gray-600">Tổng</div>
-                        <div className="text-sm font-semibold">{tongPhong}</div>
-                      </div>
-                      <div className="text-center border-x border-gray-200">
-                        <div className="text-xs text-gray-600">Trống</div>
-                        <div className="text-sm font-semibold text-green-600">{phongTrong}</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-xs text-gray-600">Thuê</div>
-                        <div className="text-sm font-semibold text-blue-600">{phongDangThue}</div>
-                      </div>
-                    </div>
-
-                    {toaNha.tienNghiChung && toaNha.tienNghiChung.length > 0 && (
-                      <div className="mb-3">
-                        <div className="text-xs text-gray-600 mb-1">Tiện nghi:</div>
-                        <div className="flex flex-wrap gap-1">
-                          {toaNha.tienNghiChung.slice(0, 3).map((tienNghi) => (
-                            <Badge key={tienNghi} variant="secondary" className="text-xs">
-                              {tienNghi}
-                            </Badge>
-                          ))}
-                          {toaNha.tienNghiChung.length > 3 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{toaNha.tienNghiChung.length - 3}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            const publicUrl = `${window.location.origin}/xem-phong`;
-                            navigator.clipboard.writeText(publicUrl);
-                            toast.success('Đã sao chép link trang xem phòng');
-                          }}
-                          className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                          title="Copy link trang xem phòng"
-                        >
-                          <Copy className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(toaNha)}
-                          className="flex-1 text-xs"
-                        >
-                          <Edit className="h-3.5 w-3.5 mr-1" />
-                          Sửa
-                        </Button>
-                        <DeleteConfirmPopover
-                          onConfirm={() => handleDelete(toaNha._id!)}
-                          title="Xóa tòa nhà"
-                          description="Bạn có chắc chắn muốn xóa tòa nhà này?"
-                          className="text-black hover:text-red-700 hover:bg-red-50"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      {/* Main Table Interface */}
+      <ToaNhaDataTable
+        data={filteredToaNha}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        canEdit={!isNhanVien}
+      />
     </div>
   );
 }
 
-// Form component for adding/editing toa nha
+// Form component remains largely the same but with style updates
 function ToaNhaForm({ 
   toaNha, 
   onClose, 
@@ -430,7 +276,10 @@ function ToaNhaForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    if (!formData.tenToaNha.trim()) {
+      toast.error('Bạn chưa nhập tên tòa nhà!');
+      return;
+    }
     try {
       const submitData = {
         tenToaNha: formData.tenToaNha,
@@ -450,26 +299,29 @@ function ToaNhaForm({
 
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(submitData),
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          onSuccess();
-        } else {
-          toast.error(result.message || 'Có lỗi xảy ra');
-        }
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        toast.success(toaNha ? 'Cập nhật tòa nhà thành công!' : 'Thêm tòa nhà mới thành công!');
+        onSuccess();
       } else {
-        const error = await response.json();
-        toast.error(error.message || 'Có lỗi xảy ra');
+        const msg = (result.message || '').toLowerCase();
+        if (msg.includes('duplicate') || msg.includes('exists') || response.status === 409) {
+          toast.error('Tòa nhà này đã tồn tại trong hệ thống. Hãy đặt tên khác!');
+        } else if (response.status === 400) {
+          toast.error('Thông tin chưa đầy đủ. Kiểm tra lại các trường bắt buộc nhé!');
+        } else if (response.status === 403) {
+          toast.error('Bạn không có quyền thực hiện thao tác này.');
+        } else {
+          toast.error('Có lỗi xảy ra. Vui lòng thử lại sau!');
+        }
       }
     } catch (error) {
-      console.error('Error submitting form:', error);
-      toast.error('Có lỗi xảy ra khi gửi form');
+      toast.error('Mất kết nối đến máy chủ. Kiểm tra mạng rồi thử lại nhé!');
     }
   };
 
@@ -483,116 +335,66 @@ function ToaNhaForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="tenToaNha" className="text-sm">Tên tòa nhà</Label>
+    <form onSubmit={handleSubmit} className="space-y-4 py-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="tenToaNha" className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Tên tòa nhà</Label>
         <Input
           id="tenToaNha"
           value={formData.tenToaNha}
           onChange={(e) => setFormData(prev => ({ ...prev, tenToaNha: e.target.value }))}
+          placeholder="VD: Tòa nhà Hoàng Anh, KTX ABC..."
           required
-          className="text-sm"
+          className="h-10 bg-secondary/30 border-transparent rounded-xl focus:bg-background transition-all"
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="soNha" className="text-sm">Số nhà</Label>
-          <Input
-            id="soNha"
-            value={formData.soNha}
-            onChange={(e) => setFormData(prev => ({ ...prev, soNha: e.target.value }))}
-            required
-            className="text-sm"
-          />
+      <div className="space-y-1.5">
+        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Địa chỉ</Label>
+        <div className="grid grid-cols-2 gap-3">
+          <Input placeholder="Số nhà / Ngõ" value={formData.soNha} onChange={(e) => setFormData(prev => ({ ...prev, soNha: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
+          <Input placeholder="Tên đường" value={formData.duong} onChange={(e) => setFormData(prev => ({ ...prev, duong: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
         </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="duong" className="text-sm">Tên đường</Label>
-          <Input
-            id="duong"
-            value={formData.duong}
-            onChange={(e) => setFormData(prev => ({ ...prev, duong: e.target.value }))}
-            required
-            className="text-sm"
-          />
+        <div className="grid grid-cols-3 gap-3">
+          <Input placeholder="Phường / Xã" value={formData.phuong} onChange={(e) => setFormData(prev => ({ ...prev, phuong: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
+          <Input placeholder="Quận / Huyện" value={formData.quan} onChange={(e) => setFormData(prev => ({ ...prev, quan: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
+          <Input placeholder="Thành phố" value={formData.thanhPho} onChange={(e) => setFormData(prev => ({ ...prev, thanhPho: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="phuong" className="text-sm">Phường/Xã</Label>
-          <Input
-            id="phuong"
-            value={formData.phuong}
-            onChange={(e) => setFormData(prev => ({ ...prev, phuong: e.target.value }))}
-            required
-            className="text-sm"
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="quan" className="text-sm">Quận/Huyện</Label>
-          <Input
-            id="quan"
-            value={formData.quan}
-            onChange={(e) => setFormData(prev => ({ ...prev, quan: e.target.value }))}
-            required
-            className="text-sm"
-          />
-        </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="moTa" className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Mô tả (Ghi chú)</Label>
+        <Textarea id="moTa" value={formData.moTa} onChange={(e) => setFormData(prev => ({ ...prev, moTa: e.target.value }))} rows={2} placeholder="Ghi chú thêm về tòa nhà..." className="bg-secondary/30 border-transparent rounded-xl focus:bg-background transition-all resize-none" />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="thanhPho" className="text-sm">Thành phố</Label>
-        <Input
-          id="thanhPho"
-          value={formData.thanhPho}
-          onChange={(e) => setFormData(prev => ({ ...prev, thanhPho: e.target.value }))}
-          required
-          className="text-sm"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="moTa" className="text-sm">Mô tả</Label>
-        <Textarea
-          id="moTa"
-          value={formData.moTa}
-          onChange={(e) => setFormData(prev => ({ ...prev, moTa: e.target.value }))}
-          rows={3}
-          className="text-sm"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label className="text-sm">Tiện nghi chung</Label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Tiện ích chung</Label>
+        <div className="grid grid-cols-4 gap-2">
           {tienNghiOptions.map((option) => (
-            <div key={option.value} className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id={option.value}
-                checked={formData.tienNghiChung.includes(option.value)}
-                onChange={(e) => handleTienNghiChange(option.value, e.target.checked)}
-                className="rounded border-gray-300"
-              />
-              <Label htmlFor={option.value} className="text-sm">
-                {option.label}
-              </Label>
+            <div
+              key={option.value}
+              onClick={() => handleTienNghiChange(option.value, !formData.tienNghiChung.includes(option.value))}
+              className={`flex items-center gap-2 p-2 rounded-xl cursor-pointer transition-all text-xs font-medium select-none ${
+                formData.tienNghiChung.includes(option.value)
+                  ? 'bg-primary/10 text-primary border border-primary/20'
+                  : 'bg-secondary/20 text-muted-foreground hover:bg-secondary/40 border border-transparent'
+              }`}
+            >
+              <div className={`size-3 rounded-full flex-shrink-0 border ${
+                formData.tienNghiChung.includes(option.value) ? 'bg-primary border-primary' : 'border-muted-foreground/30'
+              }`} />
+              {option.label}
             </div>
           ))}
         </div>
       </div>
 
-      <DialogFooter className="gap-2">
-        <Button type="button" variant="outline" onClick={onClose} className="text-sm">
-          Hủy
-        </Button>
-        <Button type="submit" className="text-sm">
-          {toaNha ? 'Cập nhật' : 'Thêm mới'}
+      <DialogFooter className="gap-3 pt-4 pb-2 border-t border-border/10">
+        <Button type="button" variant="ghost" onClick={onClose} className="rounded-xl h-10 px-6 font-bold text-xs uppercase tracking-widest">Hủy</Button>
+        <Button type="submit" className="rounded-xl h-10 px-8 font-bold text-xs uppercase tracking-widest shadow-premium">
+          {toaNha ? 'Lưu thay đổi' : 'Thêm tòa nhà'}
         </Button>
       </DialogFooter>
     </form>
   );
 }
+

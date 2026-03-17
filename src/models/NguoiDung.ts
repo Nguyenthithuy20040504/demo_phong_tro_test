@@ -111,11 +111,13 @@ const NguoiDungSchema = new Schema<INguoiDung>({
     default: null
   }
 }, {
-  timestamps: { 
-    createdAt: 'ngayTao', 
-    updatedAt: 'ngayCapNhat',
-    currentTime: () => new Date()
-  }
+  timestamps: true // Mongoose tự tạo createdAt và updatedAt
+});
+
+// Sync ngayTao/ngayCapNhat với createdAt/updatedAt sau khi save
+NguoiDungSchema.post('save', function(doc) {
+  if (!doc.ngayTao) doc.ngayTao = doc.createdAt;
+  if (!doc.ngayCapNhat) doc.ngayCapNhat = doc.updatedAt;
 });
 
 // Hash password trước khi lưu

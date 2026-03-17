@@ -193,7 +193,7 @@ export interface ThanhToan {
 export interface SuCo {
   _id?: string;
   phong: string; // ObjectId ref Phong
-  khachThue: string; // ObjectId ref KhachThue
+  khachThue?: string; // ObjectId ref KhachThue
   tieuDe: string;
   moTa: string;
   anhSuCo: string[];

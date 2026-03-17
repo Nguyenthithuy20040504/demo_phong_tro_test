@@ -23,7 +23,7 @@ import {
   Check,
   ChevronsUpDown
 } from 'lucide-react';
-import { HopDong, Phong, KhachThue } from '@/types';
+import { HopDong, Phong, KhachThue, ToaNha } from '@/types';
 import { toast } from 'sonner';
 import { cn } from "@/lib/utils";
 import {
@@ -41,8 +41,10 @@ import {
 
 export default function ThemMoiHopDongPage() {
   const router = useRouter();
+  const [toaNhaList, setToaNhaList] = useState<ToaNha[]>([]);
   const [phongList, setPhongList] = useState<Phong[]>([]);
   const [khachThueList, setKhachThueList] = useState<KhachThue[]>([]);
+  const [selectedToaNha, setSelectedToaNha] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -95,6 +97,7 @@ export default function ThemMoiHopDongPage() {
   });
 
   const [newPhiDichVu, setNewPhiDichVu] = useState({ ten: '', gia: 0 });
+  const [openToaNha, setOpenToaNha] = useState(false);
   const [openPhong, setOpenPhong] = useState(false);
   const [openKhachThue, setOpenKhachThue] = useState(false);
   const [openNguoiDaiDien, setOpenNguoiDaiDien] = useState(false);
@@ -105,15 +108,26 @@ export default function ThemMoiHopDongPage() {
 
   const fetchData = async () => {
     try {
-      // Fetch phong data
-      const phongResponse = await fetch('/api/phong?limit=100');
-      if (phongResponse.ok) {
-        const phongData = await phongResponse.json();
-        // Lọc phòng trống và đã đặt
-        const availablePhong = (phongData.data || []).filter((phong: Phong) => 
-          phong.trangThai === 'trong' || phong.trangThai === 'daDat'
-        );
-        setPhongList(availablePhong);
+      // Generate initial contract code
+      const generateContractCode = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+        return `HD-${year}${month}${day}-${random}`;
+      };
+
+      setFormData(prev => ({
+        ...prev,
+        maHopDong: prev.maHopDong || generateContractCode()
+      }));
+
+      // Fetch toa nha data
+      const toaNhaResponse = await fetch('/api/toa-nha?limit=100');
+      if (toaNhaResponse.ok) {
+        const toaNhaData = await toaNhaResponse.json();
+        setToaNhaList(toaNhaData.data || []);
       }
 
       // Fetch khach thue data
@@ -134,6 +148,27 @@ export default function ThemMoiHopDongPage() {
       style: 'currency',
       currency: 'VND',
     }).format(amount);
+  };
+
+  // Fetch rooms by selected building
+  const handleToaNhaChange = async (toaNhaId: string) => {
+    setSelectedToaNha(toaNhaId);
+    setOpenToaNha(false);
+    // Reset room selection
+    setFormData(prev => ({ ...prev, phong: '', giaThue: 0, tienCoc: 0 }));
+    setPhongList([]);
+    try {
+      const response = await fetch(`/api/phong?toaNha=${toaNhaId}&limit=100`);
+      if (response.ok) {
+        const data = await response.json();
+        const availablePhong = (data.data || []).filter((phong: Phong) =>
+          phong.trangThai === 'trong' || phong.trangThai === 'daDat'
+        );
+        setPhongList(availablePhong);
+      }
+    } catch (error) {
+      console.error('Error fetching rooms:', error);
+    }
   };
 
   const handlePhongChange = (phongId: string) => {
@@ -216,18 +251,17 @@ export default function ThemMoiHopDongPage() {
         const result = await response.json();
         // Xóa cache để force refresh data
         sessionStorage.removeItem('hop-dong-data');
-        toast.success(result.message || 'Đã tạo hợp đồng thành công');
+        toast.success(result.message || 'Chúc mừng! Hợp đồng mới đã được tạo thành công.');
         // Sử dụng replace để không tạo history entry mới
         // và refresh để cập nhật dữ liệu server-side
         router.replace('/dashboard/hop-dong');
         router.refresh();
       } else {
         const errorData = await response.json();
-        toast.error(errorData.message || 'Có lỗi xảy ra');
+        toast.error(errorData.message || 'Ồ, có lỗi khi tạo hợp đồng rồi. Bạn kiểm tra lại nhé!');
       }
     } catch (error) {
-      console.error('Error submitting form:', error);
-      toast.error('Có lỗi xảy ra khi lưu hợp đồng');
+      toast.error('Lỗi kết nối rồi. Bạn kiểm tra lại mạng xem sao!');
     } finally {
       setSubmitting(false);
     }
@@ -272,7 +306,7 @@ export default function ThemMoiHopDongPage() {
         </CardHeader>
         <CardContent className="p-4 md:p-6">
           <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="maHopDong" className="text-xs md:text-sm">Mã hợp đồng</Label>
                 <Input
@@ -284,7 +318,116 @@ export default function ThemMoiHopDongPage() {
                   className="text-sm"
                 />
               </div>
-              
+
+              {/* Khách thuê - cạnh mã hợp đồng */}
+              <div className="space-y-2">
+                <Label className="text-xs md:text-sm">Khách thuê</Label>
+                <Popover open={openKhachThue} onOpenChange={setOpenKhachThue}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openKhachThue}
+                      className="w-full justify-between min-h-10 h-auto text-sm"
+                      size="sm"
+                    >
+                      <div className="flex flex-wrap gap-1 text-xs md:text-sm">
+                        {formData.khachThueId.length === 0 ? (
+                          <span className="text-muted-foreground">Chọn khách thuê...</span>
+                        ) : (
+                          formData.khachThueId.map((id) => {
+                            const khachThue = khachThueList.find(k => k._id === id);
+                            return (
+                              <Badge key={id} variant="secondary" className="mr-1">
+                                {khachThue?.hoTen}
+                                {id === formData.nguoiDaiDien && ' ⭐'}
+                              </Badge>
+                            );
+                          })
+                        )}
+                      </div>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[90vw] md:w-[400px] p-0">
+                    <Command>
+                      <CommandInput placeholder="Gõ tên, SĐT để tìm thêm khách thuê..." className="text-sm" />
+                      <CommandEmpty className="text-sm">Không tìm thấy khách thuê.</CommandEmpty>
+                      <CommandGroup className="max-h-64 overflow-auto">
+                        {khachThueList.map((khachThue) => (
+                          <CommandItem
+                            key={khachThue._id}
+                            value={`${khachThue.hoTen} ${khachThue.soDienThoai || ''} ${khachThue.email || ''}`}
+                            onSelect={() => toggleKhachThue(khachThue._id!)}
+                          >
+                            <div className="flex items-center space-x-2 w-full">
+                              <div className={cn(
+                                "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                formData.khachThueId.includes(khachThue._id!)
+                                  ? "bg-primary text-primary-foreground"
+                                  : "opacity-50 [&_svg]:invisible"
+                              )}>
+                                <Check className="h-4 w-4" />
+                              </div>
+                              <span>{khachThue.hoTen}</span>
+                              <span className="text-xs text-muted-foreground ml-auto">
+                                {khachThue.soDienThoai}
+                              </span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+              <div className="space-y-2">
+                <Label className="text-xs md:text-sm">Toà nhà *</Label>
+                <Popover open={openToaNha} onOpenChange={setOpenToaNha}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openToaNha}
+                      className="w-full justify-between text-sm"
+                      size="sm"
+                    >
+                      {selectedToaNha
+                        ? toaNhaList.find((tn) => tn._id === selectedToaNha)?.tenToaNha
+                        : "Chọn toà nhà..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[90vw] md:w-[400px] p-0">
+                    <Command>
+                      <CommandInput placeholder="Tìm kiếm toà nhà..." />
+                      <CommandEmpty>Không tìm thấy toà nhà.</CommandEmpty>
+                      <CommandGroup className="max-h-64 overflow-auto">
+                        {toaNhaList.map((toaNha) => (
+                          <CommandItem
+                            key={toaNha._id}
+                            value={`${toaNha.tenToaNha}`}
+                            onSelect={() => handleToaNhaChange(toaNha._id!)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedToaNha === toaNha._id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <span>{toaNha.tenToaNha}</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
               <div className="space-y-2">
                 <Label className="text-xs md:text-sm">Phòng *</Label>
                 <Popover open={openPhong} onOpenChange={setOpenPhong}>
@@ -295,17 +438,18 @@ export default function ThemMoiHopDongPage() {
                       aria-expanded={openPhong}
                       className="w-full justify-between text-sm"
                       size="sm"
+                      disabled={!selectedToaNha}
                     >
                       {formData.phong
                         ? phongList.find((phong) => phong._id === formData.phong)?.maPhong
-                        : "Chọn phòng..."}
+                        : selectedToaNha ? "Chọn phòng..." : "Chọn toà nhà trước..."}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[90vw] md:w-[400px] p-0">
                     <Command>
                       <CommandInput placeholder="Tìm kiếm phòng..." />
-                      <CommandEmpty>Không tìm thấy phòng.</CommandEmpty>
+                      <CommandEmpty>Không tìm thấy phòng trống.</CommandEmpty>
                       <CommandGroup className="max-h-64 overflow-auto">
                         {phongList.map((phong) => (
                           <CommandItem
@@ -332,105 +476,55 @@ export default function ThemMoiHopDongPage() {
                   </PopoverContent>
                 </Popover>
               </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs md:text-sm">Người đại diện</Label>
-                <Popover open={openNguoiDaiDien} onOpenChange={setOpenNguoiDaiDien}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={openNguoiDaiDien}
-                      className="w-full justify-between text-sm"
-                      size="sm"
-                      disabled={formData.khachThueId.length === 0}
-                    >
-                      {formData.nguoiDaiDien
-                        ? khachThueList.find((k) => k._id === formData.nguoiDaiDien)?.hoTen
-                        : "Chọn người đại diện..."}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[90vw] md:w-[300px] p-0">
-                    <Command>
-                      <CommandInput placeholder="Tìm kiếm..." />
-                      <CommandEmpty>Không tìm thấy.</CommandEmpty>
-                      <CommandGroup className="max-h-64 overflow-auto">
-                        {khachThueList
-                          .filter(k => formData.khachThueId.includes(k._id!))
-                          .map((khachThue) => (
-                            <CommandItem
-                              key={khachThue._id}
-                              value={khachThue.hoTen}
-                              onSelect={() => {
-                                setFormData(prev => ({ ...prev, nguoiDaiDien: khachThue._id! }));
-                                setOpenNguoiDaiDien(false);
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  formData.nguoiDaiDien === khachThue._id ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {khachThue.hoTen}
-                            </CommandItem>
-                          ))}
-                      </CommandGroup>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
             </div>
 
+            {/* Người đại diện - chọn trước, tự động thêm vào khách thuê */}
             <div className="space-y-2">
-              <Label className="text-xs md:text-sm">Khách thuê</Label>
-              <Popover open={openKhachThue} onOpenChange={setOpenKhachThue}>
+              <Label className="text-xs md:text-sm">Người đại diện *</Label>
+              <Popover open={openNguoiDaiDien} onOpenChange={setOpenNguoiDaiDien}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     role="combobox"
-                    aria-expanded={openKhachThue}
-                    className="w-full justify-between min-h-10 h-auto text-sm"
+                    aria-expanded={openNguoiDaiDien}
+                    className="w-full justify-between text-sm"
                     size="sm"
                   >
-                    <div className="flex flex-wrap gap-1 text-xs md:text-sm">
-                      {formData.khachThueId.length === 0 ? (
-                        <span className="text-muted-foreground">Chọn khách thuê...</span>
-                      ) : (
-                        formData.khachThueId.map((id) => {
-                          const khachThue = khachThueList.find(k => k._id === id);
-                          return (
-                            <Badge key={id} variant="secondary" className="mr-1">
-                              {khachThue?.hoTen}
-                            </Badge>
-                          );
-                        })
-                      )}
-                    </div>
+                    {formData.nguoiDaiDien
+                      ? khachThueList.find((k) => k._id === formData.nguoiDaiDien)?.hoTen
+                      : "Gõ tên hoặc SĐT để tìm..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                  <PopoverContent className="w-[90vw] md:w-full p-0">
-                    <Command>
-                      <CommandInput placeholder="Tìm kiếm khách thuê..." className="text-sm" />
-                      <CommandEmpty className="text-sm">Không tìm thấy khách thuê.</CommandEmpty>
-                      <CommandGroup className="max-h-64 overflow-auto">
+                <PopoverContent className="w-[90vw] md:w-full p-0">
+                  <Command>
+                    <CommandInput placeholder="Gõ tên, SĐT hoặc email để tìm..." className="text-sm" />
+                    <CommandEmpty className="text-sm">Không tìm thấy khách thuê.</CommandEmpty>
+                    <CommandGroup className="max-h-64 overflow-auto">
                       {khachThueList.map((khachThue) => (
                         <CommandItem
                           key={khachThue._id}
-                          value={khachThue.hoTen}
-                          onSelect={() => toggleKhachThue(khachThue._id!)}
+                          value={`${khachThue.hoTen} ${khachThue.soDienThoai || ''} ${khachThue.email || ''}`}
+                          onSelect={() => {
+                            const id = khachThue._id!;
+                            // Set as representative AND auto-add to tenant list
+                            setFormData(prev => ({
+                              ...prev,
+                              nguoiDaiDien: id,
+                              khachThueId: prev.khachThueId.includes(id)
+                                ? prev.khachThueId
+                                : [...prev.khachThueId, id]
+                            }));
+                            setOpenNguoiDaiDien(false);
+                          }}
                         >
-                          <div className="flex items-center space-x-2 w-full">
-                            <div className={cn(
-                              "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                              formData.khachThueId.includes(khachThue._id!)
-                                ? "bg-primary text-primary-foreground"
-                                : "opacity-50 [&_svg]:invisible"
-                            )}>
-                              <Check className="h-4 w-4" />
-                            </div>
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              formData.nguoiDaiDien === khachThue._id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex items-center w-full">
                             <span>{khachThue.hoTen}</span>
                             <span className="text-xs text-muted-foreground ml-auto">
                               {khachThue.soDienThoai}
@@ -442,9 +536,7 @@ export default function ThemMoiHopDongPage() {
                   </Command>
                 </PopoverContent>
               </Popover>
-              <p className="text-xs text-muted-foreground">
-                Đã chọn {formData.khachThueId.length} khách thuê
-              </p>
+
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">

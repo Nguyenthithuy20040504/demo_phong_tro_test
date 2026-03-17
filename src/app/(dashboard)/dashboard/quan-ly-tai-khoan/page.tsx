@@ -133,11 +133,10 @@ export default function AccountManagementPage() {
         setUsers(data);
         cache.setCache({ users: data });
       } else {
-        toast.error('Không thể tải danh sách người dùng');
+        toast.error('Hệ thống chưa tải được danh sách người dùng, bạn thử lại sau nhé!');
       }
     } catch (error) {
-      console.error('Error fetching users:', error);
-      toast.error('Có lỗi xảy ra khi tải danh sách người dùng');
+      toast.error('Có lỗi khi lấy dữ liệu người dùng rồi.');
     } finally {
       setLoading(false);
     }
@@ -147,7 +146,7 @@ export default function AccountManagementPage() {
     cache.setIsRefreshing(true);
     await fetchUsers(true);
     cache.setIsRefreshing(false);
-    toast.success('Đã tải dữ liệu mới nhất');
+    toast.success('Dữ liệu người dùng đã được làm mới rồi nhé!');
   };
 
   const handleCreateUser = async () => {
@@ -161,7 +160,7 @@ export default function AccountManagementPage() {
       });
 
       if (response.ok) {
-        toast.success('Tạo tài khoản thành công');
+        toast.success('Tuyệt vời! Tài khoản mới đã được tạo thành công.');
         setIsCreateDialogOpen(false);
         setCreateUserData({
           name: '',
@@ -174,11 +173,10 @@ export default function AccountManagementPage() {
         fetchUsers(true);
       } else {
         const error = await response.json();
-        toast.error(error.message || 'Tạo tài khoản thất bại');
+        toast.error(error.message || 'Ồ, chưa tạo được tài khoản rồi. Bạn kiểm tra lại thông tin nhé!');
       }
     } catch (error) {
-      console.error('Error creating user:', error);
-      toast.error('Có lỗi xảy ra khi tạo tài khoản');
+      toast.error('Có lỗi kết nối khi tạo tài khoản.');
     }
   };
 
@@ -195,18 +193,17 @@ export default function AccountManagementPage() {
       });
 
       if (response.ok) {
-        toast.success('Cập nhật tài khoản thành công');
+        toast.success('Hệ thống đã cập nhật thông tin tài khoản thành công!');
         setIsEditDialogOpen(false);
         setSelectedUser(null);
         cache.clearCache();
         fetchUsers(true);
       } else {
         const error = await response.json();
-        toast.error(error.message || 'Cập nhật tài khoản thất bại');
+        toast.error(error.message || 'Chưa lưu được thay đổi cho tài khoản này. Bạn thử lại nhé!');
       }
     } catch (error) {
-      console.error('Error updating user:', error);
-      toast.error('Có lỗi xảy ra khi cập nhật tài khoản');
+      toast.error('Lỗi kết nối khi cập nhật tài khoản rồi.');
     }
   };
 
@@ -220,15 +217,14 @@ export default function AccountManagementPage() {
 
       if (response.ok) {
         cache.clearCache();
-        toast.success('Xóa tài khoản thành công');
+        toast.success('Tài khoản đã được xóa thành công khỏi hệ thống.');
         fetchUsers(true);
-      } else{
+      } else {
         const error = await response.json();
-        toast.error(error.message || 'Xóa tài khoản thất bại');
+        toast.error(error.message || 'Ồ, chưa xóa được tài khoản này rồi.');
       }
     } catch (error) {
-      console.error('Error deleting user:', error);
-      toast.error('Có lỗi xảy ra khi xóa tài khoản');
+      toast.error('Có lỗi khi thực hiện xóa tài khoản.');
     }
   };
 
@@ -545,21 +541,27 @@ export default function AccountManagementPage() {
                   </div>
 
                   {/* Contact info */}
-                  <div className="space-y-1 text-sm border-t pt-2">
+                  <div className="space-y-1.5 text-xs border-t pt-2">
                     {getUserPhone(user) && (
                       <div className="flex items-center gap-2 text-gray-600">
                         <Phone className="h-3 w-3" />
                         <span>{getUserPhone(user)}</span>
                       </div>
                     )}
-                    <div className="flex items-center gap-2 text-gray-500 text-xs">
+                    <div className="flex items-center gap-2 text-gray-500">
                       <Calendar className="h-3 w-3" />
                       <span>Tham gia: {
                         (user.createdAt || user.ngayTao) 
-                          ? new Date(user.createdAt || user.ngayTao!).toLocaleDateString('vi-VN') 
+                          ? new Date(user.createdAt || user.ngayTao!).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) 
                           : 'Chưa cập nhật'
                       }</span>
                     </div>
+                    {user.lastLogin && (
+                      <div className="flex items-center gap-2 text-blue-500 font-medium">
+                        <RefreshCw className="h-3 w-3" />
+                        <span>Đăng nhập cuối: {new Date(user.lastLogin).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Status */}

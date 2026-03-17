@@ -4,6 +4,7 @@ import dbConnect from "./mongodb";
 import NguoiDung from "@/models/NguoiDung";
 import KhachThue from "@/models/KhachThue";
 import { compare } from "bcryptjs";
+import { UserService } from "@/services/user.service";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -32,6 +33,9 @@ export const authOptions: NextAuthOptions = {
             const ok = await user.comparePassword(matKhau);
             if (!ok) return null;
 
+            // Cập nhật lastLogin qua Service
+            await UserService.updateLastLogin(user._id.toString(), user.vaiTro || user.role);
+
             return {
               id: user._id.toString(),
               email: user.email,
@@ -55,6 +59,9 @@ export const authOptions: NextAuthOptions = {
               : await compare(matKhau, (client as any).matKhau);
 
           if (!ok) return null;
+
+          // Cập nhật lastLogin cho khách thuê qua Service
+          await UserService.updateLastLogin(client._id.toString(), 'khachThue');
 
           return {
             id: client._id.toString(),
@@ -88,10 +95,15 @@ export const authOptions: NextAuthOptions = {
     },
 
     async session({ session, token }) {
-      session.user.id = token.sub!;
-      session.user.role = token.role as string;
-      session.user.phone = token.phone as string;
-      session.user.avatar = (token.avatar as string) ?? undefined;
+      if (session.user) {
+        session.user.id = token.sub!;
+        session.user.role = token.role as string;
+        session.user.phone = token.phone as string;
+        session.user.avatar = (token.avatar as string) ?? undefined;
+        // Email is usually already there from NextAuth's default behavior, 
+        // but explicitly setting it from token if available is safer when overriding.
+        if (token.email) session.user.email = token.email;
+      }
       return session;
     },
   },

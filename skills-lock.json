@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "nodejs-best-practices": {
+      "source": "vudovn/antigravity-kit",
+      "sourceType": "github",
+      "computedHash": "a942c5fc15af3e9f80bf7d338d31c8eeff411b5430995211ef3b975e63c3c929"
+    }
+  }
+}

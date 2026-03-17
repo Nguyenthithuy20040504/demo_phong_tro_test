@@ -2,25 +2,6 @@
 
 import * as React from "react"
 import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type UniqueIdentifier,
-} from "@dnd-kit/core"
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import {
   Edit,
   Trash2,
   Eye,
@@ -28,7 +9,6 @@ import {
   Phone,
   Calendar,
   Shield,
-  GripVertical,
   MoreVertical,
   Columns,
   ChevronDown,
@@ -39,6 +19,7 @@ import {
   UserCheck,
   UserX,
   Search,
+  RefreshCw,
 } from "lucide-react"
 import {
   ColumnDef,
@@ -58,7 +39,6 @@ import {
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -68,6 +48,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -146,26 +134,6 @@ const getRoleBadge = (role: string) => {
   }
 }
 
-// Create a separate component for the drag handle
-function DragHandle({ id }: { id: string }) {
-  const { attributes, listeners } = useSortable({
-    id,
-  })
-
-  return (
-    <Button
-      {...attributes}
-      {...listeners}
-      variant="ghost"
-      size="icon"
-      className="text-muted-foreground size-7 hover:bg-transparent"
-    >
-      <GripVertical className="text-muted-foreground size-3" />
-      <span className="sr-only">Kéo để sắp xếp</span>
-    </Button>
-  )
-}
-
 type UserTableProps = {
   onView?: (user: User) => void
   onEdit: (user: User) => void
@@ -173,39 +141,7 @@ type UserTableProps = {
   currentUserId?: string
 }
 
-const createColumns = (props: UserTableProps): ColumnDef<User>[] => [
-  {
-    id: "drag",
-    header: () => null,
-    cell: ({ row }) => <DragHandle id={row.original._id!} />,
-    enableHiding: false,
-  },
-  {
-    id: "select",
-    header: ({ table }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Chọn tất cả"
-        />
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Chọn hàng"
-        />
-      </div>
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
+const createColumns = (props: UserTableProps & { setUserToDelete: (u: User) => void; setIsDeleteDialogOpen: (o: boolean) => void }): ColumnDef<User>[] => [
   {
     accessorKey: "name",
     header: "Người dùng",
@@ -286,18 +222,36 @@ const createColumns = (props: UserTableProps): ColumnDef<User>[] => [
     accessorKey: "createdAt",
     header: "Ngày tạo",
     cell: ({ row }) => {
-      // Mongoose returns 'ngayTao' due to timestamp config
       const dateStr = row.original.createdAt || row.original.ngayTao;
-      const displayDate = dateStr 
-        ? new Date(dateStr).toLocaleDateString('vi-VN') 
-        : 'Chưa cập nhật';
+      if (!dateStr) return <span className="text-muted-foreground text-sm">Chưa cập nhật</span>;
       
+      const date = new Date(dateStr);
       return (
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm">
-            {displayDate !== 'Invalid Date' ? displayDate : 'Chưa cập nhật'}
-          </span>
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-3 w-3 text-muted-foreground" />
+            <span className="text-sm font-medium">{date.toLocaleDateString('vi-VN')}</span>
+          </div>
+          <span className="text-[10px] text-muted-foreground ml-5">{date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "lastLogin",
+    header: "Đăng nhập cuối",
+    cell: ({ row }) => {
+      const dateStr = row.original.lastLogin;
+      if (!dateStr) return <span className="text-muted-foreground text-sm">Chưa có thông tin</span>;
+      
+      const date = new Date(dateStr);
+      return (
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <RefreshCw className="h-3 w-3 text-muted-foreground" />
+            <span className="text-sm font-medium">{date.toLocaleDateString('vi-VN')}</span>
+          </div>
+          <span className="text-[10px] text-muted-foreground ml-5">{date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
       );
     },
@@ -314,6 +268,7 @@ const createColumns = (props: UserTableProps): ColumnDef<User>[] => [
               variant="ghost"
               className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
               size="icon"
+              onClick={(e) => e.stopPropagation()}
             >
               <MoreVertical className="size-4" />
               <span className="sr-only">Mở menu</span>
@@ -321,12 +276,18 @@ const createColumns = (props: UserTableProps): ColumnDef<User>[] => [
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             {props.onView && (
-              <DropdownMenuItem onClick={() => props.onView!(row.original)}>
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation();
+                props.onView!(row.original);
+              }}>
                 <Eye className="mr-2 h-4 w-4" />
                 Xem chi tiết
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem onClick={() => props.onEdit(row.original)}>
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              props.onEdit(row.original);
+            }}>
               <Edit className="mr-2 h-4 w-4" />
               Chỉnh sửa
             </DropdownMenuItem>
@@ -335,7 +296,11 @@ const createColumns = (props: UserTableProps): ColumnDef<User>[] => [
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   className="text-destructive"
-                  onClick={() => props.onDelete(row.original._id!)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    props.setUserToDelete(row.original);
+                    props.setIsDeleteDialogOpen(true);
+                  }}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Xóa
@@ -350,21 +315,10 @@ const createColumns = (props: UserTableProps): ColumnDef<User>[] => [
   },
 ]
 
-function DraggableRow({ row }: { row: Row<User> }) {
-  const { transform, transition, setNodeRef, isDragging } = useSortable({
-    id: row.original._id!,
-  })
-
+function UserTableRow({ row }: { row: Row<User> }) {
   return (
     <TableRow
       data-state={row.getIsSelected() && "selected"}
-      data-dragging={isDragging}
-      ref={setNodeRef}
-      className="relative z-0 data-[dragging=true]:z-10 data-[dragging=true]:opacity-80"
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition: transition,
-      }}
     >
       {row.getVisibleCells().map((cell) => (
         <TableCell key={cell.id}>
@@ -384,6 +338,8 @@ type UserDataTableProps = UserTableProps & {
 export function UserDataTable(props: UserDataTableProps) {
   const { data: initialData, searchTerm, onSearchChange, ...tableProps } = props
   const [data, setData] = React.useState(() => initialData)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [userToDelete, setUserToDelete] = React.useState<User | null>(null);
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
@@ -401,19 +357,11 @@ export function UserDataTable(props: UserDataTableProps) {
     setData(initialData)
   }, [initialData])
   
-  const columns = React.useMemo(() => createColumns(tableProps), [tableProps])
-  
-  const sortableId = React.useId()
-  const sensors = useSensors(
-    useSensor(MouseSensor, {}),
-    useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {})
-  )
-
-  const dataIds = React.useMemo<UniqueIdentifier[]>(
-    () => data?.map(({ _id }) => _id!) || [],
-    [data]
-  )
+  const columns = React.useMemo(() => createColumns({
+    ...tableProps,
+    setUserToDelete,
+    setIsDeleteDialogOpen
+  }), [tableProps])
 
   const table = useReactTable({
     data,
@@ -439,17 +387,6 @@ export function UserDataTable(props: UserDataTableProps) {
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (active && over && active.id !== over.id) {
-      setData((data) => {
-        const oldIndex = dataIds.indexOf(active.id)
-        const newIndex = dataIds.indexOf(over.id)
-        return arrayMove(data, oldIndex, newIndex)
-      })
-    }
-  }
 
   const selectedCount = table.getFilteredSelectedRowModel().rows.length
 
@@ -508,56 +445,74 @@ export function UserDataTable(props: UserDataTableProps) {
       </div>
       
       <div className="overflow-hidden rounded-lg border">
-        <DndContext
-          collisionDetection={closestCenter}
-          modifiers={[restrictToVerticalAxis]}
-          onDragEnd={handleDragEnd}
-          sensors={sensors}
-          id={sortableId}
-        >
-          <Table>
-            <TableHeader className="bg-muted sticky top-0 z-10">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead key={header.id} colSpan={header.colSpan}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </TableHead>
-                    )
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody className="**:data-[slot=table-cell]:first:w-8">
-              {table.getRowModel().rows?.length ? (
-                <SortableContext
-                  items={dataIds}
-                  strategy={verticalListSortingStrategy}
+        <Table>
+          <TableHeader className="bg-muted sticky top-0 z-10">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id} colSpan={header.colSpan}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody className="**:data-[slot=table-cell]:first:w-8">
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <UserTableRow key={row.id} row={row} />
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
                 >
-                  {table.getRowModel().rows.map((row) => (
-                    <DraggableRow key={row.id} row={row} />
-                  ))}
-                </SortableContext>
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
-                  >
-                    Không có dữ liệu
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </DndContext>
+                  Không có dữ liệu
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn xóa tài khoản <strong>{userToDelete ? getUserName(userToDelete) : ''}</strong>? Hành động này không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (userToDelete) {
+                  tableProps.onDelete(userToDelete._id!);
+                  setIsDeleteDialogOpen(false);
+                  setUserToDelete(null);
+                }
+              }}
+            >
+              Xác nhận xóa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <div className="flex items-center justify-between px-4">
         <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">

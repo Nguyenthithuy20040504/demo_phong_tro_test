@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import ToaNha from '@/models/ToaNha';
 import Phong from '@/models/Phong';
+import SuCo from '@/models/SuCo';
 import HopDong from '@/models/HopDong';
 import { getAccessibleToaNhaIds } from '@/lib/auth-utils';
 import { z } from 'zod';
@@ -63,6 +64,8 @@ export async function GET(request: NextRequest) {
       .skip((page - 1) * limit)
       .limit(limit);
 
+    console.log('GET /api/toa-nha: Found', toaNhaList.length, 'buildings for query:', JSON.stringify(query));
+
     // Tính tổng số phòng và thống kê trạng thái cho mỗi tòa nhà
     const toaNhaWithStats = await Promise.all(
       toaNhaList.map(async (toaNha) => {
@@ -92,6 +95,15 @@ export async function GET(request: NextRequest) {
           toaNha: toaNha._id, 
           trangThai: 'baoTri' 
         });
+
+        // Tìm các phòng thuộc tòa nhà này
+        const roomIds = await Phong.find({ toaNha: toaNha._id }).distinct('_id');
+        
+        // Đếm số sự cố đang hoạt động (moi, dangXuLy) của tất cả các phòng trong tòa nhà
+        const suCoCount = await SuCo.countDocuments({
+          phong: { $in: roomIds },
+          trangThai: { $in: ['moi', 'dangXuLy'] }
+        });
         
         return {
           ...toaNha.toObject(),
@@ -99,7 +111,8 @@ export async function GET(request: NextRequest) {
           phongTrong,
           phongDangThue,
           phongDaDat,
-          phongBaoTri
+          phongBaoTri,
+          suCoCount
         };
       })
     );

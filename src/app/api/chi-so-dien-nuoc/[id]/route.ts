@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import ChiSoDienNuoc from '@/models/ChiSoDienNuoc';
+import { isToaNhaAccessible } from '@/lib/auth-utils';
 import { z } from 'zod';
 
 const updateChiSoSchema = z.object({
@@ -46,6 +47,16 @@ export async function GET(
       );
     }
 
+    // Kiểm tra quyền truy cập tòa nhà
+    const toaNhaId = (chiSo.phong as any).toaNha || chiSo.phong;
+    const hasAccess = await isToaNhaAccessible(session.user, toaNhaId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { message: 'Bạn không có quyền truy cập chỉ số của tòa nhà này' },
+        { status: 403 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       data: chiSo,
@@ -80,7 +91,7 @@ export async function PUT(
 
     await dbConnect();
 
-    const chiSo = await ChiSoDienNuoc.findById(id);
+    const chiSo = await ChiSoDienNuoc.findById(id).populate('phong');
     if (!chiSo) {
       return NextResponse.json(
         { message: 'Chỉ số điện nước không tồn tại' },
@@ -88,8 +99,11 @@ export async function PUT(
       );
     }
 
-    // Check if user has permission to update (only admin or the person who recorded it)
-    if (chiSo.nguoiGhi.toString() !== session.user.id && session.user.role !== 'admin') {
+    // Kiểm tra quyền cập nhật (admin, người ghi, hoặc người có quyền quản lý tòa nhà)
+    const toaNhaId = (chiSo.phong as any).toaNha || chiSo.phong;
+    const hasAccess = await isToaNhaAccessible(session.user, toaNhaId);
+    
+    if (chiSo.nguoiGhi.toString() !== session.user.id && !hasAccess) {
       return NextResponse.json(
         { message: 'Bạn không có quyền cập nhật chỉ số này' },
         { status: 403 }
@@ -165,7 +179,7 @@ export async function DELETE(
     await dbConnect();
     const { id } = await params;
 
-    const chiSo = await ChiSoDienNuoc.findById(id);
+    const chiSo = await ChiSoDienNuoc.findById(id).populate('phong');
     if (!chiSo) {
       return NextResponse.json(
         { message: 'Chỉ số điện nước không tồn tại' },
@@ -173,8 +187,11 @@ export async function DELETE(
       );
     }
 
-    // Check if user has permission to delete (only admin or the person who recorded it)
-    if (chiSo.nguoiGhi.toString() !== session.user.id && session.user.role !== 'admin') {
+    // Kiểm tra quyền xóa (admin, người ghi, hoặc người có quyền quản lý tòa nhà)
+    const toaNhaId = (chiSo.phong as any).toaNha || chiSo.phong;
+    const hasAccess = await isToaNhaAccessible(session.user, toaNhaId);
+    
+    if (chiSo.nguoiGhi.toString() !== session.user.id && !hasAccess) {
       return NextResponse.json(
         { message: 'Bạn không có quyền xóa chỉ số này' },
         { status: 403 }

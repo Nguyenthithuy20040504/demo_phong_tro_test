@@ -14,27 +14,61 @@ import mongoose from 'mongoose';
  * @returns Array ObjectId hoặc null (nếu là Admin)
  */
 export async function getAccessibleToaNhaIds(user: any): Promise<mongoose.Types.ObjectId[] | null> {
+  console.log('getAccessibleToaNhaIds called for user:', user?.email, 'role:', user?.role, 'id:', user?.id);
   if (!user || user.role === 'khachThue') {
     return [];
   }
 
   if (user.role === 'admin') {
+    console.log('User is admin, returning null (all access)');
     return null; // Null đại diện cho việc query toàn bộ
   }
 
   let toaNhas = [];
   try {
+    const userId = new mongoose.Types.ObjectId(user.id);
+    
     if (user.role === 'chuNha') {
-      toaNhas = await ToaNha.find({ chuSoHuu: user.id }).select('_id');
+      toaNhas = await ToaNha.find({ chuSoHuu: userId }).select('_id');
     } else if (user.role === 'nhanVien') {
-      toaNhas = await ToaNha.find({ nguoiQuanLy: user.id }).select('_id');
+      // Nhân viên có thể xem các tòa nhà họ được gán trực tiếp
+      // HOẶC tất cả tòa nhà của chủ nhà (nguoiQuanLy của họ)
+      const managedBuildings = await ToaNha.find({ 
+        $or: [
+          { nguoiQuanLy: userId },
+          { chuSoHuu: user.id } // dự phòng
+        ]
+      }).select('_id');
+      
+      // Lấy thêm thông tin người quản lý của nhân viên
+      const nhanVien = await mongoose.model('NguoiDung').findById(userId).select('nguoiQuanLy');
+      if (nhanVien && nhanVien.nguoiQuanLy) {
+        const ownersBuildings = await ToaNha.find({ chuSoHuu: nhanVien.nguoiQuanLy }).select('_id');
+        toaNhas = [...managedBuildings, ...ownersBuildings];
+      } else {
+        toaNhas = managedBuildings;
+      }
     }
     
-    return toaNhas.map(tn => tn._id);
+    const uniqueIds = Array.from(new Set(toaNhas.map(tn => tn._id.toString())))
+      .map(id => new mongoose.Types.ObjectId(id));
+      
+    return uniqueIds;
   } catch (error) {
     console.error('Error fetching accessible ToaNha ids:', error);
     return [];
   }
+}
+
+/**
+ * Kiểm tra xem User có quyền truy cập vào 1 Tòa Nhà cụ thể hay không.
+ */
+export async function isToaNhaAccessible(user: any, toaNhaId: string | mongoose.Types.ObjectId): Promise<boolean> {
+  const accessibleIds = await getAccessibleToaNhaIds(user);
+  if (accessibleIds === null) return true; // Admin
+  
+  const targetIdStr = toaNhaId.toString();
+  return accessibleIds.some(id => id.toString() === targetIdStr);
 }
 
 /**
@@ -62,8 +96,30 @@ export async function getAccessibleKhachThueIds(user: any): Promise<mongoose.Typ
       return acc.concat(hd.khachThueId || []);
     }, []);
 
+    // Lấy thêm các khách thuê thuộc quyền quản lý trực tiếp (kèm những người chưa có hợp đồng)
+    let chuNhaId = user.id;
+    if (user.role === 'nhanVien') {
+      // Tìm Chủ Nhà của nhân viên này
+      const nhanVien = await mongoose.model('NguoiDung').findById(user.id).select('nguoiQuanLy');
+      if (nhanVien && nhanVien.nguoiQuanLy) {
+         chuNhaId = nhanVien.nguoiQuanLy.toString();
+      }
+    }
+    
+    // Tìm trong cả KhachThue model và NguoiDung model (role khachThue)
+    const [managedKhachThues, managedUserTenants] = await Promise.all([
+      mongoose.model('KhachThue').find({ nguoiQuanLy: chuNhaId }).select('_id'),
+      mongoose.model('NguoiDung').find({ nguoiQuanLy: chuNhaId, role: 'khachThue' }).select('_id')
+    ]);
+
+    const managedKhachThueIds = managedKhachThues.map(k => k._id);
+    const managedUserTenantIds = managedUserTenants.map(u => u._id);
+    
+    // Gộp tất cả và bỏ ID trùng
+    const allKhachThueIds = [...khachThueIds, ...managedKhachThueIds, ...managedUserTenantIds];
+
     // Remove duplicates
-    const uniqueIds = Array.from<string>(new Set(khachThueIds.map((id: any) => id.toString())))
+    const uniqueIds = Array.from<string>(new Set(allKhachThueIds.map((id: any) => id.toString())))
       .map((idStr: string) => new mongoose.Types.ObjectId(idStr));
 
     return uniqueIds;

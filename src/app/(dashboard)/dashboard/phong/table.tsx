@@ -1,47 +1,6 @@
-"use client"
+'use client';
 
-import * as React from "react"
-import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type UniqueIdentifier,
-} from "@dnd-kit/core"
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import {
-  Edit,
-  Trash2,
-  Eye,
-  Home,
-  Building2,
-  GripVertical,
-  MoreVertical,
-  Columns,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  CircleCheck,
-  AlertCircle,
-  Image as ImageIcon,
-  Ban,
-  Search,
-  User,
-  Users,
-} from "lucide-react"
+import * as React from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -56,11 +15,30 @@ import {
   SortingState,
   useReactTable,
   VisibilityState,
-} from "@tanstack/react-table"
+} from "@tanstack/react-table";
+import {
+  Edit,
+  Trash2,
+  Home,
+  Building2,
+  MoreVertical,
+  Columns,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  CircleCheck,
+  AlertCircle,
+  Image as ImageIcon,
+  Ban,
+  Search,
+  User,
+  Users,
+} from "lucide-react";
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -68,16 +46,16 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -85,16 +63,24 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import type { Phong, ToaNha } from '@/types'
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import type { Phong, ToaNha } from '@/types';
 
 // Helper functions
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
     currency: 'VND',
-  }).format(amount)
-}
+  }).format(amount);
+};
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -104,109 +90,58 @@ const getStatusBadge = (status: string) => {
           <CircleCheck className="h-3 w-3" />
           Trống
         </Badge>
-      )
+      );
     case 'dangThue':
       return (
         <Badge variant="secondary" className="gap-1">
           <Home className="h-3 w-3" />
           Đang thuê
         </Badge>
-      )
+      );
     case 'daDat':
       return (
         <Badge variant="outline" className="gap-1 border-orange-600 text-orange-600">
           <AlertCircle className="h-3 w-3" />
           Đã đặt
         </Badge>
-      )
+      );
     case 'baoTri':
       return (
         <Badge variant="destructive" className="gap-1">
           <Ban className="h-3 w-3" />
           Bảo trì
         </Badge>
-      )
+      );
     default:
-      return <Badge variant="outline">{status}</Badge>
+      return <Badge variant="outline">{status}</Badge>;
   }
-}
-
-// Create a separate component for the drag handle
-function DragHandle({ id }: { id: string }) {
-  const { attributes, listeners } = useSortable({
-    id,
-  })
-
-  return (
-    <Button
-      {...attributes}
-      {...listeners}
-      variant="ghost"
-      size="icon"
-      className="text-muted-foreground size-7 hover:bg-transparent"
-    >
-      <GripVertical className="text-muted-foreground size-3" />
-      <span className="sr-only">Kéo để sắp xếp</span>
-    </Button>
-  )
-}
+};
 
 type PhongTableProps = {
-  toaNhaList: ToaNha[]
-  onView?: (phong: Phong) => void
-  onEdit: (phong: Phong) => void
-  onDelete: (id: string) => void
-  onViewImages?: (phong: Phong) => void
-  onViewTenants?: (phong: Phong) => void
-}
+  toaNhaList: ToaNha[];
+  onView?: (phong: Phong) => void;
+  onEdit: (phong: Phong) => void;
+  onDelete: (id: string) => void;
+  onViewImages?: (phong: Phong) => void;
+  onViewTenants?: (phong: Phong) => void;
+  canEdit?: boolean;
+};
 
 const getToaNhaName = (toaNha: string | { tenToaNha: string }, toaNhaList: ToaNha[]) => {
   if (typeof toaNha === 'object' && toaNha?.tenToaNha) {
-    return toaNha.tenToaNha
+    return toaNha.tenToaNha;
   }
-  const toaNhaObj = toaNhaList.find(t => t._id === toaNha)
-  return toaNhaObj?.tenToaNha || 'N/A'
-}
+  const toaNhaObj = toaNhaList.find(t => t._id === toaNha);
+  return toaNhaObj?.tenToaNha || 'N/A';
+};
 
 const createColumns = (props: PhongTableProps): ColumnDef<Phong>[] => [
   {
-    id: "drag",
-    header: () => null,
-    cell: ({ row }) => <DragHandle id={row.original._id!} />,
-    enableHiding: false,
-  },
-  {
-    id: "select",
-    header: ({ table }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Chọn tất cả"
-        />
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Chọn hàng"
-        />
-      </div>
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
     accessorKey: "maPhong",
-    header: "Số phòng",
+    header: "Mã phòng",
     cell: ({ row }) => (
       <div className="min-w-24">
-        <div className="font-medium">{row.original.maPhong}</div>
+        <div className="font-semibold text-blue-700">{row.original.maPhong}</div>
       </div>
     ),
     enableHiding: false,
@@ -305,7 +240,10 @@ const createColumns = (props: PhongTableProps): ColumnDef<Phong>[] => [
               variant="link"
               size="sm"
               className="text-xs text-blue-600 hover:text-blue-700 h-auto p-0 pl-6"
-              onClick={() => props.onViewTenants?.(row.original)}
+              onClick={(e) => {
+                e.stopPropagation();
+                props.onViewTenants?.(row.original);
+              }}
             >
               +{soLuongKhachThue - 1} người ở cùng
             </Button>
@@ -318,14 +256,17 @@ const createColumns = (props: PhongTableProps): ColumnDef<Phong>[] => [
     accessorKey: "anhPhong",
     header: "Ảnh",
     cell: ({ row }) => {
-      const imageCount = row.original.anhPhong?.length || 0
+      const imageCount = row.original.anhPhong?.length || 0;
       return (
         <div>
           {imageCount > 0 ? (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => props.onViewImages?.(row.original)}
+              onClick={(e) => {
+                e.stopPropagation();
+                props.onViewImages?.(row.original);
+              }}
             >
               <ImageIcon className="h-4 w-4 mr-1" />
               {imageCount}
@@ -334,70 +275,70 @@ const createColumns = (props: PhongTableProps): ColumnDef<Phong>[] => [
             <span className="text-muted-foreground text-sm">-</span>
           )}
         </div>
-      )
+      );
     },
   },
   {
     id: "actions",
     cell: ({ row }) => (
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
-            size="icon"
-          >
-            <MoreVertical className="size-4" />
-            <span className="sr-only">Mở menu</span>
-          </Button>
-        </DropdownMenuTrigger>
+        <div onClick={(e) => e.stopPropagation()}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
+              size="icon"
+            >
+              <MoreVertical className="size-4" />
+              <span className="sr-only">Mở menu</span>
+            </Button>
+          </DropdownMenuTrigger>
+        </div>
         <DropdownMenuContent align="end" className="w-48">
-          {props.onView && (
-            <DropdownMenuItem onClick={() => props.onView!(row.original)}>
-              <Eye className="mr-2 h-4 w-4" />
-              Xem chi tiết
-            </DropdownMenuItem>
-          )}
           {row.original.anhPhong && row.original.anhPhong.length > 0 && (
-            <DropdownMenuItem onClick={() => props.onViewImages?.(row.original)}>
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              props.onViewImages?.(row.original);
+            }}>
               <ImageIcon className="mr-2 h-4 w-4" />
               Xem ảnh ({row.original.anhPhong.length})
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onClick={() => props.onEdit(row.original)}>
-            <Edit className="mr-2 h-4 w-4" />
-            Chỉnh sửa
-          </DropdownMenuItem>
+          {props.canEdit !== false && (
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              props.onEdit(row.original);
+            }}>
+              <Edit className="mr-2 h-4 w-4" />
+              Chỉnh sửa
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem 
-            className="text-destructive"
-            onClick={() => props.onDelete(row.original._id!)}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Xóa
-          </DropdownMenuItem>
+          {props.canEdit !== false && (
+            <DropdownMenuItem 
+              className="text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                props.onDelete(row.original._id!);
+              }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Xóa
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     ),
     enableHiding: false,
   },
-]
+];
 
-function DraggableRow({ row }: { row: Row<Phong> }) {
-  const { transform, transition, setNodeRef, isDragging } = useSortable({
-    id: row.original._id!,
-  })
-
+function PhongTableRow({ row, onView }: { row: Row<Phong>, onView?: (phong: Phong) => void }) {
   return (
     <TableRow
       data-state={row.getIsSelected() && "selected"}
-      data-dragging={isDragging}
-      ref={setNodeRef}
-      className="relative z-0 data-[dragging=true]:z-10 data-[dragging=true]:opacity-80"
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition: transition,
-      }}
+      className="relative z-0 cursor-pointer hover:bg-muted/50 transition-colors"
+      onClick={() => onView?.(row.original)}
     >
       {row.getVisibleCells().map((cell) => (
         <TableCell key={cell.id}>
@@ -405,54 +346,52 @@ function DraggableRow({ row }: { row: Row<Phong> }) {
         </TableCell>
       ))}
     </TableRow>
-  )
+  );
 }
 
 type PhongDataTableProps = PhongTableProps & {
-  data: Phong[]
-  searchTerm?: string
-  onSearchChange?: (value: string) => void
-  selectedToaNha?: string
-  onToaNhaChange?: (value: string) => void
-  selectedTrangThai?: string
-  onTrangThaiChange?: (value: string) => void
-  allToaNhaList?: ToaNha[]
-}
+  data: Phong[];
+  searchTerm?: string;
+  onSearchChange?: (value: string) => void;
+  selectedToaNha?: string;
+  onToaNhaChange?: (value: string) => void;
+  selectedTrangThai?: string;
+  onTrangThaiChange?: (value: string) => void;
+  allToaNhaList?: ToaNha[];
+};
 
 export function PhongDataTable(props: PhongDataTableProps) {
-  const { data: initialData, searchTerm, onSearchChange, selectedToaNha, onToaNhaChange, selectedTrangThai, onTrangThaiChange, allToaNhaList, ...tableProps } = props
-  const [data, setData] = React.useState(() => initialData)
-  const [rowSelection, setRowSelection] = React.useState({})
+  const { data: initialData, searchTerm, onSearchChange, selectedToaNha, onToaNhaChange, selectedTrangThai, onTrangThaiChange, allToaNhaList, ...tableProps } = props;
+  const [data, setData] = React.useState(() => initialData);
+  const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({})
+    React.useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
-  )
-  const [sorting, setSorting] = React.useState<SortingState>([])
+  );
+  const [sorting, setSorting] = React.useState<SortingState>([]);
   const [pagination, setPagination] = React.useState({
     pageIndex: 0,
     pageSize: 10,
-  })
+  });
   
+  // Confirmation state
+  const [phongToDelete, setPhongToDelete] = React.useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+
   // Sync data when prop changes
   React.useEffect(() => {
-    setData(initialData)
-  }, [initialData])
+    setData(initialData);
+  }, [initialData]);
   
-  const columns = React.useMemo(() => createColumns(tableProps), [tableProps])
+  const columns = React.useMemo(() => createColumns({
+    ...tableProps,
+    onDelete: (id: string) => {
+      setPhongToDelete(id);
+      setIsDeleteDialogOpen(true);
+    }
+  }), [tableProps]);
   
-  const sortableId = React.useId()
-  const sensors = useSensors(
-    useSensor(MouseSensor, {}),
-    useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {})
-  )
-
-  const dataIds = React.useMemo<UniqueIdentifier[]>(
-    () => data?.map(({ _id }) => _id!) || [],
-    [data]
-  )
-
   const table = useReactTable({
     data,
     columns,
@@ -476,20 +415,9 @@ export function PhongDataTable(props: PhongDataTableProps) {
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-  })
+  });
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (active && over && active.id !== over.id) {
-      setData((data) => {
-        const oldIndex = dataIds.indexOf(active.id)
-        const newIndex = dataIds.indexOf(over.id)
-        return arrayMove(data, oldIndex, newIndex)
-      })
-    }
-  }
-
-  const selectedCount = table.getFilteredSelectedRowModel().rows.length
+  const selectedCount = table.getFilteredSelectedRowModel().rows.length;
 
   return (
     <div className="w-full space-y-4">
@@ -500,7 +428,7 @@ export function PhongDataTable(props: PhongDataTableProps) {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Tìm kiếm theo số phòng, mô tả..."
+                placeholder="Tìm kiếm theo mã phòng, mô tả..."
                 value={searchTerm || ''}
                 onChange={(e) => onSearchChange?.(e.target.value)}
                 className="pl-10"
@@ -565,7 +493,7 @@ export function PhongDataTable(props: PhongDataTableProps) {
                     >
                       {column.id}
                     </DropdownMenuCheckboxItem>
-                  )
+                  );
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -573,55 +501,42 @@ export function PhongDataTable(props: PhongDataTableProps) {
       </div>
       
       <div className="overflow-hidden rounded-lg border">
-        <DndContext
-          collisionDetection={closestCenter}
-          modifiers={[restrictToVerticalAxis]}
-          onDragEnd={handleDragEnd}
-          sensors={sensors}
-          id={sortableId}
-        >
-          <Table>
-            <TableHeader className="bg-muted sticky top-0 z-10">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead key={header.id} colSpan={header.colSpan}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </TableHead>
-                    )
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody className="**:data-[slot=table-cell]:first:w-8">
-              {table.getRowModel().rows?.length ? (
-                <SortableContext
-                  items={dataIds}
-                  strategy={verticalListSortingStrategy}
+        <Table>
+          <TableHeader className="bg-muted sticky top-0 z-10">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id} colSpan={header.colSpan}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <PhongTableRow key={row.id} row={row} onView={props.onView} />
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={table.getAllColumns().length}
+                  className="h-24 text-center"
                 >
-                  {table.getRowModel().rows.map((row) => (
-                    <DraggableRow key={row.id} row={row} />
-                  ))}
-                </SortableContext>
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
-                  >
-                    Không có dữ liệu
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </DndContext>
+                  Không có dữ liệu
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
       
       <div className="flex items-center justify-between px-4">
@@ -640,7 +555,7 @@ export function PhongDataTable(props: PhongDataTableProps) {
             <Select
               value={`${table.getState().pagination.pageSize}`}
               onValueChange={(value) => {
-                table.setPageSize(Number(value))
+                table.setPageSize(Number(value));
               }}
             >
               <SelectTrigger size="sm" className="w-20" id="rows-per-page">
@@ -704,7 +619,42 @@ export function PhongDataTable(props: PhongDataTableProps) {
           </div>
         </div>
       </div>
-    </div>
-  )
-}
 
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              Xác nhận xóa phòng
+            </DialogTitle>
+            <DialogDescription className="py-2">
+              Bạn có chắc chắn muốn xóa phòng này không? Hành động này sẽ gỡ bỏ phòng khỏi hệ thống và không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Hủy bỏ
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (phongToDelete) {
+                  tableProps.onDelete(phongToDelete);
+                  setIsDeleteDialogOpen(false);
+                  setPhongToDelete(null);
+                }
+              }}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Xác nhận xóa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

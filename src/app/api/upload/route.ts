@@ -42,10 +42,17 @@ export async function POST(request: NextRequest) {
     // Upload lên Cloudinary
     const cloudinaryFormData = new FormData();
     cloudinaryFormData.append('file', file);
-    cloudinaryFormData.append('upload_preset', process.env.NEXT_PUBLIC_UPLOAD_PRESET || 'poalupload');
+    
+    // Sử dụng biến môi trường hoặc fallback chính xác từ .env
+    const uploadPreset = process.env.NEXT_PUBLIC_UPLOAD_PRESET || 'demophongtro';
+    const cloudName = process.env.NEXT_PUBLIC_CLOUD_NAME || 'dq9s0m5v2';
+    
+    cloudinaryFormData.append('upload_preset', uploadPreset);
+
+    console.log(`Uploading to Cloudinary: CloudName=${cloudName}, Preset=${uploadPreset}`);
 
     const cloudinaryResponse = await fetch(
-      `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUD_NAME || 'duv9pccwi'}/image/upload`,
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
       {
         method: 'POST',
         body: cloudinaryFormData,
@@ -53,7 +60,9 @@ export async function POST(request: NextRequest) {
     );
 
     if (!cloudinaryResponse.ok) {
-      throw new Error('Lỗi khi upload lên Cloudinary');
+      const errorText = await cloudinaryResponse.text();
+      console.error('Cloudinary upload error response:', errorText);
+      throw new Error(`Cloudinary Error: ${cloudinaryResponse.statusText} - ${errorText}`);
     }
 
     const cloudinaryResult = await cloudinaryResponse.json();
@@ -72,7 +81,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error uploading file:', error);
     return NextResponse.json(
-      { message: 'Có lỗi xảy ra khi upload file' },
+      { 
+        message: 'Có lỗi xảy ra khi upload file',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

@@ -107,15 +107,6 @@ export default function ChinhSuaHoaDonPage() {
         const hoaDonItem = hoaDonData.data;
         if (hoaDonItem) {
           setHoaDon(hoaDonItem);
-          console.log('Hoa don loaded for editing:', hoaDonItem);
-          
-          // Set form data
-          console.log('Setting form data with electricity readings:', {
-            chiSoDienBanDau: hoaDonItem.chiSoDienBanDau,
-            chiSoDienCuoiKy: hoaDonItem.chiSoDienCuoiKy,
-            chiSoNuocBanDau: hoaDonItem.chiSoNuocBanDau,
-            chiSoNuocCuoiKy: hoaDonItem.chiSoNuocCuoiKy
-          });
           
           setFormData({
             maHoaDon: hoaDonItem.maHoaDon || '',
@@ -144,12 +135,12 @@ export default function ChinhSuaHoaDonPage() {
             ghiChu: hoaDonItem.ghiChu || '',
           });
         } else {
-          toast.error('Không tìm thấy hóa đơn');
+          toast.error('Hệ thống không tìm thấy hóa đơn này bạn ơi!');
           router.push('/dashboard/hoa-don');
           return;
         }
       } else {
-        toast.error('Lỗi khi tải thông tin hóa đơn');
+        toast.error('Có lỗi khi tải thông tin hóa đơn. Thử lại sau nhé!');
         router.push('/dashboard/hoa-don');
         return;
       }
@@ -228,18 +219,16 @@ export default function ChinhSuaHoaDonPage() {
 
       if (response.ok) {
         const result = await response.json();
-        // Xóa cache
         sessionStorage.removeItem('hoa-don-data');
-        toast.success(result.message || 'Hóa đơn đã được cập nhật thành công');
+        toast.success(result.message || 'Đã cập nhật thông tin hóa đơn thành công!');
         router.replace('/dashboard/hoa-don');
         router.refresh();
       } else {
         const errorData = await response.json();
-        toast.error(errorData.message || 'Có lỗi xảy ra');
+        toast.error(errorData.message || 'Ồ, chưa lưu được thay đổi này. Bạn thử lại nhé!');
       }
     } catch (error) {
-      console.error('Error submitting form:', error);
-      toast.error('Có lỗi xảy ra khi gửi dữ liệu');
+      toast.error('Lỗi kết nối khi gửi dữ liệu rồi.');
     } finally {
       setSubmitting(false);
     }

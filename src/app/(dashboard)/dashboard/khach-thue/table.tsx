@@ -1,25 +1,6 @@
-"use client"
+'use client';
 
-import * as React from "react"
-import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type UniqueIdentifier,
-} from "@dnd-kit/core"
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
+import * as React from "react";
 import {
   Edit,
   Trash2,
@@ -27,7 +8,6 @@ import {
   Phone,
   Mail,
   MapPin,
-  GripVertical,
   MoreVertical,
   Columns,
   ChevronDown,
@@ -44,7 +24,7 @@ import {
   Key,
   Check,
   X,
-} from "lucide-react"
+} from "lucide-react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -59,11 +39,11 @@ import {
   SortingState,
   useReactTable,
   VisibilityState,
-} from "@tanstack/react-table"
+} from "@tanstack/react-table";
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -71,16 +51,24 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -88,8 +76,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import type { KhachThue } from '@/types'
+} from "@/components/ui/table";
+import type { KhachThue } from '@/types';
 
 // Helper functions
 const getStatusBadge = (status: string) => {
@@ -100,84 +88,33 @@ const getStatusBadge = (status: string) => {
           <User className="h-3 w-3" />
           Đang thuê
         </Badge>
-      )
+      );
     case 'daTraPhong':
       return (
         <Badge variant="secondary" className="gap-1">
           Đã trả phòng
         </Badge>
-      )
+      );
     case 'chuaThue':
       return (
         <Badge variant="outline" className="gap-1">
           Chưa thuê
         </Badge>
-      )
+      );
     default:
-      return <Badge variant="outline">{status}</Badge>
+      return <Badge variant="outline">{status}</Badge>;
   }
-}
-
-// Create a separate component for the drag handle
-function DragHandle({ id }: { id: string }) {
-  const { attributes, listeners } = useSortable({
-    id,
-  })
-
-  return (
-    <Button
-      {...attributes}
-      {...listeners}
-      variant="ghost"
-      size="icon"
-      className="text-muted-foreground size-7 hover:bg-transparent"
-    >
-      <GripVertical className="text-muted-foreground size-3" />
-      <span className="sr-only">Kéo để sắp xếp</span>
-    </Button>
-  )
-}
+};
 
 type KhachThueTableProps = {
-  onView?: (khachThue: KhachThue) => void
-  onEdit: (khachThue: KhachThue) => void
-  onDelete: (id: string) => void
-  actionLoading: string | null
-}
+  onView?: (khachThue: KhachThue) => void;
+  onEdit: (khachThue: KhachThue) => void;
+  onDelete: (id: string) => void;
+  actionLoading: string | null;
+  canEdit?: boolean;
+};
 
-const createColumns = (props: KhachThueTableProps): ColumnDef<KhachThue>[] => [
-  {
-    id: "drag",
-    header: () => null,
-    cell: ({ row }) => <DragHandle id={row.original._id!} />,
-    enableHiding: false,
-  },
-  {
-    id: "select",
-    header: ({ table }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Chọn tất cả"
-        />
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Chọn hàng"
-        />
-      </div>
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
+const createColumns = (props: KhachThueTableProps & { setKhachThueToDelete: (k: KhachThue) => void; setIsDeleteDialogOpen: (o: boolean) => void }): ColumnDef<KhachThue>[] => [
   {
     accessorKey: "hoTen",
     header: "Họ tên",
@@ -185,7 +122,7 @@ const createColumns = (props: KhachThueTableProps): ColumnDef<KhachThue>[] => [
       <div className="min-w-40">
         <div className="font-medium">{row.original.hoTen}</div>
         <div className="text-xs text-muted-foreground capitalize">
-          {row.original.gioiTinh}
+          {row.original.gioiTinh === 'nam' ? 'Nam' : 'Nữ'}
         </div>
       </div>
     ),
@@ -311,6 +248,28 @@ const createColumns = (props: KhachThueTableProps): ColumnDef<KhachThue>[] => [
     },
   },
   {
+    accessorKey: "anhCCCD",
+    header: "Ảnh CCCD",
+    cell: ({ row }) => {
+      const anhCCCD = row.original.anhCCCD;
+      const hasFront = !!anhCCCD?.matTruoc;
+      const hasBack = !!anhCCCD?.matSau;
+      
+      if (!hasFront && !hasBack) return <span className="text-muted-foreground text-sm">-</span>;
+      
+      return (
+        <div className="flex gap-1">
+          <Badge variant={hasFront ? "default" : "outline"} className="text-[10px] px-1 h-5">
+            {hasFront ? "Mặt trước OK" : "Thiếu trước"}
+          </Badge>
+          <Badge variant={hasBack ? "default" : "outline"} className="text-[10px] px-1 h-5">
+            {hasBack ? "Mặt sau OK" : "Thiếu sau"}
+          </Badge>
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: "trangThai",
     header: "Trạng thái",
     cell: ({ row }) => getStatusBadge(row.original.trangThai),
@@ -324,6 +283,7 @@ const createColumns = (props: KhachThueTableProps): ColumnDef<KhachThue>[] => [
             variant="ghost"
             className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
             size="icon"
+            onClick={(e) => e.stopPropagation()}
           >
             <MoreVertical className="size-4" />
             <span className="sr-only">Mở menu</span>
@@ -331,46 +291,49 @@ const createColumns = (props: KhachThueTableProps): ColumnDef<KhachThue>[] => [
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
           {props.onView && (
-            <DropdownMenuItem onClick={() => props.onView!(row.original)}>
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              props.onView!(row.original);
+            }}>
               <Eye className="mr-2 h-4 w-4" />
               Xem chi tiết
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onClick={() => props.onEdit(row.original)}>
-            <Edit className="mr-2 h-4 w-4" />
-            Chỉnh sửa
-          </DropdownMenuItem>
+          {props.canEdit !== false && (
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              props.onEdit(row.original);
+            }}>
+              <Edit className="mr-2 h-4 w-4" />
+              Chỉnh sửa
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem 
-            className="text-destructive"
-            onClick={() => props.onDelete(row.original._id!)}
-            disabled={props.actionLoading === `delete-${row.original._id}`}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            {props.actionLoading === `delete-${row.original._id}` ? 'Đang xóa...' : 'Xóa'}
-          </DropdownMenuItem>
+          {props.canEdit !== false && (
+            <DropdownMenuItem 
+              className="text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                props.setKhachThueToDelete(row.original);
+                props.setIsDeleteDialogOpen(true);
+              }}
+              disabled={props.actionLoading === `delete-${row.original._id}`}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {props.actionLoading === `delete-${row.original._id}` ? 'Đang xóa...' : 'Xóa'}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     ),
     enableHiding: false,
   },
-]
+];
 
-function DraggableRow({ row }: { row: Row<KhachThue> }) {
-  const { transform, transition, setNodeRef, isDragging } = useSortable({
-    id: row.original._id!,
-  })
-
+function KhachThueTableRow({ row }: { row: Row<KhachThue> }) {
   return (
     <TableRow
       data-state={row.getIsSelected() && "selected"}
-      data-dragging={isDragging}
-      ref={setNodeRef}
-      className="relative z-0 data-[dragging=true]:z-10 data-[dragging=true]:opacity-80"
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition: transition,
-      }}
     >
       {row.getVisibleCells().map((cell) => (
         <TableCell key={cell.id}>
@@ -378,50 +341,44 @@ function DraggableRow({ row }: { row: Row<KhachThue> }) {
         </TableCell>
       ))}
     </TableRow>
-  )
+  );
 }
 
 type KhachThueDataTableProps = KhachThueTableProps & {
-  data: KhachThue[]
-  searchTerm?: string
-  onSearchChange?: (value: string) => void
-  selectedTrangThai?: string
-  onTrangThaiChange?: (value: string) => void
-}
+  data: KhachThue[];
+  searchTerm?: string;
+  onSearchChange?: (value: string) => void;
+  selectedTrangThai?: string;
+  onTrangThaiChange?: (value: string) => void;
+};
 
 export function KhachThueDataTable(props: KhachThueDataTableProps) {
-  const { data: initialData, searchTerm, onSearchChange, selectedTrangThai, onTrangThaiChange, ...tableProps } = props
-  const [data, setData] = React.useState(() => initialData)
-  const [rowSelection, setRowSelection] = React.useState({})
+  const { data: initialData, searchTerm, onSearchChange, selectedTrangThai, onTrangThaiChange, ...tableProps } = props;
+  const [data, setData] = React.useState(() => initialData);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [khachThueToDelete, setKhachThueToDelete] = React.useState<KhachThue | null>(null);
+  const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({})
+    React.useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
-  )
-  const [sorting, setSorting] = React.useState<SortingState>([])
+  );
+  const [sorting, setSorting] = React.useState<SortingState>([]);
   const [pagination, setPagination] = React.useState({
     pageIndex: 0,
     pageSize: 10,
-  })
+  });
   
   // Sync data when prop changes
   React.useEffect(() => {
-    setData(initialData)
-  }, [initialData])
+    setData(initialData);
+  }, [initialData]);
   
-  const columns = React.useMemo(() => createColumns(tableProps), [tableProps])
-  
-  const sortableId = React.useId()
-  const sensors = useSensors(
-    useSensor(MouseSensor, {}),
-    useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {})
-  )
-
-  const dataIds = React.useMemo<UniqueIdentifier[]>(
-    () => data?.map(({ _id }) => _id!) || [],
-    [data]
-  )
+  const columns = React.useMemo(() => createColumns({ 
+    ...tableProps, 
+    setKhachThueToDelete, 
+    setIsDeleteDialogOpen 
+  }), [tableProps]);
 
   const table = useReactTable({
     data,
@@ -446,20 +403,9 @@ export function KhachThueDataTable(props: KhachThueDataTableProps) {
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-  })
+  });
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (active && over && active.id !== over.id) {
-      setData((data) => {
-        const oldIndex = dataIds.indexOf(active.id)
-        const newIndex = dataIds.indexOf(over.id)
-        return arrayMove(data, oldIndex, newIndex)
-      })
-    }
-  }
-
-  const selectedCount = table.getFilteredSelectedRowModel().rows.length
+  const selectedCount = table.getFilteredSelectedRowModel().rows.length;
 
   return (
     <div className="w-full space-y-4">
@@ -521,7 +467,7 @@ export function KhachThueDataTable(props: KhachThueDataTableProps) {
                     >
                       {column.id}
                     </DropdownMenuCheckboxItem>
-                  )
+                  );
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -529,56 +475,74 @@ export function KhachThueDataTable(props: KhachThueDataTableProps) {
       </div>
       
       <div className="overflow-hidden rounded-lg border">
-        <DndContext
-          collisionDetection={closestCenter}
-          modifiers={[restrictToVerticalAxis]}
-          onDragEnd={handleDragEnd}
-          sensors={sensors}
-          id={sortableId}
-        >
-          <Table>
-            <TableHeader className="bg-muted sticky top-0 z-10">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead key={header.id} colSpan={header.colSpan}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </TableHead>
-                    )
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody className="**:data-[slot=table-cell]:first:w-8">
-              {table.getRowModel().rows?.length ? (
-                <SortableContext
-                  items={dataIds}
-                  strategy={verticalListSortingStrategy}
+        <Table>
+          <TableHeader className="bg-muted sticky top-0 z-10">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id} colSpan={header.colSpan}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody className="**:data-[slot=table-cell]:first:w-8">
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <KhachThueTableRow key={row.id} row={row} />
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
                 >
-                  {table.getRowModel().rows.map((row) => (
-                    <DraggableRow key={row.id} row={row} />
-                  ))}
-                </SortableContext>
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
-                  >
-                    Không có dữ liệu
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </DndContext>
+                  Không có dữ liệu
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn xóa khách thuê <strong>{khachThueToDelete?.hoTen}</strong>? Hành động này không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (khachThueToDelete) {
+                  tableProps.onDelete(khachThueToDelete._id!);
+                  setIsDeleteDialogOpen(false);
+                  setKhachThueToDelete(null);
+                }
+              }}
+            >
+              Xác nhận xóa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <div className="flex items-center justify-between px-4">
         <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
@@ -596,7 +560,7 @@ export function KhachThueDataTable(props: KhachThueDataTableProps) {
             <Select
               value={`${table.getState().pagination.pageSize}`}
               onValueChange={(value) => {
-                table.setPageSize(Number(value))
+                table.setPageSize(Number(value));
               }}
             >
               <SelectTrigger size="sm" className="w-20" id="rows-per-page">
@@ -661,6 +625,5 @@ export function KhachThueDataTable(props: KhachThueDataTableProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }
-

@@ -117,20 +117,19 @@ export default function CaiDatPage() {
     const root = window.document.documentElement;
     if (theme === 'dark') {
       root.classList.add('dark');
+      root.classList.remove('light');
       root.style.colorScheme = 'dark';
-    } else if (theme === 'light') {
-      root.classList.remove('dark');
-      root.style.colorScheme = 'light';
     } else if (theme === 'auto') {
       // Auto theme based on system preference
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) {
-        root.classList.add('dark');
-        root.style.colorScheme = 'dark';
-      } else {
-        root.classList.remove('dark');
-        root.style.colorScheme = 'light';
-      }
+      root.classList.toggle('dark', prefersDark);
+      root.classList.toggle('light', !prefersDark);
+      root.style.colorScheme = prefersDark ? 'dark' : 'light';
+    } else {
+      // light hoặc bất kỳ giá trị nào khác → sáng
+      root.classList.remove('dark');
+      root.classList.add('light');
+      root.style.colorScheme = 'light';
     }
   };
 
@@ -165,9 +164,8 @@ export default function CaiDatPage() {
   };
 
   const handleSaveFontSettings = () => {
-    console.log('Saving font settings:', fontSettings);
     localStorage.setItem('fontSettings', JSON.stringify(fontSettings));
-    alert('Đã lưu cài đặt font chữ thành công!');
+    toast.success('Đã lưu cài đặt font chữ của bạn thành công rồi nhé!');
   };
 
   const handleThemeChange = (theme: string) => {
@@ -175,7 +173,7 @@ export default function CaiDatPage() {
     setUiSettings(newUiSettings);
     applyTheme(theme);
     localStorage.setItem('uiSettings', JSON.stringify(newUiSettings));
-    toast.success('Đã cập nhật chủ đề!');
+    toast.success('Hệ thống đã chuyển sang chủ đề mới rồi nè!');
   };
 
   const handleDensityChange = (density: string) => {
@@ -183,6 +181,7 @@ export default function CaiDatPage() {
     setUiSettings(newUiSettings);
     applyDensity(density);
     localStorage.setItem('uiSettings', JSON.stringify(newUiSettings));
+    toast.success('Đã thay đổi độ hiển thị của giao diện nhé!');
   };
 
   return (
@@ -371,7 +370,7 @@ export default function CaiDatPage() {
             className="w-full"
             onClick={() => {
               localStorage.setItem('uiSettings', JSON.stringify(uiSettings));
-              toast.success('Đã lưu tất cả Cài đặt Giao diện!');
+              toast.success('Tuyệt vời! Tất cả cài đặt giao diện đã được lưu rồi nhé!');
             }}
           >
             <Settings className="h-4 w-4 mr-2" />

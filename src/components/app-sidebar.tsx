@@ -4,18 +4,11 @@ import * as React from "react"
 import { useSession } from "next-auth/react"
 import {
   Building2,
-  DoorOpen,
-  Users,
-  FileText,
   Receipt,
-  CreditCard,
   AlertTriangle,
-  Bell,
   Settings,
   Shield,
-  Home,
   Building,
-  Globe,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -86,12 +79,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             url: "/dashboard/su-co",
           },
           {
-            title: "Xem Web",
-            url: "/dashboard/xem-web",
-          },
-          {
-            title: "Thông báo ZNS",
-            url: "/dashboard/thong-bao-zalo",
+            title: "Thông báo",
+            url: "/dashboard/thong-bao",
           },
         ],
       },
@@ -112,9 +101,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       },
     ]
 
-    // Thêm mục quản lý admin nếu là admin hoặc chuNha
+    // Thêm mục quản lý admin nếu là admin
     if (session?.user?.role === 'admin' || session?.user?.role === 'chuNha') {
-      baseItems.splice(3, 0, {
+      baseItems.push({
         title: "Quản trị",
         url: "#",
         icon: Shield,
