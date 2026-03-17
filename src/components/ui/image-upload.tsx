@@ -49,11 +49,15 @@ export function ImageUpload({
       }
 
       const result = await response.json();
-      if (result.success && result.data.url) {
+      if (result.success && result.data.secure_url) {
+        onImageChange(result.data.secure_url);
+        toast.success('Upload ảnh thành công');
+      } else if (result.success && result.data.url) {
+        // Fallback for other APIs that might use 'url'
         onImageChange(result.data.url);
         toast.success('Upload ảnh thành công');
       } else {
-        throw new Error('Upload failed');
+        throw new Error('Upload failed: Missing URL in response');
       }
     } catch (error) {
       console.error('Upload error:', error);

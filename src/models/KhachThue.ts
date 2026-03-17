@@ -16,6 +16,8 @@ export interface IKhachThue extends Document {
   ngheNghiep?: string;
   matKhau?: string;
   trangThai: 'dangThue' | 'daTraPhong' | 'chuaThue';
+  anhDaiDien?: string;
+  avatar?: string;
   ngayTao: Date;
   ngayCapNhat: Date;
   createdAt: Date;
@@ -100,6 +102,14 @@ const KhachThueSchema = new Schema<IKhachThue>({
     type: String,
     enum: ['dangThue', 'daTraPhong', 'chuaThue'],
     default: 'chuaThue'
+  },
+  anhDaiDien: {
+    type: String,
+    default: null
+  },
+  avatar: {
+    type: String,
+    default: null
   },
   nguoiQuanLy: {
     type: Schema.Types.ObjectId,

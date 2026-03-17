@@ -54,8 +54,13 @@ interface PhongDetailDialogProps {
 export function PhongDetailDialog({ phong, isOpen, onClose, toaNhaList }: PhongDetailDialogProps) {
   if (!phong) return null;
 
+  const capitalizeFirstLetter = (string?: string) => {
+    if (!string) return '';
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  };
+
   const toaNhaObj = typeof phong.toaNha === 'object' ? phong.toaNha : toaNhaList.find(t => t._id === phong.toaNha);
-  const toaNhaName = (toaNhaObj as ToaNha)?.tenToaNha || 'N/A';
+  const toaNhaName = capitalizeFirstLetter((toaNhaObj as ToaNha)?.tenToaNha) || 'N/A';
   
   const formatAddress = (diaChi?: any) => {
     if (!diaChi) return 'N/A';
@@ -289,7 +294,7 @@ export function PhongDetailDialog({ phong, isOpen, onClose, toaNhaList }: PhongD
                         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-1000" />
                         <ScrollArea className="h-full pr-4 relative z-10">
                           <p className="text-base text-foreground/70 leading-relaxed font-bold italic opacity-90">
-                            {phong.moTa ? `"${phong.moTa}"` : "Căn phòng yên tĩnh, sạch sẽ, đang chờ đón bạn đến trải nghiệm..."}
+                            {phong.moTa ? `"${capitalizeFirstLetter(phong.moTa)}"` : "Căn phòng yên tĩnh, sạch sẽ, đang chờ đón bạn đến trải nghiệm..."}
                           </p>
                         </ScrollArea>
                       </div>
@@ -317,6 +322,51 @@ export function PhongDetailDialog({ phong, isOpen, onClose, toaNhaList }: PhongD
 
                 {/* COLUMN 3: Building & Tenants (4/12) */}
                 <div className="lg:col-span-4 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300 fill-mode-both">
+                   {/* Thông tin chủ trọ */}
+                   <section className="space-y-5">
+                      <h3 className="font-black text-xs uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2.5 px-2">
+                        <User className="h-4 w-4 text-primary/60" />
+                        Thông tin chủ cho thuê
+                      </h3>
+                      {typeof (toaNhaObj as ToaNha)?.chuSoHuu === 'object' && (toaNhaObj as ToaNha).chuSoHuu ? (
+                        <Card className="border-0 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.05)] bg-gradient-to-br from-emerald-500/[0.08] to-primary/[0.03] rounded-[2.5rem] overflow-hidden p-6 hover:shadow-xl hover:scale-[1.02] transition-all duration-500 group">
+                          <div className="flex items-center gap-5">
+                             <div className="bg-white p-3 rounded-2xl shadow-sm shrink-0 group-hover:rotate-12 transition-transform duration-500">
+                               {((toaNhaObj as ToaNha).chuSoHuu as any).anhDaiDien ? (
+                                 <img 
+                                   src={((toaNhaObj as ToaNha).chuSoHuu as any).anhDaiDien} 
+                                   alt={((toaNhaObj as ToaNha).chuSoHuu as any).ten}
+                                   className="h-10 w-10 rounded-xl object-cover"
+                                 />
+                               ) : (
+                                 <User className="h-6 w-6 text-emerald-500/80" />
+                               )}
+                             </div>
+                             <div className="overflow-hidden">
+                               <p className="text-[10px] text-emerald-600/50 uppercase font-black tracking-widest mb-0.5">Chủ nhà / Quản lý</p>
+                               <h4 className="text-2xl font-black text-foreground truncate drop-shadow-sm">{((toaNhaObj as ToaNha).chuSoHuu as any).ten}</h4>
+                               <div className="flex flex-col gap-1 mt-1">
+                                 <a href={`tel:${((toaNhaObj as ToaNha).chuSoHuu as any).soDienThoai}`} className="text-xs font-black text-primary/80 flex items-center gap-1.5 hover:text-primary hover:translate-x-1 transition-all">
+                                   <Phone className="h-3.5 w-3.5" />
+                                   {((toaNhaObj as ToaNha).chuSoHuu as any).soDienThoai}
+                                 </a>
+                                 {((toaNhaObj as ToaNha).chuSoHuu as any).email && (
+                                   <p className="text-[10px] text-muted-foreground font-bold flex items-center gap-1.5">
+                                      <Info className="h-3 w-3" />
+                                      {((toaNhaObj as ToaNha).chuSoHuu as any).email}
+                                   </p>
+                                 )}
+                               </div>
+                             </div>
+                          </div>
+                        </Card>
+                      ) : (
+                        <div className="bg-primary/[0.01] p-6 rounded-[2.5rem] border-2 border-dashed border-primary/10 text-center">
+                          <p className="text-[10px] font-black text-primary/30 uppercase tracking-widest">Đang cập nhật thông tin liên hệ</p>
+                        </div>
+                      )}
+                   </section>
+
                    <section className="space-y-5">
                       <h3 className="font-black text-xs uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2.5 px-2">
                         <Users className="h-4 w-4 text-primary/60" />
@@ -383,11 +433,11 @@ export function PhongDetailDialog({ phong, isOpen, onClose, toaNhaList }: PhongD
                            {(toaNhaObj as ToaNha)?.tienNghiChung?.map((item, id) => (
                               <div key={id} className="bg-white border-primary/5 border px-4 py-2 rounded-2xl text-[10px] font-black text-foreground/60 flex items-center gap-2 shadow-sm hover:scale-105 transition-transform">
                                 <Sparkles className="h-3 w-3 text-amber-400 opacity-60" />
-                                {item}
+                                {capitalizeFirstLetter(item)}
                               </div>
                            ))}
                            {(!toaNhaObj || !(toaNhaObj as ToaNha)?.tienNghiChung?.length) && (
-                              <div className="bg-background/40 border border-dashed border-primary/10 px-5 py-3 rounded-2xl text-[10px] font-black text-primary/20 uppercase italic tracking-widest">Toán nhà cơ bản</div>
+                              <div className="bg-background/40 border border-dashed border-primary/10 px-5 py-3 rounded-2xl text-[10px] font-black text-primary/20 uppercase italic tracking-widest">Tòa nhà cơ bản</div>
                            )}
                         </div>
                       </div>

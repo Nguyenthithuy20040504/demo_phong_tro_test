@@ -109,11 +109,11 @@ export default function ToaNhaPage() {
     }
   };
 
-  if (loading) {
+  if (loading && toaNhaList.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <RefreshCw className="h-8 w-8 animate-spin text-primary/20" />
-        <span className="text-sm text-muted-foreground">Đang tải dữ liệu...</span>
+        <span className="text-sm text-muted-foreground font-medium animate-pulse">Đang kết nối hệ thống...</span>
       </div>
     );
   }
@@ -224,15 +224,22 @@ export default function ToaNhaPage() {
         </Card>
       </div>
 
-      {/* Main Table Interface */}
-      <ToaNhaDataTable
-        data={filteredToaNha}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        canEdit={!isNhanVien}
-      />
+      <div className={`transition-all duration-500 ${loading ? 'opacity-70 scale-[0.99] pointer-events-none' : 'opacity-100 scale-100'}`}>
+        <ToaNhaDataTable
+          data={filteredToaNha}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          canEdit={!isNhanVien}
+        />
+        {loading && (
+          <div className="flex justify-center items-center mt-4 gap-2 text-xs text-muted-foreground animate-pulse">
+            <RefreshCw className="h-3 w-3 animate-spin" />
+            Đang cập nhật danh sách tòa nhà...
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -224,12 +224,15 @@ export default function PhongPage() {
     }
   };
 
-  if (loading) {
+  if (loading && phongList.length === 0) {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div className="h-8 bg-gray-200 rounded w-48 animate-pulse"></div>
           <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => <div key={i} className="h-24 bg-gray-200 rounded animate-pulse"></div>)}
         </div>
         <div className="h-96 bg-gray-200 rounded animate-pulse"></div>
       </div>
@@ -340,12 +343,22 @@ export default function PhongPage() {
       </div>
 
       {/* Desktop Table View */}
-      <Card className="hidden md:block">
-        <CardHeader>
-          <CardTitle>Danh sách phòng</CardTitle>
-          <CardDescription>
-            Tìm thấy {filteredPhong.length} phòng theo yêu cầu
-          </CardDescription>
+      <Card className={`hidden md:block transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+        <CardHeader className="relative">
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Danh sách phòng</CardTitle>
+              <CardDescription>
+                Tìm thấy {filteredPhong.length} phòng theo yêu cầu
+              </CardDescription>
+            </div>
+            {loading && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse">
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                Đang cập nhật...
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-6">
           <PhongDataTable 
@@ -370,9 +383,12 @@ export default function PhongPage() {
 
       {/* Mobile Card View */}
       <div className="md:hidden space-y-3">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center mb-4">
           <h2 className="text-base font-semibold">Danh sách phòng</h2>
-          <span className="text-xs text-gray-600">{filteredPhong.length} phòng</span>
+          <div className="flex items-center gap-2">
+            {loading && <RefreshCw className="h-3 w-3 animate-spin text-primary" />}
+            <span className="text-xs text-gray-600">{filteredPhong.length} phòng</span>
+          </div>
         </div>
 
         {/* Mobile Filters */}

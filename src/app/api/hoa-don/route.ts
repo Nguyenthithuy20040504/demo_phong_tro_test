@@ -97,7 +97,11 @@ export async function GET(request: NextRequest) {
       query.hopDong = hopDongId;
     }
     if (trangThai) {
-      query.trangThai = trangThai;
+      if (trangThai.includes(',')) {
+        query.trangThai = { $in: trangThai.split(',') };
+      } else {
+        query.trangThai = trangThai;
+      }
     }
 
     const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
@@ -226,7 +230,10 @@ export async function POST(request: NextRequest) {
       chiSoNuocBanDau,
       chiSoNuocCuoiKy,
       phiDichVu,
-      ghiChu
+      ghiChu,
+      daThanhToan,
+      trangThai,
+      hanThanhToan
     } = body;
 
     // Validate required fields
@@ -373,10 +380,10 @@ export async function POST(request: NextRequest) {
       chiSoNuocCuoiKy: chiSoNuocCuoiKyValue,
       phiDichVu: phiDichVu || [],
       tongTien,
-      daThanhToan: 0,
-      conLai: tongTien,
-      trangThai: 'chuaThanhToan',
-      hanThanhToan: new Date(nam, thang - 1, hopDongData.ngayThanhToan) // Hạn thanh toán theo ngày quy định trong hợp đồng
+      daThanhToan: daThanhToan || 0,
+      conLai: tongTien - (daThanhToan || 0),
+      trangThai: trangThai || ((tongTien - (daThanhToan || 0)) <= 0 ? 'daThanhToan' : (daThanhToan > 0 ? 'daThanhToanMotPhan' : 'chuaThanhToan')),
+      hanThanhToan: hanThanhToan ? new Date(hanThanhToan) : new Date(nam, thang - 1, hopDongData.ngayThanhToan) // Hạn thanh toán theo ngày quy định trong hợp đồng
     };
 
     const hoaDon = new HoaDon(hoaDonData);

@@ -5,6 +5,10 @@ export const userProfileSchema = z.object({
   phone: z.string().regex(/^[0-9]{10,11}$/, 'Số điện thoại không hợp lệ').optional().or(z.literal('')),
   address: z.string().max(500, 'Địa chỉ không được quá 500 ký tự').optional().or(z.literal('')),
   avatar: z.string().url('URL ảnh không hợp lệ').optional().or(z.literal('')),
+  anhCCCD: z.object({
+    matTruoc: z.string().optional().or(z.literal('')),
+    matSau: z.string().optional().or(z.literal('')),
+  }).optional(),
 });
 
 export const loginSchema = z.object({

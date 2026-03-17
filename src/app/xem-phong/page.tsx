@@ -23,7 +23,9 @@ import {
   Eye,
   ArrowLeft,
   Star,
-  ZoomIn
+  ZoomIn,
+  User,
+  Building2
 } from 'lucide-react';
 import { Phong, ToaNha } from '@/types';
 import { toast } from 'sonner';
@@ -107,11 +109,22 @@ export default function XemPhongPage() {
     }
   }, [phongList]);
 
-  const filteredPhong = phongList.filter(phong =>
-    phong.maPhong.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    phong.moTa?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (typeof phong.toaNha === 'object' && phong.toaNha && (phong.toaNha as any).tenToaNha?.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const capitalizeFirstLetter = (string?: string) => {
+    if (!string) return '';
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  };
+
+  const filteredPhong = phongList
+    .filter(phong =>
+      phong.maPhong.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      phong.moTa?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (typeof phong.toaNha === 'object' && phong.toaNha && (phong.toaNha as any).tenToaNha?.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
+    .sort((a, b) => {
+      if (selectedTrangThai === 'asc') return a.giaThue - b.giaThue;
+      if (selectedTrangThai === 'desc') return b.giaThue - a.giaThue;
+      return 0;
+    });
 
   const getTrangThaiBadge = (trangThai: string) => {
     const variants = {
@@ -204,7 +217,7 @@ export default function XemPhongPage() {
                   Phòng {selectedPhong.maPhong}
                 </h1>
                 <p className="text-xs md:text-sm text-slate-600">
-                  {typeof selectedPhong.toaNha === 'object' ? (selectedPhong.toaNha as any).tenToaNha : 'N/A'} - Tầng {selectedPhong.tang}
+                  {typeof selectedPhong.toaNha === 'object' ? capitalizeFirstLetter((selectedPhong.toaNha as any).tenToaNha) : 'N/A'} - Tầng {selectedPhong.tang}
                 </p>
               </div>
               <div className="text-left md:text-right">
@@ -286,7 +299,7 @@ export default function XemPhongPage() {
                     <CardTitle className="text-base md:text-lg bg-gradient-to-r from-indigo-700 to-purple-600 bg-clip-text text-transparent">Mô tả</CardTitle>
                   </CardHeader>
                   <CardContent className="p-4 md:p-6">
-                    <p className="text-sm md:text-base text-gray-700 whitespace-pre-wrap">{selectedPhong.moTa}</p>
+                    <p className="text-sm md:text-base text-gray-700 whitespace-pre-wrap">{capitalizeFirstLetter(selectedPhong.moTa)}</p>
                   </CardContent>
                 </Card>
               )}
@@ -325,7 +338,7 @@ export default function XemPhongPage() {
                   <div className="flex items-center justify-between text-xs md:text-sm">
                     <span className="text-gray-600">Tòa nhà:</span>
                     <span className="font-medium truncate ml-2">
-                      {typeof selectedPhong.toaNha === 'object' ? (selectedPhong.toaNha as any).tenToaNha : 'N/A'}
+                      {typeof selectedPhong.toaNha === 'object' ? capitalizeFirstLetter((selectedPhong.toaNha as any).tenToaNha) : 'N/A'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs md:text-sm">
@@ -536,36 +549,20 @@ export default function XemPhongPage() {
                     </div>
                   </div>
 
-                  {/* Status filter */}
+                  {/* Sort filter */}
                   <div className="md:col-span-1">
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Trạng thái</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Sắp xếp theo giá</label>
                     <div className="relative group">
                       <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"></div>
                       <div className="relative">
                         <Select value={selectedTrangThai} onValueChange={setSelectedTrangThai}>
                           <SelectTrigger className="h-12 text-sm border-0 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500/20 rounded-xl transition-all duration-300 shadow-sm hover:shadow-md focus:shadow-lg">
-                            <SelectValue placeholder="Chọn trạng thái" />
+                            <SelectValue placeholder="Sắp xếp" />
                           </SelectTrigger>
                           <SelectContent className="border-0 shadow-xl rounded-xl bg-white/95 backdrop-blur-md">
-                            <SelectItem value="all" className="text-sm hover:bg-slate-50">Tất cả trạng thái</SelectItem>
-                            <SelectItem value="trong" className="text-sm hover:bg-emerald-50 text-emerald-700">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                                Trống
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="daDat" className="text-sm hover:bg-blue-50 text-blue-700">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                Đã đặt
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="dangThue" className="text-sm hover:bg-orange-50 text-orange-700">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                                Đang thuê
-                              </div>
-                            </SelectItem>
+                            <SelectItem value="all" className="text-sm hover:bg-slate-50">Mặc định</SelectItem>
+                            <SelectItem value="asc" className="text-sm hover:bg-slate-50">Giá từ thấp đến cao</SelectItem>
+                            <SelectItem value="desc" className="text-sm hover:bg-slate-50">Giá từ cao đến thấp</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -602,10 +599,10 @@ export default function XemPhongPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 lg:gap-6 mb-4 md:mb-8">
-          <Card className="p-3 md:p-4 border-0 shadow-lg bg-gradient-to-br from-blue-50 to-indigo-100 hover:shadow-xl transition-all duration-300 hover:scale-105">
+          <Card className="p-3 md:p-4 border-0 shadow-lg bg-gradient-to-br from-indigo-50 to-indigo-100 hover:shadow-xl transition-all duration-300 hover:scale-105">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] md:text-xs font-medium text-indigo-600">Tổng số phòng</p>
+                <p className="text-[10px] md:text-xs font-medium text-indigo-600">Phòng trống</p>
                 <p className="text-base md:text-2xl font-bold text-indigo-800">{phongList.length}</p>
               </div>
               <Home className="h-3 w-3 md:h-4 md:w-4 text-indigo-500" />
@@ -615,36 +612,36 @@ export default function XemPhongPage() {
           <Card className="p-3 md:p-4 border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-green-100 hover:shadow-xl transition-all duration-300 hover:scale-105">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] md:text-xs font-medium text-emerald-600">Phòng trống</p>
+                <p className="text-[10px] md:text-xs font-medium text-emerald-600">Tòa nhà</p>
                 <p className="text-base md:text-2xl font-bold text-emerald-700">
-                  {phongList.filter(p => p.trangThai === 'trong').length}
+                  {new Set(phongList.map(p => typeof p.toaNha === 'object' ? (p.toaNha as any)._id : p.toaNha)).size}
                 </p>
               </div>
-              <Users className="h-3 w-3 md:h-4 md:w-4 text-emerald-500" />
+              <Building2 className="h-3 w-3 md:h-4 md:w-4 text-emerald-500" />
             </div>
           </Card>
 
           <Card className="p-3 md:p-4 border-0 shadow-lg bg-gradient-to-br from-sky-50 to-blue-100 hover:shadow-xl transition-all duration-300 hover:scale-105">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] md:text-xs font-medium text-sky-600">Đang thuê</p>
+                <p className="text-[10px] md:text-xs font-medium text-sky-600">Giá thấp nhất</p>
                 <p className="text-base md:text-2xl font-bold text-sky-700">
-                  {phongList.filter(p => p.trangThai === 'dangThue').length}
+                  {phongList.length > 0 ? (Math.min(...phongList.map(p => p.giaThue)) / 1000000).toFixed(1) : 0}M
                 </p>
               </div>
-              <Users className="h-3 w-3 md:h-4 md:w-4 text-sky-500" />
+              <DollarSign className="h-3 w-3 md:h-4 md:w-4 text-sky-500" />
             </div>
           </Card>
 
           <Card className="p-3 md:p-4 border-0 shadow-lg bg-gradient-to-br from-amber-50 to-orange-100 hover:shadow-xl transition-all duration-300 hover:scale-105">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] md:text-xs font-medium text-amber-600">Đã đặt</p>
+                <p className="text-[10px] md:text-xs font-medium text-amber-600">Giá cao nhất</p>
                 <p className="text-base md:text-2xl font-bold text-amber-700">
-                  {phongList.filter(p => p.trangThai === 'daDat').length}
+                  {phongList.length > 0 ? (Math.max(...phongList.map(p => p.giaThue)) / 1000000).toFixed(1) : 0}M
                 </p>
               </div>
-              <Users className="h-3 w-3 md:h-4 md:w-4 text-amber-500" />
+              <DollarSign className="h-3 w-3 md:h-4 md:w-4 text-amber-500" />
             </div>
           </Card>
         </div>
@@ -687,7 +684,7 @@ export default function XemPhongPage() {
                 <CardDescription className="flex flex-wrap gap-2 md:gap-4 text-xs md:text-sm">
                   <span className="flex items-center">
                     <MapPin className="h-3 w-3 md:h-4 md:w-4 mr-1 flex-shrink-0" />
-                    <span className="truncate">{typeof phong.toaNha === 'object' ? (phong.toaNha as any).tenToaNha : 'N/A'}</span>
+                    <span className="truncate">{typeof phong.toaNha === 'object' ? capitalizeFirstLetter((phong.toaNha as any).tenToaNha) : 'N/A'}</span>
                   </span>
                   <span className="flex items-center">
                     <Square className="h-3 w-3 md:h-4 md:w-4 mr-1 flex-shrink-0" />
@@ -703,7 +700,7 @@ export default function XemPhongPage() {
               <CardContent className="p-4 md:p-6">
                 {phong.moTa && (
                   <p className="text-xs md:text-sm text-gray-600 mb-3 md:mb-4 line-clamp-2">
-                    {phong.moTa}
+                    {capitalizeFirstLetter(phong.moTa)}
                   </p>
                 )}
                 
@@ -711,7 +708,7 @@ export default function XemPhongPage() {
                   <div className="flex flex-wrap gap-1 mb-3 md:mb-4">
                     {phong.tienNghi.slice(0, 3).map((tienNghi) => (
                       <Badge key={tienNghi} variant="outline" className="text-[10px] md:text-xs">
-                        {tienNghiLabels[tienNghi as keyof typeof tienNghiLabels] || tienNghi}
+                        {capitalizeFirstLetter(tienNghiLabels[tienNghi as keyof typeof tienNghiLabels] || tienNghi)}
                       </Badge>
                     ))}
                     {phong.tienNghi.length > 3 && (
@@ -719,6 +716,28 @@ export default function XemPhongPage() {
                         +{phong.tienNghi.length - 3}
                       </Badge>
                     )}
+                  </div>
+                )}
+
+                {typeof phong.toaNha === 'object' && (phong.toaNha as any).chuSoHuu && (
+                  <div className="flex items-center gap-3 mb-4 p-2.5 bg-emerald-50/60 rounded-2xl border border-emerald-100/50 group/contact">
+                    <div className="h-9 w-9 rounded-xl bg-white shadow-sm flex items-center justify-center shrink-0 group-hover/contact:scale-110 transition-transform">
+                      {((phong.toaNha as any).chuSoHuu as any).anhDaiDien ? (
+                         <img 
+                           src={((phong.toaNha as any).chuSoHuu as any).anhDaiDien} 
+                           className="h-full w-full object-cover rounded-xl"
+                           alt="Chu nha"
+                         />
+                      ) : (
+                        <User className="h-5 w-5 text-emerald-600/70" />
+                      )}
+                    </div>
+                    <div className="overflow-hidden">
+                      <p className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.1em] leading-tight mb-0.5">Liên hệ chính chủ</p>
+                      <p className="text-xs font-black text-slate-700 truncate">
+                        {((phong.toaNha as any).chuSoHuu as any).ten} • {((phong.toaNha as any).chuSoHuu as any).soDienThoai}
+                      </p>
+                    </div>
                   </div>
                 )}
 

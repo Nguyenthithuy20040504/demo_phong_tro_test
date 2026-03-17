@@ -16,7 +16,11 @@ export function generateZaloDeepLink(hoaDon: any) {
   }
 
   // Khẩu trang số điện thoại (vd: 0912345678 -> 84912345678)
-  let phone = khach.soDienThoai;
+  let phone = khach.soDienThoai || khach.phone || '';
+  if (!phone) {
+    return '';
+  }
+  
   if (phone.startsWith('0')) {
     phone = `84${phone.slice(1)}`;
   }

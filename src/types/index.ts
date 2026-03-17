@@ -42,7 +42,7 @@ export interface ToaNha {
   diaChi: DiaChi;
   moTa?: string;
   anhToaNha: string[];
-  chuSoHuu: string; // ObjectId ref NguoiDung
+  chuSoHuu: string | NguoiDung; // ObjectId ref NguoiDung hoặc object đã populate
   tongSoPhong: number;
   tienNghiChung: string[];
   ngayTao: Date;
@@ -278,6 +278,8 @@ export interface DashboardStats {
   phongBaoTri: number;
   doanhThuThang: number;
   doanhThuNam: number;
+  filteredRevenue?: number | null;
+  doanhThuTheoThang?: Array<{ thang: number; total: number }>;
   hoaDonSapDenHan: number;
   suCoCanXuLy: number;
   hopDongSapHetHan: number;

@@ -182,6 +182,16 @@ export default function ChinhSuaHoaDonPage() {
     const total = formData.tienPhong + tienDienTinh + tienNuocTinh + totalPhiDichVu;
     const conLai = total - formData.daThanhToan;
     
+    // Tự động tính trạng thái dựa trên số tiền còn lại
+    let trangThai = formData.trangThai;
+    if (conLai <= 0 && total > 0) {
+      trangThai = 'daThanhToan';
+    } else if (formData.daThanhToan > 0 && conLai > 0) {
+      trangThai = 'daThanhToanMotPhan';
+    } else if (formData.daThanhToan === 0) {
+      trangThai = 'chuaThanhToan';
+    }
+    
     setFormData(prev => ({
       ...prev,
       soDien: Math.max(0, soDien),
@@ -189,7 +199,8 @@ export default function ChinhSuaHoaDonPage() {
       tienDien: tienDienTinh,
       tienNuoc: tienNuocTinh,
       tongTien: total,
-      conLai: conLai
+      conLai: conLai,
+      trangThai: trangThai as any
     }));
   };
 

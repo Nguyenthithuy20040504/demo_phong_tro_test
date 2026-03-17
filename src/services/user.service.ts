@@ -32,39 +32,42 @@ export class UserService {
    * Lấy thông tin hồ sơ người dùng theo email
    */
   static async getUserProfile(email: string) {
+    if (!email) return null;
     await dbConnect();
     
+    const emailLower = email.toLowerCase();
+    
     // Tìm trong NguoiDung trước
-    const user = await NguoiDung.findOne({ email });
+    const user = await NguoiDung.findOne({ email: emailLower });
     
     if (user) {
-      console.log(`User profile found for ${email}`);
+      console.log(`User profile found in NguoiDung for ${emailLower}`);
       return {
         _id: user._id,
-        name: user.hoTen || user.name || user.ten,
+        name: user.hoTen || user.ten || user.name,
         email: user.email,
         phone: user.soDienThoai || user.phone,
         address: user.address || user.queQuan || '',
         avatar: user.anhDaiDien || user.avatar,
-        role: user.role || user.vaiTro,
-        createdAt: user.createdAt || user.ngayTao,
+        role: user.vaiTro || user.role,
+        createdAt: user.ngayTao || user.createdAt,
         lastLogin: user.lastLogin
       };
     }
-    console.log(`User profile NOT found for ${email}`);
 
     // Nếu không thấy, tìm trong KhachThue
-    const client = await KhachThue.findOne({ email });
+    const client = await KhachThue.findOne({ email: emailLower });
     if (client) {
+      console.log(`User profile found in KhachThue for ${emailLower}`);
       return {
         _id: client._id,
         name: client.hoTen,
         email: client.email,
         phone: client.soDienThoai,
-        address: '', // KhachThue model currenty doesn't have address field
-        avatar: null,
+        address: client.queQuan || '', 
+        avatar: client.anhDaiDien || client.avatar,
         role: 'khachThue',
-        createdAt: client.createdAt || client.ngayTao,
+        createdAt: client.ngayTao || client.createdAt,
         lastLogin: client.lastLogin
       };
     }
@@ -78,59 +81,72 @@ export class UserService {
   static async updateProfile(email: string, data: UserProfileInput) {
     await dbConnect();
     
-    // Cập nhật NguoiDung
+    let result = null;
+
+    // 1. Cập nhật NguoiDung
     const updatedUser = await NguoiDung.findOneAndUpdate(
-      { email },
+      { email: email.toLowerCase() },
       { 
+        // Sync both English and Vietnamese fields
+        ten: data.name,
         name: data.name,
+        soDienThoai: data.phone,
         phone: data.phone,
         address: data.address,
+        anhDaiDien: data.avatar,
         avatar: data.avatar,
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        ngayCapNhat: new Date()
       },
       { new: true }
     );
 
     if (updatedUser) {
-      return {
+      result = {
         _id: updatedUser._id,
-        name: updatedUser.name,
+        name: updatedUser.ten || updatedUser.name,
         email: updatedUser.email,
-        phone: updatedUser.phone,
+        phone: updatedUser.soDienThoai || updatedUser.phone,
         address: updatedUser.address,
-        avatar: updatedUser.avatar,
-        role: updatedUser.role,
-        createdAt: updatedUser.createdAt,
+        avatar: updatedUser.anhDaiDien || updatedUser.avatar,
+        role: updatedUser.vaiTro || updatedUser.role,
+        createdAt: updatedUser.ngayTao || updatedUser.createdAt,
         lastLogin: updatedUser.lastLogin
       };
     }
 
-    // Nếu không phải NguoiDung, thử cập nhật KhachThue (chỉ cập nhật một số trường cho phép)
+    // 2. Cập nhật KhachThue (luôn thử cập nhật nếu email tồn tại trong KhachThue)
     const updatedClient = await KhachThue.findOneAndUpdate(
-      { email },
+      { email: email.toLowerCase() },
       {
         hoTen: data.name,
         soDienThoai: data.phone,
-        // Khách thuê có thể có giới hạn về các trường được phép sửa qua API này
+        anhDaiDien: data.avatar,
+        avatar: data.avatar,
+        anhCCCD: data.anhCCCD,
+        updatedAt: new Date(),
+        ngayCapNhat: new Date()
       },
       { new: true }
     );
 
-    if (updatedClient) {
-      return {
+    if (updatedClient && !result) {
+      // Nếu chưa có kết quả từ NguoiDung (user không phải admin/chuNha), dùng kết quả từ KhachThue
+      result = {
         _id: updatedClient._id,
         name: updatedClient.hoTen,
         email: updatedClient.email,
         phone: updatedClient.soDienThoai,
-        address: '',
-        avatar: null,
+        address: updatedClient.queQuan || '',
+        avatar: updatedClient.anhDaiDien || updatedClient.avatar,
+        anhCCCD: updatedClient.anhCCCD,
         role: 'khachThue',
-        createdAt: updatedClient.createdAt,
+        createdAt: updatedClient.ngayTao || updatedClient.createdAt,
         lastLogin: updatedClient.lastLogin
       };
     }
 
-    return null;
+    return result;
   }
 
   /**
@@ -140,12 +156,14 @@ export class UserService {
     try {
       await dbConnect();
       
+      const emailLower = email.toLowerCase();
+      
       // Tìm trong NguoiDung trước
-      let user = await NguoiDung.findOne({ email });
+      let user = await NguoiDung.findOne({ email: emailLower }).select('+matKhau +password');
       let isKhachThue = false;
       
       if (!user) {
-        user = await KhachThue.findOne({ email });
+        user = await KhachThue.findOne({ email: emailLower }).select('+matKhau');
         isKhachThue = true;
       }
       
@@ -153,14 +171,11 @@ export class UserService {
         return { success: false, message: 'Không tìm thấy người dùng' };
       }
       
-      // KhachThue schema might be different. Checking if it has comparePassword method.
-      // If not, we might need a custom compare logic for KhachThue or assume it uses standard bcrypt
       let isMatch = false;
       
       if (typeof user.comparePassword === 'function') {
         isMatch = await user.comparePassword(data.currentPassword);
       } else {
-        // Fallback or specific logic for KhachThue if comparePassword isn't defined
         const bcrypt = require('bcryptjs');
         const passwordToCheck = user.matKhau || user.password;
         if (passwordToCheck) {
@@ -172,11 +187,12 @@ export class UserService {
          return { success: false, message: 'Mật khẩu hiện tại không đúng' };
       }
       
-      // Update password
-      if (user.matKhau !== undefined) {
+      // Update password fields that exist
+      if (user.matKhau !== undefined || isKhachThue) {
          user.matKhau = data.newPassword;
       }
-      if (user.password !== undefined) {
+      // NguoiDung has 'password' field too
+      if (!isKhachThue && user.password !== undefined) {
          user.password = data.newPassword;
       }
       
@@ -185,7 +201,7 @@ export class UserService {
       
     } catch (error) {
        console.error('Error changing password:', error);
-       return { success: false, message: 'Lỗi server' };
+       return { success: false, message: 'Lỗi server khi đổi mật khẩu' };
     }
   }
 }

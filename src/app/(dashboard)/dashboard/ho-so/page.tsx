@@ -24,9 +24,12 @@ import {
   X,
   Camera,
   Key,
-  Bell
+  Bell,
+  CreditCard
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ImageUpload } from '@/components/ui/image-upload';
+import { CCCDUpload } from '@/components/ui/cccd-upload';
 
 interface UserProfile {
   _id: string;
@@ -38,6 +41,10 @@ interface UserProfile {
   role: string;
   createdAt: string;
   lastLogin?: string;
+  anhCCCD?: {
+    matTruoc: string;
+    matSau: string;
+  };
 }
 
 export default function ProfilePage() {
@@ -51,7 +58,11 @@ export default function ProfilePage() {
     name: '',
     phone: '',
     address: '',
-    avatar: ''
+    avatar: '',
+    anhCCCD: {
+      matTruoc: '',
+      matSau: ''
+    }
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -81,7 +92,8 @@ export default function ProfilePage() {
           name: data.name || '',
           phone: data.phone || '',
           address: data.address || '',
-          avatar: data.avatar || ''
+          avatar: data.avatar || '',
+          anhCCCD: data.anhCCCD || { matTruoc: '', matSau: '' }
         });
       }
     } catch (error) {
@@ -132,7 +144,8 @@ export default function ProfilePage() {
       name: profile?.name || '',
       phone: profile?.phone || '',
       address: profile?.address || '',
-      avatar: profile?.avatar || ''
+      avatar: profile?.avatar || '',
+      anhCCCD: profile?.anhCCCD || { matTruoc: '', matSau: '' }
     });
     setIsEditing(false);
   };
@@ -253,22 +266,34 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent className="space-y-4 md:space-y-6 p-4 md:p-6">
               {/* Avatar Section */}
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 md:gap-6">
-                <Avatar className="h-16 w-16 md:h-20 md:w-20">
-                  <AvatarImage src={formData.avatar} alt={formData.name} />
-                  <AvatarFallback className="text-base md:text-lg">
-                    {getInitials(formData.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="space-y-2 text-center sm:text-left">
-                  <h3 className="text-base md:text-lg font-medium">{formData.name}</h3>
-                  {profile?.role && getRoleBadge(profile.role)}
-                  {isEditing && (
-                    <Button variant="outline" size="sm" className="text-xs md:text-sm">
-                      <Camera className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
-                      Thay đổi ảnh
-                    </Button>
+              <div className="space-y-4 text-center sm:text-left flex-1">
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  {isEditing ? (
+                    <div className="w-full max-w-[200px]">
+                      <ImageUpload
+                        imageUrl={formData.avatar}
+                        onImageChange={(url) => setFormData({ ...formData, avatar: url })}
+                        label="Ảnh đại diện"
+                        placeholder="Tải ảnh lên"
+                      />
+                    </div>
+                  ) : (
+                    <Avatar className="h-16 w-16 md:h-20 md:w-20 border-2 border-primary/10">
+                      <AvatarImage src={formData.avatar} alt={formData.name} />
+                      <AvatarFallback className="text-base md:text-lg bg-primary/5 text-primary">
+                        {getInitials(formData.name)}
+                      </AvatarFallback>
+                    </Avatar>
                   )}
+                  <div className="space-y-1">
+                    <h3 className="text-base md:text-lg font-bold text-foreground">{formData.name}</h3>
+                    <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+                      {profile?.role && getRoleBadge(profile.role)}
+                      {profile?.role === 'khachThue' && (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Cư dân</Badge>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -348,6 +373,48 @@ export default function ProfilePage() {
                   </div>
                 )}
               </div>
+
+              {/* CCCD Section for Tenants */}
+              {(profile?.role === 'khachThue' || profile?.role === 'nguoiDung') && (
+                <div className="space-y-4 pt-4">
+                  <Separator />
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-blue-600" />
+                      <Label className="text-base font-bold">Giấy tờ tùy thân (CCCD)</Label>
+                    </div>
+                    {isEditing ? (
+                      <CCCDUpload
+                        anhCCCD={formData.anhCCCD}
+                        onCCCDChange={(newCCCD) => setFormData({ ...formData, anhCCCD: newCCCD })}
+                      />
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground uppercase font-black">Mặt trước</p>
+                          {formData.anhCCCD.matTruoc ? (
+                            <img src={formData.anhCCCD.matTruoc} alt="CCCD Mặt trước" className="w-full aspect-[3/2] object-cover rounded-lg border" />
+                          ) : (
+                            <div className="w-full aspect-[3/2] bg-gray-50 border border-dashed rounded-lg flex items-center justify-center text-gray-400 text-xs text-center p-2">
+                              Chưa cập nhật ảnh mặt trước
+                            </div>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground uppercase font-black">Mặt sau</p>
+                          {formData.anhCCCD.matSau ? (
+                            <img src={formData.anhCCCD.matSau} alt="CCCD Mặt sau" className="w-full aspect-[3/2] object-cover rounded-lg border" />
+                          ) : (
+                            <div className="w-full aspect-[3/2] bg-gray-50 border border-dashed rounded-lg flex items-center justify-center text-gray-400 text-xs text-center p-2">
+                              Chưa cập nhật ảnh mặt sau
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Action Buttons */}
               {isEditing && (

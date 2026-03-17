@@ -96,14 +96,14 @@ export default function ThanhToanPage() {
         }
       }
       
-      // Fetch thanh toan từ API
-      const thanhToanResponse = await fetch('/api/thanh-toan');
+      // Fetch thanh toan từ API - tăng limit để lấy đầy đủ dữ liệu cho client-side filtering
+      const thanhToanResponse = await fetch('/api/thanh-toan?limit=1000');
       const thanhToanData = thanhToanResponse.ok ? await thanhToanResponse.json() : { data: [] };
       const thanhToans = thanhToanData.data || [];
       setThanhToanList(thanhToans);
 
-      // Fetch hoa don từ API để hiển thị thông tin
-      const hoaDonResponse = await fetch('/api/hoa-don');
+      // Fetch hoa don từ API để hiển thị thông tin - lấy tất cả để có thể xem/sửa các giao dịch cũ
+      const hoaDonResponse = await fetch('/api/hoa-don?limit=1000');
       const hoaDonData = hoaDonResponse.ok ? await hoaDonResponse.json() : { data: [] };
       const hoaDons = hoaDonData.data || [];
       setHoaDonList(hoaDons);
@@ -143,10 +143,12 @@ export default function ThanhToanPage() {
     const matchesSearch = thanhToan.ghiChu?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          thanhToan.thongTinChuyenKhoan?.soGiaoDich?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesMethod = methodFilter === 'all' || thanhToan.phuongThuc === methodFilter;
+    
+    const paymentDate = new Date(thanhToan.ngayThanhToan);
     const matchesDate = dateFilter === 'all' || 
-                       (dateFilter === 'today' && isToday(thanhToan.ngayThanhToan)) ||
-                       (dateFilter === 'week' && isThisWeek(thanhToan.ngayThanhToan)) ||
-                       (dateFilter === 'month' && isThisMonth(thanhToan.ngayThanhToan));
+                       (dateFilter === 'today' && isToday(paymentDate)) ||
+                       (dateFilter === 'week' && isThisWeek(paymentDate)) ||
+                       (dateFilter === 'month' && isThisMonth(paymentDate));
     
     return matchesSearch && matchesMethod && matchesDate;
   });
@@ -193,13 +195,22 @@ export default function ThanhToanPage() {
 
   const isToday = (date: Date) => {
     const today = new Date();
-    return date.toDateString() === today.toDateString();
+    return date.getFullYear() === today.getFullYear() &&
+           date.getMonth() === today.getMonth() &&
+           date.getDate() === today.getDate();
   };
 
   const isThisWeek = (date: Date) => {
     const today = new Date();
-    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-    return date >= weekAgo && date <= today;
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
+    startOfWeek.setHours(0, 0, 0, 0);
+    
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday
+    endOfWeek.setHours(23, 59, 59, 999);
+    
+    return date >= startOfWeek && date <= endOfWeek;
   };
 
   const isThisMonth = (date: Date) => {
@@ -236,12 +247,15 @@ export default function ThanhToanPage() {
     console.log('Downloading receipt:', thanhToan._id);
   };
 
-  if (loading) {
+  if (loading && thanhToanList.length === 0) {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div className="h-8 bg-gray-200 rounded w-48 animate-pulse"></div>
           <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => <div key={i} className="h-24 bg-gray-200 rounded animate-pulse"></div>)}
         </div>
         <div className="h-96 bg-gray-200 rounded animate-pulse"></div>
       </div>
@@ -349,13 +363,22 @@ export default function ThanhToanPage() {
         </Card>
       </div>
 
-      {/* Desktop Table */}
-      <Card className="hidden md:block">
-        <CardHeader>
-          <CardTitle>Danh sách thanh toán</CardTitle>
-          <CardDescription>
-            {filteredThanhToan.length} giao dịch được tìm thấy
-          </CardDescription>
+      <Card className={`hidden md:block transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+        <CardHeader className="relative">
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Danh sách thanh toán</CardTitle>
+              <CardDescription>
+                {filteredThanhToan.length} giao dịch được tìm thấy
+              </CardDescription>
+            </div>
+            {loading && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse">
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                Đang cập nhật...
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-6">
           <ThanhToanDataTable
@@ -378,7 +401,10 @@ export default function ThanhToanPage() {
       <div className="md:hidden">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Danh sách thanh toán</h2>
-          <span className="text-sm text-gray-500">{filteredThanhToan.length} giao dịch</span>
+          <div className="flex items-center gap-2">
+            {loading && <RefreshCw className="h-3 w-3 animate-spin text-primary" />}
+            <span className="text-sm text-gray-500">{filteredThanhToan.length} giao dịch</span>
+          </div>
         </div>
         
         {/* Mobile Filters */}
@@ -629,19 +655,55 @@ function ThanhToanForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="hoaDon" className="text-xs md:text-sm">Hóa đơn</Label>
-        <Select value={formData.hoaDon} onValueChange={(value) => setFormData(prev => ({ ...prev, hoaDon: value }))}>
+        <Label htmlFor="hoaDon" className="text-xs md:text-sm">Hóa đơn cần thanh toán</Label>
+        <Select value={formData.hoaDon} onValueChange={(value) => {
+          const selectedHD = hoaDonList.find(h => h._id === value);
+          setFormData(prev => ({ 
+            ...prev, 
+            hoaDon: value,
+            soTien: selectedHD ? selectedHD.conLai : prev.soTien 
+          }));
+        }}>
           <SelectTrigger className="text-sm">
             <SelectValue placeholder="Chọn hóa đơn" />
           </SelectTrigger>
           <SelectContent>
-            {hoaDonList.map((hoaDon) => (
+            {hoaDonList.filter(h => h.trangThai !== 'daThanhToan' || h._id === formData.hoaDon).map((hoaDon) => (
               <SelectItem key={hoaDon._id} value={hoaDon._id!} className="text-sm">
-                {hoaDon.maHoaDon} - {hoaDon.conLai.toLocaleString('vi-VN')} VNĐ còn lại
+                {hoaDon.maHoaDon} - {(hoaDon.phong as any)?.maPhong || 'N/A'} - {(hoaDon.khachThue as any)?.hoTen || 'N/A'} (Còn: {hoaDon.conLai.toLocaleString('vi-VN')}đ)
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+        
+        {formData.hoaDon && (
+          <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-100 space-y-1">
+            {(() => {
+              const hd = hoaDonList.find(h => h._id === formData.hoaDon);
+              if (!hd) return null;
+              return (
+                <>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-blue-600 font-medium">Khách thuê:</span>
+                    <span className="font-semibold">{(hd.khachThue as any)?.hoTen}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-blue-600 font-medium">Phòng:</span>
+                    <span className="font-semibold">{(hd.phong as any)?.maPhong}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-blue-600 font-medium">Tổng tiền:</span>
+                    <span className="font-semibold text-gray-900">{hd.tongTien.toLocaleString('vi-VN')}đ</span>
+                  </div>
+                  <div className="flex justify-between text-xs border-t border-blue-200 pt-1 mt-1">
+                    <span className="text-blue-600 font-bold">Số tiền còn lại:</span>
+                    <span className="font-bold text-red-600">{hd.conLai.toLocaleString('vi-VN')}đ</span>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        )}
       </div>
 
       <div className="space-y-2">

@@ -66,6 +66,8 @@ export default function ThongBaoPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [viewingThongBao, setViewingThongBao] = useState<ThongBao | null>(null);
   const [editingThongBao, setEditingThongBao] = useState<ThongBao | null>(null);
 
   useEffect(() => {
@@ -187,6 +189,11 @@ export default function ThongBaoPage() {
       return khachThue?.hoTen || 'Không xác định';
     });
     return khachThueNames.join(', ');
+  };
+
+  const handleView = (thongBao: ThongBao) => {
+    setViewingThongBao(thongBao);
+    setIsViewDialogOpen(true);
   };
 
   const handleEdit = (thongBao: ThongBao) => {
@@ -389,7 +396,11 @@ export default function ThongBaoPage() {
               </TableHeader>
               <TableBody>
                 {filteredThongBao.map((thongBao) => (
-                  <TableRow key={thongBao._id}>
+                  <TableRow 
+                    key={thongBao._id}
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => handleView(thongBao)}
+                  >
                     <TableCell className="font-medium">
                       <div>
                         <div className="font-medium">{thongBao.tieuDe}</div>
@@ -431,8 +442,12 @@ export default function ThongBaoPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm">
+                      <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleView(thongBao)}
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button 
@@ -557,6 +572,15 @@ export default function ThongBaoPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={() => handleView(thongBao)}
+                      className="flex-1"
+                    >
+                      <Eye className="h-3.5 w-3.5 mr-1" />
+                      Xem
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleSend(thongBao)}
                       className="flex-1"
                     >
@@ -594,7 +618,105 @@ export default function ThongBaoPage() {
             <p className="text-gray-500">Không có thông báo nào</p>
           </div>
         )}
-      </div>
+        </div>
+
+      {/* View Detail Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="w-[95vw] md:w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Chi tiết thông báo</DialogTitle>
+            <DialogDescription>
+              Thông tin chi tiết về thông báo đã gửi
+            </DialogDescription>
+          </DialogHeader>
+          
+          {viewingThongBao && (
+            <div className="space-y-6 py-4">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Tiêu đề</h3>
+                  <p className="text-lg font-bold text-gray-900 mt-1">{viewingThongBao.tieuDe}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Loại</h3>
+                    <div className="mt-1">{getTypeBadge(viewingThongBao.loai)}</div>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Ngày gửi</h3>
+                    <div className="flex items-center gap-2 mt-1 text-gray-700">
+                      <Calendar className="h-4 w-4" />
+                      <span>{new Date(viewingThongBao.ngayGui).toLocaleString('vi-VN')}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Nội dung</h3>
+                  <div className="mt-2 p-4 bg-gray-50 rounded-lg border border-gray-100 whitespace-pre-wrap text-gray-800 italic">
+                    {viewingThongBao.noiDung}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card className="p-4 bg-blue-50/30 border-blue-100">
+                    <h4 className="text-sm font-bold text-blue-900 flex items-center gap-2 mb-3">
+                      <Building2 className="h-4 w-4" />
+                      Phạm vi áp dụng
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Tòa nhà:</span>
+                        <span className="font-medium">{getToaNhaName(viewingThongBao.toaNha)}</span>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-gray-600">Phòng:</span>
+                        <span className="font-medium bg-white p-2 rounded border border-blue-50 max-h-24 overflow-y-auto text-xs">
+                          {getPhongNames(viewingThongBao.phong || [])}
+                        </span>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Card className="p-4 bg-green-50/30 border-green-100">
+                    <h4 className="text-sm font-bold text-green-900 flex items-center gap-2 mb-3">
+                      <Users className="h-4 w-4" />
+                      Người nhận ({viewingThongBao.nguoiNhan.length})
+                    </h4>
+                    <div className="max-h-32 overflow-y-auto bg-white p-2 rounded border border-green-50 text-xs leading-relaxed">
+                      {getKhachThueNames(viewingThongBao.nguoiNhan)}
+                    </div>
+                  </Card>
+                </div>
+
+                <div className="pt-4 border-t flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500">Trạng thái:</span>
+                    <Badge variant={viewingThongBao.daDoc.length > 0 ? "default" : "secondary"}>
+                      {viewingThongBao.daDoc.length > 0 ? `Đã có ${viewingThongBao.daDoc.length} người đọc` : 'Chưa có ai đọc'}
+                    </Badge>
+                  </div>
+                  <div className="text-xs text-gray-400 italic">
+                    ID: {viewingThongBao._id}
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>Đóng</Button>
+                <Button onClick={() => {
+                  setIsViewDialogOpen(false);
+                  handleEdit(viewingThongBao);
+                }}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Chỉnh sửa
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -620,13 +742,37 @@ function ThongBaoForm({
     noiDung: thongBao?.noiDung || '',
     loai: thongBao?.loai || 'chung',
     nguoiNhan: thongBao?.nguoiNhan || [],
-    phong: thongBao?.phong || [],
-    toaNha: thongBao?.toaNha || '',
+    phong: thongBao?.phong?.map((p: any) => typeof p === 'object' ? p._id : p) || [],
+    toaNha: typeof thongBao?.toaNha === 'object' ? (thongBao.toaNha as any)._id : (thongBao?.toaNha || ''),
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Filter phongList based on toaNha
+  const filteredRooms = formData.toaNha && formData.toaNha !== 'all'
+    ? phongList.filter(p => p.toaNha === formData.toaNha)
+    : phongList;
+
+  // Filter khachThueList based on selected rooms or toaNha
+  const filteredTenants = khachThueList.filter(k => {
+    // Lấy ID tòa nhà của khách (có thể từ k.toaNha nếu API trả về hoặc từ hợp đồng)
+    const tenantToaNhaId = (k as any).toaNha || k.hopDongHienTai?.phong?.toaNha?._id;
+
+    if (formData.toaNha && formData.toaNha !== 'all') {
+      return tenantToaNhaId === formData.toaNha;
+    }
+    return true;
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (formData.nguoiNhan.length === 0) {
+      toast.error('Vui lòng chọn ít nhất một người nhận.');
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       const url = thongBao 
         ? `/api/thong-bao?id=${thongBao._id}` 
@@ -651,6 +797,8 @@ function ThongBaoForm({
       }
     } catch (error) {
       toast.error('Lỗi kết nối khi gửi thông báo rồi.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -732,52 +880,109 @@ function ThongBaoForm({
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <Label className="text-xs md:text-sm">Phòng (tùy chọn)</Label>
-        <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded-md p-2">
-          {phongList.map((phong) => (
-            <div key={phong._id} className="flex items-center space-x-2">
+      <div className="space-y-3">
+        <div className="flex justify-between items-center">
+          <Label className="text-xs md:text-sm font-semibold">Phòng (tùy chọn)</Label>
+          <div className="flex gap-2">
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="sm" 
+              className="text-[10px] h-6 px-2"
+              onClick={() => setFormData(prev => ({ ...prev, phong: filteredRooms.map(p => p._id!) }))}
+            >
+              Chọn tất cả
+            </Button>
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="sm" 
+              className="text-[10px] h-6 px-2"
+              onClick={() => setFormData(prev => ({ ...prev, phong: [] }))}
+            >
+              Bỏ chọn
+            </Button>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-40 overflow-y-auto border rounded-md p-3 bg-gray-50/50">
+          {filteredRooms.map((phong) => (
+            <div key={phong._id} className="flex items-center space-x-2 bg-white p-1.5 rounded border border-gray-100 shadow-sm hover:border-blue-200 transition-colors">
               <input
                 type="checkbox"
-                id={phong._id}
+                id={`phong-${phong._id}`}
                 checked={formData.phong.includes(phong._id!)}
                 onChange={(e) => handlePhongChange(phong._id!, e.target.checked)}
-                className="rounded border-gray-300"
+                className="rounded border-gray-300 w-3.5 h-3.5"
               />
-              <Label htmlFor={phong._id} className="text-xs cursor-pointer">
+              <Label htmlFor={`phong-${phong._id}`} className="text-[11px] cursor-pointer truncate font-medium">
                 {phong.maPhong}
               </Label>
             </div>
           ))}
+          {filteredRooms.length === 0 && (
+            <p className="col-span-full text-center py-4 text-xs text-gray-400 italic">
+              Không tìm thấy phòng nào phù hợp
+            </p>
+          )}
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label className="text-xs md:text-sm">Người nhận</Label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded-md p-2">
-          {khachThueList.map((khachThue) => (
-            <div key={khachThue._id} className="flex items-center space-x-2">
+      <div className="space-y-3">
+        <div className="flex justify-between items-center">
+          <Label className="text-xs md:text-sm font-semibold">Người nhận <span className="text-red-500">*</span></Label>
+          <div className="flex gap-2">
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="sm" 
+              className="text-[10px] h-6 px-2"
+              onClick={() => setFormData(prev => ({ ...prev, nguoiNhan: filteredTenants.map(k => k._id!) }))}
+            >
+              Chọn tất cả
+            </Button>
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="sm" 
+              className="text-[10px] h-6 px-2"
+              onClick={() => setFormData(prev => ({ ...prev, nguoiNhan: [] }))}
+            >
+              Bỏ chọn
+            </Button>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto border rounded-md p-3 bg-gray-50/50">
+          {filteredTenants.map((khachThue) => (
+            <div key={khachThue._id} className="flex items-center space-x-2 bg-white p-2 rounded border border-gray-100 shadow-sm hover:border-green-200 transition-colors">
               <input
                 type="checkbox"
-                id={khachThue._id}
+                id={`user-${khachThue._id}`}
                 checked={formData.nguoiNhan.includes(khachThue._id!)}
                 onChange={(e) => handleNguoiNhanChange(khachThue._id!, e.target.checked)}
-                className="rounded border-gray-300"
+                className="rounded border-gray-300 w-3.5 h-3.5 text-green-600 focus:ring-green-500"
               />
-              <Label htmlFor={khachThue._id} className="text-xs cursor-pointer truncate">
+              <Label htmlFor={`user-${khachThue._id}`} className="text-[11px] cursor-pointer truncate font-medium flex-1">
                 {khachThue.hoTen}
               </Label>
             </div>
           ))}
+          {filteredTenants.length === 0 && (
+            <p className="col-span-full text-center py-4 text-xs text-gray-400 italic">
+              Không tìm thấy khách thuê nào phù hợp
+            </p>
+          )}
         </div>
+        <p className="text-[10px] text-gray-400 italic">
+          Đã chọn {formData.nguoiNhan.length} người nhận
+        </p>
       </div>
 
-      <DialogFooter className="flex-col sm:flex-row gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={onClose} className="w-full sm:w-auto">
+      <DialogFooter className="flex-col sm:flex-row gap-2 pt-4 border-t">
+        <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSubmitting} className="w-full sm:w-auto">
           Hủy
         </Button>
-        <Button type="submit" size="sm" className="w-full sm:w-auto">
-          {thongBao ? 'Cập nhật' : 'Tạo thông báo'}
+        <Button type="submit" size="sm" disabled={isSubmitting} className="w-full sm:w-auto min-w-[120px]">
+          {isSubmitting ? 'Đang lưu...' : (thongBao ? 'Cập nhật' : 'Tạo thông báo')}
         </Button>
       </DialogFooter>
     </form>

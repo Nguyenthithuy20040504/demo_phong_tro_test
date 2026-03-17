@@ -14,7 +14,9 @@ export async function GET(request: NextRequest) {
     const toaNha = searchParams.get('toaNha') || '';
     const trangThai = searchParams.get('trangThai') || '';
 
-    const query: any = {};
+    const query: any = {
+      trangThai: 'trong' // Chỉ lấy những phòng chưa cho thuê (đang trống)
+    };
     
     if (search) {
       query.$or = [
@@ -26,19 +28,19 @@ export async function GET(request: NextRequest) {
     if (toaNha && toaNha !== 'all') {
       query.toaNha = toaNha;
     }
-    
-    if (trangThai && trangThai !== 'all') {
-      query.trangThai = trangThai;
-    }
 
-    // Chỉ lấy phòng có ảnh hoặc phòng trống
-    query.$or = [
-      { anhPhong: { $exists: true, $not: { $size: 0 } } },
-      { trangThai: 'trong' }
-    ];
+    // Import model NguoiDung để populate chuSoHuu
+    require('@/models/NguoiDung');
 
     const phongList = await Phong.find(query)
-      .populate('toaNha', 'tenToaNha diaChi')
+      .populate({
+        path: 'toaNha',
+        select: 'tenToaNha diaChi chuSoHuu',
+        populate: {
+          path: 'chuSoHuu',
+          select: 'ten soDienThoai email anhDaiDien'
+        }
+      })
       .sort({ maPhong: 1 })
       .skip((page - 1) * limit)
       .limit(limit);
