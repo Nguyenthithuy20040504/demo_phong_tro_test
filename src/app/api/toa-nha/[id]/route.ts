@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import ToaNha from '@/models/ToaNha';
 import Phong from '@/models/Phong';
+import HopDong from '@/models/HopDong';
 import { z } from 'zod';
 
 import { isToaNhaAccessible } from '@/lib/auth-utils';
@@ -190,21 +191,30 @@ export async function DELETE(
       );
     }
 
-    // Check if toa nha has rooms
-    const roomCount = await Phong.countDocuments({ toaNha: id });
+    // Check if building has any active contracts in any of its rooms
+    const rooms = await Phong.find({ toaNha: id });
+    const roomIds = rooms.map(r => r._id);
 
-    if (roomCount > 0) {
+    const activeContractsCount = await HopDong.countDocuments({
+      phong: { $in: roomIds },
+      trangThai: 'hoatDong',
+      ngayKetThuc: { $gte: new Date() }
+    });
+
+    if (activeContractsCount > 0) {
       return NextResponse.json(
-        { message: 'Không thể xóa tòa nhà có phòng. Vui lòng xóa tất cả phòng trước.' },
+        { message: 'Không thể xóa tòa nhà vì có phòng đang có hợp đồng hoạt động. Vui lòng kết thúc tất cả hợp đồng trước.' },
         { status: 400 }
       );
     }
 
+    // If no active contracts, delete all rooms and then the building
+    await Phong.deleteMany({ toaNha: id });
     await ToaNha.findByIdAndDelete(id);
 
     return NextResponse.json({
       success: true,
-      message: 'Tòa nhà đã được xóa thành công',
+      message: 'Tòa nhà và tất cả phòng liên quan đã được xóa thành công',
     });
 
   } catch (error) {

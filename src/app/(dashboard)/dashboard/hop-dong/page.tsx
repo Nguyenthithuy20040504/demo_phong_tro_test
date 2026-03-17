@@ -63,6 +63,9 @@ export default function HopDongPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [toaNhaFilter, setToaNhaFilter] = useState<string>('all');
   const [viewingHopDong, setViewingHopDong] = useState<HopDong | null>(null);
+  const [extendingHopDong, setExtendingHopDong] = useState<HopDong | null>(null);
+  const [cancellingHopDong, setCancellingHopDong] = useState<HopDong | null>(null);
+  const [newEndDate, setNewEndDate] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -260,11 +263,9 @@ export default function HopDongPage() {
 
   const handleDownload = async (hopDong: HopDong) => {
     try {
-    // Generate contract content
-    const phongInfo = getPhongInfo(hopDong.phong);
-    const nguoiDaiDien = getKhachThueName(hopDong.nguoiDaiDien);
-    
-      // Lấy thông tin chi tiết của người đại diện
+      const phongInfo = getPhongInfo(hopDong.phong);
+      const nguoiDaiDien = getKhachThueName(hopDong.nguoiDaiDien);
+      
       const nguoiDaiDienObj = khachThueList.find(kt => {
         const ktId = typeof kt._id === 'object' ? (kt._id as { _id: string })._id : kt._id;
         const daiDienId = typeof hopDong.nguoiDaiDien === 'object' ? (hopDong.nguoiDaiDien as { _id: string })._id : hopDong.nguoiDaiDien;
@@ -275,7 +276,6 @@ export default function HopDongPage() {
       const ngayKetThuc = new Date(hopDong.ngayKetThuc);
       const ngayHienTai = new Date();
       
-      // Tạo document Word
       const doc = new Document({
         sections: [{
           properties: {},
@@ -372,7 +372,7 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: "Ông/bà: [Tên chủ nhà] Sinh ngày: [Ngày sinh]",
+                  text: "Ông/bà: ................................................................................. Sinh ngày: .................................",
                   size: 20,
                 }),
               ],
@@ -381,7 +381,7 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: "Nơi đăng ký hộ khẩu thường trú: [Địa chỉ thường trú]",
+                  text: "Nơi đăng ký hộ khẩu thường trú: ....................................................................................................",
                   size: 20,
                 }),
               ],
@@ -390,7 +390,7 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: "CMND (CCCD) số: [Số CMND] cấp ngày [Ngày cấp] tại: [Nơi cấp]",
+                  text: "CMND (CCCD) số: .......................................... cấp ngày: ............................. tại: .............................",
                   size: 20,
                 }),
               ],
@@ -399,7 +399,7 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: "Số điện thoại liên hệ: [Số điện thoại]",
+                  text: "Số điện thoại liên hệ: .......................................................................................................................",
                   size: 20,
                 }),
               ],
@@ -419,7 +419,7 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: `Ông/bà: ${nguoiDaiDienObj?.hoTen || nguoiDaiDien} Sinh ngày: ${nguoiDaiDienObj?.ngaySinh ? new Date(nguoiDaiDienObj.ngaySinh).toLocaleDateString('vi-VN') : '[Ngày sinh]'}`,
+                  text: `Ông/bà: ................................................................................. Sinh ngày: .................................`,
                   size: 20,
                 }),
               ],
@@ -428,7 +428,7 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: `Nơi đăng ký hộ khẩu thường trú: ${nguoiDaiDienObj?.queQuan || '[Quê quán]'}`,
+                  text: `Nơi đăng ký hộ khẩu thường trú: ....................................................................................................`,
                   size: 20,
                 }),
               ],
@@ -437,7 +437,7 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: `Số CMND (CCCD): ${nguoiDaiDienObj?.cccd || '[Số CCCD]'} cấp ngày [Ngày cấp] tại: [Nơi cấp]`,
+                  text: `Số CMND (CCCD): .......................................... cấp ngày: ............................. tại: .............................`,
                   size: 20,
                 }),
               ],
@@ -446,14 +446,14 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: `Số điện thoại liên hệ: ${nguoiDaiDienObj?.soDienThoai || '[Số điện thoại]'}`,
+                  text: `Số điện thoại liên hệ: .......................................................................................................................`,
                   size: 20,
                 }),
               ],
               spacing: { after: 400 },
             }),
             
-            // Agreement
+            // Agreement details
             new Paragraph({
               children: [
                 new TextRun({
@@ -697,7 +697,7 @@ export default function HopDongPage() {
               spacing: { after: 400 },
             }),
             
-            // Additional services
+            // Additional tokens/services if any
             ...(hopDong.phiDichVu.length > 0 ? [
               new Paragraph({
                 children: [
@@ -731,11 +731,11 @@ export default function HopDongPage() {
               }),
             ] : []),
             
-            // Additional terms
+            // Custom clauses provided by user
             new Paragraph({
               children: [
                 new TextRun({
-                  text: "ĐIỀU KHOẢN BỔ SUNG:",
+                  text: "ĐIỀU KHOẢN HỢP ĐỒNG THUÊ PHÒNG",
                   bold: true,
                   size: 24,
                 }),
@@ -745,7 +745,93 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: hopDong.dieuKhoan,
+                  text: "1. BÊN CHO THUÊ (Chủ nhà):",
+                  bold: true,
+                  size: 20,
+                }),
+              ],
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "- Cung cấp phòng ở đầy đủ tiện nghi theo thỏa thuận\n- Đảm bảo an ninh, an toàn cho khách thuê\n- Bảo trì, sửa chữa các hư hỏng do hao mòn tự nhiên",
+                  size: 20,
+                }),
+              ],
+              spacing: { after: 200 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "2. BÊN THUÊ (Khách thuê):",
+                  bold: true,
+                  size: 20,
+                }),
+              ],
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "- Thanh toán đúng hạn tiền thuê và các chi phí khác\n- Sử dụng phòng đúng mục đích, giữ gìn vệ sinh\n- Không được cải tạo, sửa chữa phòng mà không có sự đồng ý\n- Báo cáo kịp thời các hư hỏng, sự cố",
+                  size: 20,
+                }),
+              ],
+              spacing: { after: 200 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "3. ĐIỀU KHOẢN CHUNG:",
+                  bold: true,
+                  size: 20,
+                }),
+              ],
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `- Thời hạn hợp đồng: Từ ngày ${ngayBatDau.toLocaleDateString('vi-VN')} đến ngày ${ngayKetThuc.toLocaleDateString('vi-VN')}\n- Tiền cọc: Được hoàn trả khi kết thúc hợp đồng (trừ các khoản phát sinh)\n- Thanh toán: Hàng tháng vào ngày ${hopDong.ngayThanhToan}\n- Điện, nước: Tính theo chỉ số đồng hồ và giá quy định\n- Phí dịch vụ: Theo thỏa thuận riêng`,
+                  size: 20,
+                }),
+              ],
+              spacing: { after: 200 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "4. CHẤM DỨT HỢP ĐỒNG:",
+                  bold: true,
+                  size: 20,
+                }),
+              ],
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "- Bên thuê có thể chấm dứt hợp đồng trước thời hạn với thông báo trước 30 ngày\n- Bên cho thuê có thể chấm dứt hợp đồng nếu vi phạm nghiêm trọng\n- Hoàn trả tiền cọc sau khi kiểm tra tình trạng phòng",
+                  size: 20,
+                }),
+              ],
+              spacing: { after: 200 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "5. ĐIỀU KHOẢN KHÁC:",
+                  bold: true,
+                  size: 20,
+                }),
+              ],
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "- Hai bên cam kết thực hiện đúng các điều khoản đã thỏa thuận\n- Mọi tranh chấp sẽ được giải quyết thông qua thương lượng\n- Hợp đồng có hiệu lực kể từ ngày ký",
                   size: 20,
                 }),
               ],
@@ -756,31 +842,9 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: "ĐẠI DIỆN BÊN A                ĐẠI DIỆN BÊN B",
+                  text: "        ĐẠI DIỆN BÊN A                                    ĐẠI DIỆN BÊN B",
                   bold: true,
                   size: 20,
-                }),
-              ],
-              alignment: AlignmentType.CENTER,
-              spacing: { after: 200 },
-            }),
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: "(Ký và ghi họ tên)                (Ký và ghi họ tên)",
-                  size: 20,
-                }),
-              ],
-              alignment: AlignmentType.CENTER,
-              spacing: { after: 400 },
-            }),
-            
-            // Footer info
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: `Ngày tạo: ${new Date(hopDong.ngayTao).toLocaleDateString('vi-VN')}`,
-                  size: 16,
                 }),
               ],
               spacing: { after: 100 },
@@ -788,11 +852,31 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: `Trạng thái: ${hopDong.trangThai === 'hoatDong' ? 'Hoạt động' : hopDong.trangThai === 'hetHan' ? 'Hết hạn' : 'Đã hủy'}`,
-                  size: 16,
+                  text: "      (Ký và ghi họ tên)                                (Ký và ghi họ tên)",
+                  size: 18,
+                  italics: true,
                 }),
               ],
-              spacing: { after: 200 },
+              spacing: { after: 800 },
+            }),
+
+            // Footer info
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `Ngày tạo: ${new Date(hopDong.ngayTao).toLocaleDateString('vi-VN')}`,
+                  size: 18,
+                }),
+              ],
+              spacing: { before: 400 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `Trạng thái: ${hopDong.trangThai === 'hoatDong' ? 'Hoạt động' : hopDong.trangThai === 'hetHan' ? 'Hết hạn' : 'Đã hủy'}`,
+                  size: 18,
+                }),
+              ],
             }),
           ],
         }],
@@ -810,68 +894,83 @@ export default function HopDongPage() {
     }
   };
 
-  const handleGiaHan = async (hopDong: HopDong) => {
-    const newEndDate = prompt('Nhập ngày kết thúc mới (YYYY-MM-DD):');
-    if (newEndDate) {
-      setActionLoading(`giahan-${hopDong._id}`);
-      try {
-        const response = await fetch(`/api/hop-dong/${hopDong._id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            ngayKetThuc: newEndDate,
-          }),
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          cache.clearCache();
-          setHopDongList(prev => prev.map(hd => 
-            hd._id === hopDong._id ? result.data : hd
-          ));
-          toast.success('Đã gia hạn hợp đồng thành công rồi nhé!');
-        } else {
-          toast.error('Không gia hạn được hợp đồng. Bạn kiểm tra lại thông tin nhé!');
-        }
-      } catch (error) {
-        toast.error('Lỗi kết nối khi gia hạn hợp đồng.');
-      } finally {
-        setActionLoading(null);
+  const handleGiaHan = (hopDong: HopDong) => {
+    setExtendingHopDong(hopDong);
+    // Set default new end date to tomorrow or 6 months from current end date
+    const currentEnd = new Date(hopDong.ngayKetThuc);
+    const futureDate = new Date(currentEnd);
+    futureDate.setMonth(futureDate.getMonth() + 6);
+    setNewEndDate(futureDate.toISOString().split('T')[0]);
+  };
+
+  const submitGiaHan = async () => {
+    if (!extendingHopDong || !newEndDate) return;
+    
+    setActionLoading(`giahan-${extendingHopDong._id}`);
+    try {
+      const response = await fetch(`/api/hop-dong/${extendingHopDong._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ngayKetThuc: newEndDate,
+        }),
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        cache.clearCache();
+        setHopDongList(prev => prev.map(hd => 
+          hd._id === extendingHopDong._id ? result.data : hd
+        ));
+        toast.success('Đã gia hạn hợp đồng thành công rồi nhé!');
+        setExtendingHopDong(null);
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Không gia hạn được hợp đồng. Bạn kiểm tra lại thông tin nhé!');
       }
+    } catch (error) {
+      toast.error('Lỗi kết nối khi gia hạn hợp đồng.');
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  const handleHuy = async (hopDong: HopDong) => {
-    if (confirm('Bạn có chắc chắn muốn hủy hợp đồng này?')) {
-      setActionLoading(`huy-${hopDong._id}`);
-      try {
-        const response = await fetch(`/api/hop-dong/${hopDong._id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            trangThai: 'daHuy',
-          }),
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          cache.clearCache();
-          setHopDongList(prev => prev.map(hd => 
-            hd._id === hopDong._id ? result.data : hd
-          ));
-          toast.success('Hợp đồng đã được hủy thành công!');
-        } else {
-          toast.error('Chưa hủy được hợp đồng này. Thử lại sau nhé!');
-        }
-      } catch (error) {
-        toast.error('Lỗi kết nối khi hủy hợp đồng.');
-      } finally {
-        setActionLoading(null);
+  const handleHuy = (hopDong: HopDong) => {
+    setCancellingHopDong(hopDong);
+  };
+
+  const submitHuy = async () => {
+    if (!cancellingHopDong) return;
+    
+    setActionLoading(`huy-${cancellingHopDong._id}`);
+    try {
+      const response = await fetch(`/api/hop-dong/${cancellingHopDong._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          trangThai: 'daHuy',
+        }),
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        cache.clearCache();
+        setHopDongList(prev => prev.map(hd => 
+          hd._id === cancellingHopDong._id ? result.data : hd
+        ));
+        toast.success('Hợp đồng đã được hủy thành công!');
+        setCancellingHopDong(null);
+      } else {
+        toast.error('Chưa hủy được hợp đồng này. Thử lại sau nhé!');
       }
+    } catch (error) {
+      toast.error('Lỗi kết nối khi hủy hợp đồng.');
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -1091,6 +1190,82 @@ export default function HopDongPage() {
         </div>
       )}
 
+      {/* Extension Dialog */}
+      <Dialog open={!!extendingHopDong} onOpenChange={(open) => !open && setExtendingHopDong(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Gia hạn hợp đồng</DialogTitle>
+            <DialogDescription>
+              Hợp đồng <strong>{extendingHopDong?.maHopDong}</strong> hiện tại kết thúc vào ngày {extendingHopDong && new Date(extendingHopDong.ngayKetThuc).toLocaleDateString('vi-VN')}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="newEndDate">Ngày kết thúc mới</Label>
+              <Input
+                id="newEndDate"
+                type="date"
+                value={newEndDate}
+                onChange={(e) => setNewEndDate(e.target.value)}
+                min={extendingHopDong ? new Date(extendingHopDong.ngayBatDau).toISOString().split('T')[0] : ''}
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[3, 6, 12, 24].map((months) => (
+                <Button
+                  key={months}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (extendingHopDong) {
+                      const start = new Date(extendingHopDong.ngayKetThuc);
+                      const end = new Date(start);
+                      end.setMonth(end.getMonth() + months);
+                      setNewEndDate(end.toISOString().split('T')[0]);
+                    }
+                  }}
+                  className="text-xs"
+                >
+                  +{months} tháng
+                </Button>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExtendingHopDong(null)}>Hủy</Button>
+            <Button 
+              onClick={submitGiaHan} 
+              disabled={actionLoading === `giahan-${extendingHopDong?._id}`}
+            >
+              {actionLoading === `giahan-${extendingHopDong?._id}` ? 'Đang xử lý...' : 'Xác nhận gia hạn'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancellation Dialog */}
+      <Dialog open={!!cancellingHopDong} onOpenChange={(open) => !open && setCancellingHopDong(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-destructive font-bold">Xác nhận hủy hợp đồng</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn hủy hợp đồng <strong>{cancellingHopDong?.maHopDong}</strong>?<br/>
+              Hành động này sẽ giải phóng phòng và chuyển trạng thái khách thuê thành "Đã trả phòng".
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setCancellingHopDong(null)}>Quay lại</Button>
+            <Button 
+              variant="destructive"
+              onClick={submitHuy} 
+              disabled={actionLoading === `huy-${cancellingHopDong?._id}`}
+            >
+              {actionLoading === `huy-${cancellingHopDong?._id}` ? 'Đang xử lý...' : 'Xác nhận hủy'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 md:gap-4 lg:gap-6">
         <Card className="p-2 md:p-4">
@@ -1224,10 +1399,13 @@ export default function HopDongPage() {
             const phongInfo = getPhongInfo(hopDong.phong);
             const nguoiDaiDien = getKhachThueName(hopDong.nguoiDaiDien);
             const isExpiring = isExpiringSoon(hopDong.ngayKetThuc);
-            const isExpiredNow = isExpired(hopDong.ngayKetThuc);
 
             return (
-              <Card key={hopDong._id} className="p-4">
+              <Card 
+                key={hopDong._id} 
+                className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => handleView(hopDong)}
+              >
                 <div className="space-y-3">
                   {/* Header with contract code and status */}
                   <div className="flex justify-between items-start">
@@ -1280,7 +1458,7 @@ export default function HopDongPage() {
                   <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 border-t pt-2">
                     <div>
                       <Calendar className="h-3 w-3 inline mr-1" />
-                      Từ: {new Date(hopDong.ngayBatDau).toLocaleDateString('vi-VN')}
+                       Từ: {new Date(hopDong.ngayBatDau).toLocaleDateString('vi-VN')}
                     </div>
                     <div>
                       <Calendar className="h-3 w-3 inline mr-1" />
@@ -1307,17 +1485,11 @@ export default function HopDongPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleView(hopDong)}
-                      className="flex-1"
-                    >
-                      <FileText className="h-3.5 w-3.5 mr-1" />
-                      Xem
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(hopDong)}
-                      className="flex-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(hopDong);
+                      }}
+                      className="flex-1 min-w-[30%]"
                     >
                       <Edit className="h-3.5 w-3.5 mr-1" />
                       Sửa
@@ -1325,12 +1497,43 @@ export default function HopDongPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDownload(hopDong)}
-                      className="flex-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownload(hopDong);
+                      }}
+                      className="flex-1 min-w-[30%]"
                     >
                       <Download className="h-3.5 w-3.5 mr-1" />
                       Tải
                     </Button>
+                    {(hopDong.trangThai === 'hoatDong' || hopDong.trangThai === 'hetHan') && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleGiaHan(hopDong);
+                        }}
+                        className="flex-1 min-w-[45%]"
+                      >
+                        <Calendar className="h-3.5 w-3.5 mr-1" />
+                        Gia hạn
+                      </Button>
+                    )}
+                    {hopDong.trangThai === 'hoatDong' && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleHuy(hopDong);
+                        }}
+                        className="flex-1 min-w-[45%]"
+                      >
+                        <CloseIcon className="h-3.5 w-3.5 mr-1" />
+                        Hủy
+                      </Button>
+                    )}
                   </div>
                 </div>
               </Card>

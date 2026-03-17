@@ -222,31 +222,7 @@ const createColumns = (props: KhachThueTableProps & { setKhachThueToDelete: (k: 
       );
     },
   },
-  {
-    accessorKey: "matKhau",
-    header: "Tài khoản",
-    cell: ({ row }) => {
-      const khachThue = row.original as any;
-      const hasPassword = !!khachThue.matKhau;
-      
-      return (
-        <div className="flex items-center gap-2">
-          <Key className={`h-4 w-4 ${hasPassword ? 'text-green-600' : 'text-muted-foreground'}`} />
-          {hasPassword ? (
-            <Badge variant="default" className="gap-1 bg-green-600">
-              <Check className="h-3 w-3" />
-              Đã tạo
-            </Badge>
-          ) : (
-            <Badge variant="secondary" className="gap-1">
-              <X className="h-3 w-3" />
-              Chưa tạo
-            </Badge>
-          )}
-        </div>
-      );
-    },
-  },
+
   {
     accessorKey: "anhCCCD",
     header: "Ảnh CCCD",
@@ -330,10 +306,12 @@ const createColumns = (props: KhachThueTableProps & { setKhachThueToDelete: (k: 
   },
 ];
 
-function KhachThueTableRow({ row }: { row: Row<KhachThue> }) {
+function KhachThueTableRow({ row, onView }: { row: Row<KhachThue>; onView?: (khachThue: KhachThue) => void }) {
   return (
     <TableRow
       data-state={row.getIsSelected() && "selected"}
+      className="cursor-pointer hover:bg-muted/50"
+      onClick={() => onView?.(row.original)}
     >
       {row.getVisibleCells().map((cell) => (
         <TableCell key={cell.id}>
@@ -497,7 +475,7 @@ export function KhachThueDataTable(props: KhachThueDataTableProps) {
           <TableBody className="**:data-[slot=table-cell]:first:w-8">
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <KhachThueTableRow key={row.id} row={row} />
+                <KhachThueTableRow key={row.id} row={row} onView={props.onView} />
               ))
             ) : (
               <TableRow>

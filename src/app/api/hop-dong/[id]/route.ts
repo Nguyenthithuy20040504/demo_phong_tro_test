@@ -178,7 +178,13 @@ export async function PUT(
       updateData.ngayBatDau = new Date(validatedData.ngayBatDau);
     }
     if (validatedData.ngayKetThuc) {
-      updateData.ngayKetThuc = new Date(validatedData.ngayKetThuc);
+      const newEndDate = new Date(validatedData.ngayKetThuc);
+      updateData.ngayKetThuc = newEndDate;
+      
+      // Tự động chuyển trạng thái về hoatDong nếu gia hạn
+      if (!validatedData.trangThai && newEndDate > new Date()) {
+        updateData.trangThai = 'hoatDong';
+      }
     }
 
     const hopDong = await HopDong.findByIdAndUpdate(

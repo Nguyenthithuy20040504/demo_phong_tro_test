@@ -102,9 +102,26 @@ export interface KhachThue {
       toaNha: {
         _id: string;
         tenToaNha: string;
+        diaChi?: DiaChi;
       };
     };
   };
+  tatCaHopDong?: Array<{
+    _id: string;
+    maHopDong: string;
+    trangThai: string;
+    ngayBatDau: Date;
+    ngayKetThuc: Date;
+    phong: {
+      _id: string;
+      maPhong: string;
+      toaNha: {
+        _id: string;
+        tenToaNha: string;
+        diaChi?: DiaChi;
+      };
+    };
+  }>;
 }
 
 export interface HopDong {

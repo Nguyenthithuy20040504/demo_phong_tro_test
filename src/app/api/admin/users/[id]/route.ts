@@ -32,8 +32,11 @@ export async function PUT(
        if (!userToEdit) {
            return NextResponse.json({ message: 'Không tìm thấy người dùng này' }, { status: 404 });
        }
-       if (userToEdit.nguoiQuanLy?.toString() !== session.user.id) {
-           return NextResponse.json({ message: 'Bạn chỉ có quyền chỉnh sửa tài khoản do mình tạo ra' }, { status: 403 });
+       
+       // Robust check using toString for comparison
+       const managedBy = userToEdit.nguoiQuanLy?.toString();
+       if (managedBy !== session.user.id) {
+           return NextResponse.json({ message: 'Bạn chỉ có quyền chỉnh sửa tài khoản do mình quản lý' }, { status: 403 });
        }
        
        if (role === 'admin' || role === 'chuNha') {
@@ -100,8 +103,10 @@ export async function DELETE(
        if (!userToDelete) {
            return NextResponse.json({ message: 'Không tìm thấy tài khoản để xóa' }, { status: 404 });
        }
-       if (userToDelete.nguoiQuanLy?.toString() !== session.user.id) {
-           return NextResponse.json({ message: 'Bạn chỉ có quyền xóa tài khoản do mình tạo ra' }, { status: 403 });
+       
+       const managedBy = userToDelete.nguoiQuanLy?.toString();
+       if (managedBy !== session.user.id) {
+           return NextResponse.json({ message: 'Bạn chỉ có quyền xóa tài khoản do mình quản lý' }, { status: 403 });
        }
     }
     

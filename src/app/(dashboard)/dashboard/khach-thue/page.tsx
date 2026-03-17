@@ -44,6 +44,7 @@ import { KhachThue } from '@/types';
 import { KhachThueDataTable } from './table';
 import { CCCDUpload } from '@/components/ui/cccd-upload';
 import { DeleteConfirmPopover } from '@/components/ui/delete-confirm-popover';
+import { KhachThueDetailDialog } from '@/components/ui/khach-thue-detail-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
@@ -58,6 +59,8 @@ export default function KhachThuePage() {
   const [selectedTrangThai, setSelectedTrangThai] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingKhachThue, setEditingKhachThue] = useState<KhachThue | null>(null);
+  const [viewingKhachThue, setViewingKhachThue] = useState<KhachThue | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -131,6 +134,11 @@ export default function KhachThuePage() {
   const handleEdit = (khachThue: KhachThue) => {
     setEditingKhachThue(khachThue);
     setIsDialogOpen(true);
+  };
+
+  const handleView = (khachThue: KhachThue) => {
+    setViewingKhachThue(khachThue);
+    setIsDetailOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -287,6 +295,7 @@ export default function KhachThuePage() {
         <CardContent className="p-6">
           <KhachThueDataTable
             data={filteredKhachThue}
+            onView={handleView}
             onEdit={handleEdit}
             onDelete={handleDelete}
             actionLoading={actionLoading}
@@ -298,6 +307,12 @@ export default function KhachThuePage() {
           />
         </CardContent>
       </Card>
+
+      <KhachThueDetailDialog
+        khachThue={viewingKhachThue}
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+      />
 
       {/* Mobile Cards */}
       <div className="md:hidden">
@@ -336,9 +351,9 @@ export default function KhachThuePage() {
             <Card key={khachThue._id} className="p-4">
               <div className="space-y-3">
                 {/* Header with name and status */}
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-medium text-gray-900">{khachThue.hoTen}</h3>
+                  <div className="flex justify-between items-start">
+                  <div className="cursor-pointer" onClick={() => handleView(khachThue)}>
+                    <h3 className="font-medium text-gray-900 hover:text-primary transition-colors">{khachThue.hoTen}</h3>
                     <p className="text-sm text-gray-500 capitalize">{khachThue.gioiTinh === 'nam' ? 'Nam' : 'Nữ'}</p>
                   </div>
                   <div className="flex gap-2">
@@ -467,7 +482,6 @@ function KhachThueForm({
       matSau: khachThue?.anhCCCD?.matSau || '',
     },
     ngheNghiep: khachThue?.ngheNghiep || '',
-    matKhau: '',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -481,9 +495,6 @@ function KhachThueForm({
       const method = khachThue ? 'PUT' : 'POST';
 
       const submitData = { ...formData };
-      if (!submitData.matKhau || submitData.matKhau.trim() === '') {
-        delete (submitData as any).matKhau;
-      }
 
       const response = await fetch(url, {
         method,
@@ -629,21 +640,6 @@ function KhachThueForm({
               placeholder="Nghề nghiệp hoặc nơi làm việc"
               className="text-sm"
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="matKhau" className="text-sm">Mật khẩu (Cho tài khoản khách thuê)</Label>
-            <Input
-              id="matKhau"
-              type="password"
-              value={formData.matKhau}
-              onChange={(e) => setFormData(prev => ({ ...prev, matKhau: e.target.value }))}
-              placeholder={khachThue ? "Để trống nếu không muốn đổi mật khẩu" : "Nhập ít nhất 6 ký tự"}
-              className="text-sm"
-            />
-            <p className="text-[10px] text-muted-foreground italic">
-              Mật khẩu này giúp khách thuê đăng nhập để xem thông tin hợp đồng và thanh toán tiền phòng.
-            </p>
           </div>
         </TabsContent>
         

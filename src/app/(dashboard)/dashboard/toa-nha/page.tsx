@@ -102,12 +102,7 @@ export default function ToaNhaPage() {
         setToaNhaList(prev => prev.filter(toaNha => toaNha._id !== id));
         toast.success('Đã xóa tòa nhà thành công!');
       } else {
-        const msg = result.message || '';
-        if (msg.includes('phong') || msg.includes('room') || response.status === 409) {
-          toast.error('Không thể xóa vì tòa nhà này còn phòng. Hãy xóa hết các phòng trước!');
-        } else {
-          toast.error('Xóa tòa nhà thất bại. Vui lòng thử lại sau.');
-        }
+        toast.error(result.message || 'Xóa tòa nhà thất bại. Vui lòng thử lại sau.');
       }
     } catch (error) {
       toast.error('Mất kết nối đến máy chủ. Kiểm tra mạng rồi thử lại nhé!');

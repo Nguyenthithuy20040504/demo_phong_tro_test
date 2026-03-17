@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import KhachThue from '@/models/KhachThue';
+import HopDong from '@/models/HopDong';
 import { z } from 'zod';
+import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 
 const khachThueSchema = z.object({
   hoTen: z.string().min(2, 'Họ tên phải có ít nhất 2 ký tự'),
@@ -47,9 +51,40 @@ export async function GET(
       );
     }
 
+    // Lấy thông tin hợp đồng tương tự như API danh sách
+    const tatCaHopDong = await HopDong.find({
+      $or: [
+        { khachThueId: { $in: [id, new mongoose.Types.ObjectId(id)] } },
+        { nguoiDaiDien: { $in: [id, new mongoose.Types.ObjectId(id)] } }
+      ]
+    })
+    .sort({ ngayTao: -1 })
+    .populate('phong', 'maPhong toaNha')
+    .populate({
+      path: 'phong',
+      populate: {
+        path: 'toaNha',
+        select: 'tenToaNha diaChi'
+      }
+    });
+
+    const khachThueObj = khachThue.toObject();
+    const hopDongHienTai = tatCaHopDong.find(h => h.trangThai === 'hoatDong');
+
+    // Kiểm tra tài khoản ở NguoiDung
+    const userAccount = await mongoose.model('NguoiDung').findById(id).select('+matKhau');
+    const hasPassword = !!khachThueObj.matKhau || (userAccount && !!userAccount.matKhau);
+
     return NextResponse.json({
       success: true,
-      data: khachThue,
+      data: {
+        ...khachThueObj,
+        ngayTao: khachThueObj.ngayTao || khachThueObj.createdAt || khachThue.createdAt,
+        ngayCapNhat: khachThueObj.ngayCapNhat || khachThueObj.updatedAt || khachThue.updatedAt,
+        matKhau: hasPassword ? '******' : undefined,
+        hopDongHienTai: hopDongHienTai || null,
+        tatCaHopDong: tatCaHopDong || [],
+      },
     });
 
   } catch (error) {
@@ -104,48 +139,78 @@ export async function PUT(
       anhCCCD: validatedData.anhCCCD || { matTruoc: '', matSau: '' },
     };
 
-    // Nếu có mật khẩu mới, cập nhật
-    // Mật khẩu sẽ tự động hash qua pre-save middleware
-    if (validatedData.matKhau) {
-      const khachThue = await KhachThue.findById(id);
-      if (!khachThue) {
-        return NextResponse.json(
-          { message: 'Khách thuê không tồn tại' },
-          { status: 404 }
-        );
-      }
-      
-      // Set mật khẩu mới và save để trigger middleware
-      Object.assign(khachThue, updateData);
-      khachThue.matKhau = validatedData.matKhau;
-      await khachThue.save();
-      
-      return NextResponse.json({
-        success: true,
-        data: khachThue,
-        message: 'Khách thuê đã được cập nhật thành công',
-      });
-    }
+    // 1. Update NguoiDung (Account) info
+    const NguoiDung = mongoose.model('NguoiDung');
+    await NguoiDung.findByIdAndUpdate(id, {
+        ten: validatedData.hoTen,
+        soDienThoai: validatedData.soDienThoai,
+        email: validatedData.email,
+        // matKhau will be handled below if provided
+    });
 
-    // Nếu không có mật khẩu mới, update bình thường
-    delete updateData.matKhau;
-    const khachThue = await KhachThue.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true, runValidators: true }
-    );
-
+    // 2. Check and Update/Create KhachThue (Profile)
+    let khachThue = await KhachThue.findById(id);
+    
     if (!khachThue) {
-      return NextResponse.json(
-        { message: 'Khách thuê không tồn tại' },
-        { status: 404 }
-      );
+      // IF NOT FOUND in KhachThue, create one using same ID
+      const user = await NguoiDung.findById(id);
+      khachThue = new KhachThue({
+        _id: id,
+        ...updateData,
+        trangThai: 'chuaThue',
+        nguoiQuanLy: user?.nguoiQuanLy || session.user.id
+      });
+    } else {
+      // IF FOUND, update
+      Object.assign(khachThue, updateData);
     }
+
+    // Handle password change for both models
+    if (validatedData.matKhau) {
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(validatedData.matKhau, salt);
+      
+      // Update NguoiDung password
+      await NguoiDung.findByIdAndUpdate(id, { matKhau: hashedPassword });
+      
+      // Update KhachThue password
+      khachThue.matKhau = validatedData.matKhau; // Will be hashed by its own middleware
+    }
+
+    await khachThue.save();
+
+    // Lấy đầy đủ thông tin sau khi lưu
+    const tatCaHopDong = await HopDong.find({
+      khachThueId: { $in: [id, new mongoose.Types.ObjectId(id)] }
+    })
+    .sort({ ngayTao: -1 })
+    .populate('phong', 'maPhong toaNha')
+    .populate({
+      path: 'phong',
+      populate: {
+        path: 'toaNha',
+        select: 'tenToaNha diaChi'
+      }
+    });
+
+    const khachThueObj = khachThue.toObject();
+    const hopDongHienTai = tatCaHopDong.find(h => h.trangThai === 'hoatDong');
+
+    // Kiểm tra tài khoản ở NguoiDung
+    const userAccount = await mongoose.model('NguoiDung').findById(id).select('+matKhau');
+    const hasPassword = !!khachThueObj.matKhau || (userAccount && !!userAccount.matKhau);
 
     return NextResponse.json({
       success: true,
-      data: khachThue,
-      message: 'Khách thuê đã được cập nhật thành công',
+      data: {
+        ...khachThueObj,
+        ngayTao: khachThueObj.ngayTao || khachThueObj.createdAt || khachThue.createdAt,
+        ngayCapNhat: khachThueObj.ngayCapNhat || khachThueObj.updatedAt || khachThue.updatedAt,
+        matKhau: hasPassword ? '******' : undefined,
+        hopDongHienTai: hopDongHienTai || null,
+        tatCaHopDong: tatCaHopDong || [],
+      },
+      message: 'Hồ sơ khách thuê đã được cập nhật thành công',
     });
 
   } catch (error) {

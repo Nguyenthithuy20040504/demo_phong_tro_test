@@ -23,7 +23,16 @@ export async function GET() {
     
     let query: any = {};
     if (session.user.role === 'chuNha') {
-      query.nguoiQuanLy = session.user.id;
+      // Ensure we query by the managed users only
+      // Using mongoose.Types.ObjectId to ensure correct comparison
+      const mongoose = require('mongoose');
+      query.nguoiQuanLy = new mongoose.Types.ObjectId(session.user.id);
+    }
+    
+    // Explicitly exclude any admins or other landlords even if the query might suggest otherwise
+    // (though the nguoiQuanLy filter should handle this, it's a good safety measure)
+    if (session.user.role === 'chuNha') {
+      query.role = { $nin: ['admin', 'chuNha'] };
     }
     
     const users = await NguoiDung.find(query, { password: 0, matKhau: 0 }).sort({ createdAt: -1 });

@@ -261,13 +261,6 @@ const createColumns = (props: HopDongTableProps & { setHopDongToDelete: (h: HopD
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem onClick={(e) => {
             e.stopPropagation();
-            props.onView(row.original);
-          }}>
-            <Eye className="mr-2 h-4 w-4" />
-            Xem chi tiết
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={(e) => {
-            e.stopPropagation();
             props.onEdit(row.original);
           }}>
             <Edit className="mr-2 h-4 w-4" />
@@ -280,7 +273,7 @@ const createColumns = (props: HopDongTableProps & { setHopDongToDelete: (h: HopD
             <Download className="mr-2 h-4 w-4" />
             Tải xuống
           </DropdownMenuItem>
-          {row.original.trangThai === 'hoatDong' && (
+          {(row.original.trangThai === 'hoatDong' || row.original.trangThai === 'hetHan') && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={(e) => {
@@ -290,13 +283,15 @@ const createColumns = (props: HopDongTableProps & { setHopDongToDelete: (h: HopD
                 <Calendar className="mr-2 h-4 w-4" />
                 Gia hạn
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => {
-                e.stopPropagation();
-                props.onHuy(row.original);
-              }}>
-                <FileText className="mr-2 h-4 w-4" />
-                Hủy hợp đồng
-              </DropdownMenuItem>
+              {row.original.trangThai === 'hoatDong' && (
+                <DropdownMenuItem onClick={(e) => {
+                  e.stopPropagation();
+                  props.onHuy(row.original);
+                }}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Hủy hợp đồng
+                </DropdownMenuItem>
+              )}
             </>
           )}
           <DropdownMenuSeparator />
@@ -318,10 +313,12 @@ const createColumns = (props: HopDongTableProps & { setHopDongToDelete: (h: HopD
   },
 ]
 
-function HopDongTableRow({ row }: { row: Row<HopDong> }) {
+function HopDongTableRow({ row, onView }: { row: Row<HopDong>, onView: (h: HopDong) => void }) {
   return (
     <TableRow
       data-state={row.getIsSelected() && "selected"}
+      className="cursor-pointer hover:bg-muted/50 transition-colors"
+      onClick={() => onView(row.original)}
     >
       {row.getVisibleCells().map((cell) => (
         <TableCell key={cell.id}>
@@ -499,7 +496,7 @@ export function HopDongDataTable(props: HopDongDataTableProps) {
           <TableBody className="**:data-[slot=table-cell]:first:w-8">
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <HopDongTableRow key={row.id} row={row} />
+                <HopDongTableRow key={row.id} row={row} onView={tableProps.onView} />
               ))
             ) : (
               <TableRow>
