@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
     });
     if (existingPhong) {
       return NextResponse.json(
-        { message: 'Số phòng này đã tồn tại trong tòa nhà' },
+        { message: 'Phòng này đã tồn tại trong tòa nhà' },
         { status: 400 }
       );
     }
