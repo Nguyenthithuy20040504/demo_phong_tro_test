@@ -381,18 +381,69 @@ export default function XemPhongPage() {
               </Card>
 
               {selectedPhong.trangThai === 'trong' && (
-                <Card className="border-0 shadow-xl bg-gradient-to-br from-green-50/80 to-emerald-100/80 backdrop-blur-sm">
-                  <CardHeader className="p-4 md:p-6">
+                <Card className="border-0 shadow-xl bg-gradient-to-br from-green-50/80 to-emerald-100/80 backdrop-blur-sm overflow-hidden group/contact">
+                  <CardHeader className="p-4 md:p-6 pb-2">
                     <CardTitle className="text-base md:text-lg bg-gradient-to-r from-green-700 to-emerald-600 bg-clip-text text-transparent">Liên hệ thuê phòng</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3 md:space-y-4 p-4 md:p-6">
+                  <CardContent className="space-y-4 p-4 md:p-6 pt-2">
                     <p className="text-xs md:text-sm text-slate-600">
-                      Phòng này hiện đang trống và có thể cho thuê. Vui lòng liên hệ để biết thêm thông tin.
+                      Phòng này hiện đang trống. Vui lòng liên hệ với chủ nhà để được tư vấn và xem phòng trực tiếp.
                     </p>
-                    <Button className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 border-0 shadow-lg hover:shadow-xl transition-all duration-300" size="sm">
-                      <Phone className="h-4 w-4 mr-2" />
-                      Liên hệ ngay
-                    </Button>
+                    
+                    {typeof selectedPhong.toaNha === 'object' && (selectedPhong.toaNha as any).chuSoHuu && (
+                      <div className="p-3 bg-white/60 backdrop-blur-md rounded-xl border border-emerald-100 shadow-sm transition-all duration-300 group-hover/contact:shadow-md group-hover/contact:bg-white/80">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shadow-inner">
+                            {((selectedPhong.toaNha as any).chuSoHuu as any).anhDaiDien ? (
+                              <img 
+                                src={((selectedPhong.toaNha as any).chuSoHuu as any).anhDaiDien} 
+                                className="w-full h-full object-cover rounded-full"
+                                alt="Chủ nhà"
+                              />
+                            ) : (
+                              <User className="h-5 w-5" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 leading-tight mb-0.5">Chủ nhà</p>
+                            <p className="text-sm font-bold text-slate-800 truncate">
+                              {((selectedPhong.toaNha as any).chuSoHuu as any).ten}
+                            </p>
+                            <p className="text-xs font-semibold text-emerald-700">
+                              {((selectedPhong.toaNha as any).chuSoHuu as any).soDienThoai}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 gap-3">
+                      <Button 
+                        className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 border-0 shadow-lg hover:shadow-xl transition-all duration-300 font-bold h-11" 
+                        size="default"
+                        onClick={() => {
+                          const phone = ((selectedPhong.toaNha as any).chuSoHuu as any).soDienThoai?.replace(/\s/g, '');
+                          window.location.href = `tel:${phone}`;
+                        }}
+                      >
+                        <Phone className="h-4 w-4 mr-2" />
+                        GỌI ĐIỆN NGAY
+                      </Button>
+
+                      <Button 
+                        className="w-full bg-[#0068ff] hover:bg-[#0052cc] border-0 shadow-lg hover:shadow-xl transition-all duration-300 font-bold h-11 text-white" 
+                        size="default"
+                        onClick={() => {
+                          const phone = ((selectedPhong.toaNha as any).chuSoHuu as any).soDienThoai?.replace(/\s/g, '');
+                          window.open(`https://zalo.me/${phone}`, '_blank');
+                        }}
+                      >
+                        <div className="mr-2 flex items-center justify-center w-5 h-5 bg-white rounded-full">
+                           <span className="text-[#0068ff] text-[10px] font-black">Z</span>
+                        </div>
+                        NHẮN TIN ZALO
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               )}

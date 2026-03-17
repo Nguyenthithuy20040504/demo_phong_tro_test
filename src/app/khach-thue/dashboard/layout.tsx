@@ -34,8 +34,7 @@ export default function KhachThueDashboardLayout({ children }: { children: React
 
   const handleLogout = async () => {
     toast.success('Đã đăng xuất');
-    await signOut({ redirect: false });
-    router.replace('/dang-nhap');
+    await signOut({ callbackUrl: '/' });
   };
 
   if (status === 'loading') {

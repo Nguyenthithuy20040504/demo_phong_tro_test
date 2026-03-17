@@ -43,7 +43,7 @@ export function NavUser({
   const { isMobile } = useSidebar()
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: '/dang-nhap' })
+    await signOut({ callbackUrl: '/' })
   }
 
   // Lấy chữ cái đầu của tên để làm avatar fallback
