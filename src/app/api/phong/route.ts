@@ -132,8 +132,8 @@ export async function GET(request: NextRequest) {
           if (hopDongRaw.nguoiDaiDien) {
             nguoiDaiDien = await KhachThue.findById(hopDongRaw.nguoiDaiDien).select('hoTen soDienThoai').lean();
             if (!nguoiDaiDien) {
-              const u = await mongoose.model('NguoiDung').findOne({ _id: hopDongRaw.nguoiDaiDien, role: 'khachThue' }).select('ten name soDienThoai phone').lean();
-              if (u) {
+              const u: any = await mongoose.model('NguoiDung').findOne({ _id: hopDongRaw.nguoiDaiDien, role: 'khachThue' }).select('ten name soDienThoai phone').lean();
+              if (u && !Array.isArray(u)) {
                 nguoiDaiDien = {
                   _id: u._id,
                   hoTen: u.ten || u.name,
@@ -216,14 +216,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if room number already exists in this building
-    const existingPhong = await Phong.findOne({ 
-      toaNha: validatedData.toaNha, 
-      maPhong: validatedData.maPhong.trim().toUpperCase() 
-    });
+    // Check if room number already exists across all buildings accessible by this user
+    const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
+    const filterQuery: any = {
+      maPhong: { $regex: new RegExp(`^${validatedData.maPhong.trim()}$`, 'i') }
+    };
+    if (accessibleToaNhaIds !== null) {
+      filterQuery.toaNha = { $in: accessibleToaNhaIds };
+    }
+
+    const existingPhong = await Phong.findOne(filterQuery).populate('toaNha', 'tenToaNha');
     if (existingPhong) {
+      const tenToaNha = (existingPhong.toaNha as any)?.tenToaNha || 'một tòa nhà khác';
       return NextResponse.json(
-        { message: 'Phòng này đã tồn tại trong tòa nhà' },
+        { message: `Mã phòng này đã tồn tại ở ${tenToaNha}. Vui lòng sử dụng mã khác!` },
         { status: 400 }
       );
     }

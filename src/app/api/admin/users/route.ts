@@ -65,6 +65,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Vui lòng điền đầy đủ các thông tin: Họ tên, Email, Mật khẩu và Vai trò' }, { status: 400 });
     }
 
+    if (phone && !/^[0-9]{10,11}$/.test(phone)) {
+      return NextResponse.json({ message: 'Số điện thoại không hợp lệ. Vui lòng nhập 10-11 chữ số.' }, { status: 400 });
+    }
+
     if (session.user.role === 'chuNha') {
       if (role !== 'nhanVien' && role !== 'khachThue') {
          return NextResponse.json({ message: 'Chủ nhà chỉ được tạo tài khoản Nhân Viên hoặc Khách Thuê' }, { status: 403 });

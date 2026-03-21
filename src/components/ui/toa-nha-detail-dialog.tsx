@@ -74,14 +74,36 @@ export function ToaNhaDetailDialog({ toaNha, isOpen, onClose }: ToaNhaDetailDial
   };
 
   const tienNghiLabels: Record<string, string> = {
-    wifi: 'WiFi',
-    camera: 'Camera an ninh',
-    baoVe: 'Bảo vệ 24/7',
-    giuXe: 'Giữ xe',
-    thangMay: 'Thang máy',
-    sanPhoi: 'Sân phơi',
-    nhaVeSinhChung: 'Nhà vệ sinh chung',
-    khuBepChung: 'Khu bếp chung',
+    'wifi': 'WiFi',
+    'camera': 'Camera an ninh',
+    'baoVe': 'Bảo vệ 24/7',
+    'giuXe': 'Giữ xe',
+    'thangMay': 'Thang máy',
+    'sanPhoi': 'Sân phơi',
+    'nhaVeSinhChung': 'Nhà vệ sinh chung',
+    'khuBepChung': 'Khu bếp chung',
+    'tuDoCung': 'Tủ đồ dùng',
+    'sanDeXe': 'Sân để xe',
+  };
+
+  const getTienNghiLabel = (item: string) => {
+    if (!item) return '';
+    const lowerItem = item.toLowerCase();
+    
+    // Check if it already matches a label (accented)
+    const labelValues = Object.values(tienNghiLabels);
+    if (labelValues.some(l => l.toLowerCase() === lowerItem)) {
+      const exactMatch = labelValues.find(l => l.toLowerCase() === lowerItem);
+      return exactMatch || item;
+    }
+
+    if (tienNghiLabels[item]) return tienNghiLabels[item];
+    
+    // Search in keys case-insensitively
+    const match = Object.entries(tienNghiLabels).find(([k]) => k.toLowerCase() === lowerItem);
+    if (match) return match[1];
+
+    return item;
   };
 
   return (
@@ -189,7 +211,7 @@ export function ToaNhaDetailDialog({ toaNha, isOpen, onClose }: ToaNhaDetailDial
                         {toaNha.tienNghiChung && toaNha.tienNghiChung.length > 0 ? (
                           toaNha.tienNghiChung.map((item) => (
                             <Badge key={item} variant="secondary" className="px-4 py-2 rounded-2xl bg-white text-foreground/80 border border-primary/5 shadow-sm font-black text-[11px] uppercase tracking-widest hover:bg-primary/5 hover:text-primary transition-all duration-300">
-                              {tienNghiLabels[item] || item}
+                              {getTienNghiLabel(item)}
                             </Badge>
                           ))
                         ) : (

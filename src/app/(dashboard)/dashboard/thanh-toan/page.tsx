@@ -140,8 +140,12 @@ export default function ThanhToanPage() {
   };
 
   const filteredThanhToan = thanhToanList.filter(thanhToan => {
-    const matchesSearch = thanhToan.ghiChu?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         thanhToan.thongTinChuyenKhoan?.soGiaoDich?.toLowerCase().includes(searchTerm.toLowerCase());
+    const searchStr = searchTerm.toLowerCase();
+    const paymentDateStr = new Date(thanhToan.ngayThanhToan).toLocaleDateString('vi-VN');
+    const matchesSearch = !searchTerm || 
+                         thanhToan.ghiChu?.toLowerCase().includes(searchStr) ||
+                         thanhToan.thongTinChuyenKhoan?.soGiaoDich?.toLowerCase().includes(searchStr) ||
+                         paymentDateStr.includes(searchStr);
     const matchesMethod = methodFilter === 'all' || thanhToan.phuongThuc === methodFilter;
     
     const paymentDate = new Date(thanhToan.ngayThanhToan);
@@ -243,8 +247,19 @@ export default function ThanhToanPage() {
   };
 
   const handleDownload = (thanhToan: ThanhToanPopulated) => {
-    // Implement download logic
-    console.log('Downloading receipt:', thanhToan._id);
+    if (!thanhToan.anhBienLai) {
+      toast.error('Không tìm thấy ảnh biên lai nào!');
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = thanhToan.anhBienLai;
+    // Tùy chỉnh tên file tải xuống
+    const fileName = thanhToan.anhBienLai.split('/').pop() || `bien-lai-${thanhToan._id}.png`;
+    a.download = fileName;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   if (loading && thanhToanList.length === 0) {
@@ -668,7 +683,7 @@ function ThanhToanForm({
             <SelectValue placeholder="Chọn hóa đơn" />
           </SelectTrigger>
           <SelectContent>
-            {hoaDonList.filter(h => h.trangThai !== 'daThanhToan' || h._id === formData.hoaDon).map((hoaDon) => (
+            {hoaDonList.filter(h => h.conLai > 0 || h._id === formData.hoaDon).map((hoaDon) => (
               <SelectItem key={hoaDon._id} value={hoaDon._id!} className="text-sm">
                 {hoaDon.maHoaDon} - {(hoaDon.phong as any)?.maPhong || 'N/A'} - {(hoaDon.khachThue as any)?.hoTen || 'N/A'} (Còn: {hoaDon.conLai.toLocaleString('vi-VN')}đ)
               </SelectItem>

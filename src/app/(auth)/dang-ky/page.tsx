@@ -20,9 +20,7 @@ const registerSchema = z.object({
   matKhau: z.string().min(6, 'Mật khẩu phải có ít nhất 6 ký tự'),
   xacNhanMatKhau: z.string(),
   soDienThoai: z.string().regex(/^[0-9]{10,11}$/, 'Số điện thoại không hợp lệ'),
-  vaiTro: z.enum(['chuNha', 'nhanVien'], {
-    error: 'Vui lòng chọn vai trò',
-  }),
+  vaiTro: z.enum(['chuNha']),
 }).refine((data) => data.matKhau === data.xacNhanMatKhau, {
   message: 'Mật khẩu xác nhận không khớp',
   path: ['xacNhanMatKhau'],
@@ -46,6 +44,9 @@ export default function RegisterPage() {
     formState: { errors },
   } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
+    defaultValues: {
+      vaiTro: 'chuNha',
+    },
   });
 
   const vaiTro = watch('vaiTro');
@@ -92,10 +93,10 @@ export default function RegisterPage() {
       <div className="max-w-md w-full space-y-6 md:space-y-8">
         <div className="text-center">
           <h2 className="mt-4 md:mt-6 text-2xl md:text-3xl font-bold text-gray-900">
-            Đăng ký tài khoản
+            Đăng ký Chủ trọ
           </h2>
           <p className="mt-2 text-xs md:text-sm text-gray-600">
-            Quản lý phòng trọ
+            Khởi tạo hệ thống quản lý phòng trọ PiRoom của bạn
           </p>
         </div>
         
@@ -160,21 +161,7 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="vaiTro" className="text-xs md:text-sm">Vai trò</Label>
-                <Select onValueChange={(value) => setValue('vaiTro', value as 'chuNha' | 'nhanVien')}>
-                  <SelectTrigger className={`text-sm ${errors.vaiTro ? 'border-red-500' : ''}`}>
-                    <SelectValue placeholder="Chọn vai trò" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="chuNha" className="text-sm">Chủ nhà</SelectItem>
-                    <SelectItem value="nhanVien" className="text-sm">Nhân viên</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.vaiTro && (
-                  <p className="text-xs md:text-sm text-red-500">{errors.vaiTro.message}</p>
-                )}
-              </div>
+              <input type="hidden" {...register('vaiTro')} value="chuNha" />
 
               <div className="space-y-2">
                 <Label htmlFor="matKhau" className="text-xs md:text-sm">Mật khẩu</Label>

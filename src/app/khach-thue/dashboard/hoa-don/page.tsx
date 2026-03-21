@@ -12,9 +12,11 @@ import {
   FileText, 
   Filter, 
   Download,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Camera
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ImageUpload } from '@/components/ui/image-upload';
 import { useEffect, useState, useMemo } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -62,6 +64,9 @@ export default function HoaDonKhachThuePage() {
   const [filterMonth, setFilterMonth] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterYear, setFilterYear] = useState<string>(new Date().getFullYear().toString());
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [paymentImage, setPaymentImage] = useState('');
+  const [submittingPayment, setSubmittingPayment] = useState(false);
 
   useEffect(() => {
     document.title = 'Hóa đơn - Khách thuê';
@@ -538,11 +543,79 @@ export default function HoaDonKhachThuePage() {
                 </div>
               )}
 
+              {selectedHoaDon.trangThai !== 'daThanhToan' && (
+                <Button className="w-full rounded-xl bg-[#0068FF] text-white hover:bg-[#0052CC]" onClick={() => setIsPaymentDialogOpen(true)}>
+                  💳 Thanh toán bằng Chuyển khoản
+                </Button>
+              )}
               <Button variant="outline" className="w-full rounded-xl" onClick={() => setSelectedHoaDon(null)}>
                 Đóng
               </Button>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog xác nhận thanh toán */}
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle>Thanh toán bằng chuyển khoản</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-blue-50 text-blue-800 rounded-lg text-sm mb-4">
+              Vui lòng chuyển khoản số tiền <strong className="text-lg">{fmt(selectedHoaDon?.conLai || 0)}</strong> qua thẻ ngân hàng hoặc ví điện tử với thông tin chuyển khoản từ chủ trọ.
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700">Tải lên biên lai gốc (ảnh chụp màn hình)</label>
+              <ImageUpload
+                imageUrl={paymentImage}
+                onImageChange={setPaymentImage}
+                label=""
+                placeholder="Chọn ảnh biên lai từ điện thoại/máy tính"
+              />
+            </div>
+
+            <Button 
+              className="w-full mt-4" 
+              disabled={submittingPayment || !paymentImage}
+              onClick={async () => {
+                setSubmittingPayment(true);
+                try {
+                  const reqData = {
+                    hoaDonId: selectedHoaDon?._id,
+                    soTien: selectedHoaDon?.conLai,
+                    phuongThuc: 'chuyenKhoan',
+                    thongTinChuyenKhoan: {
+                      nganHang: 'Ngân hàng',
+                      soGiaoDich: 'Giao dịch online'
+                    },
+                    ghiChu: 'Khách thuê tải lên biên lai ứng dụng',
+                    anhBienLai: paymentImage
+                  };
+                  const res = await fetch('/api/thanh-toan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(reqData)
+                  });
+                  if(res.ok) {
+                    toast.success('Gửi xác nhận thanh toán thành công!');
+                    setIsPaymentDialogOpen(false);
+                    setSelectedHoaDon((prev: any) => ({...prev, trangThai: 'chờ xử lý'})); 
+                    fetchHoaDons();
+                  } else {
+                    toast.error('Có lỗi khi ghi nhận thanh toán');
+                  }
+                } finally {
+                  setSubmittingPayment(false);
+                }
+              }}
+            >
+              {submittingPayment ? <Loader2 className="animate-spin h-5 w-5 mr-2" /> : null}
+              Xác nhận đã chuyển khoản
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

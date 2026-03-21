@@ -76,7 +76,8 @@ const getKhachThueName = (khachThueId: string | any, khachThueList: KhachThue[])
   return 'N/A';
 };
 
-const formatCurrency = (amount: number) => {
+const formatCurrency = (amount: number | undefined | null) => {
+  if (amount === undefined || amount === null || isNaN(amount)) return '0 ₫';
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
     currency: 'VND',
@@ -438,7 +439,7 @@ export default function HoaDonPage() {
             <div style="flex: 1; border: 1px solid #eee; padding: 15px; border-radius: 8px;">
               <h3 style="font-size: 16px; font-weight: bold; margin-top: 0; margin-bottom: 12px; color: #000; border-bottom: 1px solid #eee; padding-bottom: 8px;">Chi tiết kỳ thanh toán</h3>
               <p style="margin: 6px 0; font-size: 14px;"><strong>Kỳ hóa đơn:</strong> Tháng ${hoaDon.thang}/${hoaDon.nam}</p>
-              <p style="margin: 6px 0; font-size: 14px;"><strong>Hạn đóng tiền:</strong> ${new Date(hoaDon.hanThanhToan).toLocaleDateString('vi-VN')}</p>
+              <p style="margin: 6px 0; font-size: 14px;"><strong>Hạn đóng tiền:</strong> ${hoaDon.hanThanhToan ? new Date(hoaDon.hanThanhToan).toLocaleDateString('vi-VN') : 'N/A'}</p>
               <p style="margin: 6px 0; font-size: 14px;"><strong>Trạng thái:</strong> 
                 <span style="font-weight: bold; color: ${hoaDon.trangThai === 'daThanhToan' ? '#10b981' : '#ef4444'}">
                   ${hoaDon.trangThai === 'daThanhToan' ? 'Đã thanh toán' : 
@@ -498,10 +499,10 @@ export default function HoaDonPage() {
                   <td style="border: 1px solid #dee2e6; padding: 10px; text-align: right;">${formatCurrency(hoaDon.tienDien)}</td>
                 </tr>
                 <tr>
-                  <td style="border: 1px solid #dee2e6; padding: 10px;">Tiền nước (${hoaDon.soNuoc} m³)</td>
-                  <td style="border: 1px solid #dee2e6; padding: 10px; text-align: right;">${formatCurrency(hoaDon.tienNuoc)}</td>
+                  <td style="border: 1px solid #dee2e6; padding: 10px;">Tiền nước (${hoaDon.soNuoc || 0} m³)</td>
+                  <td style="border: 1px solid #dee2e6; padding: 10px; text-align: right;">${formatCurrency(hoaDon.tienNuoc || 0)}</td>
                 </tr>
-                ${hoaDon.phiDichVu.map(phi => `
+                ${(hoaDon.phiDichVu || []).map(phi => `
                   <tr>
                     <td style="border: 1px solid #dee2e6; padding: 10px;">${phi.ten}</td>
                     <td style="border: 1px solid #dee2e6; padding: 10px; text-align: right;">${formatCurrency(phi.gia)}</td>

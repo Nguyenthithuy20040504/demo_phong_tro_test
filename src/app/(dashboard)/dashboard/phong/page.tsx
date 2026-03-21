@@ -783,15 +783,15 @@ function PhongForm({
   };
 
   const tienNghiOptions = [
-    { value: 'dieuHoa', label: 'Điều hòa' },
-    { value: 'nongLanh', label: 'Nóng lạnh' },
-    { value: 'tuLanh', label: 'Tủ lạnh' },
-    { value: 'giuong', label: 'Giường' },
-    { value: 'tuQuanAo', label: 'Tủ quần áo' },
-    { value: 'banGhe', label: 'Bàn ghế' },
-    { value: 'wifi', label: 'WiFi' },
-    { value: 'mayGiat', label: 'Máy giặt' },
-    { value: 'bep', label: 'Bếp' },
+    { value: 'Điều hòa', label: 'Điều hòa' },
+    { value: 'Nóng lạnh', label: 'Nóng lạnh' },
+    { value: 'Tủ lạnh', label: 'Tủ lạnh' },
+    { value: 'Giường', label: 'Giường' },
+    { value: 'Tủ quần áo', label: 'Tủ quần áo' },
+    { value: 'Bàn ghế', label: 'Bàn ghế' },
+    { value: 'WiFi', label: 'WiFi' },
+    { value: 'Máy giặt', label: 'Máy giặt' },
+    { value: 'Bếp', label: 'Bếp' },
   ];
 
   return (

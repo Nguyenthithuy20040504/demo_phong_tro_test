@@ -1,15 +1,14 @@
 import { Navbar } from "@/components/landing/Navbar";
-import { Hero } from "@/components/landing/Hero";
-import { Features } from "@/components/landing/Features";
 import { Pricing } from "@/components/landing/Pricing";
 import { Footer } from "@/components/landing/Footer";
 
-export default function Home() {
+export default function BangGiaPage() {
   return (
     <main className="min-h-screen bg-[#F0FDFA]">
       <Navbar />
-      <Hero />
-      <Features />
+      <div className="pt-20"> {/* Header spacing */}
+        <Pricing />
+      </div>
       <Footer />
     </main>
   );

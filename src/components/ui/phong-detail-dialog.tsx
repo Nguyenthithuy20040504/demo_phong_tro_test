@@ -122,15 +122,42 @@ export function PhongDetailDialog({ phong, isOpen, onClose, toaNhaList }: PhongD
   };
 
   const tienNghiLabels: Record<string, string> = {
-    dieuHoa: 'Điều hòa',
-    nongLanh: 'Nóng lạnh',
-    tuLanh: 'Tủ lạnh',
-    giuong: 'Giường',
-    tuQuanAo: 'Tủ quần áo',
-    banGhe: 'Bàn ghế',
-    wifi: 'WiFi',
-    mayGiat: 'Máy giặt',
-    bep: 'Bếp',
+    'dieuHoa': 'Điều hòa',
+    'nongLanh': 'Nóng lạnh',
+    'tuLanh': 'Tủ lạnh',
+    'giuong': 'Giường',
+    'tuQuanAo': 'Tủ quần áo',
+    'banGhe': 'Bàn ghế',
+    'wifi': 'WiFi',
+    'mayGiat': 'Máy giặt',
+    'bep': 'Bếp',
+    'banlamviec': 'Bàn làm việc',
+    'ghe': 'Ghế',
+    'tivi': 'TV',
+    'phongtam': 'Phòng tắm',
+    'bancong': 'Ban công',
+  };
+
+  const getTienNghiLabel = (item: string) => {
+    if (!item) return '';
+    const lowerItem = item.toLowerCase();
+    
+    // Check if it matches label already (accented)
+    const labelValues = Object.values(tienNghiLabels);
+    if (labelValues.some(l => l.toLowerCase() === lowerItem)) {
+      // Return the item as-is but with proper case from map if possible
+      const exactMatch = labelValues.find(l => l.toLowerCase() === lowerItem);
+      return exactMatch || item;
+    }
+
+    // Check map
+    if (tienNghiLabels[item]) return tienNghiLabels[item];
+    
+    // Check lowercase map match
+    const match = Object.entries(tienNghiLabels).find(([k]) => k.toLowerCase() === lowerItem);
+    if (match) return match[1];
+
+    return item;
   };
 
   return (
@@ -310,7 +337,7 @@ export function PhongDetailDialog({ phong, isOpen, onClose, toaNhaList }: PhongD
                           phong.tienNghi.map((item) => (
                             <Badge key={item} variant="secondary" className="px-4 py-2 rounded-2xl bg-white text-foreground/80 border border-primary/5 shadow-sm font-black text-[10px] md:text-[11px] uppercase tracking-widest hover:bg-primary/5 hover:text-primary transition-all duration-300">
                               <Sparkles className="h-3 w-3 mr-2 text-primary/40" />
-                              {tienNghiLabels[item] || item}
+                              {getTienNghiLabel(item)}
                             </Badge>
                           ))
                         ) : (

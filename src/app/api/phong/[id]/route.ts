@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import Phong from '@/models/Phong';
 import ToaNha from '@/models/ToaNha';
-import { isToaNhaAccessible } from '@/lib/auth-utils';
+import { isToaNhaAccessible, getAccessibleToaNhaIds } from '@/lib/auth-utils';
 import { updatePhongStatus } from '@/lib/status-utils';
 import { z } from 'zod';
 
@@ -132,16 +132,22 @@ export async function PUT(
       );
     }
 
-    // Check duplicate checking for PUT
-    const duplicatePhong = await Phong.findOne({
+    // Check duplicate checking for PUT across all accessible buildings
+    const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
+    const filterQuery: any = {
       _id: { $ne: id },
-      toaNha: validatedData.toaNha,
-      maPhong: validatedData.maPhong.trim().toUpperCase()
-    });
+      maPhong: { $regex: new RegExp(`^${validatedData.maPhong.trim()}$`, 'i') }
+    };
+    if (accessibleToaNhaIds !== null) {
+      filterQuery.toaNha = { $in: accessibleToaNhaIds };
+    }
+
+    const duplicatePhong = await Phong.findOne(filterQuery).populate('toaNha', 'tenToaNha');
     
     if (duplicatePhong) {
+      const tenToaNha = (duplicatePhong.toaNha as any)?.tenToaNha || 'một tòa nhà khác';
       return NextResponse.json(
-        { message: 'Số phòng này đã tồn tại trong tòa nhà' },
+        { message: `Số phòng này đã tồn tại ở ${tenToaNha}. Vui lòng sử dụng mã khác!` },
         { status: 400 }
       );
     }

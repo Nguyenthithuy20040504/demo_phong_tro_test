@@ -333,9 +333,11 @@ export default function AccountManagementPage() {
             </DialogHeader>
             <div className="grid gap-3 md:gap-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-xs md:text-sm">Họ và tên</Label>
+                <Label htmlFor="create-name" className="text-xs md:text-sm">Họ và tên</Label>
                 <Input
-                  id="name"
+                  id="create-name"
+                  name="name_new"
+                  autoComplete="off"
                   value={createUserData.name}
                   onChange={(e) => setCreateUserData({ ...createUserData, name: e.target.value })}
                   placeholder="Nhập họ và tên"
@@ -343,10 +345,12 @@ export default function AccountManagementPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-xs md:text-sm">Email</Label>
+                <Label htmlFor="create-email" className="text-xs md:text-sm">Email</Label>
                 <Input
-                  id="email"
+                  id="create-email"
+                  name="email_new"
                   type="email"
+                  autoComplete="off"
                   value={createUserData.email}
                   onChange={(e) => setCreateUserData({ ...createUserData, email: e.target.value })}
                   placeholder="Nhập email"
@@ -354,10 +358,12 @@ export default function AccountManagementPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-xs md:text-sm">Mật khẩu</Label>
+                <Label htmlFor="create-password" className="text-xs md:text-sm">Mật khẩu</Label>
                 <Input
-                  id="password"
+                  id="create-password"
+                  name="password_new"
                   type="password"
+                  autoComplete="new-password"
                   value={createUserData.password}
                   onChange={(e) => setCreateUserData({ ...createUserData, password: e.target.value })}
                   placeholder="Nhập mật khẩu"
@@ -365,9 +371,11 @@ export default function AccountManagementPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone" className="text-xs md:text-sm">Số điện thoại</Label>
+                <Label htmlFor="create-phone" className="text-xs md:text-sm">Số điện thoại</Label>
                 <Input
-                  id="phone"
+                  id="create-phone"
+                  name="phone_new"
+                  autoComplete="off"
                   value={createUserData.phone}
                   onChange={(e) => setCreateUserData({ ...createUserData, phone: e.target.value })}
                   placeholder="Nhập số điện thoại"
@@ -622,6 +630,8 @@ export default function AccountManagementPage() {
               <Label htmlFor="edit-name" className="text-xs md:text-sm">Họ và tên</Label>
               <Input
                 id="edit-name"
+                name="edit_name_off"
+                autoComplete="off"
                 value={editUserData.name}
                 onChange={(e) => setEditUserData({ ...editUserData, name: e.target.value })}
                 placeholder="Nhập họ và tên"
@@ -632,6 +642,8 @@ export default function AccountManagementPage() {
               <Label htmlFor="edit-phone" className="text-xs md:text-sm">Số điện thoại</Label>
               <Input
                 id="edit-phone"
+                name="edit_phone_off"
+                autoComplete="off"
                 value={editUserData.phone}
                 onChange={(e) => setEditUserData({ ...editUserData, phone: e.target.value })}
                 placeholder="Nhập số điện thoại"

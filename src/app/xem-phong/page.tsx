@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -31,29 +32,108 @@ import { Phong, ToaNha } from '@/types';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { ImageCarousel } from '@/components/ui/image-carousel';
+import { Navbar } from '@/components/landing/Navbar';
+import { Footer } from '@/components/landing/Footer';
 
-export default function XemPhongPage() {
+function XemPhongContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const roomId = searchParams.get('roomId');
+
   const [phongList, setPhongList] = useState<Phong[]>([]);
   const [toaNhaList, setToaNhaList] = useState<ToaNha[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedToaNha, setSelectedToaNha] = useState('');
-  const [selectedTrangThai, setSelectedTrangThai] = useState('');
+  const [selectedToaNha, setSelectedToaNha] = useState('all');
+  const [selectedTrangThai, setSelectedTrangThai] = useState('all');
+  const [selectedCity, setSelectedCity] = useState('all');
+  const [selectedDistrict, setSelectedDistrict] = useState('all');
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [selectedPhong, setSelectedPhong] = useState<Phong | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
+  // Derive unique cities, districts and amenities
+  const cities = Array.from(new Set(toaNhaList.map(t => t.diaChi?.thanhPho).filter(Boolean))).sort();
+  const districts = Array.from(new Set(
+    toaNhaList
+      .filter(t => selectedCity === 'all' || t.diaChi?.thanhPho === selectedCity)
+      .map(t => t.diaChi?.quan)
+      .filter(Boolean)
+  )).sort();
+
+  const tienNghiMap: Record<string, string> = {
+    'dieuHoa': 'Điều hòa',
+    'nongLanh': 'Nóng lạnh',
+    'tuLanh': 'Tủ lạnh',
+    'giuong': 'Giường',
+    'tuQuanAo': 'Tủ quần áo',
+    'banGhe': 'Bàn ghế',
+    'wifi': 'WiFi',
+    'mayGiat': 'Máy giặt',
+    'bep': 'Bếp',
+    'banlamviec': 'Bàn làm việc',
+    'ghe': 'Ghế',
+    'tivi': 'TV',
+    'phongtam': 'Phòng tắm',
+    'bancong': 'Ban công',
+  };
+
+  const formatAmenity = (val: string) => {
+    if (!val) return '';
+    const lowerVal = val.toLowerCase();
+    
+    // Check direct match
+    if (tienNghiMap[val]) return tienNghiMap[val];
+    
+    // Check lowercase match for legacy data
+    const match = Object.entries(tienNghiMap).find(([k]) => k.toLowerCase() === lowerVal);
+    if (match) return match[1];
+    
+    return val;
+  };
+
+  const allAmenities = Array.from(new Set(phongList.flatMap(p => p.tienNghi?.map(formatAmenity) || []))).sort();
+
+  // Filter buildings dropdown based on location
+  const filteredToaNhaList = toaNhaList.filter(t => {
+    const matchesCity = selectedCity === 'all' || t.diaChi?.thanhPho === selectedCity;
+    const matchesDistrict = selectedDistrict === 'all' || t.diaChi?.quan === selectedDistrict;
+    return matchesCity && matchesDistrict;
+  });
+
   useEffect(() => {
     fetchPhong();
     fetchToaNha();
-    
-    // Check for phong parameter in URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const phongParam = urlParams.get('phong');
+  }, []);
+
+  // Sync selected room with URL
+  useEffect(() => {
+    if (phongList.length === 0) return;
+
+    if (roomId) {
+      const room = phongList.find(p => p._id === roomId);
+      if (room) {
+        setSelectedPhong(room);
+        setShowDetails(true);
+        setSelectedImageIndex(0);
+      } else {
+        setShowDetails(false);
+        setSelectedPhong(null);
+      }
+    } else {
+      setShowDetails(false);
+      setSelectedPhong(null);
+    }
+  }, [roomId, phongList]);
+
+  // Initial search param sync
+  useEffect(() => {
+    const phongParam = searchParams.get('phong');
     if (phongParam) {
       setSearchTerm(phongParam);
     }
-  }, []);
+  }, [searchParams]);
 
   const fetchPhong = async () => {
     try {
@@ -115,11 +195,27 @@ export default function XemPhongPage() {
   };
 
   const filteredPhong = phongList
-    .filter(phong =>
-      phong.maPhong.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      phong.moTa?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (typeof phong.toaNha === 'object' && phong.toaNha && (phong.toaNha as any).tenToaNha?.toLowerCase().includes(searchTerm.toLowerCase()))
-    )
+    .filter(phong => {
+      const pToaNha = typeof phong.toaNha === 'object' ? (phong.toaNha as any) : toaNhaList.find(t => t._id === phong.toaNha);
+      
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = 
+        phong.maPhong.toLowerCase().includes(searchLower) ||
+        (phong.moTa && phong.moTa.toLowerCase().includes(searchLower)) ||
+        (pToaNha?.tenToaNha?.toLowerCase().includes(searchLower));
+
+      const matchesCity = selectedCity === 'all' || pToaNha?.diaChi?.thanhPho === selectedCity;
+      const matchesDistrict = selectedDistrict === 'all' || pToaNha?.diaChi?.quan === selectedDistrict;
+      const matchesToaNha = selectedToaNha === 'all' || (typeof phong.toaNha === 'string' ? phong.toaNha : (phong.toaNha as any)._id) === selectedToaNha;
+
+      // Amenities filter (must match all selected)
+      const matchesAmenities = selectedAmenities.length === 0 || 
+        selectedAmenities.every(amenity => 
+          phong.tienNghi?.map(formatAmenity).includes(amenity)
+        );
+
+      return matchesSearch && matchesCity && matchesDistrict && matchesToaNha && matchesAmenities;
+    })
     .sort((a, b) => {
       if (selectedTrangThai === 'asc') return a.giaThue - b.giaThue;
       if (selectedTrangThai === 'desc') return b.giaThue - a.giaThue;
@@ -145,51 +241,39 @@ export default function XemPhongPage() {
     }).format(amount);
   };
 
-  const tienNghiLabels = {
-    dieuhoa: 'Điều hòa',
-    nonglanh: 'Nóng lạnh',
-    tulanh: 'Tủ lạnh',
-    giuong: 'Giường',
-    tuquanao: 'Tủ quần áo',
-    banlamviec: 'Bàn làm việc',
-    ghe: 'Ghế',
-    tivi: 'TV',
-    wifi: 'WiFi',
-    maygiat: 'Máy giặt',
-    bep: 'Bếp',
-    noi: 'Nồi',
-    chen: 'Chén',
-    bat: 'Bát',
-  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 relative">
+      <div className="min-h-screen bg-[#F0FDFA] relative">
+        <Navbar />
         {/* Polka dot background */}
-        <div className="absolute inset-0 opacity-20">
+        <div className="absolute inset-0 opacity-20 pointer-events-none">
           <div className="absolute inset-0" style={{
-            backgroundImage: 'radial-gradient(circle, #6366f1 1px, transparent 1px)',
+            backgroundImage: 'radial-gradient(circle, #14B8A6 1px, transparent 1px)',
             backgroundSize: '20px 20px'
           }}></div>
         </div>
         
-        <div className="relative container mx-auto px-4 py-8">
+        <div className="relative container mx-auto px-6 py-28">
           <div className="space-y-6">
-            <div className="h-8 bg-gradient-to-r from-indigo-200 to-cyan-200 rounded-xl w-48 animate-pulse"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="h-10 bg-[#14B8A6]/10 rounded-xl w-64 animate-pulse"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-96 bg-gradient-to-br from-white to-indigo-50 rounded-2xl shadow-lg animate-pulse border border-indigo-100"></div>
+                <div key={i} className="h-[450px] bg-white rounded-3xl shadow-sm animate-pulse border border-gray-100"></div>
               ))}
             </div>
           </div>
         </div>
+        <Footer />
       </div>
     );
   }
 
   if (showDetails && selectedPhong) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 relative">
+      <div className="min-h-screen bg-[#F0FDFA] relative flex flex-col">
+        <Navbar />
+        <div className="pt-20 flex-1 relative">
         {/* Polka dot background */}
         <div className="absolute inset-0 opacity-15">
           <div className="absolute inset-0" style={{
@@ -198,22 +282,13 @@ export default function XemPhongPage() {
           }}></div>
         </div>
         
-        <div className="relative container mx-auto px-4 py-4 md:py-8">
+        <div className="relative container mx-auto px-4 py-2 md:py-4">
           {/* Header */}
           <div className="mb-4 md:mb-6">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowDetails(false)}
-              className="mb-3 md:mb-4"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Quay lại danh sách
-            </Button>
             
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <div>
-                <h1 className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-indigo-800 via-purple-700 to-cyan-700 bg-clip-text text-transparent">
+                <h1 className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-[#134E4A] via-[#14B8A6] to-[#0D9488] bg-clip-text text-transparent">
                   Phòng {selectedPhong.maPhong}
                 </h1>
                 <p className="text-xs md:text-sm text-slate-600">
@@ -221,7 +296,7 @@ export default function XemPhongPage() {
                 </p>
               </div>
               <div className="text-left md:text-right">
-                <div className="text-xl md:text-2xl font-bold bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">
+                <div className="text-xl md:text-2xl font-bold text-[#14B8A6]">
                   {formatCurrency(selectedPhong.giaThue)}
                 </div>
                 <div className="text-xs md:text-sm text-slate-500">/ tháng</div>
@@ -312,12 +387,12 @@ export default function XemPhongPage() {
                   </CardHeader>
                   <CardContent className="p-4 md:p-6">
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
-                      {selectedPhong.tienNghi.map((tienNghi) => (
-                        <div key={tienNghi} className="flex items-center space-x-2">
-                          <Star className="h-3 w-3 md:h-4 md:w-4 text-yellow-500 flex-shrink-0" />
-                          <span className="text-xs md:text-sm truncate">{tienNghiLabels[tienNghi as keyof typeof tienNghiLabels] || tienNghi}</span>
-                        </div>
-                      ))}
+                        {selectedPhong.tienNghi.map((tienNghi) => (
+                          <div key={tienNghi} className="flex items-center space-x-2">
+                            <Star className="h-3 w-3 md:h-4 md:w-4 text-[#14B8A6] fill-[#14B8A6] flex-shrink-0" />
+                            <span className="text-xs md:text-sm truncate">{formatAmenity(tienNghi)}</span>
+                          </div>
+                        ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -419,7 +494,7 @@ export default function XemPhongPage() {
 
                     <div className="grid grid-cols-1 gap-3">
                       <Button 
-                        className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 border-0 shadow-lg hover:shadow-xl transition-all duration-300 font-bold h-11" 
+                        className="w-full bg-[#14B8A6] hover:bg-[#0D9488] border-0 shadow-lg hover:shadow-xl transition-all duration-300 font-bold h-11" 
                         size="default"
                         onClick={() => {
                           const phone = ((selectedPhong.toaNha as any).chuSoHuu as any).soDienThoai?.replace(/\s/g, '');
@@ -495,210 +570,166 @@ export default function XemPhongPage() {
                     <p className="text-xs md:text-sm text-gray-600">
                       Phòng này hiện đang được bảo trì và chưa thể cho thuê.
                     </p>
-                  </CardContent>
-                </Card>
-              )}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             </div>
           </div>
+          <Footer showContactInfo={false} />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 relative">
-      {/* Polka dot background */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute inset-0" style={{
-          backgroundImage: 'radial-gradient(circle, #6366f1 2px, transparent 2px)',
-          backgroundSize: '30px 30px'
-        }}></div>
-      </div>
-      
-      <div className="relative container mx-auto px-4 py-4 md:py-8">
-        {/* Header */}
-        <div className="mb-4 md:mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-            <div>
-              <h1 className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-indigo-800 via-purple-700 to-cyan-700 bg-clip-text text-transparent">
-                Danh sách phòng cho thuê
-              </h1>
-              <p className="text-xs md:text-sm text-slate-600">Tìm phòng phù hợp với nhu cầu của bạn</p>
+    <div className="min-h-screen bg-[#F0FDFA] relative flex flex-col">
+      <Navbar />
+      <div className="pt-20 flex-1 relative">
+        {/* Polka dot background */}
+        <div className="absolute inset-0 opacity-10 pointer-events-none">
+          <div className="absolute inset-0" style={{
+            backgroundImage: 'radial-gradient(circle, #14B8A6 2px, transparent 2px)',
+            backgroundSize: '30px 30px'
+          }}></div>
+        </div>
+        
+        <div className="relative container mx-auto px-6 pt-3 pb-8">
+          {/* Header */}
+          <div className="mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 mb-4">
+              <div>
+                <h1 className="text-3xl md:text-5xl font-black font-cinzel text-[#134E4A] leading-tight uppercase mb-2">
+                  Danh sách phòng <span className="text-[#14B8A6]">cho thuê</span>
+                </h1>
+                <p className="text-lg font-josefin text-gray-500">Tìm kiếm không gian sống lý tưởng phù hợp với nhu cầu của bạn</p>
+              </div>
             </div>
-            <Link href="/" className="w-full sm:w-auto">
-              <Button variant="outline" size="sm" className="w-full sm:w-auto">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Về trang chủ
-              </Button>
-            </Link>
           </div>
 
           {/* Search and Filters */}
           <div className="relative">
-            {/* Background decoration */}
-            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-cyan-500/5 rounded-3xl blur-xl"></div>
-            
-            <Card className="relative border-0 shadow-2xl bg-white/95 backdrop-blur-md overflow-hidden">
-              {/* Gradient border effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-cyan-500/20 rounded-3xl p-[1px]">
-                <div className="w-full h-full bg-white/95 backdrop-blur-md rounded-3xl"></div>
-              </div>
-              
-              <div className="relative p-6 md:p-8">
-                {/* Header with icon */}
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                    <Search className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg md:text-xl font-bold bg-gradient-to-r from-indigo-700 via-purple-600 to-cyan-600 bg-clip-text text-transparent">
-                      Tìm kiếm phòng
-                    </h2>
-                    <p className="text-xs md:text-sm text-slate-500">Tìm phòng phù hợp với nhu cầu của bạn</p>
-                  </div>
-                </div>
-
-                {/* Search and filter grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-                  {/* Search input */}
-                  <div className="md:col-span-1">
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Tìm kiếm</label>
-                    <div className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"></div>
-                      <div className="relative">
-                        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors duration-300" />
-                        <Input
-                          placeholder="Nhập số phòng, mô tả..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-12 pr-4 py-3 h-12 text-sm border-0 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/20 rounded-xl transition-all duration-300 shadow-sm hover:shadow-md focus:shadow-lg"
-                        />
+              <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-md rounded-3xl overflow-hidden border-t-4 border-[#14B8A6]">
+                <div className="p-6 md:p-8">
+                  {/* Amenities Filter (Now at the top) */}
+                  {allAmenities.length > 0 && (
+                    <div className="mb-8">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                        <label className="block text-sm font-black font-josefin text-[#134E4A] uppercase tracking-widest">Tiện ích phòng</label>
+                        {selectedAmenities.length > 0 && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => setSelectedAmenities([])}
+                            className="text-xs text-[#14B8A6] hover:text-[#134E4A] font-bold"
+                          >
+                            Xóa bộ lọc tiện ích
+                          </Button>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {allAmenities.map(amenity => (
+                          <Badge 
+                            key={amenity}
+                            variant={selectedAmenities.includes(amenity) ? 'default' : 'outline'}
+                            className={`cursor-pointer h-10 px-5 rounded-xl text-sm font-medium transition-all duration-300 border shadow-sm flex items-center gap-2 ${
+                              selectedAmenities.includes(amenity) 
+                                ? 'bg-[#14B8A6] text-white border-[#14B8A6] scale-105' 
+                                : 'bg-white/50 text-gray-500 border-gray-100 hover:border-[#14B8A6] hover:text-[#14B8A6] hover:bg-[#F0FDFA]'
+                            }`}
+                            onClick={() => {
+                              setSelectedAmenities(prev => 
+                                prev.includes(amenity) ? prev.filter(a => a !== amenity) : [...prev, amenity]
+                              );
+                            }}
+                          >
+                            <div className={`w-1.5 h-1.5 rounded-full ${selectedAmenities.includes(amenity) ? 'bg-white animate-pulse' : 'bg-gray-300'}`}></div>
+                            {amenity}
+                          </Badge>
+                        ))}
                       </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Building filter */}
-                  <div className="md:col-span-1">
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Tòa nhà</label>
-                    <div className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"></div>
-                      <div className="relative">
-                        <Select value={selectedToaNha} onValueChange={setSelectedToaNha}>
-                          <SelectTrigger className="h-12 text-sm border-0 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/20 rounded-xl transition-all duration-300 shadow-sm hover:shadow-md focus:shadow-lg">
-                            <SelectValue placeholder="Chọn tòa nhà" />
-                          </SelectTrigger>
-                          <SelectContent className="border-0 shadow-xl rounded-xl bg-white/95 backdrop-blur-md">
-                            <SelectItem value="all" className="text-sm hover:bg-slate-50">Tất cả tòa nhà</SelectItem>
-                            {toaNhaList.map((toaNha) => (
-                              <SelectItem key={toaNha._id} value={toaNha._id!} className="text-sm hover:bg-slate-50">
-                                {toaNha.tenToaNha}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                  <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 ${allAmenities.length > 0 ? 'pt-8 border-t border-gray-100' : ''}`}>
+                    {/* City filter */}
+                    <div className="space-y-3">
+                      <label className="block text-sm font-black font-josefin text-[#134E4A] uppercase tracking-widest">Thành phố</label>
+                      <Select value={selectedCity} onValueChange={(val) => {
+                        setSelectedCity(val);
+                        setSelectedDistrict('all');
+                        setSelectedToaNha('all');
+                      }}>
+                        <SelectTrigger className="h-14 bg-gray-50/50 border-gray-100 rounded-2xl focus:ring-[#14B8A6]">
+                          <SelectValue placeholder="Tỉnh/Thành phố" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                          <SelectItem value="all">Tất cả Tỉnh/TP</SelectItem>
+                          {cities.map((city) => (
+                            <SelectItem key={city} value={city}>{city}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  </div>
 
-                  {/* Sort filter */}
-                  <div className="md:col-span-1">
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Sắp xếp theo giá</label>
-                    <div className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"></div>
-                      <div className="relative">
-                        <Select value={selectedTrangThai} onValueChange={setSelectedTrangThai}>
-                          <SelectTrigger className="h-12 text-sm border-0 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500/20 rounded-xl transition-all duration-300 shadow-sm hover:shadow-md focus:shadow-lg">
-                            <SelectValue placeholder="Sắp xếp" />
-                          </SelectTrigger>
-                          <SelectContent className="border-0 shadow-xl rounded-xl bg-white/95 backdrop-blur-md">
-                            <SelectItem value="all" className="text-sm hover:bg-slate-50">Mặc định</SelectItem>
-                            <SelectItem value="asc" className="text-sm hover:bg-slate-50">Giá từ thấp đến cao</SelectItem>
-                            <SelectItem value="desc" className="text-sm hover:bg-slate-50">Giá từ cao đến thấp</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    {/* District filter */}
+                    <div className="space-y-3">
+                      <label className="block text-sm font-black font-josefin text-[#134E4A] uppercase tracking-widest">Quận/Huyện</label>
+                      <Select value={selectedDistrict} onValueChange={(val) => {
+                        setSelectedDistrict(val);
+                        setSelectedToaNha('all');
+                      }}>
+                        <SelectTrigger className="h-14 bg-gray-50/50 border-gray-100 rounded-2xl focus:ring-[#14B8A6]">
+                          <SelectValue placeholder="Quận/Huyện" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                          <SelectItem value="all">Tất cả Quận/Huyện</SelectItem>
+                          {districts.map((d) => (
+                            <SelectItem key={d} value={d}>{d}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Building filter */}
+                    <div className="space-y-3">
+                      <label className="block text-sm font-black font-josefin text-[#134E4A] uppercase tracking-widest">Tòa nhà</label>
+                      <Select value={selectedToaNha} onValueChange={setSelectedToaNha}>
+                        <SelectTrigger className="h-14 bg-gray-50/50 border-gray-100 rounded-2xl focus:ring-[#14B8A6]">
+                          <SelectValue placeholder="Tất cả tòa nhà" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                          <SelectItem value="all">Tất cả tòa nhà</SelectItem>
+                          {filteredToaNhaList.map((toaNha) => (
+                            <SelectItem key={toaNha._id} value={toaNha._id!}>
+                              {toaNha.tenToaNha}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Sort filter */}
+                    <div className="space-y-3">
+                      <label className="block text-sm font-black font-josefin text-[#134E4A] uppercase tracking-widest">Sắp xếp giá</label>
+                      <Select value={selectedTrangThai} onValueChange={setSelectedTrangThai}>
+                        <SelectTrigger className="h-14 bg-gray-50/50 border-gray-100 rounded-2xl focus:ring-[#14B8A6]">
+                          <SelectValue placeholder="Mặc định" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                          <SelectItem value="all">Mặc định</SelectItem>
+                          <SelectItem value="asc">Giá thấp đến cao</SelectItem>
+                          <SelectItem value="desc">Giá cao đến thấp</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
-
-                {/* Results summary */}
-                <div className="mt-6 pt-6 border-t border-slate-200/50">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-slate-600">
-                      Hiển thị <span className="font-semibold text-slate-800">{filteredPhong.length}</span> trong <span className="font-semibold text-slate-800">{phongList.length}</span> phòng
-                    </p>
-                    {(searchTerm || selectedToaNha || selectedTrangThai) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSearchTerm('');
-                          setSelectedToaNha('');
-                          setSelectedTrangThai('');
-                        }}
-                        className="text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100"
-                      >
-                        Xóa bộ lọc
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 lg:gap-6 mb-4 md:mb-8">
-          <Card className="p-3 md:p-4 border-0 shadow-lg bg-gradient-to-br from-indigo-50 to-indigo-100 hover:shadow-xl transition-all duration-300 hover:scale-105">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] md:text-xs font-medium text-indigo-600">Phòng trống</p>
-                <p className="text-base md:text-2xl font-bold text-indigo-800">{phongList.length}</p>
-              </div>
-              <Home className="h-3 w-3 md:h-4 md:w-4 text-indigo-500" />
+              </Card>
             </div>
-          </Card>
-
-          <Card className="p-3 md:p-4 border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-green-100 hover:shadow-xl transition-all duration-300 hover:scale-105">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] md:text-xs font-medium text-emerald-600">Tòa nhà</p>
-                <p className="text-base md:text-2xl font-bold text-emerald-700">
-                  {new Set(phongList.map(p => typeof p.toaNha === 'object' ? (p.toaNha as any)._id : p.toaNha)).size}
-                </p>
-              </div>
-              <Building2 className="h-3 w-3 md:h-4 md:w-4 text-emerald-500" />
-            </div>
-          </Card>
-
-          <Card className="p-3 md:p-4 border-0 shadow-lg bg-gradient-to-br from-sky-50 to-blue-100 hover:shadow-xl transition-all duration-300 hover:scale-105">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] md:text-xs font-medium text-sky-600">Giá thấp nhất</p>
-                <p className="text-base md:text-2xl font-bold text-sky-700">
-                  {phongList.length > 0 ? (Math.min(...phongList.map(p => p.giaThue)) / 1000000).toFixed(1) : 0}M
-                </p>
-              </div>
-              <DollarSign className="h-3 w-3 md:h-4 md:w-4 text-sky-500" />
-            </div>
-          </Card>
-
-          <Card className="p-3 md:p-4 border-0 shadow-lg bg-gradient-to-br from-amber-50 to-orange-100 hover:shadow-xl transition-all duration-300 hover:scale-105">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] md:text-xs font-medium text-amber-600">Giá cao nhất</p>
-                <p className="text-base md:text-2xl font-bold text-amber-700">
-                       {phongList.length > 0 ? (Math.max(...phongList.map(p => p.giaThue)) / 1000000).toFixed(1) : 0}M
-                </p>
-              </div>
-              <DollarSign className="h-3 w-3 md:h-4 md:w-4 text-amber-500" />
-            </div>
-          </Card>
-        </div>
 
         {/* Room Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mt-12 md:mt-16">
           {filteredPhong.map((phong) => (
             <Card key={phong._id} className="group overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer bg-white/90 backdrop-blur-sm hover:scale-[1.02] hover:bg-white/95 flex flex-col h-full">
               <div className="aspect-video bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden flex-shrink-0">
@@ -762,7 +793,7 @@ export default function XemPhongPage() {
                         <div className="flex flex-wrap gap-1">
                           {phong.tienNghi.slice(0, 3).map((tienNghi) => (
                             <Badge key={tienNghi} variant="outline" className="text-[10px] md:text-xs bg-slate-50/50">
-                              {capitalizeFirstLetter(tienNghiLabels[tienNghi as keyof typeof tienNghiLabels] || tienNghi)}
+                              {formatAmenity(tienNghi)}
                             </Badge>
                           ))}
                           {phong.tienNghi.length > 3 && (
@@ -801,10 +832,10 @@ export default function XemPhongPage() {
 
                   <Button 
                     size="sm"
-                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 group mt-auto" 
+                    className="w-full bg-[#134E4A] hover:bg-[#14B8A6] text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 group mt-auto" 
                     onClick={() => {
-                      setSelectedPhong(phong);
-                      setShowDetails(true);
+                      router.push(`?roomId=${phong._id}`, { scroll: false });
+                      window.scrollTo(0, 0);
                     }}
                   >
                     <Eye className="h-3.5 w-3.5 md:h-4 md:w-4 mr-2 group-hover:scale-110 transition-transform duration-300" />
@@ -832,6 +863,23 @@ export default function XemPhongPage() {
           </Card>
         )}
       </div>
+      </div>
+      <Footer showContactInfo={false} />
     </div>
+  );
+}
+
+export default function XemPhongPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#F0FDFA] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-[#14B8A6] border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-[#134E4A] font-josefin font-bold">Đang tải dữ liệu...</p>
+        </div>
+      </div>
+    }>
+      <XemPhongContent />
+    </Suspense>
   );
 }

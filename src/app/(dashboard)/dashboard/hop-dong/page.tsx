@@ -163,12 +163,25 @@ export default function HopDongPage() {
     // Filter by toa nha
     let matchesToaNha = true;
     if (toaNhaFilter !== 'all') {
-      if (typeof hopDong.phong === 'object' && (hopDong.phong as { toaNha: { _id: string } })?.toaNha) {
-        matchesToaNha = ((hopDong.phong as { toaNha: { _id: string } }).toaNha)._id === toaNhaFilter;
+      let hopDongToaNhaId = null;
+      
+      // Xử lý khi hopDong.phong là object (đã populate)
+      if (typeof hopDong.phong === 'object' && hopDong.phong !== null) {
+        const phongObj = hopDong.phong as any;
+        hopDongToaNhaId = typeof phongObj.toaNha === 'object' && phongObj.toaNha !== null 
+          ? phongObj.toaNha._id 
+          : phongObj.toaNha;
       } else {
+        // Xử lý khi hopDong.phong chỉ là chuỗi ID
         const phong = phongList.find(p => p._id === hopDong.phong);
-        matchesToaNha = phong?.toaNha === toaNhaFilter;
+        if (phong) {
+          hopDongToaNhaId = typeof phong.toaNha === 'object' && phong.toaNha !== null 
+            ? (phong.toaNha as any)._id 
+            : phong.toaNha;
+        }
       }
+      
+      matchesToaNha = hopDongToaNhaId === toaNhaFilter;
     }
     
     return matchesSearch && matchesStatus && matchesToaNha;
