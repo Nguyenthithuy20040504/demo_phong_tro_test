@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     // Tạo link thanh toán VietQR thông qua PayOS
     const body = {
       orderCode: orderCode,
-      amount: 2000, // Đã fix cứng 2000 VNĐ để test thực tế (Mức tối thiểu của hầu hết Bank)
+      amount: 5000, // Fix cứng 5000 VNĐ để test thực tế theo yêu cầu
       description: `Gia han QLNT ${session.user.id.slice(0, 4)}`, // Tối đa 25 ký tự
       returnUrl: `${origin}/dashboard/gia-han-goi?success=true&orderCode=${orderCode}`,
       cancelUrl: `${origin}/dashboard/gia-han-goi?success=false&orderCode=${orderCode}`,
