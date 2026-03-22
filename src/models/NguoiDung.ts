@@ -23,6 +23,7 @@ export interface INguoiDung extends Document {
   lastLogin?: Date;
   address?: string;
   nguoiQuanLy?: mongoose.Types.ObjectId;
+  nguoiTao?: mongoose.Types.ObjectId;
   goiDichVu: 'mienPhi' | 'coBan' | 'chuyenNghiep';
   ngayHetHan: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -108,6 +109,11 @@ const NguoiDungSchema = new Schema<INguoiDung>({
     maxlength: [500, 'Address cannot exceed 500 characters']
   },
   nguoiQuanLy: {
+    type: Schema.Types.ObjectId,
+    ref: 'NguoiDung',
+    default: null
+  },
+  nguoiTao: {
     type: Schema.Types.ObjectId,
     ref: 'NguoiDung',
     default: null

@@ -45,6 +45,35 @@ export default function SubscriptionPage() {
     document.title = 'Gia hạn gói dịch vụ';
     fetchPlans();
     fetchCurrentStatus();
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const isSuccess = urlParams.get('success');
+    const orderCodeStr = urlParams.get('orderCode');
+    
+    if (isSuccess === 'true' && orderCodeStr) {
+      toast.info('Đang đồng bộ giao dịch với Ngân hàng...', { id: 'verifying' });
+      // Xóa params để tránh bị load lại toast
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Gọi fetch API Server polling để nâng cấp DB nếu chưa được kích hoạt ngầm
+      fetch(`/api/user/subscription/payos/verify?orderCode=${orderCodeStr}`)
+        .then(res => res.json())
+        .then((verificationData) => {
+            if (verificationData.status === 'PAID') {
+               toast.success('🎉 Cảm ơn bạn! Hệ thống đã ghi nhận tiền về và tự động cộng thêm ngày sử dụng!', { id: 'verifying' });
+               setTimeout(() => {
+                  fetchCurrentStatus();
+                  update();
+               }, 1000);
+            } else {
+               toast.error('❌ Thanh toán chưa hoàn tất hoặc gặp lỗi từ ngân hàng.', { id: 'verifying' });
+            }
+        })
+        .catch(err => toast.error('Lỗi mạng khi kiểm tra lại hóa đơn', { id: 'verifying' }));
+    } else if (isSuccess === 'false') {
+      toast.error('Thanh toán đã bị người dùng hủy bỏ (hoặc bị trục trặc cổng giao dịch).');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
 
   const fetchCurrentStatus = async () => {
@@ -76,46 +105,30 @@ export default function SubscriptionPage() {
   const handleExtend = async (plan: Plan) => {
     try {
       setExtending(plan._id);
-      const response = await fetch('/api/user/subscription/extend', {
+      const response = await fetch('/api/user/subscription/payos/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           planId: plan._id,
-          paymentMethod: 'chuyenKhoan'
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        toast.success(`Gia hạn thành công! Vui lòng đăng nhập lại để cập nhật.`);
-        
-        let newGoi = 'mienPhi';
-        if (selectedPlan?.ten.toLowerCase().includes('cơ bản')) newGoi = 'coBan';
-        if (selectedPlan?.ten.toLowerCase().includes('chuyên nghiệp')) newGoi = 'chuyenNghiep';
-        
-        // Refresh session to update expiry date
-        await update({
-          user: {
-            ...session?.user,
-            goiDichVu: newGoi,
-            ngayHetHan: data.newExpiry
-          }
-        });
-        
-        // Reload page to reflect changes
-        window.location.reload();
+        // Redirect to PayOS secure checkout page!
+        window.location.href = data.checkoutUrl;
       } else {
         const error = await response.json();
-        toast.error(error.message || 'Gia hạn thất bại.');
+        toast.error(error.message || 'Có lỗi kết nối Cổng thanh toán.');
+        setExtending(null);
+        setIsPaymentOpen(false);
       }
     } catch (error) {
-      toast.error('Lỗi khi thực hiện gia hạn.');
-    } finally {
+      toast.error('Lỗi cấu hình Cổng thanh toán (Vui lòng kiểm tra lại API Keys).');
       setExtending(null);
       setIsPaymentOpen(false);
-      setSelectedPlan(null);
     }
   };
 
@@ -264,27 +277,33 @@ export default function SubscriptionPage() {
             </CardContent>
             
             <CardFooter>
-              <Button 
-                className={`w-full group h-12 text-sm font-bold uppercase tracking-wider transition-all duration-300 ${
-                  plan.isPopular 
-                    ? 'bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200' 
-                    : 'bg-slate-900 hover:bg-slate-800 shadow-md shadow-slate-100'
-                }`}
-                onClick={() => {
-                  setSelectedPlan(plan);
-                  setIsPaymentOpen(true);
-                }}
-                disabled={extending === plan._id}
-              >
-                {extending === plan._id ? (
-                  <RefreshCw className="h-5 w-5 animate-spin" />
-                ) : (
-                  <>
-                    <CreditCard className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
-                    Gia hạn ngay
-                  </>
-                )}
-              </Button>
+              {plan.ten.toLowerCase().includes('miễn phí') || plan.ten.toLowerCase().includes('free') ? (
+                  <Button 
+                    disabled 
+                    className="w-full group h-12 text-[11px] sm:text-sm font-bold uppercase tracking-wider bg-gray-200 text-gray-500 cursor-not-allowed cursor-not-allowed"
+                  >
+                     Đã sử dụng (1 lần duy nhất)
+                  </Button>
+              ) : (
+                <Button 
+                  className={`w-full group h-12 text-sm font-bold uppercase tracking-wider transition-all duration-300 ${
+                    plan.isPopular 
+                      ? 'bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200' 
+                      : 'bg-slate-900 hover:bg-slate-800 shadow-md shadow-slate-100'
+                  }`}
+                  onClick={() => handleExtend(plan)}
+                  disabled={extending === plan._id}
+                >
+                  {extending === plan._id ? (
+                     <RefreshCw className="h-5 w-5 animate-spin" />
+                  ) : (
+                     <>
+                        <CreditCard className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
+                        Gia hạn ngay
+                     </>
+                  )}
+                </Button>
+              )}
             </CardFooter>
           </Card>
         ))}
@@ -302,55 +321,7 @@ export default function SubscriptionPage() {
         </div>
       </div>
 
-      {/* Payment Dialog */}
-      {selectedPlan && (
-        <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
-          <DialogContent className="sm:max-w-[450px]">
-            <DialogHeader>
-              <DialogTitle className="text-xl">Thanh toán gia hạn</DialogTitle>
-              <DialogDescription>
-                Vui lòng quét mã QR bên dưới để thanh toán cho gói <b className="text-blue-600">{selectedPlan.ten}</b>
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-col items-center justify-center py-4 space-y-4">
-              <div className="p-4 bg-white rounded-xl shadow-sm border">
-                {/* Dùng VietQR với ngân hàng demo */}
-                <img 
-                  src={`https://img.vietqr.io/image/970422-DemoVietQR-compact.png?amount=${selectedPlan.gia}&addInfo=GIAHAN%20${session?.user?.id?.slice(0, 6).toUpperCase()}&accountName=CONG%20TY%20QLL`} 
-                  alt="QR Code thanh toán" 
-                  className="w-48 h-48 object-contain rounded-md" 
-                />
-              </div>
-              <div className="text-center space-y-2">
-                <p className="font-bold text-2xl text-blue-700">{formatPrice(selectedPlan.gia)}</p>
-                <div className="text-sm text-gray-500 bg-gray-50 p-2 rounded-md">
-                  <p>Ngân hàng: <b>MBBank</b></p>
-                  <p>Số tài khoản: <b>0987654321</b></p>
-                  <p>Nội dung CK: <b className="text-amber-600">GIAHAN {session?.user?.id?.slice(0, 6).toUpperCase()}</b></p>
-                </div>
-              </div>
-            </div>
-            <DialogFooter className="flex-col sm:justify-between sm:flex-row gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsPaymentOpen(false)}>
-                Hủy bỏ
-              </Button>
-              <Button 
-                type="button" 
-                className="bg-blue-600 hover:bg-blue-700 text-white shadow-md font-medium px-8" 
-                onClick={() => handleExtend(selectedPlan)} 
-                disabled={extending === selectedPlan._id}
-              >
-                {extending === selectedPlan._id ? (
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                )}
-                Tôi đã thanh toán
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+
 
     </div>
   );

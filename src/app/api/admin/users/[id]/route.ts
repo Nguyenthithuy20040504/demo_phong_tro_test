@@ -27,6 +27,7 @@ export async function PUT(
     await dbConnect();
     
     // Check if ChuNha is trying to edit a user they don't own
+    // Check permissions and ownership
     if (session.user.role === 'chuNha') {
        const userToEdit = await NguoiDung.findById(id);
        if (!userToEdit) {
@@ -41,6 +42,10 @@ export async function PUT(
        
        if (role === 'admin' || role === 'chuNha') {
            return NextResponse.json({ message: 'Chủ nhà chỉ được cấp quyền Nhân Viên hoặc Khách Thuê' }, { status: 403 });
+       }
+    } else if (session.user.role === 'admin') {
+       if (role !== 'admin' && role !== 'chuNha') {
+           return NextResponse.json({ message: 'Quản trị viên chỉ được cấp quyền Chủ nhà hoặc Quản trị viên' }, { status: 403 });
        }
     }
     

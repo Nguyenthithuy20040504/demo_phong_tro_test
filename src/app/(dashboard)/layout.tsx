@@ -11,6 +11,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { DynamicBreadcrumb } from '@/components/ui/dynamic-breadcrumb';
 import { PageProgress } from '@/components/ui/page-progress';
+import { SubscriptionGuard } from '@/components/ui/subscription-guard';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -45,7 +46,7 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
           <DynamicBreadcrumb />
         </header>
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          {children}
+          <SubscriptionGuard>{children}</SubscriptionGuard>
         </main>
       </SidebarInset>
     </SidebarProvider>

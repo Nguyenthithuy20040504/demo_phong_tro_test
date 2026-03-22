@@ -29,6 +29,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Gói dịch vụ không khả dụng' }, { status: 404 });
     }
 
+    // Chặn mua lại gói Miễn phí
+    if (plan.ten.toLowerCase().includes('miễn phí') || plan.ten.toLowerCase().includes('free')) {
+      return NextResponse.json({ message: 'Đã hết quyền dùng thử. Gói Miễn phí chỉ được áp dụng 1 lần duy nhất khi tạo tài khoản.' }, { status: 403 });
+    }
+
     const user = await NguoiDung.findById(session.user.id);
     if (!user) {
       return NextResponse.json({ message: 'Không tìm thấy người dùng' }, { status: 404 });

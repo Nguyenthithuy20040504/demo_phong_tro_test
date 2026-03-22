@@ -36,7 +36,8 @@ export async function GET() {
     }
     
     const users = await NguoiDung.find(query, { password: 0, matKhau: 0 })
-      .populate('nguoiQuanLy', 'ngayHetHan')
+      .populate('nguoiQuanLy', 'ngayHetHan name ten')
+      .populate('nguoiTao', 'name ten email role')
       .sort({ createdAt: -1 })
       .lean();
     
@@ -132,6 +133,10 @@ export async function POST(request: NextRequest) {
       if (role !== 'nhanVien' && role !== 'khachThue') {
          return NextResponse.json({ message: 'Chủ nhà chỉ được tạo tài khoản Nhân Viên hoặc Khách Thuê' }, { status: 403 });
       }
+    } else if (session.user.role === 'admin') {
+      if (role !== 'chuNha' && role !== 'admin') {
+         return NextResponse.json({ message: 'Quản trị viên chỉ được tạo tài khoản Chủ nhà hoặc Quản trị viên' }, { status: 403 });
+      }
     }
 
     // Check if user already exists
@@ -158,7 +163,8 @@ export async function POST(request: NextRequest) {
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
-      nguoiQuanLy: session.user.role === 'chuNha' ? session.user.id : null
+      nguoiQuanLy: session.user.role === 'chuNha' ? session.user.id : null,
+      nguoiTao: session.user.id
     });
 
     await newUser.save();

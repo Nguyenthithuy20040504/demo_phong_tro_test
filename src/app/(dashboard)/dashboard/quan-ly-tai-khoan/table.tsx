@@ -94,6 +94,7 @@ interface User {
   trangThai?: string
   goiDichVu?: string
   ngayHetHan?: string
+  nguoiTao?: any
 }
 
 // Helper functions
@@ -254,6 +255,26 @@ const createColumns = (props: UserTableProps & { setUserToDelete: (u: User) => v
             </span>
           </div>
           {isExpired && <span className="text-[10px] text-red-500 font-bold ml-5 uppercase">Đã hết hạn</span>}
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "nguoiTao",
+    header: "Người tạo",
+    cell: ({ row }) => {
+      const creator = row.original.nguoiTao;
+      if (!creator) return <span className="text-muted-foreground text-sm">Hệ thống</span>;
+      
+      const role = creator.role || creator.vaiTro || 'admin';
+      const name = creator.name || creator.ten || 'Admin';
+      
+      return (
+        <div className="flex flex-col">
+          <span className="text-sm font-medium">{name}</span>
+          <span className="text-[10px] text-muted-foreground uppercase">
+            {role === 'admin' ? 'Quản trị viên' : role === 'chuNha' ? 'Chủ nhà' : 'Hệ thống'}
+          </span>
         </div>
       );
     },

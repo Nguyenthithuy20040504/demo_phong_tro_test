@@ -374,7 +374,16 @@ export default function AccountManagementPage() {
             <RefreshCw className={`h-4 w-4 sm:mr-2 ${cache.isRefreshing ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">{cache.isRefreshing ? 'Đang tải...' : 'Tải mới'}</span>
           </Button>
-          <Button size="sm" onClick={() => setIsCreateDialogOpen(true)} className="flex-1 sm:flex-none">
+          <Button size="sm" onClick={() => {
+            setCreateUserData({
+              name: '',
+              email: '',
+              password: '',
+              phone: '',
+              role: session?.user?.role === 'admin' ? 'chuNha' : 'nhanVien'
+            });
+            setIsCreateDialogOpen(true);
+          }} className="flex-1 sm:flex-none">
             <Plus className="h-4 w-4 sm:mr-2" />
             <span className="hidden sm:inline">Tạo tài khoản</span>
             <span className="sm:hidden">Tạo</span>
@@ -441,12 +450,15 @@ export default function AccountManagementPage() {
                     <SelectValue placeholder="Chọn vai trò" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="nhanVien" className="text-sm">Nhân viên</SelectItem>
-                    <SelectItem value="khachThue" className="text-sm">Khách thuê</SelectItem>
-                    {session?.user?.role === 'admin' && (
+                    {session?.user?.role === 'admin' ? (
                       <>
                         <SelectItem value="chuNha" className="text-sm">Chủ nhà</SelectItem>
                         <SelectItem value="admin" className="text-sm">Quản trị viên</SelectItem>
+                      </>
+                    ) : (
+                      <>
+                        <SelectItem value="nhanVien" className="text-sm">Nhân viên</SelectItem>
+                        <SelectItem value="khachThue" className="text-sm">Khách thuê</SelectItem>
                       </>
                     )}
                   </SelectContent>
@@ -718,12 +730,15 @@ export default function AccountManagementPage() {
                   <SelectValue placeholder="Chọn vai trò" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="nhanVien" className="text-sm">Nhân viên</SelectItem>
-                  <SelectItem value="khachThue" className="text-sm">Khách thuê</SelectItem>
-                  {session?.user?.role === 'admin' && (
+                  {session?.user?.role === 'admin' ? (
                     <>
                       <SelectItem value="chuNha" className="text-sm">Chủ nhà</SelectItem>
                       <SelectItem value="admin" className="text-sm">Quản trị viên</SelectItem>
+                    </>
+                  ) : (
+                    <>
+                      <SelectItem value="nhanVien" className="text-sm">Nhân viên</SelectItem>
+                      <SelectItem value="khachThue" className="text-sm">Khách thuê</SelectItem>
                     </>
                   )}
                 </SelectContent>
