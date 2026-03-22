@@ -10,21 +10,12 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -38,13 +29,13 @@ import {
   Plus, 
   Search, 
   Edit, 
-  Trash2, 
   Shield, 
-  Mail, 
   Phone,
   Calendar,
-  MoreHorizontal,
-  RefreshCw
+  RefreshCw,
+  UserX,
+  UserCheck,
+  LockKeyhole
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { UserDataTable } from './table';
@@ -65,6 +56,8 @@ interface User {
   lastLogin?: string;
   isActive?: boolean;
   trangThai?: string;
+  goiDichVu?: string;
+  ngayHetHan?: string;
 }
 
 interface CreateUserData {
@@ -83,8 +76,11 @@ export default function AccountManagementPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const hasFetchedRef = useRef(false); // Track xem đã fetch chưa
+  const [newPassword, setNewPassword] = useState('');
+  const hasFetchedRef = useRef(false);
+  
   const [createUserData, setCreateUserData] = useState<CreateUserData>({
     name: '',
     email: '',
@@ -92,6 +88,7 @@ export default function AccountManagementPage() {
     phone: '',
     role: 'nhanVien'
   });
+  
   const [editUserData, setEditUserData] = useState({
     name: '',
     phone: '',
@@ -104,10 +101,9 @@ export default function AccountManagementPage() {
   }, []);
 
   useEffect(() => {
-    // Chỉ fetch 1 lần duy nhất khi user là admin hoặc chuNha
     if ((session?.user?.role === 'admin' || session?.user?.role === 'chuNha') && !hasFetchedRef.current) {
       hasFetchedRef.current = true;
-      fetchUsers(false); // Sử dụng cache nếu có
+      fetchUsers(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.role]);
@@ -125,8 +121,13 @@ export default function AccountManagementPage() {
         }
       }
       
-      const response = await fetch('/api/admin/users', {
-        cache: 'no-store'
+      const response = await fetch(`/api/admin/users?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
       });
       if (response.ok) {
         const data = await response.json();
@@ -207,9 +208,33 @@ export default function AccountManagementPage() {
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa tài khoản này?')) return;
+  const handleResetPassword = async () => {
+    if (!selectedUser || !newPassword) return;
 
+    try {
+      const response = await fetch(`/api/admin/users/${selectedUser._id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password: newPassword }),
+      });
+
+      if (response.ok) {
+        toast.success('Đặt lại mật khẩu thành công!');
+        setIsResetPasswordDialogOpen(false);
+        setNewPassword('');
+        setSelectedUser(null);
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Chưa đặt lại được mật khẩu.');
+      }
+    } catch (error) {
+      toast.error('Lỗi khi thực hiện đặt lại mật khẩu.');
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
     try {
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'DELETE',
@@ -228,6 +253,36 @@ export default function AccountManagementPage() {
     }
   };
 
+  const handleToggleStatus = async (user: User) => {
+    try {
+      const newStatus = !getUserIsActive(user);
+      const response = await fetch(`/api/admin/users/${user._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...user,
+          name: getUserName(user),
+          phone: getUserPhone(user),
+          role: getUserRole(user),
+          isActive: newStatus,
+          trangThai: newStatus ? 'hoatDong' : 'khoa'
+        }),
+      });
+
+      if (response.ok) {
+        toast.success(newStatus ? 'Đã mở khóa tài khoản!' : 'Đã khóa tài khoản thành công!');
+        cache.clearCache();
+        fetchUsers(true);
+      } else {
+        toast.error('Không thể cập nhật trạng thái tài khoản.');
+      }
+    } catch (error) {
+      toast.error('Lỗi kết nối khi thay đổi trạng thái.');
+    }
+  };
+
   const openEditDialog = (user: User) => {
     setSelectedUser(user);
     setEditUserData({
@@ -237,6 +292,12 @@ export default function AccountManagementPage() {
       isActive: getUserIsActive(user)
     });
     setIsEditDialogOpen(true);
+  };
+
+  const openResetPasswordDialog = (user: User) => {
+    setSelectedUser(user);
+    setNewPassword('');
+    setIsResetPasswordDialogOpen(true);
   };
 
   const getRoleBadge = (role: string) => {
@@ -261,7 +322,6 @@ export default function AccountManagementPage() {
       .slice(0, 2);
   };
 
-  // Helper functions to safely get user data
   const getUserName = (user: User) => user.name || user.ten || 'Không có tên';
   const getUserPhone = (user: User) => user.phone || user.soDienThoai || '';
   const getUserRole = (user: User) => user.role || user.vaiTro || 'nhanVien';
@@ -336,8 +396,6 @@ export default function AccountManagementPage() {
                 <Label htmlFor="create-name" className="text-xs md:text-sm">Họ và tên</Label>
                 <Input
                   id="create-name"
-                  name="name_new"
-                  autoComplete="off"
                   value={createUserData.name}
                   onChange={(e) => setCreateUserData({ ...createUserData, name: e.target.value })}
                   placeholder="Nhập họ và tên"
@@ -348,9 +406,7 @@ export default function AccountManagementPage() {
                 <Label htmlFor="create-email" className="text-xs md:text-sm">Email</Label>
                 <Input
                   id="create-email"
-                  name="email_new"
                   type="email"
-                  autoComplete="off"
                   value={createUserData.email}
                   onChange={(e) => setCreateUserData({ ...createUserData, email: e.target.value })}
                   placeholder="Nhập email"
@@ -361,9 +417,7 @@ export default function AccountManagementPage() {
                 <Label htmlFor="create-password" className="text-xs md:text-sm">Mật khẩu</Label>
                 <Input
                   id="create-password"
-                  name="password_new"
                   type="password"
-                  autoComplete="new-password"
                   value={createUserData.password}
                   onChange={(e) => setCreateUserData({ ...createUserData, password: e.target.value })}
                   placeholder="Nhập mật khẩu"
@@ -374,8 +428,6 @@ export default function AccountManagementPage() {
                 <Label htmlFor="create-phone" className="text-xs md:text-sm">Số điện thoại</Label>
                 <Input
                   id="create-phone"
-                  name="phone_new"
-                  autoComplete="off"
                   value={createUserData.phone}
                   onChange={(e) => setCreateUserData({ ...createUserData, phone: e.target.value })}
                   placeholder="Nhập số điện thoại"
@@ -410,87 +462,101 @@ export default function AccountManagementPage() {
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
-
-     
+      </Dialog>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4 lg:gap-6">
-        <Card className="p-2 md:p-4 premium-card">
+        <Card className="p-2 md:p-4 premium-card shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Tổng người dùng</p>
+              <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase tracking-tight">Tổng người dùng</p>
               <p className="text-base md:text-2xl font-bold">{users.length}</p>
             </div>
-            <Users className="h-3 w-3 md:h-4 md:w-4 text-gray-500" />
+            <div className="p-2 bg-blue-50 rounded-full">
+               <Users className="h-3 w-3 md:h-4 md:w-4 text-blue-600" />
+            </div>
           </div>
         </Card>
 
-        <Card className="p-2 md:p-4 premium-card">
+        <Card className="p-2 md:p-4 premium-card shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Quản trị viên</p>
+              <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase tracking-tight">Quản trị viên</p>
               <p className="text-base md:text-2xl font-bold text-red-600">
                 {users.filter(u => getUserRole(u) === 'admin').length}
               </p>
             </div>
-            <Shield className="h-3 w-3 md:h-4 md:w-4 text-red-600" />
+            <div className="p-2 bg-red-50 rounded-full">
+               <Shield className="h-3 w-3 md:h-4 md:w-4 text-red-600" />
+            </div>
           </div>
         </Card>
 
-        <Card className="p-2 md:p-4 premium-card">
+        <Card className="p-2 md:p-4 premium-card shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Chủ nhà</p>
+              <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase tracking-tight">Chủ nhà</p>
               <p className="text-base md:text-2xl font-bold text-blue-600">
                 {users.filter(u => getUserRole(u) === 'chuNha').length}
               </p>
             </div>
-            <Users className="h-3 w-3 md:h-4 md:w-4 text-blue-600" />
+            <div className="p-2 bg-blue-50 rounded-full">
+               <Users className="h-3 w-3 md:h-4 md:w-4 text-blue-600" />
+            </div>
           </div>
         </Card>
 
-        <Card className="p-2 md:p-4 premium-card">
+        <Card className="p-2 md:p-4 premium-card shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Nhân viên</p>
-              <p className="text-base md:text-2xl font-bold text-green-600">
+              <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase tracking-tight">Nhân viên</p>
+              <p className="text-base md:text-2xl font-bold text-emerald-600">
                 {users.filter(u => getUserRole(u) === 'nhanVien').length}
               </p>
             </div>
-            <Users className="h-3 w-3 md:h-4 md:w-4 text-green-600" />
+            <div className="p-2 bg-emerald-50 rounded-full">
+               <Users className="h-3 w-3 md:h-4 md:w-4 text-emerald-600" />
+            </div>
           </div>
         </Card>
 
-        <Card className="p-2 md:p-4 premium-card">
+        <Card className="p-2 md:p-4 premium-card shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Khách thuê</p>
+              <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase tracking-tight">Khách thuê</p>
               <p className="text-base md:text-2xl font-bold text-orange-500">
                 {users.filter(u => getUserRole(u) === 'khachThue').length}
               </p>
             </div>
-            <Users className="h-3 w-3 md:h-4 md:w-4 text-orange-500" />
+            <div className="p-2 bg-orange-50 rounded-full">
+               <Users className="h-3 w-3 md:h-4 md:w-4 text-orange-500" />
+            </div>
           </div>
         </Card>
       </div>
 
       {/* Desktop Table */}
-      <Card className="hidden md:block premium-card border-none shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Danh sách người dùng
-          </CardTitle>
-          <CardDescription>
-            Quản lý tất cả tài khoản trong hệ thống ({filteredUsers.length} người dùng)
-          </CardDescription>
+      <Card className="hidden md:block premium-card border-none shadow-lg overflow-hidden">
+        <CardHeader className="bg-white/50 border-b">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                Danh sách người dùng
+              </CardTitle>
+              <CardDescription>
+                Quản lý tất cả tài khoản trong hệ thống ({filteredUsers.length} người dùng)
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent className="p-0">
           <UserDataTable
             data={filteredUsers}
             onEdit={openEditDialog}
             onDelete={handleDeleteUser}
+            onToggleStatus={handleToggleStatus}
+            onResetPassword={openResetPasswordDialog}
             currentUserId={session?.user?.id}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
@@ -526,9 +592,8 @@ export default function AccountManagementPage() {
             return (
               <Card key={user._id} className="p-4 premium-card border-none shadow-md">
                 <div className="space-y-3">
-                  {/* Header with avatar and info */}
                   <div className="flex items-start gap-3">
-                    <Avatar className="h-12 w-12">
+                    <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
                       <AvatarImage src={getUserAvatar(user)} />
                       <AvatarFallback className="bg-blue-100 text-blue-600">
                         {getInitials(getUserName(user))}
@@ -548,8 +613,7 @@ export default function AccountManagementPage() {
                     </div>
                   </div>
 
-                  {/* Contact info */}
-                  <div className="space-y-1.5 text-xs border-t pt-2">
+                  <div className="space-y-2 text-xs border-t pt-2">
                     {getUserPhone(user) && (
                       <div className="flex items-center gap-2 text-gray-600">
                         <Phone className="h-3 w-3" />
@@ -564,41 +628,42 @@ export default function AccountManagementPage() {
                           : 'Chưa cập nhật'
                       }</span>
                     </div>
-                    {user.lastLogin && (
-                      <div className="flex items-center gap-2 text-blue-500 font-medium">
-                        <RefreshCw className="h-3 w-3" />
-                        <span>Đăng nhập cuối: {new Date(user.lastLogin).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                      </div>
-                    )}
                   </div>
 
-                  {/* Status */}
-                  <div className="border-t pt-2">
-                    <Badge variant={getUserIsActive(user) ? "default" : "secondary"} className="text-xs">
-                      {getUserIsActive(user) ? 'Hoạt động' : 'Ngừng hoạt động'}
+                  <div className="border-t pt-2 flex justify-between items-center">
+                    <Badge variant={getUserIsActive(user) ? "default" : "secondary"} className="text-[10px] uppercase tracking-wider">
+                      {getUserIsActive(user) ? 'Hoạt động' : 'Tạm khóa'}
                     </Badge>
                   </div>
 
-                  {/* Action buttons */}
                   {!isCurrentUser && (
                     <div className="flex gap-2 pt-2 border-t">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => openEditDialog(user)}
-                        className="flex-1"
+                        className="flex-1 h-8 text-xs"
                       >
-                        <Edit className="h-3.5 w-3.5 mr-1" />
+                        <Edit className="h-3 w-3 mr-1" />
                         Sửa
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleDeleteUser(user._id)}
-                        className="flex-1 text-red-600 hover:bg-red-50"
+                        onClick={() => openResetPasswordDialog(user)}
+                        className="flex-1 h-8 text-xs"
                       >
-                        <Trash2 className="h-3.5 w-3.5 mr-1" />
-                        Xóa
+                        <LockKeyhole className="h-3 w-3 mr-1" />
+                        Mật khẩu
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleStatus(user)}
+                        className={`flex-1 h-8 text-xs ${getUserIsActive(user) ? 'text-orange-600' : 'text-emerald-600'}`}
+                      >
+                         {getUserIsActive(user) ? <UserX className="h-3 w-3 mr-1" /> : <UserCheck className="h-3 w-3 mr-1" />}
+                         {getUserIsActive(user) ? 'Khóa' : 'Mở'}
                       </Button>
                     </div>
                   )}
@@ -609,9 +674,9 @@ export default function AccountManagementPage() {
         </div>
 
         {filteredUsers.length === 0 && (
-          <div className="text-center py-8">
+          <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed mt-4">
             <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">Không có người dùng nào</p>
+            <p className="text-gray-500">Hệ thống chưa tìm thấy tài khoản nào khớp với yêu cầu.</p>
           </div>
         )}
       </div>
@@ -630,8 +695,6 @@ export default function AccountManagementPage() {
               <Label htmlFor="edit-name" className="text-xs md:text-sm">Họ và tên</Label>
               <Input
                 id="edit-name"
-                name="edit_name_off"
-                autoComplete="off"
                 value={editUserData.name}
                 onChange={(e) => setEditUserData({ ...editUserData, name: e.target.value })}
                 placeholder="Nhập họ và tên"
@@ -642,8 +705,6 @@ export default function AccountManagementPage() {
               <Label htmlFor="edit-phone" className="text-xs md:text-sm">Số điện thoại</Label>
               <Input
                 id="edit-phone"
-                name="edit_phone_off"
-                autoComplete="off"
                 value={editUserData.phone}
                 onChange={(e) => setEditUserData({ ...editUserData, phone: e.target.value })}
                 placeholder="Nhập số điện thoại"
@@ -675,6 +736,51 @@ export default function AccountManagementPage() {
             </Button>
             <Button size="sm" onClick={handleEditUser} className="w-full sm:w-auto">
               Cập nhật
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={isResetPasswordDialogOpen} onOpenChange={setIsResetPasswordDialogOpen}>
+        <DialogContent className="w-[95vw] sm:w-full sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LockKeyhole className="h-5 w-5 text-orange-500" />
+              Đặt lại mật khẩu
+            </DialogTitle>
+            <DialogDescription>
+              Nhập mật khẩu mới cho tài khoản <strong>{selectedUser ? getUserName(selectedUser) : ''}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-password">Mật khẩu mới</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Nhập ít nhất 6 ký tự"
+                autoFocus
+              />
+            </div>
+            <div className="p-3 bg-blue-50 border border-blue-100 rounded-md">
+              <p className="text-xs text-blue-700 leading-relaxed">
+                <strong>Lưu ý:</strong> Sau khi đặt lại, người dùng sẽ phải dùng mật khẩu mới này để đăng nhập. Bạn hãy thông báo mật khẩu này cho họ nhé.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setIsResetPasswordDialogOpen(false)} className="w-full sm:w-auto">
+              Hủy
+            </Button>
+            <Button 
+              className="bg-orange-600 hover:bg-orange-700 w-full sm:w-auto" 
+              onClick={handleResetPassword}
+              disabled={!newPassword || newPassword.length < 6}
+            >
+              Đặt lại mật khẩu
             </Button>
           </DialogFooter>
         </DialogContent>

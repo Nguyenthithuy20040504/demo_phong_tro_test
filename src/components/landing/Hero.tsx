@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export function Hero() {
   return (
-    <section className="relative min-h-[85vh] flex items-center bg-[#14B8A6] pt-20 overflow-hidden">
+    <section id="gioi-thieu" className="relative min-h-[85vh] flex items-center bg-[#14B8A6] pt-20 overflow-hidden">
       <div className="container mx-auto px-6 lg:px-12 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         {/* Left Side: Text content */}
         <div className="text-white space-y-8 z-10">

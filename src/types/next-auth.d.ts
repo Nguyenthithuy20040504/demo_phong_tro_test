@@ -9,6 +9,8 @@ declare module 'next-auth' {
       role: string;
       phone: string;
       avatar?: string;
+      goiDichVu?: string;
+      ngayHetHan?: string;
     };
     client?: {
       clientid: string;
@@ -26,6 +28,8 @@ declare module 'next-auth' {
     role: string;
     phone: string;
     avatar?: string;
+    goiDichVu?: string;
+    ngayHetHan?: string;
   }
 }
 
@@ -34,6 +38,9 @@ declare module 'next-auth/jwt' {
     role: string;
     phone: string;
     avatar?: string;
+    goiDichVu?: string;
+    ngayHetHan?: string;
+
     client?: {
       clientid: string;
       clientemail: string;

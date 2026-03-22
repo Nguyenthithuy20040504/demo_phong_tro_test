@@ -14,7 +14,7 @@ Kiểu bấm vào các submenu nó ra đồng bộ giống nhau như hợp đồ
 | 5.0 | Chủ trọ/ Quản lý Phòng |  | Xem chi tiết thông tin từng phòng khi click vào ( ở tất cả các trang quản lý khác ) | Chưa Xem chi tiết thông tin từng phòng( ở tất cả các trang quản lý khác )  | Đã xử lý |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | 6.0 | Chủ trọ( phân quyền) |  | Thông tin quản lý của hệ thống hiển thị theo từng tài khoản riêng ứng với từng chủ trọ   | Thông tin quản lý của hệ thống hiển thị giống nhau với mọi tài khoản chủ trọ( chưa có nền tảng quản lý riêng cho từng chủ trọ khác nhau) | Đang xử lý | Cần xử lý tiếp | phần này mô tả kĩ giúp anh nhé, anh chưa rõ ràng lắm | Anh có phân quyền dữ 
 liệu của chủ trọ rồi, còn
-phải làm thêm gì nữa à | Check lại chỗ này đi, phân quyền dữ liệu của ông A ông B không xem được ấy 25a4042226@hvnh.edu.vn | Check hộ a nha, cần 
+phải làm thêm gì nữa à | Check lại chỗ này đi, phân quyền dữ liệu của ông A ông B không xem được ấy piroom@gmail.com | Check hộ a nha, cần 
 sửa ntn mô tả chi tiết
 giúp a nhaaa |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | 7.0 | Chủ trọ  |  | Có trang quản lý thông báo  | Trang quản lý thông báo ban đầu đang bị thay bằng thông báo nhắc nợ zalo | Đã xử lý |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |

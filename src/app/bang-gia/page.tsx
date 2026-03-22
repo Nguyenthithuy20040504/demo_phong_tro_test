@@ -6,7 +6,7 @@ export default function BangGiaPage() {
   return (
     <main className="min-h-screen bg-[#F0FDFA]">
       <Navbar />
-      <div className="pt-20"> {/* Header spacing */}
+      <div>
         <Pricing />
       </div>
       <Footer />

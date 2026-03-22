@@ -35,10 +35,19 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Create new user
+    // Create new user with both Vietnamese and English fields for compatibility
     const newUser = new NguoiDung({
-      ...validatedData,
+      ten: validatedData.ten,
+      name: validatedData.ten,
       email: validatedData.email.toLowerCase(),
+      matKhau: validatedData.matKhau,
+      password: validatedData.matKhau,
+      soDienThoai: validatedData.soDienThoai,
+      phone: validatedData.soDienThoai,
+      vaiTro: validatedData.vaiTro,
+      role: validatedData.vaiTro,
+      trangThai: 'hoatDong',
+      isActive: true,
     });
     
     await newUser.save();

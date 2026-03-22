@@ -30,7 +30,7 @@ export function Navbar() {
 
         {/* Desktop Nav */}
         <div className="hidden lg:flex items-center gap-8 font-josefin">
-          <Link href="#gioi-thieu" className="text-gray-600 hover:text-[#14B8A6] font-bold text-sm uppercase tracking-widest transition-colors">
+          <Link href="/#gioi-thieu" className="text-gray-600 hover:text-[#14B8A6] font-bold text-sm uppercase tracking-widest transition-colors">
             Giới thiệu
           </Link>
           <Link href="/bang-gia" className="text-gray-600 hover:text-[#14B8A6] font-bold text-sm uppercase tracking-widest transition-colors">
@@ -39,7 +39,7 @@ export function Navbar() {
           <Link href="/xem-phong" className="text-gray-600 hover:text-[#14B8A6] font-bold text-sm uppercase tracking-widest transition-colors">
             Xem phòng
           </Link>
-          <Link href="#lien-he" className="text-gray-600 hover:text-[#14B8A6] font-bold text-sm uppercase tracking-widest transition-colors">
+          <Link href="/#lien-he" className="text-gray-600 hover:text-[#14B8A6] font-bold text-sm uppercase tracking-widest transition-colors">
             Liên hệ
           </Link>
         </div>
@@ -50,11 +50,11 @@ export function Navbar() {
             Đăng nhập
           </Link>
           <a 
-            href="tel:0326132124" 
+            href="tel:0888888888" 
             className="flex items-center gap-2.5 bg-[#14B8A6] hover:bg-[#119A8B] text-white px-6 py-2.5 rounded-full shadow-lg shadow-[#14B8A6]/30 transition-all hover:scale-105 active:scale-95"
           >
             <Phone className="h-4 w-4 fill-white" />
-            <span className="font-bold font-josefin text-base">0326.132.124</span>
+            <span className="font-bold font-josefin text-base">0888.888.888</span>
           </a>
         </div>
       </div>

@@ -4,6 +4,9 @@ import ThanhToan from '@/models/ThanhToan';
 import HoaDon from '@/models/HoaDon';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { getAccessibleToaNhaIds } from '@/lib/auth-utils';
+import Phong from '@/models/Phong';
+import mongoose from 'mongoose';
 
 // GET - Lấy danh sách thanh toán
 export async function GET(request: NextRequest) {
@@ -22,12 +25,43 @@ export async function GET(request: NextRequest) {
     const hoaDonId = searchParams.get('hoaDonId');
 
     const query: any = {};
+    
+    // Phân quyền: Lọc theo vai trò của người dùng
+    if (session.user.role === 'khachThue') {
+      // Khách thuê chỉ xem biên lai của chính mình
+      const hoaDons = await HoaDon.find({ khachThue: session.user.id }).select('_id');
+      query.hoaDon = { $in: hoaDons.map(hd => hd._id) };
+    } else if (session.user.role !== 'admin') {
+      // Chủ nhà hoặc Nhân viên: Lọc theo các tòa nhà được phép quản lý
+      const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
+      if (accessibleToaNhaIds !== null) {
+        const phongs = await Phong.find({ toaNha: { $in: accessibleToaNhaIds } }).select('_id');
+        const phongIds = phongs.map(p => p._id);
+        const hoaDons = await HoaDon.find({ phong: { $in: phongIds } }).select('_id');
+        query.hoaDon = { $in: hoaDons.map(hd => hd._id) };
+      }
+    }
+
+    // Áp dụng thêm các bộ lọc từ query params nếu có
     if (hopDongId) {
-      // Tìm hóa đơn theo hợp đồng
-      const hoaDons = await HoaDon.find({ hopDong: hopDongId }).select('_id');
+      const hdQuery: any = { hopDong: hopDongId };
+      if (query.hoaDon) hdQuery._id = query.hoaDon;
+      
+      const hoaDons = await HoaDon.find(hdQuery).select('_id');
       query.hoaDon = { $in: hoaDons.map(hd => hd._id) };
     }
+    
     if (hoaDonId) {
+      if (query.hoaDon) {
+        const allowedIds = query.hoaDon.$in.map((id: any) => id.toString());
+        if (!allowedIds.includes(hoaDonId)) {
+          return NextResponse.json({
+            success: true,
+            data: [],
+            pagination: { page, limit, total: 0, pages: 0 }
+          });
+        }
+      }
       query.hoaDon = hoaDonId;
     }
 

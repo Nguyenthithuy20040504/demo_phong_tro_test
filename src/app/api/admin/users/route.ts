@@ -35,9 +35,68 @@ export async function GET() {
       query.role = { $nin: ['admin', 'chuNha'] };
     }
     
-    const users = await NguoiDung.find(query, { password: 0, matKhau: 0 }).sort({ createdAt: -1 });
+    const users = await NguoiDung.find(query, { password: 0, matKhau: 0 })
+      .populate('nguoiQuanLy', 'ngayHetHan')
+      .sort({ createdAt: -1 })
+      .lean();
     
-    return NextResponse.json(users);
+    // Auto-migrate: Nếu có user nào chưa có ngayHetHan, cập nhật luôn
+    let needsUpdate = false;
+    const updatedUsers = [];
+    
+    for (let user of users as any[]) {
+      // Tính chất DB: Nhân viên LUÔN kế thừa ngày hết hạn của Chủ nhà nếu có Chủ nhà
+      const roleStr = user.role || user.vaiTro;
+      if (roleStr === 'nhanVien' && user.nguoiQuanLy && user.nguoiQuanLy.ngayHetHan) {
+        user.ngayHetHan = user.nguoiQuanLy.ngayHetHan;
+      }
+
+      if (!user.ngayHetHan) {
+        needsUpdate = true;
+        const now = new Date();
+        let expiryDate = null;
+        
+        const roleStr = user.role || user.vaiTro;
+        
+        if (roleStr === 'admin' || roleStr === 'khachThue') {
+          expiryDate = new Date(2099, 11, 31);
+        } else if (roleStr === 'chuNha') {
+          // Lấy ngày tạo, nếu không có lấy hôm nay
+          expiryDate = new Date(user.createdAt || user.ngayTao || now);
+          expiryDate.setMonth(expiryDate.getMonth() + 1);
+        } else if (roleStr === 'nhanVien') {
+          if (user.nguoiQuanLy) {
+             const chuNha = await NguoiDung.findById(user.nguoiQuanLy);
+             expiryDate = chuNha?.ngayHetHan || new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+          } else {
+             expiryDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+          }
+        } else {
+          // Default for any other case
+          expiryDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+        }
+
+        console.log(`Migrating user ${user.email} with role ${roleStr} to expiry ${expiryDate}`);
+        
+        await NguoiDung.collection.updateOne(
+          { _id: user._id }, 
+          { 
+            $set: { 
+              ngayHetHan: expiryDate,
+              goiDichVu: user.goiDichVu || 'mienPhi'
+            } 
+          }
+        );
+
+        // Fetch the updated document raw to ensure we have the new fields
+        const updated = await NguoiDung.findById(user._id, { password: 0, matKhau: 0 }).lean();
+        updatedUsers.push(updated);
+      } else {
+        updatedUsers.push(user);
+      }
+    }
+
+    return NextResponse.json(updatedUsers);
   } catch (error) {
     console.error('Error fetching users:', error);
     return NextResponse.json({ message: 'Lỗi hệ thống khi tải danh sách người dùng' }, { status: 500 });

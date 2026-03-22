@@ -122,3 +122,57 @@ export async function DELETE(
     return NextResponse.json({ message: 'Không thể xóa tài khoản lúc này, vui lòng thử lại sau' }, { status: 500 });
   }
 }
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.email || (session.user.role !== 'admin' && session.user.role !== 'chuNha')) {
+      return NextResponse.json({ message: 'Bạn không có quyền thực hiện thao tác này' }, { status: 401 });
+    }
+
+    const { id } = params;
+    const body = await request.json();
+    const { password } = body;
+
+    if (!password || password.length < 6) {
+      return NextResponse.json({ message: 'Mật khẩu mới phải có ít nhất 6 ký tự' }, { status: 400 });
+    }
+
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json({ message: 'ID người dùng không hợp lệ' }, { status: 400 });
+    }
+
+    await dbConnect();
+    
+    const userToUpdate = await NguoiDung.findById(id);
+    if (!userToUpdate) {
+      return NextResponse.json({ message: 'Không tìm thấy người dùng này' }, { status: 404 });
+    }
+
+    // Permission checks
+    if (session.user.role === 'chuNha') {
+      // Landlord check
+      const managedBy = userToUpdate.nguoiQuanLy?.toString();
+      const isActuallyStaffOrTenant = userToUpdate.vaiTro === 'nhanVien' || userToUpdate.vaiTro === 'khachThue';
+      
+      if (managedBy !== session.user.id || !isActuallyStaffOrTenant) {
+        return NextResponse.json({ message: 'Bạn chỉ có quyền đặt lại mật khẩu cho nhân viên hoặc khách thuê do mình quản lý' }, { status: 403 });
+      }
+    }
+
+    // Set password (this will trigger pre-save hook for hashing)
+    userToUpdate.matKhau = password;
+    userToUpdate.password = password;
+    await userToUpdate.save();
+
+    return NextResponse.json({ message: 'Đặt lại mật khẩu thành công' });
+  } catch (error) {
+    console.error('Error resetting password:', error);
+    return NextResponse.json({ message: 'Lỗi hệ thống khi đặt lại mật khẩu' }, { status: 500 });
+  }
+}
+

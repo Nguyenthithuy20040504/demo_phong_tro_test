@@ -30,6 +30,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   
   // Tạo navigation items dựa trên role
   const navMain = React.useMemo(() => {
+    const isAdmin = session?.user?.role === 'admin'
+
     const baseItems = [
       {
         title: "Quản lý cơ bản",
@@ -45,10 +47,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "Phòng",
             url: "/dashboard/phong",
           },
-          {
+          ...(!isAdmin ? [{
             title: "Khách thuê",
             url: "/dashboard/khach-thue",
-          },
+          }] : []),
         ],
       },
       {
@@ -56,10 +58,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         url: "#",
         icon: Receipt,
         items: [
-          {
+          ...(!isAdmin ? [{
             title: "Hợp đồng",
             url: "/dashboard/hop-dong",
-          },
+          }] : []),
           {
             title: "Hóa đơn",
             url: "/dashboard/hoa-don",
@@ -70,7 +72,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           },
         ],
       },
-      {
+      ...(isAdmin ? [] : [{
         title: "Vận hành",
         url: "#",
         icon: AlertTriangle,
@@ -84,7 +86,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             url: "/dashboard/thong-bao",
           },
         ],
-      },
+      }]),
       {
         title: "Cài đặt",
         url: "#",
@@ -102,8 +104,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       },
     ]
 
-    // Thêm mục quản lý admin nếu là admin
-    if (session?.user?.role === 'admin' || session?.user?.role === 'chuNha') {
+    // Thêm mục quản lý admin nếu là admin hoặc chủ nhà
+    if (isAdmin || session?.user?.role === 'chuNha') {
       baseItems.push({
         title: "Quản trị",
         url: "#",
@@ -116,6 +118,42 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ],
       })
     }
+
+    // Phần dành riêng cho Admin (Quản lý SaaS)
+    if (isAdmin) {
+      baseItems.push({
+        title: "Dịch vụ SaaS",
+        url: "#",
+        icon: Building2,
+        items: [
+          {
+            title: "Dashboard SaaS",
+            url: "/dashboard/admin/saas-dashboard",
+          },
+          {
+            title: "Quản lý Gói",
+            url: "/dashboard/admin/quan-ly-goi",
+          },
+          {
+            title: "Hóa đơn gia hạn",
+            url: "/dashboard/admin/hoa-don-saas",
+          },
+        ],
+      })
+    } else if (session?.user?.role === 'chuNha') {
+      baseItems.push({
+        title: "Dịch vụ SaaS",
+        url: "#",
+        icon: Building2,
+        items: [
+          {
+            title: "Gia hạn gói",
+            url: "/dashboard/gia-han-goi",
+          },
+        ],
+      })
+    }
+
 
     return baseItems
   }, [session?.user?.role])

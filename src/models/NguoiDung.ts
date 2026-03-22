@@ -23,6 +23,8 @@ export interface INguoiDung extends Document {
   lastLogin?: Date;
   address?: string;
   nguoiQuanLy?: mongoose.Types.ObjectId;
+  goiDichVu: 'mienPhi' | 'coBan' | 'chuyenNghiep';
+  ngayHetHan: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -109,6 +111,15 @@ const NguoiDungSchema = new Schema<INguoiDung>({
     type: Schema.Types.ObjectId,
     ref: 'NguoiDung',
     default: null
+  },
+  goiDichVu: {
+    type: String,
+    enum: ['mienPhi', 'coBan', 'chuyenNghiep'],
+    default: 'mienPhi'
+  },
+  ngayHetHan: {
+    type: Date,
+    default: null // Will be populated by pre-save hook
   }
 }, {
   timestamps: true // Mongoose tự tạo createdAt và updatedAt
@@ -180,6 +191,43 @@ NguoiDungSchema.pre('save', function(next) {
     this.trangThai = this.isActive ? 'hoatDong' : 'khoa';
   }
   
+  // Logic tính ngày hết hạn (ngayHetHan) khi tạo mới hoặc thay đổi gói/vai trò
+  if ((this.isNew || this.isModified('goiDichVu') || this.isModified('vaiTro')) && !this.isModified('ngayHetHan')) {
+    const now = new Date();
+    
+    if (this.vaiTro === 'admin' || this.vaiTro === 'khachThue') {
+      // Admin và Khách thuê: Không giới hạn (dùng ngày xa trong tương lai)
+      this.ngayHetHan = new Date(2099, 11, 31);
+    } else if (this.vaiTro === 'chuNha') {
+      // Chủ nhà: Hôm nay + thời hạn gói
+      const expiry = new Date();
+      if (this.goiDichVu === 'chuyenNghiep') {
+        expiry.setMonth(expiry.getMonth() + 6); // Gói Chuyên nghiệp 6 tháng
+      } else {
+        expiry.setMonth(expiry.getMonth() + 1); // Miễn phí và Cơ bản 1 tháng
+      }
+      this.ngayHetHan = expiry;
+    }
+    // Đối với Nhân viên, việc kế thừa ngày hết hạn của Chủ nhà sẽ được xử lý trong pre-save async nếu có nguoiQuanLy
+  }
+
+  next();
+});
+
+// Hook xử lý async cho Nhân viên (kế thừa ngày của Chủ nhà)
+NguoiDungSchema.pre('save', async function(next) {
+  if (this.vaiTro === 'nhanVien' && (this.isNew || this.isModified('nguoiQuanLy'))) {
+    if (this.nguoiQuanLy) {
+      try {
+        const chuNha = await mongoose.model('NguoiDung').findById(this.nguoiQuanLy);
+        if (chuNha && chuNha.ngayHetHan) {
+          this.ngayHetHan = chuNha.ngayHetHan;
+        }
+      } catch (error) {
+        console.error('Error syncing staff expiry date:', error);
+      }
+    }
+  }
   next();
 });
 
@@ -191,4 +239,7 @@ NguoiDungSchema.methods.comparePassword = async function(candidatePassword: stri
 
 // Email đã có unique: true nên không cần index thủ công
 
-export default mongoose.models.NguoiDung || mongoose.model<INguoiDung>('NguoiDung', NguoiDungSchema);
+if (mongoose.models.NguoiDung) {
+  delete mongoose.models.NguoiDung;
+}
+export default mongoose.model<INguoiDung>('NguoiDung', NguoiDungSchema);

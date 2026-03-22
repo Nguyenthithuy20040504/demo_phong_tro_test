@@ -42,7 +42,9 @@ export const authOptions: NextAuthOptions = {
               name: user.ten || user.name,
               role: user.vaiTro || user.role || "admin",
               phone: user.soDienThoai || user.phone,
-              avatar: user.anhDaiDien || user.avatar || null,
+              avatar: user.anhDaiDien || user.avatar || undefined,
+              goiDichVu: user.goiDichVu,
+              ngayHetHan: user.ngayHetHan ? user.ngayHetHan.toISOString() : undefined,
             };
           }
 
@@ -69,7 +71,7 @@ export const authOptions: NextAuthOptions = {
             name: client.hoTen,
             role: "khachThue",
             phone: client.soDienThoai,
-            avatar: null,
+            avatar: undefined,
           };
         } catch (error) {
           console.error("Auth error:", error);
@@ -85,12 +87,21 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.role = (user as any).role;
         token.phone = (user as any).phone;
         token.avatar = (user as any).avatar;
+        token.goiDichVu = (user as any).goiDichVu;
+        token.ngayHetHan = (user as any).ngayHetHan;
       }
+      
+      // Handle session update
+      if (trigger === "update" && session) {
+        token.goiDichVu = (session.user as any).goiDichVu;
+        token.ngayHetHan = (session.user as any).ngayHetHan;
+      }
+      
       return token;
     },
 
@@ -100,8 +111,9 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as string;
         session.user.phone = token.phone as string;
         session.user.avatar = (token.avatar as string) ?? undefined;
-        // Email is usually already there from NextAuth's default behavior, 
-        // but explicitly setting it from token if available is safer when overriding.
+        (session.user as any).goiDichVu = token.goiDichVu as string;
+        (session.user as any).ngayHetHan = token.ngayHetHan as string;
+        
         if (token.email) session.user.email = token.email;
       }
       return session;

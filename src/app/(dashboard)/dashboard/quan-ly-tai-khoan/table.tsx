@@ -20,6 +20,8 @@ import {
   UserX,
   Search,
   RefreshCw,
+  Clock,
+  LockKeyhole
 } from "lucide-react"
 import {
   ColumnDef,
@@ -90,6 +92,8 @@ interface User {
   lastLogin?: string
   isActive?: boolean
   trangThai?: string
+  goiDichVu?: string
+  ngayHetHan?: string
 }
 
 // Helper functions
@@ -134,10 +138,25 @@ const getRoleBadge = (role: string) => {
   }
 }
 
+const getPlanBadge = (plan: string) => {
+  switch (plan) {
+    case 'mienPhi':
+      return <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">Miễn phí</Badge>
+    case 'coBan':
+      return <Badge variant="default" className="bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-50">Cơ bản</Badge>
+    case 'chuyenNghiep':
+      return <Badge variant="default" className="bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-50">Chuyên nghiệp</Badge>
+    default:
+      return <Badge variant="outline">Miễn phí</Badge>
+  }
+}
+
 type UserTableProps = {
   onView?: (user: User) => void
   onEdit: (user: User) => void
   onDelete: (id: string) => void
+  onToggleStatus: (user: User) => void
+  onResetPassword: (user: User) => void
   currentUserId?: string
 }
 
@@ -195,6 +214,49 @@ const createColumns = (props: UserTableProps & { setUserToDelete: (u: User) => v
     accessorKey: "role",
     header: "Vai trò",
     cell: ({ row }) => getRoleBadge(getUserRole(row.original)),
+  },
+  {
+    accessorKey: "goiDichVu",
+    header: "Gói dịch vụ",
+    cell: ({ row }) => {
+      return getPlanBadge(row.original.goiDichVu || 'mienPhi');
+    },
+  },
+  {
+    accessorKey: "ngayHetHan",
+    header: "Ngày hết hạn",
+    cell: ({ row }) => {
+      const role = getUserRole(row.original);
+      const dateStr = row.original.ngayHetHan;
+      
+      // Admin và Khách thuê luôn là Không giới hạn
+      if (role === 'admin' || role === 'khachThue') {
+        return <Badge variant="outline" className="text-emerald-600 bg-emerald-50 border-emerald-200">Không giới hạn</Badge>;
+      }
+
+      if (!dateStr) return <span className="text-muted-foreground text-sm">-</span>;
+      
+      const date = new Date(dateStr);
+      
+      // Nếu ngày quá xa (2099+) thì hiển thị Không giới hạn
+      if (date.getFullYear() >= 2099) {
+        return <Badge variant="outline" className="text-emerald-600 bg-emerald-50 border-emerald-200">Không giới hạn</Badge>;
+      }
+
+      const isExpired = date < new Date();
+      
+      return (
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <Clock className={`h-3 w-3 ${isExpired ? 'text-red-500' : 'text-muted-foreground'}`} />
+            <span className={`text-sm font-medium ${isExpired ? 'text-red-600' : ''}`}>
+              {date.toLocaleDateString('vi-VN')}
+            </span>
+          </div>
+          {isExpired && <span className="text-[10px] text-red-500 font-bold ml-5 uppercase">Đã hết hạn</span>}
+        </div>
+      );
+    },
   },
   {
     accessorKey: "isActive",
@@ -291,6 +353,36 @@ const createColumns = (props: UserTableProps & { setUserToDelete: (u: User) => v
               <Edit className="mr-2 h-4 w-4" />
               Chỉnh sửa
             </DropdownMenuItem>
+
+            {!isCurrentUser && (
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation();
+                props.onToggleStatus(row.original);
+              }}>
+                {getUserIsActive(row.original) ? (
+                  <>
+                    <UserX className="mr-2 h-4 w-4 text-orange-500" />
+                    <span className="text-orange-500">Khóa tài khoản</span>
+                  </>
+                ) : (
+                  <>
+                    <UserCheck className="mr-2 h-4 w-4 text-emerald-500" />
+                    <span className="text-emerald-500">Mở khóa tài khoản</span>
+                  </>
+                )}
+              </DropdownMenuItem>
+            )}
+
+            {!isCurrentUser && (
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation();
+                props.onResetPassword(row.original);
+              }}>
+                <LockKeyhole className="mr-2 h-4 w-4" />
+                Đặt lại mật khẩu
+              </DropdownMenuItem>
+            )}
+
             {!isCurrentUser && (
               <>
                 <DropdownMenuSeparator />

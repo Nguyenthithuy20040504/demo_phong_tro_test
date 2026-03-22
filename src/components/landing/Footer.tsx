@@ -27,11 +27,11 @@ export function Footer({ showContactInfo = true }: { showContactInfo?: boolean }
                 </div>
                 <div className="flex items-center gap-3 justify-center md:justify-start">
                   <Phone className="h-5 w-5 text-[#14B8A6] shrink-0" />
-                  <span className="text-sm">0326.132.124</span>
+                  <span className="text-sm">0888.888.888</span>
                 </div>
                 <div className="flex items-center gap-3 justify-center md:justify-start">
                   <Mail className="h-5 w-5 text-[#14B8A6] shrink-0" />
-                  <span className="text-sm underline">25a4042226@hvnh.edu.vn</span>
+                  <span className="text-sm underline">piroom@gmail.com</span>
                 </div>
               </div>
             </div>
@@ -40,11 +40,11 @@ export function Footer({ showContactInfo = true }: { showContactInfo?: boolean }
             <div className="flex flex-col items-center">
               <h3 className="text-xl font-bold font-josefin text-[#134E4A] mb-6">Hotline</h3>
               <a 
-                href="tel:0326132124" 
+                href="tel:0888888888" 
                 className="w-full bg-[#14B8A6] hover:bg-[#119A8B] text-white py-6 px-4 rounded-xl flex items-center justify-center gap-4 transition-all hover:scale-105 shadow-lg shadow-[#14B8A6]/30 cursor-pointer"
               >
                 <Phone className="h-8 w-8" />
-                <span className="text-2xl font-bold font-josefin">0326.132.124</span>
+                <span className="text-2xl font-bold font-josefin">0888.888.888</span>
               </a>
             </div>
 
@@ -52,11 +52,11 @@ export function Footer({ showContactInfo = true }: { showContactInfo?: boolean }
             <div className="flex flex-col items-center">
               <h3 className="text-xl font-bold font-josefin text-[#134E4A] mb-6">Gửi email</h3>
               <a 
-                href="mailto:25a4042226@hvnh.edu.vn" 
+                href="mailto:piroom@gmail.com" 
                 className="w-full bg-[#0369A1] hover:bg-[#025a8a] text-white py-6 px-4 rounded-xl flex items-center justify-center gap-4 transition-all hover:scale-105 shadow-lg shadow-[#0369A1]/30 cursor-pointer"
               >
                 <Mail className="h-8 w-8" />
-                <span className="text-lg font-bold font-josefin break-all">25a4042226@hvnh.edu.vn</span>
+                <span className="text-lg font-bold font-josefin break-all">piroom@gmail.com</span>
               </a>
             </div>
           </div>
@@ -86,7 +86,7 @@ export function Footer({ showContactInfo = true }: { showContactInfo?: boolean }
                 Tính Năng
               </h4>
               <ul className="space-y-2 text-sm text-[#F0FDFA]/80">
-                <li><Link href="#gioi-thieu" className="hover:text-white transition-colors cursor-pointer">Quản lý tòa nhà</Link></li>
+                <li><Link href="/#tinh-nang" className="hover:text-white transition-colors cursor-pointer">Quản lý tòa nhà</Link></li>
                 <li><Link href="/xem-phong" className="hover:text-white transition-colors cursor-pointer">Xem phòng mẫu</Link></li>
                 <li><Link href="/bang-gia" className="hover:text-white transition-colors cursor-pointer">Bảng giá dịch vụ</Link></li>
               </ul>
