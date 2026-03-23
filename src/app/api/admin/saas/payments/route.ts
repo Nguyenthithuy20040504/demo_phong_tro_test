@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     await dbConnect();
-
+    const _touch = [NguoiDung, GoiDichVu];
     // Tìm kiếm nếu có searchTerm
     let query = {};
     if (searchTerm) {
@@ -72,7 +72,11 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error fetching SaaS payments:', error);
-    return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ 
+        message: error.message || 'Internal Server Error',
+        error: error.toString(),
+        stack: error.stack
+    }, { status: 500 });
   }
 }
 

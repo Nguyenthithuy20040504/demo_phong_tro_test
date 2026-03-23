@@ -245,7 +245,4 @@ NguoiDungSchema.methods.comparePassword = async function(candidatePassword: stri
 
 // Email đã có unique: true nên không cần index thủ công
 
-if (mongoose.models.NguoiDung) {
-  delete mongoose.models.NguoiDung;
-}
-export default mongoose.model<INguoiDung>('NguoiDung', NguoiDungSchema);
+export default mongoose.models.NguoiDung || mongoose.model<INguoiDung>('NguoiDung', NguoiDungSchema);
