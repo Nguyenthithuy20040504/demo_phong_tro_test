@@ -4,25 +4,75 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import SaaSPayment from '@/models/SaaSPayment';
 import NguoiDung from '@/models/NguoiDung';
+import GoiDichVu from '@/models/GoiDichVu';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (session?.user?.role !== 'admin') {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limitParam = searchParams.get('limit');
+    const limit = limitParam ? parseInt(limitParam) : 10;
+    const isAll = searchParams.get('all') === 'true';
+    const searchTerm = searchParams.get('q') || '';
+    const skip = (page - 1) * limit;
+
     await dbConnect();
-    const payments = await SaaSPayment.find({})
+
+    // Tìm kiếm nếu có searchTerm
+    let query = {};
+    if (searchTerm) {
+      const matchedUsers = await NguoiDung.find({
+        $or: [
+          { name: { $regex: searchTerm, $options: 'i' } },
+          { ten: { $regex: searchTerm, $options: 'i' } },
+          { email: { $regex: searchTerm, $options: 'i' } }
+        ]
+      }).select('_id');
+      
+      const userIds = matchedUsers.map(u => u._id);
+      query = { chuNha: { $in: userIds } };
+    }
+
+    if (isAll) {
+      const payments = await SaaSPayment.find(query)
         .populate('chuNha', 'name email ten')
         .populate('goiDichVu', 'ten')
         .sort({ createdAt: -1 });
 
-    return NextResponse.json(payments);
-  } catch (error) {
-    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+      return NextResponse.json({
+        payments,
+        total: payments.length,
+        totalPages: 1,
+        currentPage: 1
+      });
+    }
+
+    const [payments, total] = await Promise.all([
+      SaaSPayment.find(query)
+        .populate('chuNha', 'name email ten')
+        .populate('goiDichVu', 'ten')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      SaaSPayment.countDocuments(query)
+    ]);
+
+    return NextResponse.json({
+      payments,
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page
+    });
+  } catch (error: any) {
+    console.error('Error fetching SaaS payments:', error);
+    return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
 

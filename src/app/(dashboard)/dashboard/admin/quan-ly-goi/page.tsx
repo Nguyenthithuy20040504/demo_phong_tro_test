@@ -63,10 +63,16 @@ export default function ManagePlansPage() {
   const fetchPlans = async () => {
     try {
       const res = await fetch('/api/admin/saas/plans');
+      if (!res.ok) throw new Error('Fetch failed');
       const data = await res.json();
-      setPlans(data);
+      if (Array.isArray(data)) {
+        setPlans(data);
+      } else {
+        setPlans([]);
+      }
     } catch (error) {
       toast.error('Lỗi khi tải danh sách gói.');
+      setPlans([]);
     } finally {
       setLoading(false);
     }
@@ -147,42 +153,62 @@ export default function ManagePlansPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {plans.map((plan) => (
-                <TableRow key={plan._id}>
-                  <TableCell>
-                    <div className="flex flex-col">
-                        <span className="font-bold">{plan.ten}</span>
-                        {plan.isPopular && <Badge variant="default" className="w-fit text-[10px] scale-90 -translate-x-1 uppercase">Phổ biến</Badge>}
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-10">
+                    <div className="flex justify-center items-center gap-2">
+                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                       Đang tải dữ liệu...
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium">
-                    {plan.gia.toLocaleString('vi-VN')} đ
-                  </TableCell>
-                  <TableCell>{plan.thoiGian} tháng</TableCell>
-                  <TableCell>
-                    {plan.maxPhong === -1 ? 'Không giới hạn' : `${plan.maxPhong} phòng`}
-                  </TableCell>
-                  <TableCell>
-                    {plan.isActive ? (
-                        <div className="flex items-center text-emerald-600 gap-1 text-sm font-medium">
-                             <CheckCircle2 className="h-4 w-4" /> Hiển thị
-                        </div>
-                    ) : (
-                        <div className="flex items-center text-red-500 gap-1 text-sm font-medium">
-                             <XCircle className="h-4 w-4" /> Ẩn
-                        </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(plan)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="text-red-500">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                <>
+                  {Array.isArray(plans) && plans.map((plan) => (
+                    <TableRow key={plan._id}>
+                      <TableCell>
+                        <div className="flex flex-col">
+                            <span className="font-bold">{plan.ten}</span>
+                            {plan.isPopular && <Badge variant="default" className="w-fit text-[10px] scale-90 -translate-x-1 uppercase">Phổ biến</Badge>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {plan.gia?.toLocaleString('vi-VN')} đ
+                      </TableCell>
+                      <TableCell>{plan.thoiGian} tháng</TableCell>
+                      <TableCell>
+                        {plan.maxPhong === -1 ? 'Không giới hạn' : `${plan.maxPhong} phòng`}
+                      </TableCell>
+                      <TableCell>
+                        {plan.isActive ? (
+                            <div className="flex items-center text-emerald-600 gap-1 text-sm font-medium">
+                                 <CheckCircle2 className="h-4 w-4" /> Hiển thị
+                            </div>
+                        ) : (
+                            <div className="flex items-center text-red-500 gap-1 text-sm font-medium">
+                                 <XCircle className="h-4 w-4" /> Ẩn
+                            </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => openEditDialog(plan)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-red-500">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {(!plans || plans.length === 0) && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                        Chưa có gói dịch vụ nào.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </>
+              )}
             </TableBody>
           </Table>
         </CardContent>
