@@ -63,6 +63,8 @@ const PhongSchema = new Schema<IPhong>({
     enum: [
       'dieuHoa', 'nongLanh', 'tuLanh', 'giuong', 'tuQuanAo', 'banlamviec', 'banGhe',
       'tivi', 'wifi', 'mayGiat', 'bep', 'noi', 'chen', 'bat',
+      // Backward compatibility for Vietnamese strings
+      'Điều hòa', 'Nóng lạnh', 'Tủ lạnh', 'Giường', 'Tủ quần áo', 'Bàn ghế', 'WiFi', 'Máy giặt', 'Bếp',
       // Old lowercase values for backwards compatibility
       'dieuhoa', 'nonglanh', 'tulanh', 'tuquanao', 'ghe', 'maygiat'
     ],

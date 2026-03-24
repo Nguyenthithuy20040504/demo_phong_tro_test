@@ -105,3 +105,62 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (session?.user?.role !== 'admin') {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
+    }
+
+    const { id, trangThai } = await request.json();
+    if (!id || !trangThai) {
+      return NextResponse.json({ message: 'Thiếu thông tin' }, { status: 400 });
+    }
+
+    await dbConnect();
+    const payment = await SaaSPayment.findById(id);
+    if (!payment) {
+      return NextResponse.json({ message: 'Không tìm thấy hóa đơn' }, { status: 404 });
+    }
+
+    // Nếu chuyển sang trạng thái đã thanh toán, thực hiện gia hạn
+    if (trangThai === 'daThanhToan' && payment.trangThai !== 'daThanhToan') {
+      const plan = await GoiDichVu.findById(payment.goiDichVu);
+      const user = await NguoiDung.findById(payment.chuNha);
+
+      if (plan && user) {
+        let userPlanRole: 'mienPhi' | 'coBan' | 'chuyenNghiep' = 'mienPhi';
+        if (plan.ten.toLowerCase().includes('cơ bản') || plan.ten.toLowerCase().includes('basic')) userPlanRole = 'coBan';
+        if (plan.ten.toLowerCase().includes('chuyên nghiệp') || plan.ten.toLowerCase().includes('professional')) userPlanRole = 'chuyenNghiep';
+
+        const currentExpiry = user.ngayHetHan ? new Date(user.ngayHetHan) : new Date();
+        const startDate = currentExpiry > new Date() ? currentExpiry : new Date();
+        
+        const newExpiry = new Date(startDate);
+        newExpiry.setMonth(startDate.getMonth() + plan.thoiGian);
+
+        // Nâng cấp và cộng ngày cho Chủ Nhà
+        user.goiDichVu = userPlanRole;
+        user.ngayHetHan = newExpiry;
+        await user.save();
+
+        // Đồng bộ ngày hết hạn cho quân lính (Nhân viên)
+        await NguoiDung.updateMany(
+          { nguoiQuanLy: user._id, $or: [{ vaiTro: 'nhanVien' }, { role: 'nhanVien' }] },
+          { $set: { ngayHetHan: newExpiry } }
+        );
+
+        payment.ngayHetHanMoi = newExpiry;
+      }
+    }
+
+    payment.trangThai = trangThai;
+    await payment.save();
+
+    return NextResponse.json({ success: true, payment });
+  } catch (error: any) {
+    console.error('Error updating SaaS payment:', error);
+    return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });
+  }
+}

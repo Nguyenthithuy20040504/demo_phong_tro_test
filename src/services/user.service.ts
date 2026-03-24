@@ -51,7 +51,8 @@ export class UserService {
         avatar: user.anhDaiDien || user.avatar,
         role: user.vaiTro || user.role,
         createdAt: user.ngayTao || user.createdAt,
-        lastLogin: user.lastLogin
+        lastLogin: user.lastLogin,
+        thongTinThanhToan: user.thongTinThanhToan
       };
     }
 
@@ -95,6 +96,7 @@ export class UserService {
         address: data.address,
         anhDaiDien: data.avatar,
         avatar: data.avatar,
+        thongTinThanhToan: data.thongTinThanhToan,
         updatedAt: new Date(),
         ngayCapNhat: new Date()
       },
@@ -111,7 +113,8 @@ export class UserService {
         avatar: updatedUser.anhDaiDien || updatedUser.avatar,
         role: updatedUser.vaiTro || updatedUser.role,
         createdAt: updatedUser.ngayTao || updatedUser.createdAt,
-        lastLogin: updatedUser.lastLogin
+        lastLogin: updatedUser.lastLogin,
+        thongTinThanhToan: updatedUser.thongTinThanhToan
       };
     }
 

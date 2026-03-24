@@ -168,7 +168,7 @@ export default function AccountManagementPage() {
           email: '',
           password: '',
           phone: '',
-          role: 'nhanVien'
+          role: session?.user?.role === 'admin' ? 'chuNha' : 'nhanVien'
         });
         cache.clearCache();
         fetchUsers(true);
@@ -408,6 +408,7 @@ export default function AccountManagementPage() {
                   value={createUserData.name}
                   onChange={(e) => setCreateUserData({ ...createUserData, name: e.target.value })}
                   placeholder="Nhập họ và tên"
+                  autoComplete="off"
                   className="text-sm"
                 />
               </div>
@@ -419,6 +420,7 @@ export default function AccountManagementPage() {
                   value={createUserData.email}
                   onChange={(e) => setCreateUserData({ ...createUserData, email: e.target.value })}
                   placeholder="Nhập email"
+                  autoComplete="new-password"
                   className="text-sm"
                 />
               </div>
@@ -440,6 +442,7 @@ export default function AccountManagementPage() {
                   value={createUserData.phone}
                   onChange={(e) => setCreateUserData({ ...createUserData, phone: e.target.value })}
                   placeholder="Nhập số điện thoại"
+                  autoComplete="off"
                   className="text-sm"
                 />
               </div>

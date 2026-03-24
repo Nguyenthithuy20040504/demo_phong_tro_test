@@ -54,6 +54,9 @@ export function generateZaloDeepLink(hoaDon: any) {
     message += `👉 Đã thanh toán trước: ${formatCurrency(hoaDon.daThanhToan)}\n`;
   }
   message += `🚨 Số tiền cần đóng: ${formatCurrency(hoaDon.conLai)}\n\n`;
+  if (hoaDon.checkoutUrl) {
+    message += `👉 Thanh toán VietQR nhanh tại đây: ${hoaDon.checkoutUrl}\n\n`;
+  }
   message += `Hạn thanh toán là ngày ${dueDate}. Bạn vui lòng sắp xếp thanh toán đúng hạn giúp mình nhé!\n\nCảm ơn bạn!`;
 
   const encodedMessage = encodeURIComponent(message);

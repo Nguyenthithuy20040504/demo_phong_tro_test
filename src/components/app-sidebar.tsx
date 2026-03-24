@@ -31,97 +31,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // Tạo navigation items dựa trên role
   const navMain = React.useMemo(() => {
     const isAdmin = session?.user?.role === 'admin'
+    const isChuNha = session?.user?.role === 'chuNha'
 
-    const baseItems = [
-      {
-        title: "Quản lý cơ bản",
-        url: "#",
-        icon: Building,
-        isActive: true,
-        items: [
-          {
-            title: "Tòa nhà",
-            url: "/dashboard/toa-nha",
-          },
-          {
-            title: "Phòng",
-            url: "/dashboard/phong",
-          },
-          ...(!isAdmin ? [{
-            title: "Khách thuê",
-            url: "/dashboard/khach-thue",
-          }] : []),
-        ],
-      },
-      {
-        title: "Tài chính",
-        url: "#",
-        icon: Receipt,
-        items: [
-          ...(!isAdmin ? [{
-            title: "Hợp đồng",
-            url: "/dashboard/hop-dong",
-          }] : []),
-          {
-            title: "Hóa đơn",
-            url: "/dashboard/hoa-don",
-          },
-          {
-            title: "Thanh toán",
-            url: "/dashboard/thanh-toan",
-          },
-        ],
-      },
-      ...(isAdmin ? [] : [{
-        title: "Vận hành",
-        url: "#",
-        icon: AlertTriangle,
-        items: [
-          {
-            title: "Sự cố",
-            url: "/dashboard/su-co",
-          },
-          {
-            title: "Thông báo",
-            url: "/dashboard/thong-bao",
-          },
-        ],
-      }]),
-      {
-        title: "Cài đặt",
-        url: "#",
-        icon: Settings,
-        items: [
-          {
-            title: "Hồ sơ",
-            url: "/dashboard/ho-so",
-          },
-          {
-            title: "Cài đặt",
-            url: "/dashboard/cai-dat",
-          },
-        ],
-      },
-    ]
+    const items: any[] = []
 
-    // Thêm mục quản lý admin nếu là admin hoặc chủ nhà
-    if (isAdmin || session?.user?.role === 'chuNha') {
-      baseItems.push({
-        title: "Quản trị",
-        url: "#",
-        icon: Shield,
-        items: [
-          {
-            title: "Quản lý tài khoản",
-            url: "/dashboard/quan-ly-tai-khoan",
-          },
-        ],
-      })
-    }
-
-    // Phần dành riêng cho Admin (Quản lý SaaS)
+    // 1. Dịch vụ SaaS (Đưa lên trên cùng theo yêu cầu)
     if (isAdmin) {
-      baseItems.push({
+      items.push({
         title: "Dịch vụ SaaS",
         url: "#",
         icon: Building2,
@@ -140,8 +56,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           },
         ],
       })
-    } else if (session?.user?.role === 'chuNha') {
-      baseItems.push({
+    } else if (isChuNha) {
+      items.push({
         title: "Dịch vụ SaaS",
         url: "#",
         icon: Building2,
@@ -154,8 +70,101 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       })
     }
 
+    // 2. Quản lý cơ bản
+    items.push({
+      title: "Quản lý cơ bản",
+      url: "#",
+      icon: Building,
+      isActive: true,
+      items: [
+        {
+          title: "Tòa nhà",
+          url: "/dashboard/toa-nha",
+        },
+        {
+          title: "Phòng",
+          url: "/dashboard/phong",
+        },
+        ...(!isAdmin ? [{
+          title: "Khách thuê",
+          url: "/dashboard/khach-thue",
+        }] : []),
+      ],
+    })
 
-    return baseItems
+    // 3. Tài chính
+    items.push({
+      title: "Tài chính",
+      url: "#",
+      icon: Receipt,
+      items: [
+        ...(!isAdmin ? [{
+          title: "Hợp đồng",
+          url: "/dashboard/hop-dong",
+        }] : []),
+        {
+          title: "Hóa đơn",
+          url: "/dashboard/hoa-don",
+        },
+        {
+          title: "Thanh toán",
+          url: "/dashboard/thanh-toan",
+        },
+      ],
+    })
+
+    // 4. Vận hành
+    if (!isAdmin) {
+      items.push({
+        title: "Vận hành",
+        url: "#",
+        icon: AlertTriangle,
+        items: [
+          {
+            title: "Sự cố",
+            url: "/dashboard/su-co",
+          },
+          {
+            title: "Thông báo",
+            url: "/dashboard/thong-bao",
+          },
+        ],
+      })
+    }
+
+    // 5. Quản trị
+    if (isAdmin || isChuNha) {
+      items.push({
+        title: "Quản trị",
+        url: "#",
+        icon: Shield,
+        items: [
+          {
+            title: "Quản lý tài khoản",
+            url: "/dashboard/quan-ly-tai-khoan",
+          },
+        ],
+      })
+    }
+
+    // 6. Cài đặt (Xuống cuối cùng theo yêu cầu)
+    items.push({
+      title: "Cài đặt",
+      url: "#",
+      icon: Settings,
+      items: [
+        {
+          title: "Hồ sơ",
+          url: "/dashboard/ho-so",
+        },
+        {
+          title: "Cài đặt",
+          url: "/dashboard/cai-dat",
+        },
+      ],
+    })
+
+    return items
   }, [session?.user?.role])
 
   const userData = React.useMemo(() => ({

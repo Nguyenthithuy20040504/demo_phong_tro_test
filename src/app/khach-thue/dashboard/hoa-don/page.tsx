@@ -544,11 +544,41 @@ export default function HoaDonKhachThuePage() {
               )}
 
               {selectedHoaDon.trangThai !== 'daThanhToan' && (
-                <Button className="w-full rounded-xl bg-[#0068FF] text-white hover:bg-[#0052CC]" onClick={() => setIsPaymentDialogOpen(true)}>
-                  💳 Thanh toán bằng Chuyển khoản
-                </Button>
+                <div className="grid grid-cols-1 gap-2">
+                   <Button 
+                    className="w-full rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 font-bold py-6 text-base shadow-sm"
+                    onClick={async () => {
+                      const toastId = toast.loading('Đang khởi tạo cổng thanh toán VietQR...');
+                      try {
+                        const res = await fetch('/api/hoa-don/payos/create', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ hoaDonId: selectedHoaDon._id })
+                        });
+                        const data = await res.json();
+                        if (data.success && data.checkoutUrl) {
+                          toast.success('Đang chuyển hướng đến cổng thanh toán...', { id: toastId });
+                          window.location.href = data.checkoutUrl;
+                        } else {
+                          toast.error(data.message || 'Lỗi khởi tạo thanh toán', { id: toastId });
+                        }
+                      } catch (error) {
+                        toast.error('Lỗi kết nối máy chủ', { id: toastId });
+                      }
+                    }}
+                  >
+                    🚀 Thanh toán bằng VietQR (Tự động)
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    className="w-full rounded-xl border-[#0068FF] text-[#0068FF] hover:bg-[#0068FF]/5" 
+                    onClick={() => setIsPaymentDialogOpen(true)}
+                  >
+                    💳 Gửi biên lai chuyển khoản (Thủ công)
+                  </Button>
+                </div>
               )}
-              <Button variant="outline" className="w-full rounded-xl" onClick={() => setSelectedHoaDon(null)}>
+              <Button variant="ghost" className="w-full rounded-xl" onClick={() => setSelectedHoaDon(null)}>
                 Đóng
               </Button>
             </>

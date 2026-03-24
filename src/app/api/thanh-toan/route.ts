@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/mongodb';
 import ThanhToan from '@/models/ThanhToan';
 import HoaDon from '@/models/HoaDon';
+import KhachThue from '@/models/KhachThue';
+import NguoiDung from '@/models/NguoiDung';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getAccessibleToaNhaIds } from '@/lib/auth-utils';
@@ -188,11 +190,32 @@ export async function POST(request: NextRequest) {
       { path: 'nguoiNhan', select: 'hoTen email' }
     ]);
 
-    // Lấy lại hóa đơn đã cập nhật với đầy đủ thông tin
-    const updatedHoaDon = await HoaDon.findById(hoaDonId)
+    // Lấy lại hóa đơn đã cập nhật với đầy đủ thông tin (bao gồm polymorphic khachThue)
+    let updatedHoaDon = await HoaDon.findById(hoaDonId)
       .populate('phong', 'maPhong')
-      .populate('khachThue', 'hoTen')
       .populate('hopDong', 'maHopDong');
+
+    if (updatedHoaDon) {
+      const hoaDonObj = updatedHoaDon.toObject();
+      const KhachThueModel = (await import('@/models/KhachThue')).default;
+      const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+      
+      let ktInfo: any = await KhachThueModel.findById(hoaDonObj.khachThue).select('hoTen soDienThoai').lean();
+      if (!ktInfo) {
+        const ndInfo: any = await NguoiDungModel.findById(hoaDonObj.khachThue).select('ten name soDienThoai phone').lean();
+        if (ndInfo) {
+          ktInfo = {
+            _id: ndInfo._id,
+            hoTen: ndInfo.ten || ndInfo.name || 'Khách thuê',
+            soDienThoai: ndInfo.soDienThoai || ndInfo.phone
+          };
+        }
+      }
+      updatedHoaDon = {
+        ...hoaDonObj,
+        khachThue: ktInfo || { _id: hoaDonObj.khachThue, hoTen: 'N/A' }
+      } as any;
+    }
 
     return NextResponse.json({
       success: true,

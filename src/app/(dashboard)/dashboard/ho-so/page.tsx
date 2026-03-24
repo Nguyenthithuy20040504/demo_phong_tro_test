@@ -12,6 +12,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 import { 
   User, 
   Mail, 
@@ -25,11 +28,24 @@ import {
   Camera,
   Key,
   Bell,
-  CreditCard
+  CreditCard,
+  Check,
+  ChevronsUpDown,
+  Search,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { CCCDUpload } from '@/components/ui/cccd-upload';
+
+interface Bank {
+  id: number;
+  name: string;
+  code: string;
+  bin: string;
+  shortName: string;
+  logo: string;
+}
 
 interface UserProfile {
   _id: string;
@@ -44,6 +60,11 @@ interface UserProfile {
   anhCCCD?: {
     matTruoc: string;
     matSau: string;
+  };
+  thongTinThanhToan?: {
+    nganHang: string;
+    soTaiKhoan: string;
+    chuTaiKhoan: string;
   };
 }
 
@@ -62,6 +83,11 @@ export default function ProfilePage() {
     anhCCCD: {
       matTruoc: '',
       matSau: ''
+    },
+    thongTinThanhToan: {
+      nganHang: '',
+      soTaiKhoan: '',
+      chuTaiKhoan: ''
     }
   });
 
@@ -71,10 +97,72 @@ export default function ProfilePage() {
     confirmPassword: ''
   });
   const [changingPassword, setChangingPassword] = useState(false);
+  const [bankList, setBankList] = useState<Bank[]>([]);
+  const [openBank, setOpenBank] = useState(false);
+  const [isSearchingBank, setIsSearchingBank] = useState(false);
+
+  const handleBankLookup = async () => {
+    const { nganHang, soTaiKhoan } = formData.thongTinThanhToan;
+    if (!nganHang || !soTaiKhoan) {
+      toast.error('Vui lòng chọn ngân hàng và nhập số tài khoản trước khi tra cứu');
+      return;
+    }
+
+    setIsSearchingBank(true);
+    try {
+      const response = await fetch('/api/user/bank-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bin: nganHang, accountNumber: soTaiKhoan })
+      });
+
+      const data = await response.json();
+      if (response.ok && data.accountName) {
+        setFormData({
+          ...formData,
+          thongTinThanhToan: { ...formData.thongTinThanhToan, chuTaiKhoan: data.accountName }
+        });
+        toast.success('Đã tìm thấy chủ tài khoản: ' + data.accountName);
+      } else {
+        toast.error(data.error || 'Không tìm thấy thông tin chủ tài khoản');
+      }
+    } catch (error) {
+      toast.error('Lỗi khi tra cứu thông tin ngân hàng');
+    } finally {
+      setIsSearchingBank(false);
+    }
+  };
 
   useEffect(() => {
     document.title = 'Hồ sơ cá nhân';
+    
+    // Fetch bank list from VietQR
+    fetch('https://api.vietqr.io/v2/banks')
+      .then(res => res.json())
+      .then(data => {
+        if (data.code === '00') {
+          setBankList(data.data);
+        }
+      })
+      .catch(console.error);
   }, []);
+
+  // Tự động tra cứu khi đủ thông tin
+  useEffect(() => {
+    const { nganHang, soTaiKhoan, chuTaiKhoan } = formData.thongTinThanhToan;
+    
+    // Chỉ tự động tra cứu nếu:
+    // 1. Đã chọn ngân hàng
+    // 2. Số tài khoản đủ dài (thường >= 8)
+    // 3. Tên chủ tài khoản chưa có hoặc đang trống
+    // 4. Phải đang ở chế độ sửa (isEditing)
+    if (isEditing && nganHang && soTaiKhoan && soTaiKhoan.length >= 8 && !chuTaiKhoan && !isSearchingBank) {
+      const timer = setTimeout(() => {
+        handleBankLookup();
+      }, 800); // Đợi user gõ xong 800ms
+      return () => clearTimeout(timer);
+    }
+  }, [formData.thongTinThanhToan.soTaiKhoan, formData.thongTinThanhToan.nganHang, isEditing]);
 
   useEffect(() => {
     if (session?.user) {
@@ -93,7 +181,8 @@ export default function ProfilePage() {
           phone: data.phone || '',
           address: data.address || '',
           avatar: data.avatar || '',
-          anhCCCD: data.anhCCCD || { matTruoc: '', matSau: '' }
+          anhCCCD: data.anhCCCD || { matTruoc: '', matSau: '' },
+          thongTinThanhToan: data.thongTinThanhToan || { nganHang: '', soTaiKhoan: '', chuTaiKhoan: '' }
         });
       }
     } catch (error) {
@@ -145,7 +234,8 @@ export default function ProfilePage() {
       phone: profile?.phone || '',
       address: profile?.address || '',
       avatar: profile?.avatar || '',
-      anhCCCD: profile?.anhCCCD || { matTruoc: '', matSau: '' }
+      anhCCCD: profile?.anhCCCD || { matTruoc: '', matSau: '' },
+      thongTinThanhToan: profile?.thongTinThanhToan || { nganHang: '', soTaiKhoan: '', chuTaiKhoan: '' }
     });
     setIsEditing(false);
   };
@@ -412,6 +502,164 @@ export default function ProfilePage() {
                         </div>
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Info Section for Landlords */}
+              {profile?.role === 'chuNha' && (
+                <div className="space-y-4 pt-4">
+                  <Separator />
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-green-600" />
+                      <Label className="text-base font-bold">Thông tin nhận thanh toán (VietQR)</Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Thông tin này sẽ được dùng để tự động tạo mã QR thanh toán trên hóa đơn gửi cho khách thuê.</p>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="nganHang" className="text-xs">Ngân hàng</Label>
+                        {isEditing ? (
+                          <Popover open={openBank} onOpenChange={setOpenBank}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={openBank}
+                                className="w-full justify-between h-10 px-3 text-sm font-normal"
+                              >
+                                {formData.thongTinThanhToan.nganHang && bankList.length > 0
+                                  ? (
+                                    <div className="flex items-center gap-2 truncate">
+                                      {bankList.find((b) => b.bin === formData.thongTinThanhToan.nganHang)?.logo && (
+                                        <img 
+                                          src={bankList.find((b) => b.bin === formData.thongTinThanhToan.nganHang)?.logo} 
+                                          alt="" 
+                                          className="w-5 h-5 object-contain flex-shrink-0" 
+                                        />
+                                      )}
+                                      <span className="truncate">
+                                        {bankList.find((b) => b.bin === formData.thongTinThanhToan.nganHang)?.shortName}
+                                      </span>
+                                    </div>
+                                  )
+                                  : <span className="text-muted-foreground">Chọn ngân hàng...</span>}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[300px] p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Tìm tên ngân hàng..." className="text-sm" />
+                                <CommandList>
+                                  <CommandEmpty>Không tìm thấy ngân hàng.</CommandEmpty>
+                                  <CommandGroup>
+                                    {bankList.map((bank) => (
+                                      <CommandItem
+                                        key={bank.bin}
+                                        value={bank.name + ' ' + bank.shortName + ' ' + bank.bin}
+                                        onSelect={() => {
+                                          setFormData({
+                                            ...formData,
+                                            thongTinThanhToan: { ...formData.thongTinThanhToan, nganHang: bank.bin }
+                                          });
+                                          setOpenBank(false);
+                                        }}
+                                        className="flex items-center gap-2 py-2"
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "h-4 w-4 text-green-600 flex-shrink-0",
+                                            formData.thongTinThanhToan.nganHang === bank.bin ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        <img src={bank.logo} alt={bank.shortName} className="w-6 h-6 object-contain flex-shrink-0" />
+                                        <div className="flex flex-col truncate">
+                                          <span className="text-sm font-medium truncate">{bank.shortName}</span>
+                                          <span className="text-xs text-muted-foreground truncate">{bank.name}</span>
+                                        </div>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                        ) : (
+                          <div className="p-2 border border-gray-200 rounded-md bg-gray-50 text-sm h-10 flex items-center">
+                            {formData.thongTinThanhToan.nganHang ? (
+                              bankList.find(b => b.bin === formData.thongTinThanhToan.nganHang) ? (
+                                <div className="flex items-center gap-2">
+                                  <img src={bankList.find(b => b.bin === formData.thongTinThanhToan.nganHang)?.logo} alt="" className="w-5 h-5 object-contain" />
+                                  <span>{bankList.find(b => b.bin === formData.thongTinThanhToan.nganHang)?.shortName}</span>
+                                </div>
+                              ) : (
+                                <span>{formData.thongTinThanhToan.nganHang}</span>
+                              )
+                            ) : (
+                              <span className="text-gray-400 italic">Chưa cập nhật</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="soTaiKhoan" className="text-xs">Số tài khoản</Label>
+                        {isEditing ? (
+                          <Input
+                            id="soTaiKhoan"
+                            placeholder="VD: 0123456789"
+                            value={formData.thongTinThanhToan.soTaiKhoan}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              thongTinThanhToan: { ...formData.thongTinThanhToan, soTaiKhoan: e.target.value }
+                            })}
+                            className="text-sm"
+                          />
+                        ) : (
+                          <div className="p-2 border rounded-md bg-gray-50 text-sm font-mono">
+                            {formData.thongTinThanhToan.soTaiKhoan || <span className="text-gray-400 italic font-sans">Chưa cập nhật</span>}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="chuTaiKhoan" className="text-xs">Tên chủ tài khoản</Label>
+                        {isEditing ? (
+                          <div className="relative group">
+                            <Input
+                              id="chuTaiKhoan"
+                              placeholder="VD: NGUYEN VAN A"
+                              value={formData.thongTinThanhToan.chuTaiKhoan}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                thongTinThanhToan: { ...formData.thongTinThanhToan, chuTaiKhoan: e.target.value.toUpperCase() }
+                              })}
+                              className="text-sm uppercase pr-10"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-0 top-0 h-full w-10 hover:bg-transparent"
+                              onClick={handleBankLookup}
+                              disabled={isSearchingBank}
+                              title="Tra cứu tên chủ tài khoản"
+                            >
+                              {isSearchingBank ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                              ) : (
+                                <Search className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                              )}
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="p-2 border rounded-md bg-gray-50 text-sm uppercase">
+                            {formData.thongTinThanhToan.chuTaiKhoan || <span className="text-gray-400 italic normal-case">Chưa cập nhật</span>}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

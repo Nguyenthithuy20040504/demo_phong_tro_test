@@ -190,6 +190,8 @@ export interface HoaDon {
   trangThai: 'chuaThanhToan' | 'daThanhToanMotPhan' | 'daThanhToan' | 'quaHan';
   hanThanhToan: Date;
   ghiChu?: string;
+  checkoutUrl?: string;
+  paymentOrderId?: string;
   ngayTao: Date;
   ngayCapNhat: Date;
 }

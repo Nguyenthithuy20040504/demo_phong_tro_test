@@ -783,15 +783,15 @@ function PhongForm({
   };
 
   const tienNghiOptions = [
-    { value: 'Điều hòa', label: 'Điều hòa' },
-    { value: 'Nóng lạnh', label: 'Nóng lạnh' },
-    { value: 'Tủ lạnh', label: 'Tủ lạnh' },
-    { value: 'Giường', label: 'Giường' },
-    { value: 'Tủ quần áo', label: 'Tủ quần áo' },
-    { value: 'Bàn ghế', label: 'Bàn ghế' },
-    { value: 'WiFi', label: 'WiFi' },
-    { value: 'Máy giặt', label: 'Máy giặt' },
-    { value: 'Bếp', label: 'Bếp' },
+    { value: 'dieuHoa', label: 'Điều hòa' },
+    { value: 'nongLanh', label: 'Nóng lạnh' },
+    { value: 'tuLanh', label: 'Tủ lạnh' },
+    { value: 'giuong', label: 'Giường' },
+    { value: 'tuQuanAo', label: 'Tủ quần áo' },
+    { value: 'banGhe', label: 'Bàn ghế' },
+    { value: 'wifi', label: 'WiFi' },
+    { value: 'mayGiat', label: 'Máy giặt' },
+    { value: 'bep', label: 'Bếp' },
   ];
 
   return (
@@ -851,14 +851,14 @@ function PhongForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
             <div className="space-y-2">
               <Label htmlFor="tang" className="text-sm">Tầng</Label>
               <Input
                 id="tang"
                 type="number"
                 min="0"
-                value={formData.tang}
+                value={formData.tang || ''}
                 onChange={(e) => setFormData(prev => ({ ...prev, tang: parseInt(e.target.value) || 0 }))}
                 required
                 className="text-sm"
@@ -871,7 +871,7 @@ function PhongForm({
                 id="dienTich"
                 type="number"
                 min="1"
-                value={formData.dienTich}
+                value={formData.dienTich || ''}
                 onChange={(e) => setFormData(prev => ({ ...prev, dienTich: parseInt(e.target.value) || 0 }))}
                 required
                 className="text-sm"
@@ -885,17 +885,11 @@ function PhongForm({
                 type="number"
                 min="1"
                 max="10"
-                value={formData.soNguoiToiDa}
+                value={formData.soNguoiToiDa || ''}
                 onChange={(e) => setFormData(prev => ({ ...prev, soNguoiToiDa: parseInt(e.target.value) || 1 }))}
                 required
                 className="text-sm"
               />
-            </div>
-
-            <div className="space-y-2 flex flex-col justify-end">
-                <div className="h-10 bg-gray-50 border rounded-md flex items-center justify-center text-xs text-gray-500 italic">
-                    {formData.toaNha ? 'Thông số hiển thị chuẩn' : 'Hãy chọn tòa nhà'}
-                </div>
             </div>
           </div>
 
@@ -906,7 +900,7 @@ function PhongForm({
                 id="giaThue"
                 type="number"
                 min="0"
-                value={formData.giaThue}
+                value={formData.giaThue || ''}
                 onChange={(e) => setFormData(prev => ({ ...prev, giaThue: parseInt(e.target.value) || 0 }))}
                 required
                 className="text-sm"
@@ -922,7 +916,7 @@ function PhongForm({
                 id="tienCoc"
                 type="number"
                 min="0"
-                value={formData.tienCoc}
+                value={formData.tienCoc || ''}
                 onChange={(e) => setFormData(prev => ({ ...prev, tienCoc: parseInt(e.target.value) || 0 }))}
                 required
                 className="text-sm"

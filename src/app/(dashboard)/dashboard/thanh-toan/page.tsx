@@ -138,17 +138,33 @@ export default function ThanhToanPage() {
       console.error('Test API error:', error);
     }
   };
-
   const filteredThanhToan = thanhToanList.filter(thanhToan => {
-    const searchStr = searchTerm.toLowerCase();
-    const paymentDateStr = new Date(thanhToan.ngayThanhToan).toLocaleDateString('vi-VN');
+    const searchStr = (searchTerm || '').toLowerCase();
+    const paymentDate = new Date(thanhToan.ngayThanhToan);
+    const paymentDateStr = paymentDate.toLocaleDateString('vi-VN'); // DD/MM/YYYY
+    const paymentDateIso = paymentDate.toISOString().split('T')[0]; // YYYY-MM-DD
+    const paymentDateLong = paymentDate.toLocaleDateString('vi-VN', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    });
+
+    const hoaDonInfo = typeof thanhToan.hoaDon === 'object' ? (thanhToan.hoaDon as HoaDon) : null;
+    const phongInfo = hoaDonInfo && typeof hoaDonInfo.phong === 'object' ? (hoaDonInfo.phong as any) : null;
+    const khachThueInfo = hoaDonInfo && typeof hoaDonInfo.khachThue === 'object' ? (hoaDonInfo.khachThue as any) : null;
+    
+    // Tìm kiếm trong các thông tin liên quan
     const matchesSearch = !searchTerm || 
                          thanhToan.ghiChu?.toLowerCase().includes(searchStr) ||
                          thanhToan.thongTinChuyenKhoan?.soGiaoDich?.toLowerCase().includes(searchStr) ||
-                         paymentDateStr.includes(searchStr);
+                         paymentDateStr.includes(searchStr) ||
+                         paymentDateIso.includes(searchStr) ||
+                         paymentDateLong.includes(searchStr) ||
+                         hoaDonInfo?.maHoaDon?.toLowerCase().includes(searchStr) ||
+                         phongInfo?.maPhong?.toLowerCase().includes(searchStr) ||
+                         khachThueInfo?.hoTen?.toLowerCase().includes(searchStr);
     const matchesMethod = methodFilter === 'all' || thanhToan.phuongThuc === methodFilter;
     
-    const paymentDate = new Date(thanhToan.ngayThanhToan);
     const matchesDate = dateFilter === 'all' || 
                        (dateFilter === 'today' && isToday(paymentDate)) ||
                        (dateFilter === 'week' && isThisWeek(paymentDate)) ||
@@ -246,20 +262,36 @@ export default function ThanhToanPage() {
     }
   };
 
-  const handleDownload = (thanhToan: ThanhToanPopulated) => {
+  const handleDownload = async (thanhToan: ThanhToanPopulated) => {
     if (!thanhToan.anhBienLai) {
       toast.error('Không tìm thấy ảnh biên lai nào!');
       return;
     }
-    const a = document.createElement('a');
-    a.href = thanhToan.anhBienLai;
-    // Tùy chỉnh tên file tải xuống
-    const fileName = thanhToan.anhBienLai.split('/').pop() || `bien-lai-${thanhToan._id}.png`;
-    a.download = fileName;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    
+    const toastId = toast.loading('Đang chuẩn bị tải ảnh...');
+    try {
+      // Cách thức mới: Fetch image blob để đảm bảo download được kể cả cross-origin
+      const response = await fetch(thanhToan.anhBienLai);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      const extension = thanhToan.anhBienLai.split('.').pop()?.split('?')[0] || 'png';
+      const fileName = `bien-lai-${thanhToan._id}.${extension}`;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Đã tải biên lai xuống thành công!', { id: toastId });
+    } catch (error) {
+      console.error('Download error:', error);
+      // Fallback: Mở trong tab mới nếu fetch bị lỗi CORS
+      window.open(thanhToan.anhBienLai, '_blank');
+      toast.info('Đã mở biên lai trong tab mới do chính sách bảo mật trình duyệt.', { id: toastId });
+    }
   };
 
   if (loading && thanhToanList.length === 0) {

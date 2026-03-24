@@ -172,8 +172,15 @@ export async function POST(request: NextRequest) {
     // Return user without password
     const { password: _, ...userWithoutPassword } = newUser.toObject();
     return NextResponse.json(userWithoutPassword, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating user:', error);
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((err: any) => err.message);
+      return NextResponse.json({ message: messages.join(', ') }, { status: 400 });
+    }
+    if (error.code === 11000) {
+      return NextResponse.json({ message: 'Email này đã tồn tại trong hệ thống' }, { status: 400 });
+    }
     return NextResponse.json({ message: 'Không thể tạo được tài khoản lúc này, vui lòng thử lại sau' }, { status: 500 });
   }
 }

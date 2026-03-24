@@ -18,7 +18,7 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Receipt, Search, Filter, ArrowUpRight, ChevronLeft, ChevronRight, FileDown, FileSpreadsheet } from 'lucide-react';
+import { Receipt, Search, Filter, ArrowUpRight, ChevronLeft, ChevronRight, FileDown, FileSpreadsheet, Check, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -67,6 +67,28 @@ export default function SaaSInvoicesPage() {
       setPayments([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (id: string, newStatus: string) => {
+    const statusLabel = newStatus === 'daThanhToan' ? 'Thành công' : 'Hủy';
+    if (!confirm(`Bạn có chắc muốn chuyển trạng thái hóa đơn này thành "${statusLabel}"?`)) return;
+
+    try {
+      const res = await fetch('/api/admin/saas/payments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, trangThai: newStatus }),
+      });
+
+      if (res.ok) {
+        toast.success(`Đã cập nhật trạng thái thành "${statusLabel}"`);
+        fetchPayments();
+      } else {
+        toast.error('Cập nhật thất bại');
+      }
+    } catch (error) {
+      toast.error('Lỗi khi cập nhật trạng thái.');
     }
   };
 
@@ -289,6 +311,7 @@ export default function SaaSInvoicesPage() {
                 <TableHead>Phương thức</TableHead>
                 <TableHead>Trạng thái</TableHead>
                 <TableHead>Hết hạn mới</TableHead>
+                <TableHead>Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -339,11 +362,35 @@ export default function SaaSInvoicesPage() {
                             {new Date(payment.ngayHetHanMoi).toLocaleDateString('vi-VN')}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        {payment.trangThai === 'choDuyet' && (
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                              onClick={() => handleUpdateStatus(payment._id, 'daThanhToan')}
+                              title="Duyệt - Xác nhận đã thanh toán"
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleUpdateStatus(payment._id, 'daHuy')}
+                              title="Hủy hóa đơn"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                   {payments.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
                         Không có lịch sử giao dịch nào được tìm thấy.
                       </TableCell>
                     </TableRow>

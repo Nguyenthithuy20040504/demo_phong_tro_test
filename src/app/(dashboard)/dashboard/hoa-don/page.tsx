@@ -549,40 +549,53 @@ export default function HoaDonPage() {
         </div>
       `;
       
-      tempElement.style.position = 'absolute';
-      tempElement.style.left = '-9999px';
-      tempElement.style.top = '-9999px';
+      tempElement.style.position = 'fixed';
+      tempElement.style.left = '-10000px';
+      tempElement.style.top = '0';
+      tempElement.style.zIndex = '-9999';
       document.body.appendChild(tempElement);
 
-      toast.loading('Đang chụp ảnh hóa đơn...', { id: toastId });
+      toast.loading('Đang chuẩn bị dữ liệu và hình ảnh...', { id: toastId });
+      
+      // Đợi một chút để font chữ và style được áp dụng
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Chụp ảnh
       const canvas = await html2canvas(tempElement, {
         scale: 2,
         useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff'
+        allowTaint: false, // Set to false to avoid security errors with cross-origin
+        backgroundColor: '#ffffff',
+        logging: false,
+        onclone: (clonedDoc) => {
+          // Ensure the cloned element is visible for the capture
+          const el = clonedDoc.querySelector('div');
+          if (el) el.style.left = '0';
+        }
       });
 
-      // Xóa element tạm thời
+      // Xóa element tạm thời ngay sau khi chụp xong
       document.body.removeChild(tempElement);
 
-      toast.loading('Đang chuyển đổi sang PDF...', { id: toastId });
+      toast.loading('Đang khởi tạo PDF...', { id: toastId });
 
       // Tạo PDF
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = 210;
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      const imgWidth = pageWidth;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
 
       // Tải xuống PDF
       pdf.save(`hoa-don-${hoaDon.maHoaDon}.pdf`);
       toast.success('Đã xuất file PDF hóa đơn thành công!', { id: toastId });
     } catch (error) {
       console.error('PDF export error:', error);
-      toast.error('Chưa xuất được PDF. Có thể do lỗi bộ nhớ hoặc trình duyệt không hỗ trợ!', { id: toastId });
+      toast.error('Chưa xuất được PDF. Bạn thử dùng chức năng "Tải HTML" hoặc chụp ảnh màn hình nhé!', { id: toastId });
     } finally {
       setIsExportingPdf(false);
     }
@@ -1331,6 +1344,28 @@ function PaymentForm({
             className="w-full sm:w-auto sm:min-w-[100px]"
           >
             Hủy
+          </Button>
+          <Button 
+            type="button" 
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+                const res = await fetch('/api/hoa-don/payos/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ hoaDonId: hoaDon._id })
+                });
+                const data = await res.json();
+                if (data.success && data.checkoutUrl) {
+                    window.location.href = data.checkoutUrl;
+                } else {
+                    toast.error(data.message || 'Lỗi khởi tạo thanh toán');
+                }
+            }}
+            className="w-full sm:w-auto sm:min-w-[150px] border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+          >
+            <Zap className="h-3 w-3 md:h-4 md:w-4 mr-2" />
+            Tạo link VIETQR
           </Button>
           <Button 
             type="submit"

@@ -9,6 +9,11 @@ export const userProfileSchema = z.object({
     matTruoc: z.string().optional().or(z.literal('')),
     matSau: z.string().optional().or(z.literal('')),
   }).optional(),
+  thongTinThanhToan: z.object({
+    nganHang: z.string().optional().or(z.literal('')),
+    soTaiKhoan: z.string().optional().or(z.literal('')),
+    chuTaiKhoan: z.string().optional().or(z.literal('')),
+  }).optional(),
 });
 
 export const loginSchema = z.object({

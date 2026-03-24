@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/mongodb';
 import HoaDon from '@/models/HoaDon';
 import HopDong from '@/models/HopDong';
+import KhachThue from '@/models/KhachThue';
+import NguoiDung from '@/models/NguoiDung';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getAccessibleToaNhaIds, isToaNhaAccessible } from '@/lib/auth-utils';
@@ -30,7 +32,7 @@ export async function GET(request: NextRequest) {
       const hoaDon = await HoaDon.findById(id)
         .populate('hopDong', 'maHopDong')
         .populate('phong', 'maPhong toaNha');
-      
+
       if (!hoaDon) {
         return NextResponse.json(
           { message: 'Hóa đơn không tồn tại' },
@@ -42,20 +44,20 @@ export async function GET(request: NextRequest) {
       const toaNhaId = (hoaDon.phong as any).toaNha || hoaDon.phong;
       const hasAccess = await isToaNhaAccessible(session.user, toaNhaId);
       if (!hasAccess && session.user.role !== 'khachThue') {
-         return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+        return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
       }
-      
+
       // Nếu là khách thuê, kiểm tra xem có phải hóa đơn của mình không
       if (session.user.role === 'khachThue' && hoaDon.khachThue.toString() !== session.user.id) {
-         // Cần kiểm tra kỹ hơn nếu dùng SĐT hoặc liên kết khác, tạm thời logic cơ bản
-         const userId = session.user.id;
-         if (hoaDon.khachThue.toString() !== userId) {
-            return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-         }
+        // Cần kiểm tra kỹ hơn nếu dùng SĐT hoặc liên kết khác, tạm thời logic cơ bản
+        const userId = session.user.id;
+        if (hoaDon.khachThue.toString() !== userId) {
+          return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+        }
       }
 
       const hoaDonObj = hoaDon.toObject();
-      
+
       // Khôi phục thông tin Khách thuê
       const KhachThueModel = (await import('@/models/KhachThue')).default;
       const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
@@ -71,7 +73,7 @@ export async function GET(request: NextRequest) {
         }
       }
       (hoaDonObj as any).khachThue = ktInfo || { _id: hoaDonObj.khachThue, hoTen: 'N/A' };
-      
+
       // Xử lý dữ liệu cũ không có chỉ số điện nước
       if (hoaDonObj.chiSoDienBanDau === undefined) {
         hoaDonObj.chiSoDienBanDau = 0;
@@ -105,35 +107,35 @@ export async function GET(request: NextRequest) {
     }
 
     const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
-    
+
     if (session.user.role === 'khachThue') {
       // Logic dành cho khách thuê: Chỉ lấy hóa đơn của chính họ
       const userId = session.user.id;
       const linkedIds = [new mongoose.Types.ObjectId(userId)];
-      
+
       // Tìm khách thuê theo phone nếu có
       const KhachThueModel = (await import('@/models/KhachThue')).default;
-      const kt = await KhachThueModel.findOne({ 
+      const kt = await KhachThueModel.findOne({
         $or: [
           { _id: userId },
           { soDienThoai: session.user.phone }
         ]
       }).select('_id');
-      
+
       if (kt && kt._id.toString() !== userId) {
         linkedIds.push(kt._id);
       }
-      
+
       query.khachThue = { $in: linkedIds };
     } else if (accessibleToaNhaIds !== null) {
       // Logic dành cho Admin/Chủ nhà/Nhân viên
       const phongs = await connectToDatabase().then((db) => db.model('Phong').find({ toaNha: { $in: accessibleToaNhaIds } }).select('_id'));
       const phongIds = phongs.map((p: any) => p._id);
-      
+
       if (phongIds.length === 0) {
-         return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
+        return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
       }
-      
+
       query.phong = { $in: phongIds };
     }
 
@@ -153,7 +155,7 @@ export async function GET(request: NextRequest) {
     // Xử lý dữ liệu cũ không có chỉ số điện nước và lấy thông tin khách thuê
     const processedHoaDons = await Promise.all(hoaDons.map(async (hoaDon) => {
       const hoaDonObj = hoaDon.toObject();
-      
+
       // Map thông tin khách thuê
       if (hoaDonObj.khachThue) {
         let ktInfo: any = await KhachThueModel.findById(hoaDonObj.khachThue).select('hoTen soDienThoai').lean();
@@ -169,7 +171,7 @@ export async function GET(request: NextRequest) {
         }
         (hoaDonObj as any).khachThue = ktInfo || { _id: hoaDonObj.khachThue, hoTen: 'N/A' };
       }
-      
+
       // Nếu không có chỉ số điện nước, tạo giá trị mặc định
       if (hoaDonObj.chiSoDienBanDau === undefined) {
         hoaDonObj.chiSoDienBanDau = 0;
@@ -183,7 +185,7 @@ export async function GET(request: NextRequest) {
       if (hoaDonObj.chiSoNuocCuoiKy === undefined) {
         hoaDonObj.chiSoNuocCuoiKy = hoaDonObj.chiSoNuocBanDau;
       }
-      
+
       return hoaDonObj;
     }));
 
@@ -248,7 +250,7 @@ export async function POST(request: NextRequest) {
     const hopDongData = await HopDong.findById(hopDong)
       .populate('phong')
       .populate('khachThueId');
-    
+
     if (!hopDongData) {
       return NextResponse.json(
         { message: 'Hợp đồng không tồn tại' },
@@ -288,7 +290,7 @@ export async function POST(request: NextRequest) {
       const month = String(currentDate.getMonth() + 1).padStart(2, '0');
       const day = String(currentDate.getDate()).padStart(2, '0');
       const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-      
+
       finalMaHoaDon = `HD${year}${month}${day}${randomNum}`;
     }
 
@@ -314,7 +316,7 @@ export async function POST(request: NextRequest) {
       thang,
       nam
     });
-    
+
     if (existingMonthlyHoaDon) {
       return NextResponse.json(
         { message: `Hóa đơn tháng ${thang}/${nam} đã tồn tại` },
@@ -365,6 +367,20 @@ export async function POST(request: NextRequest) {
 
     const tongTien = tienPhong + tienDienTinh + tienNuocTinh + (phiDichVu?.reduce((sum: number, phi: PhiDichVu) => sum + phi.gia, 0) || 0);
 
+    const conLaiValue = tongTien - (daThanhToan || 0);
+    let trangThaiValue = 'chuaThanhToan';
+    if (conLaiValue <= 0) {
+      trangThaiValue = 'daThanhToan';
+    } else if ((daThanhToan || 0) > 0) {
+      trangThaiValue = 'daThanhToanMotPhan';
+    }
+
+    // Kiểm tra quá hạn
+    const finalHanThanhToan = hanThanhToan ? new Date(hanThanhToan) : new Date(nam, thang - 1, hopDongData.ngayThanhToan);
+    if (finalHanThanhToan < new Date() && conLaiValue > 0) {
+      trangThaiValue = 'quaHan';
+    }
+
     hoaDonData = {
       ...hoaDonData,
       thang,
@@ -381,24 +397,79 @@ export async function POST(request: NextRequest) {
       phiDichVu: phiDichVu || [],
       tongTien,
       daThanhToan: daThanhToan || 0,
-      conLai: tongTien - (daThanhToan || 0),
-      trangThai: trangThai || ((tongTien - (daThanhToan || 0)) <= 0 ? 'daThanhToan' : (daThanhToan > 0 ? 'daThanhToanMotPhan' : 'chuaThanhToan')),
-      hanThanhToan: hanThanhToan ? new Date(hanThanhToan) : new Date(nam, thang - 1, hopDongData.ngayThanhToan) // Hạn thanh toán theo ngày quy định trong hợp đồng
+      conLai: conLaiValue,
+      trangThai: trangThaiValue,
+      hanThanhToan: finalHanThanhToan
     };
 
     const hoaDon = new HoaDon(hoaDonData);
     await hoaDon.save();
 
-    // Populate để trả về dữ liệu đầy đủ
-    await hoaDon.populate([
-      { path: 'hopDong', select: 'maHopDong' },
-      { path: 'phong', select: 'maPhong' },
-      { path: 'khachThue', select: 'hoTen soDienThoai' }
-    ]);
+    // Tự động tạo Link thanh toán VietQR tĩnh (qua vietqr.io)
+    let checkoutUrl = '';
+    if (hoaDon.conLai > 0) {
+      try {
+        let chuNhaId = session!.user!.id;
+        const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+        
+        // Nếu người tạo là nhân viên, lấy tài khoản ngân hàng của chủ nhà quản lý
+        if (session!.user!.role === 'nhanVien') {
+          const staff = await NguoiDungModel.findById(session!.user!.id);
+          if (staff && staff.nguoiQuanLy) {
+            chuNhaId = staff.nguoiQuanLy;
+          }
+        }
+        
+        const chuNha = await NguoiDungModel.findById(chuNhaId);
+        
+        if (chuNha && chuNha.thongTinThanhToan && chuNha.thongTinThanhToan.nganHang && chuNha.thongTinThanhToan.soTaiKhoan) {
+          const bank = chuNha.thongTinThanhToan.nganHang.trim();
+          const account = chuNha.thongTinThanhToan.soTaiKhoan.trim();
+          const name = encodeURIComponent((chuNha.thongTinThanhToan.chuTaiKhoan || '').trim());
+          const amount = hoaDon.conLai;
+          const descriptionText = `TT PHONG ${hoaDon.maHoaDon.slice(-10)}`;
+          const description = encodeURIComponent(descriptionText);
+          
+          // Mã QR tĩnh chuẩn VietQR quốc gia (hiển thị trực tiếp ảnh)
+          let qrUrl = `https://img.vietqr.io/image/${bank}-${account}-compact2.png?amount=${amount}&addInfo=${description}`;
+          if (name) {
+            qrUrl += `&accountName=${name}`;
+          }
+          
+          checkoutUrl = qrUrl;
+          hoaDon.checkoutUrl = checkoutUrl;
+          await hoaDon.save();
+        }
+      } catch (e) {
+        console.error('Lỗi tự động tạo mã VietQR khi tạo hóa đơn:', e);
+      }
+    }
+
+    // Populate để trả về dữ liệu đầy đủ (bao gồm polymorphic khachThue)
+    const hoaDonObj = hoaDon.toObject();
+    const KhachThueModel = (await import('@/models/KhachThue')).default;
+    const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+
+    let ktInfo: any = await KhachThueModel.findById(hoaDonObj.khachThue).select('hoTen soDienThoai').lean();
+    if (!ktInfo) {
+      const ndInfo: any = await NguoiDungModel.findById(hoaDonObj.khachThue).select('ten name soDienThoai phone').lean();
+      if (ndInfo) {
+        ktInfo = {
+          _id: ndInfo._id,
+          hoTen: ndInfo.ten || ndInfo.name || 'Khách thuê',
+          soDienThoai: ndInfo.soDienThoai || ndInfo.phone
+        };
+      }
+    }
+
+    const finalHoaDon = {
+      ...hoaDonObj,
+      khachThue: ktInfo || { _id: hoaDonObj.khachThue, hoTen: 'N/A' }
+    };
 
     return NextResponse.json({
       success: true,
-      data: hoaDon,
+      data: finalHoaDon,
       message: 'Tạo hóa đơn thành công'
     });
   } catch (error) {
@@ -414,7 +485,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     console.log('PUT request received for hoa-don');
-    
+
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       console.log('Unauthorized request');
@@ -485,16 +556,30 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Tính số điện nước
-    const soDien = chiSoDienCuoiKy - chiSoDienBanDau;
-    const soNuoc = chiSoNuocCuoiKy - chiSoNuocBanDau;
+    // Tính số điện nước an toàn
+    const soDien = (chiSoDienCuoiKy || 0) - (chiSoDienBanDau || 0);
+    const soNuoc = (chiSoNuocCuoiKy || 0) - (chiSoNuocBanDau || 0);
 
     // Tính tiền điện nước
-    const tienDienTinh = soDien * hopDongData.giaDien;
-    const tienNuocTinh = soNuoc * hopDongData.giaNuoc;
+    const tienDienTinh = Math.max(0, soDien) * (hopDongData.giaDien || 0);
+    const tienNuocTinh = Math.max(0, soNuoc) * (hopDongData.giaNuoc || 0);
 
-    const tongTien = tienPhong + tienDienTinh + tienNuocTinh + (phiDichVu?.reduce((sum: number, phi: PhiDichVu) => sum + phi.gia, 0) || 0);
-    const conLai = tongTien - daThanhToan;
+    const tienDichVuVal = (phiDichVu?.reduce((sum: number, phi: PhiDichVu) => sum + phi.gia, 0) || 0);
+    const tongTien = (tienPhong || 0) + tienDienTinh + tienNuocTinh + tienDichVuVal;
+    const conLai = tongTien - (daThanhToan || 0);
+
+    // Tính trạng thái server-side
+    let trangThaiValue = 'chuaThanhToan';
+    if (conLai <= 0) {
+      trangThaiValue = 'daThanhToan';
+    } else if ((daThanhToan || 0) > 0) {
+      trangThaiValue = 'daThanhToanMotPhan';
+    }
+
+    const finalHanThanhToan = hanThanhToan ? new Date(hanThanhToan) : existingHoaDon.hanThanhToan;
+    if (finalHanThanhToan < new Date() && conLai > 0) {
+      trangThaiValue = 'quaHan';
+    }
 
     // Cập nhật hóa đơn
     const updatedHoaDon = await HoaDon.findByIdAndUpdate(
@@ -506,31 +591,49 @@ export async function PUT(request: NextRequest) {
         nam,
         tienPhong,
         tienDien: tienDienTinh,
-        soDien,
-        chiSoDienBanDau,
-        chiSoDienCuoiKy,
+        soDien: Math.max(0, soDien),
+        chiSoDienBanDau: chiSoDienBanDau || 0,
+        chiSoDienCuoiKy: chiSoDienCuoiKy || 0,
         tienNuoc: tienNuocTinh,
-        soNuoc,
-        chiSoNuocBanDau,
-        chiSoNuocCuoiKy,
+        soNuoc: Math.max(0, soNuoc),
+        chiSoNuocBanDau: chiSoNuocBanDau || 0,
+        chiSoNuocCuoiKy: chiSoNuocCuoiKy || 0,
         phiDichVu: phiDichVu || [],
         tongTien,
-        daThanhToan,
+        daThanhToan: daThanhToan || 0,
         conLai,
-        trangThai,
-        hanThanhToan: new Date(hanThanhToan),
+        trangThai: trangThaiValue,
+        hanThanhToan: finalHanThanhToan,
         ghiChu
       },
       { new: true }
-    ).populate([
-      { path: 'hopDong', select: 'maHopDong' },
-      { path: 'phong', select: 'maPhong' },
-      { path: 'khachThue', select: 'hoTen soDienThoai' }
-    ]);
+    );
+
+    // Populate để trả về dữ liệu đầy đủ (bao gồm polymorphic khachThue)
+    const hoaDonObj = updatedHoaDon.toObject();
+    const KhachThueModel = (await import('@/models/KhachThue')).default;
+    const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+
+    let ktInfo: any = await KhachThueModel.findById(hoaDonObj.khachThue).select('hoTen soDienThoai').lean();
+    if (!ktInfo) {
+      const ndInfo: any = await NguoiDungModel.findById(hoaDonObj.khachThue).select('ten name soDienThoai phone').lean();
+      if (ndInfo) {
+        ktInfo = {
+          _id: ndInfo._id,
+          hoTen: ndInfo.ten || ndInfo.name || 'Khách thuê',
+          soDienThoai: ndInfo.soDienThoai || ndInfo.phone
+        };
+      }
+    }
+
+    const finalUpdatedHoaDon = {
+      ...hoaDonObj,
+      khachThue: ktInfo || { _id: hoaDonObj.khachThue, hoTen: 'N/A' }
+    };
 
     return NextResponse.json({
       success: true,
-      data: updatedHoaDon,
+      data: finalUpdatedHoaDon,
       message: 'Cập nhật hóa đơn thành công'
     });
   } catch (error) {

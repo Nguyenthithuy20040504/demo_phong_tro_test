@@ -26,6 +26,11 @@ export interface INguoiDung extends Document {
   nguoiTao?: mongoose.Types.ObjectId;
   goiDichVu: 'mienPhi' | 'coBan' | 'chuyenNghiep';
   ngayHetHan: Date;
+  thongTinThanhToan?: {
+    nganHang: string;
+    soTaiKhoan: string;
+    chuTaiKhoan: string;
+  };
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -43,7 +48,7 @@ const NguoiDungSchema = new Schema<INguoiDung>({
     unique: true,
     lowercase: true,
     trim: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Email không hợp lệ']
+    match: [/^\S+@\S+\.\S+$/, 'Email không hợp lệ']
   },
   matKhau: {
     type: String,
@@ -126,6 +131,11 @@ const NguoiDungSchema = new Schema<INguoiDung>({
   ngayHetHan: {
     type: Date,
     default: null // Will be populated by pre-save hook
+  },
+  thongTinThanhToan: {
+    nganHang: { type: String, default: '' },
+    soTaiKhoan: { type: String, default: '' },
+    chuTaiKhoan: { type: String, default: '' }
   }
 }, {
   timestamps: true // Mongoose tự tạo createdAt và updatedAt

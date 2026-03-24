@@ -132,32 +132,42 @@ export async function PUT(
       );
     }
 
-    // Check duplicate checking for PUT across all accessible buildings
-    const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
+    // Kiểm tra trùng mã phòng trong cùng tòa nhà (loại trừ phòng hiện tại)
     const filterQuery: any = {
       _id: { $ne: id },
-      maPhong: { $regex: new RegExp(`^${validatedData.maPhong.trim()}$`, 'i') }
+      toaNha: validatedData.toaNha,
+      maPhong: { $regex: new RegExp(`^${validatedData.maPhong.trim().replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i') }
     };
-    if (accessibleToaNhaIds !== null) {
-      filterQuery.toaNha = { $in: accessibleToaNhaIds };
-    }
 
-    const duplicatePhong = await Phong.findOne(filterQuery).populate('toaNha', 'tenToaNha');
-    
+    const duplicatePhong = await Phong.findOne(filterQuery);
     if (duplicatePhong) {
-      const tenToaNha = (duplicatePhong.toaNha as any)?.tenToaNha || 'một tòa nhà khác';
       return NextResponse.json(
-        { message: `Số phòng này đã tồn tại ở ${tenToaNha}. Vui lòng sử dụng mã khác!` },
+        { message: `Số phòng "${validatedData.maPhong}" đã tồn tại trong tòa nhà này. Vui lòng sử dụng số khác!` },
         { status: 400 }
       );
     }
+
+    // Chuẩn hóa tienNghi về camelCase trước khi cập nhật
+    const tienNghiMap: Record<string, string> = {
+      'Điều hòa': 'dieuHoa',
+      'Nóng lạnh': 'nongLanh',
+      'Tủ lạnh': 'tuLanh',
+      'Giường': 'giuong',
+      'Tủ quần áo': 'tuQuanAo',
+      'Bàn ghế': 'banGhe',
+      'WiFi': 'wifi',
+      'Máy giặt': 'mayGiat',
+      'Bếp': 'bep'
+    };
+
+    const normalizedTienNghi = (validatedData.tienNghi || []).map(item => tienNghiMap[item] || item);
 
     const phong = await Phong.findByIdAndUpdate(
       id,
       {
         ...validatedData,
         anhPhong: validatedData.anhPhong || [],
-        tienNghi: validatedData.tienNghi || [],
+        tienNghi: normalizedTienNghi,
         // Trạng thái sẽ được cập nhật tự động dựa trên hợp đồng
       },
       { new: true, runValidators: true }
@@ -185,6 +195,15 @@ export async function PUT(
     }
 
     console.error('Error updating phong:', error);
+
+    // Catch MongoDB duplicate key error (if the manual check fails due to race condition)
+    if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
+      return NextResponse.json(
+        { message: 'Số phòng này đã tồn tại trong tòa nhà. Vui lòng kiểm tra lại!' },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
       { message: 'Internal server error' },
       { status: 500 }
