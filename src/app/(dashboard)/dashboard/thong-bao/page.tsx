@@ -44,7 +44,8 @@ import {
   Send,
   Building2,
   Home,
-  RefreshCw
+  RefreshCw,
+  Zap
 } from 'lucide-react';
 import { ThongBao, ToaNha, Phong, KhachThue } from '@/types';
 import { toast } from 'sonner';
@@ -69,6 +70,7 @@ export default function ThongBaoPage() {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [viewingThongBao, setViewingThongBao] = useState<ThongBao | null>(null);
   const [editingThongBao, setEditingThongBao] = useState<ThongBao | null>(null);
+  const [isAutoGenerating, setIsAutoGenerating] = useState(false);
 
   useEffect(() => {
     document.title = 'Quản lý Thông báo';
@@ -140,6 +142,27 @@ export default function ThongBaoPage() {
     await fetchData(true);
     cache.setIsRefreshing(false);
     toast.success('Danh sách thông báo đã được làm mới rồi nhé!');
+  };
+
+  const handleAutoGenerate = async () => {
+    setIsAutoGenerating(true);
+    try {
+      const res = await fetch('/api/thong-bao/auto-generate', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message || `Đã tạo ${data.created} thông báo tự động`);
+        if (data.created > 0) {
+          cache.clearCache();
+          fetchData(true);
+        }
+      } else {
+        toast.error(data.message || 'Lỗi tạo thông báo tự động');
+      }
+    } catch {
+      toast.error('Lỗi kết nối');
+    } finally {
+      setIsAutoGenerating(false);
+    }
   };
 
   const filteredThongBao = thongBaoList.filter(thongBao => {
@@ -256,6 +279,16 @@ export default function ThongBaoPage() {
           >
             <RefreshCw className={`h-4 w-4 sm:mr-2 ${cache.isRefreshing ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">{cache.isRefreshing ? 'Đang tải...' : 'Tải mới'}</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAutoGenerate}
+            disabled={isAutoGenerating}
+            className="flex-1 sm:flex-none border-amber-400 text-amber-700 hover:bg-amber-50"
+          >
+            <Zap className={`h-4 w-4 sm:mr-2 ${isAutoGenerating ? 'animate-pulse' : ''}`} />
+            <span className="hidden sm:inline">{isAutoGenerating ? 'Đang tạo...' : 'Tự động'}</span>
           </Button>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>

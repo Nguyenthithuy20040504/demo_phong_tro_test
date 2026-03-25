@@ -11,6 +11,7 @@ interface ImageUploadProps {
   className?: string;
   label?: string;
   placeholder?: string;
+  onUploadingChange?: (uploading: boolean) => void;
 }
 
 export function ImageUpload({ 
@@ -18,9 +19,19 @@ export function ImageUpload({
   onImageChange, 
   className = '',
   label = 'Ảnh',
-  placeholder = 'Chọn ảnh'
+  placeholder = 'Chọn ảnh',
+  onUploadingChange
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
+
+  // Helper to handle uploading state changes
+  const updateUploading = (isUploading: boolean) => {
+    setUploading(isUploading);
+    if (onUploadingChange) {
+      onUploadingChange(isUploading);
+    }
+  };
+
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,7 +44,7 @@ export function ImageUpload({
       return;
     }
 
-    setUploading(true);
+    updateUploading(true);
 
     try {
       const formData = new FormData();
@@ -63,7 +74,7 @@ export function ImageUpload({
       console.error('Upload error:', error);
       toast.error('Có lỗi xảy ra khi upload ảnh');
     } finally {
-      setUploading(false);
+      updateUploading(false);
       // Reset input
       if (inputRef.current) {
         inputRef.current.value = '';

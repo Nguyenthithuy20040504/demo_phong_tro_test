@@ -25,8 +25,11 @@ export async function POST(request: NextRequest) {
       
       await dbConnect();
 
-      // Tìm kiếm hóa đơn khớp với OrderCode đang chờ duyệt
-      const payment = await SaasPayment.findOne({ maDonHang: Number(orderCode), trangThai: 'choDuyet' });
+      // Tìm kiếm hóa đơn khớp với OrderCode (có thể đang chờ duyệt hoặc đã thanh toán nhưng chưa gia hạn)
+      const payment = await SaasPayment.findOne({ 
+        maDonHang: Number(orderCode), 
+        $or: [{ trangThai: 'choDuyet' }, { trangThai: 'daThanhToan', ngayHetHanMoi: null }] 
+      });
       
       if (payment) {
         // Xử lý tự động gia hạn tương tự như kịch bản trước đây

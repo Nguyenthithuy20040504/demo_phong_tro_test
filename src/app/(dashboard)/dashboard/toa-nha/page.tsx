@@ -276,12 +276,18 @@ function ToaNhaForm({
     { value: 'khuBepChung', label: 'Khu bếp chung' },
   ];
 
+  const [submitting, setSubmitting] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+
     if (!formData.tenToaNha.trim()) {
       toast.error('Bạn chưa nhập tên tòa nhà!');
       return;
     }
+
+    setSubmitting(true);
     try {
       const submitData = {
         tenToaNha: formData.tenToaNha,
@@ -324,6 +330,8 @@ function ToaNhaForm({
       }
     } catch (error) {
       toast.error('Mất kết nối đến máy chủ. Kiểm tra mạng rồi thử lại nhé!');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -391,9 +399,28 @@ function ToaNhaForm({
       </div>
 
       <DialogFooter className="gap-3 pt-4 pb-2 border-t border-border/10">
-        <Button type="button" variant="ghost" onClick={onClose} className="rounded-xl h-10 px-6 font-bold text-xs uppercase tracking-widest">Hủy</Button>
-        <Button type="submit" className="rounded-xl h-10 px-8 font-bold text-xs uppercase tracking-widest shadow-premium">
-          {toaNha ? 'Lưu thay đổi' : 'Thêm tòa nhà'}
+        <Button 
+          type="button" 
+          variant="ghost" 
+          onClick={onClose} 
+          disabled={submitting}
+          className="rounded-xl h-10 px-6 font-bold text-xs uppercase tracking-widest"
+        >
+          Hủy
+        </Button>
+        <Button 
+          type="submit" 
+          disabled={submitting}
+          className="rounded-xl h-10 px-8 font-bold text-xs uppercase tracking-widest shadow-premium"
+        >
+          {submitting ? (
+            <>
+              <RefreshCw className="h-3 w-3 mr-2 animate-spin" />
+              Đang xử lý...
+            </>
+          ) : (
+            toaNha ? 'Lưu thay đổi' : 'Thêm tòa nhà'
+          )}
         </Button>
       </DialogFooter>
     </form>

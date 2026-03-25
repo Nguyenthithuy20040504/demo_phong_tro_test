@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -35,6 +37,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [toaNhaList, setToaNhaList] = useState<ToaNha[]>([]);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  
+  const searchParams = useSearchParams();
+  const { data: session, update } = useSession();
   
   // Filters
   const [selectedToaNha, setSelectedToaNha] = useState<string>('all');
@@ -99,7 +104,64 @@ export default function DashboardPage() {
   useEffect(() => {
     document.title = 'Dashboard | SmartStay';
     fetchToaNha();
-  }, []);
+
+    // Check for plan selection from registration
+    const planKey = searchParams.get('plan');
+    if (planKey && ['basic', 'professional'].includes(planKey) && status === 'authenticated') {
+      const handleSelectedPlan = async () => {
+        try {
+          // Kiểm tra xem người dùng hiện tại đã có gói này chưa
+          const currentPlan = (session?.user as any)?.goiDichVu;
+          const ngayHetHan = (session?.user as any)?.ngayHetHan;
+          const isExpired = ngayHetHan ? new Date(ngayHetHan) < new Date() : true;
+
+          // Nếu đã dùng chuyên nghiệp mà chọn cơ bản, hoặc cùng loại và chưa hết hạn -> Bỏ qua thanh toán
+          if (
+            (currentPlan === 'professional' && !isExpired) || 
+            (currentPlan === planKey && !isExpired)
+          ) {
+            toast.success('Chào mừng quay lại! Bạn đang sử dụng ' + 
+              (currentPlan === 'professional' ? 'Gói Chuyên Nghiệp' : 'Gói Cơ Bản') + '.');
+            return;
+          }
+
+          // 1. Fetch plans to find the _id of the selected plan key
+          const resPlans = await fetch('/api/admin/saas/plans');
+          if (!resPlans.ok) return;
+          const allPlans = await resPlans.json();
+          
+          const targetPlan = allPlans.find((p: any) => 
+            (planKey === 'basic' && (p.ten.toLowerCase().includes('cơ bản') || p.ten.toLowerCase().includes('basic'))) ||
+            (planKey === 'professional' && (p.ten.toLowerCase().includes('chuyên nghiệp') || p.ten.toLowerCase().includes('professional')))
+          );
+
+          if (targetPlan) {
+            toast.loading('Đang khởi tạo thanh toán cho ' + targetPlan.ten + '...');
+            
+            // 2. Call PayOS to create payment link
+            const resPayment = await fetch('/api/user/subscription/payos/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ planId: targetPlan._id })
+            });
+            
+            if (resPayment.ok) {
+              const data = await resPayment.json();
+              if (data.checkoutUrl) {
+                // Redirect user to pay!
+                window.location.href = data.checkoutUrl;
+              }
+            } else {
+              toast.error('Không thể tạo liên kết thanh toán. Vui lòng thử lại sau.');
+            }
+          }
+        } catch (error) {
+          console.error('Error handling selected plan:', error);
+        }
+      };
+      handleSelectedPlan();
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     fetchStats();

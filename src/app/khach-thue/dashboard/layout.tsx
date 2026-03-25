@@ -7,7 +7,8 @@ import { toast } from 'sonner';
 import { useSession, signOut } from 'next-auth/react';
 
 import { Button } from '@/components/ui/button';
-import { Home, FileText, AlertCircle, User, LogOut, Menu, X } from 'lucide-react';
+import { Home, FileText, AlertCircle, User, LogOut, Menu, X, Bell } from 'lucide-react';
+import { useEffect as useEffectCount, useState as useStateCount, useRef } from 'react';
 
 export default function KhachThueDashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -47,10 +48,21 @@ export default function KhachThueDashboardLayout({ children }: { children: React
 
   if (!session) return null;
 
+  const [unreadCount, setUnreadCount] = useStateCount(0);
+
+  useEffectCount(() => {
+    fetch('/api/thong-bao/unread-count').then(r => r.json()).then(d => setUnreadCount(d.count || 0)).catch(() => {});
+    const interval = setInterval(() => {
+      fetch('/api/thong-bao/unread-count').then(r => r.json()).then(d => setUnreadCount(d.count || 0)).catch(() => {});
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   const navigation = [
     { name: 'Tổng quan', href: '/khach-thue/dashboard', icon: Home },
     { name: 'Hóa đơn', href: '/khach-thue/dashboard/hoa-don', icon: FileText },
     { name: 'Sự cố', href: '/khach-thue/dashboard/su-co', icon: AlertCircle },
+    { name: 'Thông báo', href: '/khach-thue/dashboard/thong-bao', icon: Bell, badge: unreadCount },
     { name: 'Thông tin cá nhân', href: '/khach-thue/dashboard/thong-tin', icon: User },
   ];
 
@@ -86,6 +98,7 @@ export default function KhachThueDashboardLayout({ children }: { children: React
             {navigation.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
+              const badge = (item as any).badge || 0;
               return (
                 <Link
                   key={item.name}
@@ -97,7 +110,12 @@ export default function KhachThueDashboardLayout({ children }: { children: React
                   `}
                 >
                   <Icon className="h-5 w-5" />
-                  <span className="font-medium">{item.name}</span>
+                  <span className="font-medium flex-1">{item.name}</span>
+                  {badge > 0 && (
+                    <span className="bg-red-500 text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                      {badge > 9 ? '9+' : badge}
+                    </span>
+                  )}
                 </Link>
               );
             })}

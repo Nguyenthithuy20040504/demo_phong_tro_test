@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { DynamicBreadcrumb } from '@/components/ui/dynamic-breadcrumb';
 import { PageProgress } from '@/components/ui/page-progress';
 import { SubscriptionGuard } from '@/components/ui/subscription-guard';
+import { NotificationBell } from '@/components/ui/notification-bell';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -44,6 +45,9 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="h-6" />
           <DynamicBreadcrumb />
+          <div className="ml-auto">
+            <NotificationBell />
+          </div>
         </header>
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <SubscriptionGuard>{children}</SubscriptionGuard>

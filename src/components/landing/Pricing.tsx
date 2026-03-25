@@ -7,6 +7,7 @@ import Link from "next/link";
 
 const plans = [
   {
+    id: "mienPhi",
     name: "Gói Miễn Phí",
     price: "0",
     period: "Tháng đầu",
@@ -22,6 +23,7 @@ const plans = [
     popular: false
   },
   {
+    id: "basic",
     name: "Gói Cơ Bản",
     price: "1.000.000",
     period: "tháng",
@@ -37,6 +39,7 @@ const plans = [
     popular: false
   },
   {
+    id: "professional",
     name: "Gói Chuyên Nghiệp",
     price: "5.000.000",
     period: "6 tháng",
@@ -134,7 +137,7 @@ export function Pricing() {
                 ))}
               </ul>
 
-              <Link href="/dang-ky?vaiTro=chuNha">
+              <Link href={`/dang-ky?vaiTro=chuNha&plan=${plan.id}`}>
                 <Button 
                   className={`w-full py-5 rounded-xl font-josefin font-bold text-base transition-all shadow-lg ${
                     plan.popular

@@ -125,7 +125,8 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Nếu chuyển sang trạng thái đã thanh toán, thực hiện gia hạn
-    if (trangThai === 'daThanhToan' && payment.trangThai !== 'daThanhToan') {
+    // Hỗ trợ trường hợp thanh toán QR được tạo mặc định là daThanhToan nhưng chưa được gia hạn (ngayHetHanMoi = null)
+    if (trangThai === 'daThanhToan' && (!payment.ngayHetHanMoi || payment.trangThai !== 'daThanhToan')) {
       const plan = await GoiDichVu.findById(payment.goiDichVu);
       const user = await NguoiDung.findById(payment.chuNha);
 

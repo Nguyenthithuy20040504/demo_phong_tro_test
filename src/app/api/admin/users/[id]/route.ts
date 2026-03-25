@@ -43,11 +43,9 @@ export async function PUT(
        if (role === 'admin' || role === 'chuNha') {
            return NextResponse.json({ message: 'Chủ nhà chỉ được cấp quyền Nhân Viên hoặc Khách Thuê' }, { status: 403 });
        }
-    } else if (session.user.role === 'admin') {
-       if (role !== 'admin' && role !== 'chuNha') {
-           return NextResponse.json({ message: 'Quản trị viên chỉ được cấp quyền Chủ nhà hoặc Quản trị viên' }, { status: 403 });
-       }
     }
+    // Admins can manage all roles, no extra check needed here
+
     
     const updatedUser = await NguoiDung.findByIdAndUpdate(
       id,

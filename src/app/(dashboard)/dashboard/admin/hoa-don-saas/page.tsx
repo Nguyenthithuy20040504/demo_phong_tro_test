@@ -113,7 +113,7 @@ export default function SaaSInvoicesPage() {
         'Số tiền': p.soTien,
         'Phương thức': p.phuongThuc === 'chuyenKhoan' ? 'Chuyển khoản' : p.phuongThuc === 'tienMat' ? 'Tiền mặt' : 'Ví điện tử',
         'Trạng thái': p.trangThai === 'daThanhToan' ? 'Thành công' : 'Chờ duyệt',
-        'Hết hạn mới': new Date(p.ngayHetHanMoi).toLocaleDateString('vi-VN')
+        'Hết hạn mới': p.ngayHetHanMoi ? new Date(p.ngayHetHanMoi).toLocaleDateString('vi-VN') : 'Đang xử lý...'
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(excelData);
@@ -217,6 +217,7 @@ export default function SaaSInvoicesPage() {
                   <td>${new Date(p.ngayThanhToan).toLocaleDateString('vi-VN')}</td>
                   <td class="amount">${p.soTien.toLocaleString('vi-VN')} đ</td>
                   <td>${p.trangThai === 'daThanhToan' ? 'Thành công' : 'Chờ duyệt'}</td>
+                  <td>${p.ngayHetHanMoi ? new Date(p.ngayHetHanMoi).toLocaleDateString('vi-VN') : 'Đang xử lý...'}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -359,7 +360,7 @@ export default function SaaSInvoicesPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50 font-medium">
-                            {new Date(payment.ngayHetHanMoi).toLocaleDateString('vi-VN')}
+                            {payment.ngayHetHanMoi ? new Date(payment.ngayHetHanMoi).toLocaleDateString('vi-VN') : 'Đang xử lý...'}
                         </Badge>
                       </TableCell>
                       <TableCell>

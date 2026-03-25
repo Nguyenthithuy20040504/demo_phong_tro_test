@@ -188,6 +188,28 @@ export async function POST(request: NextRequest) {
     const chuSoHuuId = new mongoose.Types.ObjectId(session.user.id);
     console.log('Chu so huu ObjectId:', chuSoHuuId);
 
+    // Kiểm tra xem đã tồn tại tòa nhà cùng tên và địa chỉ cho chủ sở hữu này chưa
+    const existingToaNha = await ToaNha.findOne({
+      chuSoHuu: chuSoHuuId,
+      tenToaNha: validatedData.tenToaNha,
+      'diaChi.soNha': validatedData.diaChi.soNha,
+      'diaChi.duong': validatedData.diaChi.duong,
+      'diaChi.phuong': validatedData.diaChi.phuong,
+      'diaChi.quan': validatedData.diaChi.quan,
+      'diaChi.thanhPho': validatedData.diaChi.thanhPho,
+    });
+
+    if (existingToaNha) {
+      console.log('Toa nha already exists for this owner');
+      return NextResponse.json(
+        { 
+          message: 'Tòa nhà với tên và địa chỉ này đã tồn tại trong danh sách của bạn rồi.',
+          error: 'DUPLICATE_ENTRY' 
+        },
+        { status: 409 }
+      );
+    }
+
     const newToaNha = new ToaNha({
       ...validatedData,
       chuSoHuu: chuSoHuuId,

@@ -6,6 +6,8 @@ import HopDong from '@/models/HopDong';
 import HoaDon from '@/models/HoaDon';
 import ChiSoDienNuoc from '@/models/ChiSoDienNuoc';
 import Phong from '@/models/Phong';
+import ThongBao from '@/models/ThongBao';
+
 
 export async function POST(request: NextRequest) {
   try {
@@ -111,6 +113,22 @@ export async function POST(request: NextRequest) {
 
         await newInvoice.save();
         createdInvoices++;
+
+        // Tạo thông báo cho khách thuê
+        try {
+          const noiDungThongBao = `Chào bạn, hóa đơn thuê phòng tháng ${newInvoice.thang}/${newInvoice.nam} đã được hệ thống tạo tự động với tổng tiền ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(newInvoice.tongTien)}. Hạn thanh toán: ${new Date(newInvoice.hanThanhToan).toLocaleDateString('vi-VN')}.`;
+          
+          await new ThongBao({
+            tieuDe: 'Thông báo hóa đơn mới (Tự động)',
+            noiDung: noiDungThongBao,
+            loai: 'hoaDon',
+            nguoiGui: session.user.id,
+            nguoiNhan: [newInvoice.khachThue],
+            ngayGui: new Date()
+          }).save();
+        } catch (notifErr) {
+          console.error('Lỗi tạo thông báo batch:', notifErr);
+        }
 
       } catch (error) {
         console.error(`Error creating invoice for contract ${contract.maHopDong}:`, error);

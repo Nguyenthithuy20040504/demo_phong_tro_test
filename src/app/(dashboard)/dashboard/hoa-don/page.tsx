@@ -406,200 +406,117 @@ export default function HoaDonPage() {
   const handleScreenshot = async (hoaDon: HoaDon) => {
     if (isExportingPdf) return;
     setIsExportingPdf(true);
-    const toastId = toast.loading('Đang khởi tạo bản in PDF...');
+    const toastId = toast.loading('Đang chuẩn bị PDF...');
 
     try {
-      // Tạo element tạm thời để chụp ảnh
-      const tempElement = document.createElement('div');
-      tempElement.innerHTML = `
-        <div style="
-          width: 800px; 
-          padding: 40px; 
-          background: #ffffff; 
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          border: 1px solid #dddddd;
-          margin: 20px;
-          color: #000000;
-          box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        ">
-          <!-- Header -->
-          <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 20px;">
-            <h1 style="font-size: 28px; font-weight: bold; margin: 0; color: #000; text-transform: uppercase;">HÓA ĐƠN THUÊ PHÒNG</h1>
-            <p style="font-size: 18px; margin: 10px 0 0 0; color: #333;">Số: ${hoaDon.maHoaDon}</p>
+      const printContent = `
+        <!DOCTYPE html>
+        <html lang="vi">
+        <head>
+          <meta charset="utf-8">
+          <title>Hóa đơn ${hoaDon.maHoaDon}</title>
+          <style>
+            @page { size: A4; margin: 15mm; }
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body { font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #000; }
+            .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 20px; }
+            .header h1 { font-size: 22px; font-weight: bold; text-transform: uppercase; }
+            .header p { font-size: 16px; margin-top: 6px; color: #444; }
+            .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+            .box { border: 1px solid #ccc; border-radius: 6px; padding: 12px; }
+            .box h3 { font-size: 14px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 6px; }
+            .box p { margin: 4px 0; font-size: 13px; }
+            .status-paid { color: #16a34a; font-weight: bold; }
+            .status-unpaid { color: #dc2626; font-weight: bold; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 13px; }
+            th { background: #f3f4f6; border: 1px solid #d1d5db; padding: 8px; text-align: left; }
+            td { border: 1px solid #d1d5db; padding: 8px; }
+            td.right { text-align: right; }
+            .summary { background: #fffbeb; border: 1px solid #fbbf24; border-radius: 6px; padding: 12px; margin-bottom: 20px; }
+            .summary-row { display: flex; justify-content: space-between; margin: 4px 0; font-size: 13px; }
+            .summary-total { font-size: 16px; font-weight: bold; color: #dc2626; }
+            .sigs { display: flex; justify-content: space-between; margin-top: 40px; }
+            .sig { text-align: center; width: 45%; }
+            .sig-line { height: 50px; border-bottom: 1px dashed #ccc; margin-bottom: 6px; }
+            .footer { text-align: center; border-top: 1px dashed #ccc; margin-top: 20px; padding-top: 10px; font-size: 11px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Hóa đơn thuê phòng</h1>
+            <p>Mã: ${hoaDon.maHoaDon}</p>
           </div>
-          
-          <!-- Main Info Sections -->
-          <div style="display: flex; gap: 30px; margin-bottom: 30px;">
-            <div style="flex: 1; border: 1px solid #eee; padding: 15px; border-radius: 8px;">
-              <h3 style="font-size: 16px; font-weight: bold; margin-top: 0; margin-bottom: 12px; color: #000; border-bottom: 1px solid #eee; padding-bottom: 8px;">Thông tin khách hàng</h3>
-              <p style="margin: 6px 0; font-size: 14px;"><strong>Phòng:</strong> Phòng ${getPhongName(hoaDon.phong, phongList)}</p>
-              <p style="margin: 6px 0; font-size: 14px;"><strong>Khách thuê:</strong> ${getKhachThueName(hoaDon.khachThue, khachThueList)}</p>
-              <p style="margin: 6px 0; font-size: 14px;"><strong>Điện thoại:</strong> ${(hoaDon.khachThue as any)?.soDienThoai || 'N/A'}</p>
+
+          <div class="grid2">
+            <div class="box">
+              <h3>Thông tin khách hàng</h3>
+              <p><strong>Phòng:</strong> ${getPhongName(hoaDon.phong, phongList)}</p>
+              <p><strong>Khách thuê:</strong> ${getKhachThueName(hoaDon.khachThue, khachThueList)}</p>
+              <p><strong>Điện thoại:</strong> ${(hoaDon.khachThue as any)?.soDienThoai || 'N/A'}</p>
             </div>
-            <div style="flex: 1; border: 1px solid #eee; padding: 15px; border-radius: 8px;">
-              <h3 style="font-size: 16px; font-weight: bold; margin-top: 0; margin-bottom: 12px; color: #000; border-bottom: 1px solid #eee; padding-bottom: 8px;">Chi tiết kỳ thanh toán</h3>
-              <p style="margin: 6px 0; font-size: 14px;"><strong>Kỳ hóa đơn:</strong> Tháng ${hoaDon.thang}/${hoaDon.nam}</p>
-              <p style="margin: 6px 0; font-size: 14px;"><strong>Hạn đóng tiền:</strong> ${hoaDon.hanThanhToan ? new Date(hoaDon.hanThanhToan).toLocaleDateString('vi-VN') : 'N/A'}</p>
-              <p style="margin: 6px 0; font-size: 14px;"><strong>Trạng thái:</strong> 
-                <span style="font-weight: bold; color: ${hoaDon.trangThai === 'daThanhToan' ? '#10b981' : '#ef4444'}">
-                  ${hoaDon.trangThai === 'daThanhToan' ? 'Đã thanh toán' : 
-                    hoaDon.trangThai === 'daThanhToanMotPhan' ? 'Thanh toán một phần' : 
-                    hoaDon.trangThai === 'quaHan' ? 'Quá hạn' : 'Chưa thanh toán'}
-                </span>
-              </p>
+            <div class="box">
+              <h3>Chi tiết kỳ thanh toán</h3>
+              <p><strong>Kỳ hóa đơn:</strong> Tháng ${hoaDon.thang}/${hoaDon.nam}</p>
+              <p><strong>Hạn đóng tiền:</strong> ${hoaDon.hanThanhToan ? new Date(hoaDon.hanThanhToan).toLocaleDateString('vi-VN') : 'N/A'}</p>
+              <p><strong>Trạng thái:</strong> <span class="${hoaDon.trangThai === 'daThanhToan' ? 'status-paid' : 'status-unpaid'}">${hoaDon.trangThai === 'daThanhToan' ? 'Đã thanh toán' : hoaDon.trangThai === 'daThanhToanMotPhan' ? 'Thanh toán một phần' : 'Chưa thanh toán'}</span></p>
             </div>
           </div>
 
-          <!-- Electricity and Water Readings -->
-          <div style="margin-bottom: 30px;">
-            <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 15px; color: #000; border-left: 4px solid #000; padding-left: 10px;">Chỉ số điện nước</h3>
-            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-              <thead>
-                <tr style="background: #f8f9fa;">
-                  <th style="border: 1px solid #dee2e6; padding: 10px; text-align: left;">Dịch vụ</th>
-                  <th style="border: 1px solid #dee2e6; padding: 10px; text-align: center;">Ban đầu</th>
-                  <th style="border: 1px solid #dee2e6; padding: 10px; text-align: center;">Cuối kỳ</th>
-                  <th style="border: 1px solid #dee2e6; padding: 10px; text-align: center;">Sử dụng</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style="border: 1px solid #dee2e6; padding: 10px;">Điện năng tiêu thụ (kWh)</td>
-                  <td style="border: 1px solid #dee2e6; padding: 10px; text-align: center;">${hoaDon.chiSoDienBanDau || 0}</td>
-                  <td style="border: 1px solid #dee2e6; padding: 10px; text-align: center;">${hoaDon.chiSoDienCuoiKy || 0}</td>
-                  <td style="border: 1px solid #dee2e6; padding: 10px; text-align: center; font-weight: bold;">${hoaDon.soDien || 0}</td>
-                </tr>
-                <tr>
-                  <td style="border: 1px solid #dee2e6; padding: 10px;">Nước tiêu thụ (m³)</td>
-                  <td style="border: 1px solid #dee2e6; padding: 10px; text-align: center;">${hoaDon.chiSoNuocBanDau || 0}</td>
-                  <td style="border: 1px solid #dee2e6; padding: 10px; text-align: center;">${hoaDon.chiSoNuocCuoiKy || 0}</td>
-                  <td style="border: 1px solid #dee2e6; padding: 10px; text-align: center; font-weight: bold;">${hoaDon.soNuoc || 0}</td>
-                </tr>
-              </tbody>
-            </table>
+          <table>
+            <thead>
+              <tr>
+                <th width="60%">Nội dung</th>
+                <th>Số lượng</th>
+                <th>Thành tiền</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Tiền phòng</td><td>1</td><td class="right">${formatCurrency(hoaDon.tienPhong)}</td></tr>
+              <tr><td>Tiền điện (${hoaDon.soDien || 0} kWh)</td><td>${hoaDon.soDien || 0}</td><td class="right">${formatCurrency(hoaDon.tienDien)}</td></tr>
+              <tr><td>Tiền nước (${hoaDon.soNuoc || 0} m³)</td><td>${hoaDon.soNuoc || 0}</td><td class="right">${formatCurrency(hoaDon.tienNuoc || 0)}</td></tr>
+              ${(hoaDon.phiDichVu || []).map(phi => `<tr><td>${phi.ten}</td><td>1</td><td class="right">${formatCurrency(phi.gia)}</td></tr>`).join('')}
+              <tr style="background:#f3f4f6;font-weight:bold">
+                <td colspan="2">TỔNG CỘNG</td>
+                <td class="right">${formatCurrency(hoaDon.tongTien)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="summary">
+            <div class="summary-row"><span>Đã thanh toán:</span><span style="color:#16a34a;font-weight:bold">${formatCurrency(hoaDon.daThanhToan)}</span></div>
+            <div class="summary-row summary-total"><span>Còn phải đóng:</span><span>${formatCurrency(hoaDon.conLai)}</span></div>
           </div>
 
-          <!-- Invoice Details -->
-          <div style="margin-bottom: 30px;">
-            <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 15px; color: #000; border-left: 4px solid #000; padding-left: 10px;">Bảng kê chi tiết các khoản phí</h3>
-            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-              <thead>
-                <tr style="background: #f8f9fa;">
-                  <th style="border: 1px solid #dee2e6; padding: 10px; text-align: left;">Nội dung</th>
-                  <th style="border: 1px solid #dee2e6; padding: 10px; text-align: right;">Thành tiền</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style="border: 1px solid #dee2e6; padding: 10px;">Tiền thuê phòng tháng ${hoaDon.thang}/${hoaDon.nam}</td>
-                  <td style="border: 1px solid #dee2e6; padding: 10px; text-align: right;">${formatCurrency(hoaDon.tienPhong)}</td>
-                </tr>
-                <tr>
-                  <td style="border: 1px solid #dee2e6; padding: 10px;">Tiền điện (${hoaDon.soDien} kWh)</td>
-                  <td style="border: 1px solid #dee2e6; padding: 10px; text-align: right;">${formatCurrency(hoaDon.tienDien)}</td>
-                </tr>
-                <tr>
-                  <td style="border: 1px solid #dee2e6; padding: 10px;">Tiền nước (${hoaDon.soNuoc || 0} m³)</td>
-                  <td style="border: 1px solid #dee2e6; padding: 10px; text-align: right;">${formatCurrency(hoaDon.tienNuoc || 0)}</td>
-                </tr>
-                ${(hoaDon.phiDichVu || []).map(phi => `
-                  <tr>
-                    <td style="border: 1px solid #dee2e6; padding: 10px;">${phi.ten}</td>
-                    <td style="border: 1px solid #dee2e6; padding: 10px; text-align: right;">${formatCurrency(phi.gia)}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-              <tfoot>
-                <tr style="background: #f1f3f5; font-weight: bold;">
-                  <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-size: 16px;">TỔNG CỘNG THEO HÓA ĐƠN</td>
-                  <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-size: 16px; color: #000;">${formatCurrency(hoaDon.tongTien)}</td>
-                </tr>
-              </tfoot>
-            </table>
+          <div class="sigs">
+            <div class="sig"><div class="sig-line"></div><p>Người thuê phòng</p><p style="font-size:11px;color:#888">(Ký và ghi rõ họ tên)</p></div>
+            <div class="sig"><div class="sig-line"></div><p>Chủ nhà / Đại diện</p><p style="font-size:11px;color:#888">(Ký và ghi rõ họ tên)</p></div>
           </div>
-
-          <!-- Summary Section -->
-          <div style="background: #fff9db; padding: 20px; border-radius: 8px; border: 1px solid #ffe066; margin-bottom: 30px;">
-             <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-               <span style="font-size: 14px; color: #666;">Số tiền đã thanh toán:</span>
-               <span style="font-weight: bold; color: #10b981;">${formatCurrency(hoaDon.daThanhToan)}</span>
-             </div>
-             <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold;">
-               <span>SỐ TIỀN CÒN PHẢI ĐÓNG:</span>
-               <span style="color: #ef4444;">${formatCurrency(hoaDon.conLai)}</span>
-             </div>
-          </div>
-          
-          <!-- Signature and Footer -->
-          <div style="display: flex; justify-content: space-between; margin-top: 50px; padding-bottom: 60px;">
-            <div style="text-align: center; width: 45%;">
-              <p style="margin-bottom: 60px; font-weight: bold;">Người thuê phòng</p>
-              <p style="font-style: italic; font-size: 12px; color: #666;">(Ký và ghi rõ họ tên)</p>
-            </div>
-            <div style="text-align: center; width: 45%;">
-              <p style="margin-bottom: 60px; font-weight: bold;">Chủ nhà / Đại diện</p>
-              <p style="font-style: italic; font-size: 12px; color: #666;">(Ký và ghi rõ họ tên)</p>
-            </div>
-          </div>
-          
-          <div style="text-align: center; border-top: 1px dashed #ccc; padding-top: 20px; font-size: 12px; color: #666;">
-            <p>Hóa đơn được khởi tạo tự động từ hệ thống quản lý phòng trọ.</p>
-            <p>Vui lòng giữ lại hóa đơn này để đối soát khi cần thiết.</p>
-          </div>
-        </div>
+          <div class="footer"><p>Hóa đơn được khởi tạo tự động từ hệ thống quản lý phòng trọ. Vui lòng giữ lại để đối soát.</p></div>
+        </body>
+        </html>
       `;
-      
-      tempElement.style.position = 'fixed';
-      tempElement.style.left = '-10000px';
-      tempElement.style.top = '0';
-      tempElement.style.zIndex = '-9999';
-      document.body.appendChild(tempElement);
 
-      toast.loading('Đang chuẩn bị dữ liệu và hình ảnh...', { id: toastId });
-      
-      // Đợi một chút để font chữ và style được áp dụng
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Chụp ảnh
-      const canvas = await html2canvas(tempElement, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: false, // Set to false to avoid security errors with cross-origin
-        backgroundColor: '#ffffff',
-        logging: false,
-        onclone: (clonedDoc) => {
-          // Ensure the cloned element is visible for the capture
-          const el = clonedDoc.querySelector('div');
-          if (el) el.style.left = '0';
-        }
-      });
-
-      // Xóa element tạm thời ngay sau khi chụp xong
-      document.body.removeChild(tempElement);
-
-      toast.loading('Đang khởi tạo PDF...', { id: toastId });
-
-      // Tạo PDF
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
-
-      // Tải xuống PDF
-      pdf.save(`hoa-don-${hoaDon.maHoaDon}.pdf`);
-      toast.success('Đã xuất file PDF hóa đơn thành công!', { id: toastId });
+      const printWindow = window.open('', '_blank', 'width=800,height=1000');
+      if (!printWindow) {
+        toast.error('Trình duyệt đã chặn popup. Vui lòng cho phép popup và thử lại.', { id: toastId });
+        return;
+      }
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        toast.success('Đã mở cửa sổ in/xuất PDF!', { id: toastId });
+      }, 500);
     } catch (error) {
       console.error('PDF export error:', error);
-      toast.error('Chưa xuất được PDF. Bạn thử dùng chức năng "Tải HTML" hoặc chụp ảnh màn hình nhé!', { id: toastId });
+      toast.error('Không mở được cửa sổ in. Hãy thử lại.', { id: toastId });
     } finally {
       setIsExportingPdf(false);
     }
   };
+
+
 
   const handleAutoCreateInvoices = async () => {
     if (!confirm('Bạn có chắc chắn muốn tạo hóa đơn tự động cho tất cả hợp đồng đang hoạt động?')) {
@@ -1106,19 +1023,15 @@ export default function HoaDonPage() {
             </DialogDescription>
           </DialogHeader>
           
-          {paymentHoaDon && (
+      {paymentHoaDon && (
             <PaymentForm 
               hoaDon={paymentHoaDon}
               onClose={() => setIsPaymentDialogOpen(false)}
-              onSuccess={(updatedHoaDon) => {
+              onSuccess={async (updatedHoaDon) => {
                 setIsPaymentDialogOpen(false);
-                // Chỉ update dòng hóa đơn đó thay vì load lại toàn bộ
-                if (updatedHoaDon) {
-                  setHoaDonList(prev => prev.map(hd => 
-                    hd._id === updatedHoaDon._id ? updatedHoaDon : hd
-                  ));
-                  cache.clearCache(); // Xóa cache để lần sau load mới
-                }
+                // Force-refresh để lấy trạng thái mới nhất từ server
+                cache.clearCache();
+                await fetchData(true);
               }}
             />
           )}
@@ -1139,7 +1052,7 @@ function PaymentForm({
   onSuccess: (updatedHoaDon?: HoaDon) => void;
 }) {
   const [formData, setFormData] = useState({
-    soTien: hoaDon.conLai, // Mặc định thanh toán toàn bộ số tiền còn lại
+    soTien: hoaDon.conLai,
     phuongThuc: 'tienMat' as 'tienMat' | 'chuyenKhoan' | 'viDienTu',
     nganHang: '',
     soGiaoDich: '',
@@ -1148,9 +1061,14 @@ function PaymentForm({
     anhBienLai: '',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (uploading) {
+      toast.warning('Ảnh biên lai đang được upload, vui lòng đợi...');
+      return;
+    }
     setSubmitting(true);
     
     try {
@@ -1167,38 +1085,23 @@ function PaymentForm({
         anhBienLai: formData.anhBienLai
       };
       
-      console.log('Submitting payment:', requestData);
-      
       const response = await fetch('/api/thanh-toan', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestData),
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        // Xóa cache và trả về dữ liệu hóa đơn đã cập nhật
-        sessionStorage.removeItem('hoa-don-data');
-        toast.success(result.message || 'Thanh toán đã được tạo thành công');
-        
-        try {
-          onSuccess(result.data?.hoaDon); // Truyền hóa đơn đã cập nhật
-        } catch (onSuccessError) {
-          console.error('Error in onSuccess callback:', onSuccessError);
-          // Vẫn gọi onClose để thoát khỏi dialog nếu onSuccess bị lỗi cục bộ
-          onClose();
-          // Thông báo người dùng tải lại trang
-          toast.info('Giao dịch thành công, vui lòng tải lại trang để cập nhật dữ liệu.');
-        }
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        toast.success(result.message || 'Thanh toán đã được ghi nhận thành công!');
+        onSuccess(result.data?.hoaDon);
       } else {
-        const errorData = await response.json();
-        toast.error(errorData.message || 'Có lỗi xảy ra');
+        toast.error(result.message || 'Có lỗi xảy ra khi thanh toán');
       }
     } catch (error) {
       console.error('Error submitting payment:', error);
-      toast.error('Có lỗi xảy ra khi tạo thanh toán');
+      toast.error('Lỗi kết nối khi tạo thanh toán');
     } finally {
       setSubmitting(false);
     }
@@ -1234,6 +1137,52 @@ function PaymentForm({
       </div>
 
       {/* Form thanh toán */}
+      {/* VietQR tĩnh - nếu có */}
+      {hoaDon.checkoutUrl && hoaDon.conLai > 0 && (
+        <div className="border border-emerald-200 bg-emerald-50 rounded-lg p-3 md:p-4 space-y-3">
+          <h3 className="text-sm md:text-base font-semibold text-emerald-800 flex items-center gap-2">
+            <Zap className="h-4 w-4" />
+            Mã QR thanh toán (VietQR)
+          </h3>
+          <p className="text-xs text-emerald-700">
+            Gửi link hoặc ảnh QR này cho khách thuê để họ quét và chuyển khoản trực tiếp vào tài khoản của bạn.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 items-center">
+            <img 
+              src={hoaDon.checkoutUrl} 
+              alt="Mã QR thanh toán VietQR"
+              className="w-40 h-40 object-contain border rounded-lg bg-white p-1"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+            <div className="flex-1 space-y-2 w-full">
+              <p className="text-xs text-gray-500">Link QR:</p>
+              <div className="flex items-center gap-2">
+                <input 
+                  readOnly 
+                  value={hoaDon.checkoutUrl} 
+                  className="text-xs border rounded px-2 py-1 flex-1 bg-white truncate"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(hoaDon.checkoutUrl || '');
+                    toast.success('Đã sao chép link QR!');
+                  }}
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </div>
+              <p className="text-xs text-gray-400 italic">
+                Sau khi khách chuyển tiền, bấm &quot;Xác nhận thanh toán&quot; bên dưới để cập nhật trạng thái.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Form thanh toán thủ công */}
       <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
         <div className="space-y-2">
           <Label htmlFor="soTien" className="text-xs md:text-sm">Số tiền thanh toán (VNĐ) *</Label>
@@ -1328,6 +1277,7 @@ function PaymentForm({
             imageUrl={formData.anhBienLai}
             onImageChange={(url) => setFormData(prev => ({ ...prev, anhBienLai: url }))}
             placeholder="Chọn ảnh biên lai thanh toán"
+            onUploadingChange={setUploading}
           />
           <div className="text-[10px] md:text-xs text-gray-500">
             📷 Tải lên ảnh biên lai để xác nhận giao dịch (tùy chọn)
@@ -1346,35 +1296,13 @@ function PaymentForm({
             Hủy
           </Button>
           <Button 
-            type="button" 
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-                const res = await fetch('/api/hoa-don/payos/create', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ hoaDonId: hoaDon._id })
-                });
-                const data = await res.json();
-                if (data.success && data.checkoutUrl) {
-                    window.location.href = data.checkoutUrl;
-                } else {
-                    toast.error(data.message || 'Lỗi khởi tạo thanh toán');
-                }
-            }}
-            className="w-full sm:w-auto sm:min-w-[150px] border-emerald-600 text-emerald-600 hover:bg-emerald-50"
-          >
-            <Zap className="h-3 w-3 md:h-4 md:w-4 mr-2" />
-            Tạo link VIETQR
-          </Button>
-          <Button 
             type="submit"
             size="sm"
-            disabled={submitting}
+            disabled={submitting || uploading}
             className="w-full sm:w-auto sm:min-w-[160px]"
           >
             <CreditCard className="h-3 w-3 md:h-4 md:w-4 mr-2" />
-            {submitting ? 'Đang xử lý...' : 'Xác nhận thanh toán'}
+            {submitting ? 'Đang xử lý...' : uploading ? 'Đang upload ảnh...' : 'Xác nhận thanh toán'}
           </Button>
         </DialogFooter>
       </form>

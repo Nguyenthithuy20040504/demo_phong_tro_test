@@ -9,6 +9,8 @@ import { authOptions } from '@/lib/auth';
 import { getAccessibleToaNhaIds, isToaNhaAccessible } from '@/lib/auth-utils';
 import { PhiDichVu } from '@/types';
 import mongoose from 'mongoose';
+import ThongBao from '@/models/ThongBao';
+
 
 // GET - Lấy danh sách hóa đơn
 export async function GET(request: NextRequest) {
@@ -444,6 +446,26 @@ export async function POST(request: NextRequest) {
         console.error('Lỗi tự động tạo mã VietQR khi tạo hóa đơn:', e);
       }
     }
+
+    // Tự động tạo thông báo cho khách thuê
+    try {
+      const noiDungThongBao = `Chào bạn, hóa đơn thuê phòng tháng ${hoaDon.thang}/${hoaDon.nam} mới đã được tạo với tổng tiền ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(hoaDon.tongTien)}. Hạn thanh toán đến ngày ${new Date(hoaDon.hanThanhToan).toLocaleDateString('vi-VN')}.`;
+      
+      const thongBao = new ThongBao({
+        tieuDe: 'Thông báo hóa đơn mới',
+        noiDung: noiDungThongBao,
+        loai: 'hoaDon',
+        nguoiGui: session.user.id,
+        nguoiNhan: [hoaDon.khachThue],
+        ngayGui: new Date()
+      });
+      
+      await thongBao.save();
+    } catch (notificationError) {
+      console.error('Lỗi khi tạo thông báo hóa đơn mới:', notificationError);
+      // Không trả về lỗi API nếu chỉ lỗi tạo thông báo
+    }
+
 
     // Populate để trả về dữ liệu đầy đủ (bao gồm polymorphic khachThue)
     const hoaDonObj = hoaDon.toObject();

@@ -9,8 +9,13 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ token, req }) => {
-        // Protect dashboard routes
-        if (req.nextUrl.pathname.startsWith('/dashboard')) {
+        const { pathname } = req.nextUrl;
+        
+        // Luôn cho phép các route của NextAuth (bao gồm callback)
+        if (pathname.startsWith('/api/auth')) return true;
+        
+        // Bảo vệ dashboard và các api khác
+        if (pathname.startsWith('/dashboard') || pathname.startsWith('/api')) {
           return !!token;
         }
         return true;

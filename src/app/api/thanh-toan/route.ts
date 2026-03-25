@@ -9,6 +9,8 @@ import { authOptions } from '@/lib/auth';
 import { getAccessibleToaNhaIds } from '@/lib/auth-utils';
 import Phong from '@/models/Phong';
 import mongoose from 'mongoose';
+import ThongBao from '@/models/ThongBao';
+
 
 // GET - Lấy danh sách thanh toán
 export async function GET(request: NextRequest) {
@@ -183,6 +185,26 @@ export async function POST(request: NextRequest) {
     }
 
     await hoaDon.save();
+
+    // Tự động tạo thông báo cho khách thuê
+    try {
+      const noiDungThongBao = `Hóa đơn ${hoaDon.maHoaDon} (Tháng ${hoaDon.thang}/${hoaDon.nam}) đã được xác nhận thanh toán số tiền ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(soTien)}. Số tiền còn lại: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(hoaDon.conLai)}.`;
+      
+      const thongBao = new ThongBao({
+        tieuDe: 'Xác nhận thanh toán hóa đơn',
+        noiDung: noiDungThongBao,
+        loai: 'hoaDon',
+        nguoiGui: session.user.id,
+        nguoiNhan: [hoaDon.khachThue],
+        ngayGui: new Date()
+      });
+      
+      await thongBao.save();
+    } catch (notificationError) {
+      console.error('Lỗi khi tạo thông báo thanh toán:', notificationError);
+      // Không trả về lỗi API nếu chỉ lỗi tạo thông báo
+    }
+
 
     // Populate để trả về dữ liệu đầy đủ
     await thanhToan.populate([

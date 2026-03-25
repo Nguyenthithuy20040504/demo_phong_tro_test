@@ -39,10 +39,10 @@ export async function POST(request: NextRequest) {
       goiDichVu: planId,
       maDonHang: orderCode,
       soTien: plan.gia,
-      trangThai: 'choDuyet',
+      trangThai: 'daThanhToan',
       phuongThuc: 'chuyenKhoan',
       ngayThanhToan: new Date(),
-      ngayHetHanMoi: new Date() // Tạm thời cung cấp giá trị rỗng để bypass check của Mongoose Model
+      ngayHetHanMoi: null
     });
     
     await payment.save();

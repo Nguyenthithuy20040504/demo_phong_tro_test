@@ -35,8 +35,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: 'Hóa đơn không tồn tại hoặc không phải của bạn' }, { status: 404 });
     }
 
-    // Nếu đã thanh toán rồi (bởi Webhook), bỏ qua
-    if (payment.trangThai === 'daThanhToan') {
+    // Nếu đã thanh toán và ĐÃ GIA HẠN rồi (bởi Webhook), bỏ qua
+    if (payment.trangThai === 'daThanhToan' && payment.ngayHetHanMoi !== null) {
        return NextResponse.json({ status: 'PAID' });
     }
 
