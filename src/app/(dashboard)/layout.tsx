@@ -13,6 +13,7 @@ import { DynamicBreadcrumb } from '@/components/ui/dynamic-breadcrumb';
 import { PageProgress } from '@/components/ui/page-progress';
 import { SubscriptionGuard } from '@/components/ui/subscription-guard';
 import { NotificationBell } from '@/components/ui/notification-bell';
+import { UICustomizer } from '@/components/ui-customizer';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -40,12 +41,13 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="overflow-hidden">
-        <header className="sticky top-0 z-40 flex h-12 shrink-0 items-center gap-2 border-b bg-background px-4">
+        <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b bg-background/80 backdrop-blur-md px-4 transition-all duration-300">
           <PageProgress />
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="h-6" />
           <DynamicBreadcrumb />
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-1.5 md:gap-3">
+            <UICustomizer />
             <NotificationBell />
           </div>
         </header>

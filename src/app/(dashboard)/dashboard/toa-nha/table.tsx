@@ -351,14 +351,28 @@ export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
         </div>
       </div>
       
-      <div className="overflow-hidden rounded-lg border">
+      <div className="overflow-x-auto rounded-lg border bg-background shadow-sm">
         <Table>
-          <TableHeader className="bg-muted sticky top-0 z-10">
+          <TableHeader className="bg-muted/50 sticky top-0 z-10">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
+                  const columnId = header.column.id;
+                  const isHideOnMobile = ["diaChi", "tienNghiChung", "trangThai", "tongSoPhong"].includes(columnId);
+                  const isHideOnTablet = ["tienNghiChung"].includes(columnId);
+
+                  let className = "";
+                  if (columnId === "diaChi") className = "hidden md:table-cell";
+                  if (columnId === "tienNghiChung") className = "hidden xl:table-cell";
+                  if (columnId === "trangThai") className = "hidden sm:table-cell";
+                  if (columnId === "tongSoPhong") className = "hidden lg:table-cell";
+
                   return (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
+                    <TableHead 
+                      key={header.id} 
+                      colSpan={header.colSpan}
+                      className={className}
+                    >
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -374,14 +388,33 @@ export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
           <TableBody className="**:data-[slot=table-cell]:first:w-8">
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <ToaNhaTableRow 
-                  key={row.id} 
-                  row={row} 
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
                   onClick={() => {
                     setSelectedToaNha(row.original);
                     setIsDetailOpen(true);
                   }}
-                />
+                  className="cursor-pointer hover:bg-muted/30 transition-colors"
+                >
+                  {row.getVisibleCells().map((cell) => {
+                    const columnId = cell.column.id;
+                    let className = "";
+                    if (columnId === "diaChi") className = "hidden md:table-cell";
+                    if (columnId === "tienNghiChung") className = "hidden xl:table-cell";
+                    if (columnId === "trangThai") className = "hidden sm:table-cell";
+                    if (columnId === "tongSoPhong") className = "hidden lg:table-cell";
+
+                    return (
+                      <TableCell 
+                        key={cell.id}
+                        className={className}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
               ))
             ) : (
               <TableRow>

@@ -176,50 +176,58 @@ export default function ToaNhaPage() {
       </div>
 
       {/* Stats Summary Panel */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 md:gap-4 lg:gap-6">
-        <Card className="p-2 md:p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6">
+        <Card className="p-3 md:p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Tổng tòa nhà</p>
-              <p className="text-base md:text-2xl font-bold">{toaNhaList.length}</p>
+              <p className="text-lg md:text-2xl font-bold">{toaNhaList.length}</p>
             </div>
-            <Building2 className="h-3 w-3 md:h-4 md:w-4 text-gray-500" />
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Building2 className="h-4 w-4 text-primary" />
+            </div>
           </div>
         </Card>
         
-        <Card className="p-2 md:p-4">
+        <Card className="p-3 md:p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Phòng trống</p>
-              <p className="text-base md:text-2xl font-bold text-green-600">
+              <p className="text-lg md:text-2xl font-bold text-green-600">
                 {toaNhaList.reduce((sum, toaNha) => sum + ((toaNha as any).phongTrong || 0), 0)}
               </p>
             </div>
-            <Building2 className="h-3 w-3 md:h-4 md:w-4 text-green-600" />
+            <div className="p-2 bg-green-50 rounded-lg">
+              <Building2 className="h-4 w-4 text-green-600" />
+            </div>
           </div>
         </Card>
 
-        <Card className="p-2 md:p-4">
+        <Card className="p-3 md:p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Đang cho thuê</p>
-              <p className="text-base md:text-2xl font-bold text-blue-600">
+              <p className="text-lg md:text-2xl font-bold text-blue-600">
                 {toaNhaList.reduce((sum, toaNha) => sum + ((toaNha as any).phongDangThue || 0), 0)}
               </p>
             </div>
-            <Building2 className="h-3 w-3 md:h-4 md:w-4 text-blue-600" />
+            <div className="p-2 bg-blue-50 rounded-lg">
+              <Building2 className="h-4 w-4 text-blue-600" />
+            </div>
           </div>
         </Card>
 
-        <Card className="p-2 md:p-4">
+        <Card className="p-3 md:p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Hỏng hóc</p>
-              <p className="text-base md:text-2xl font-bold text-red-600">
+              <p className="text-lg md:text-2xl font-bold text-red-600">
                 {Math.round((toaNhaList.filter(t => (t as any).suCoCount > 0).length / (toaNhaList.length || 1)) * 100)}%
               </p>
             </div>
-            <AlertCircle className="h-3 w-3 md:h-4 md:w-4 text-red-600" />
+            <div className="p-2 bg-red-50 rounded-lg">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+            </div>
           </div>
         </Card>
       </div>
@@ -360,11 +368,11 @@ function ToaNhaForm({
 
       <div className="space-y-1.5">
         <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Địa chỉ</Label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input placeholder="Số nhà / Ngõ" value={formData.soNha} onChange={(e) => setFormData(prev => ({ ...prev, soNha: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
           <Input placeholder="Tên đường" value={formData.duong} onChange={(e) => setFormData(prev => ({ ...prev, duong: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Input placeholder="Phường / Xã" value={formData.phuong} onChange={(e) => setFormData(prev => ({ ...prev, phuong: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
           <Input placeholder="Quận / Huyện" value={formData.quan} onChange={(e) => setFormData(prev => ({ ...prev, quan: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
           <Input placeholder="Thành phố" value={formData.thanhPho} onChange={(e) => setFormData(prev => ({ ...prev, thanhPho: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
@@ -378,7 +386,7 @@ function ToaNhaForm({
 
       <div className="space-y-2">
         <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Tiện ích chung</Label>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
           {tienNghiOptions.map((option) => (
             <div
               key={option.value}
