@@ -4,6 +4,8 @@ import NguoiDung from '@/models/NguoiDung';
 import GoiDichVu from '@/models/GoiDichVu';
 import SaasPayment from '@/models/SaaSPayment';
 import HoaDon from '@/models/HoaDon';
+import ThanhToan from '@/models/ThanhToan';
+import ToaNha from '@/models/ToaNha';
 import payOS from '@/lib/payos';
 
 export async function POST(request: NextRequest) {
@@ -73,15 +75,49 @@ export async function POST(request: NextRequest) {
       }
 
       // Nếu không phải gói SaaS, kiểm tra xem có phải hóa đơn tiền phòng (%)
-      const hoaDon = await HoaDon.findOne({ paymentOrderId: String(orderCode), trangThai: { $ne: 'daThanhToan' } });
+      const hoaDon = await HoaDon.findOne({ paymentOrderId: String(orderCode), trangThai: { $ne: 'daThanhToan' } }).populate('phong');
       if (hoaDon) {
+        const amountPaid = webhookData.amount || hoaDon.conLai;
+
         // Cập nhật hóa đơn tiền phòng
-        hoaDon.daThanhToan = hoaDon.tongTien;
-        hoaDon.conLai = 0;
-        hoaDon.trangThai = 'daThanhToan';
+        hoaDon.daThanhToan += amountPaid;
+        hoaDon.conLai = hoaDon.tongTien - hoaDon.daThanhToan;
+        if (hoaDon.conLai <= 0) {
+          hoaDon.trangThai = 'daThanhToan';
+        } else {
+          hoaDon.trangThai = 'daThanhToanMotPhan';
+        }
         await hoaDon.save();
         
-        console.log(`[PAYOS AUTOMATION] Vừa tự động cập nhật Thanh toán cho Hóa đơn ${hoaDon.maHoaDon} của Khách thuê!`);
+        // Tạo lịch sử thanh toán (biên lai) cho chủ nhà xem trong Quản lý thu chi
+        let nguoiNhanId = hoaDon.khachThue; // fallback
+        try {
+          if (hoaDon.phong && hoaDon.phong.toaNha) {
+            const toaNha = await ToaNha.findById(hoaDon.phong.toaNha);
+            if (toaNha && toaNha.chuSoHuu) {
+              nguoiNhanId = toaNha.chuSoHuu;
+            }
+          }
+        } catch(e) {
+          console.error('Lỗi lấy chủ nhà cho hóa đơn webhook:', e);
+        }
+
+        const newThanhToan = new ThanhToan({
+          hoaDon: hoaDon._id,
+          soTien: amountPaid,
+          phuongThuc: 'chuyenKhoan',
+          thongTinChuyenKhoan: {
+            nganHang: 'PayOS Gateway',
+            soGiaoDich: String(orderCode)
+          },
+          ngayThanhToan: new Date(),
+          nguoiNhan: nguoiNhanId,
+          ghiChu: 'Thanh toán tự động qua cổng PayOS',
+          trangThai: 'daDuyet'
+        });
+        await newThanhToan.save();
+
+        console.log(`[PAYOS AUTOMATION] Vừa tự động cập nhật Thanh toán cho Hóa đơn ${hoaDon.maHoaDon} của Khách thuê! Biên lai đã được lưu.`);
         return NextResponse.json({ success: true });
       }
 

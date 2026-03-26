@@ -12,6 +12,7 @@ export interface IThanhToan extends Document {
   nguoiNhan: mongoose.Types.ObjectId;
   ghiChu?: string;
   anhBienLai?: string;
+  trangThai: 'choDuyet' | 'daDuyet' | 'tuChoi';
   ngayTao: Date;
 }
 
@@ -68,6 +69,11 @@ const ThanhToanSchema = new Schema<IThanhToan>({
   anhBienLai: {
     type: String,
     trim: true
+  },
+  trangThai: {
+    type: String,
+    enum: ['choDuyet', 'daDuyet', 'tuChoi'],
+    default: 'daDuyet'
   }
 }, {
   timestamps: { createdAt: 'ngayTao', updatedAt: false }

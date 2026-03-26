@@ -23,7 +23,7 @@ export interface IHoaDon extends Document {
   tongTien: number;
   daThanhToan: number;
   conLai: number;
-  trangThai: 'chuaThanhToan' | 'daThanhToanMotPhan' | 'daThanhToan' | 'quaHan';
+  trangThai: 'chuaThanhToan' | 'daThanhToanMotPhan' | 'daThanhToan' | 'quaHan' | 'choDuyet';
   hanThanhToan: Date;
   ghiChu?: string;
   checkoutUrl?: string;
@@ -143,7 +143,7 @@ const HoaDonSchema = new Schema<IHoaDon>({
   },
   trangThai: {
     type: String,
-    enum: ['chuaThanhToan', 'daThanhToanMotPhan', 'daThanhToan', 'quaHan'],
+    enum: ['chuaThanhToan', 'daThanhToanMotPhan', 'daThanhToan', 'quaHan', 'choDuyet'],
     default: 'chuaThanhToan'
   },
   hanThanhToan: {
@@ -190,15 +190,20 @@ HoaDonSchema.pre('save', function(next) {
   
   if (this.conLai <= 0) {
     this.trangThai = 'daThanhToan';
-  } else if (this.daThanhToan > 0) {
-    this.trangThai = 'daThanhToanMotPhan';
   } else {
-    this.trangThai = 'chuaThanhToan';
-  }
-  
-  // Kiểm tra quá hạn
-  if (this.hanThanhToan < new Date() && this.conLai > 0) {
-    this.trangThai = 'quaHan';
+    // Ưu tiên giữ trạng thái 'choDuyet' nếu còn số tiền chưa thanh toán
+    if (this.trangThai !== 'choDuyet') {
+      if (this.daThanhToan > 0) {
+        this.trangThai = 'daThanhToanMotPhan';
+      } else {
+        this.trangThai = 'chuaThanhToan';
+      }
+    }
+    
+    // Kiểm tra quá hạn (chỉ khi không phải đang chờ duyệt)
+    if (this.hanThanhToan < new Date() && this.trangThai !== 'choDuyet') {
+      this.trangThai = 'quaHan';
+    }
   }
   
   next();

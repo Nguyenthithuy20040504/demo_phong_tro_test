@@ -116,12 +116,26 @@ const getMethodBadge = (method: string) => {
   }
 }
 
+const getStatusBadge = (status: string) => {
+  switch (status) {
+    case 'daDuyet':
+      return <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-none">Đã duyệt</Badge>
+    case 'choDuyet':
+      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-none">Chờ duyệt</Badge>
+    case 'tuChoi':
+      return <Badge variant="destructive">Từ chối</Badge>
+    default:
+      return null
+  }
+}
+
 type ThanhToanTableProps = {
   hoaDonList: HoaDon[]
   onView?: (thanhToan: ThanhToanPopulated) => void
   onEdit: (thanhToan: ThanhToanPopulated) => void
   onDelete: (id: string) => void
   onDownload?: (thanhToan: ThanhToanPopulated) => void
+  onUpdateStatus?: (id: string, action: 'duyet' | 'tuChoi') => void
 }
 
 const getHoaDonInfo = (hoaDon: string | HoaDon, hoaDonList: HoaDon[]) => {
@@ -232,6 +246,11 @@ const createColumns = (props: ThanhToanTableProps & { setThanhToanToDelete: (t: 
     ),
   },
   {
+    accessorKey: "trangThai",
+    header: "Trạng thái",
+    cell: ({ row }) => getStatusBadge(row.original.trangThai || 'daDuyet'),
+  },
+  {
     accessorKey: "ghiChu",
     header: "Ghi chú",
     cell: ({ row }) => (
@@ -281,6 +300,31 @@ const createColumns = (props: ThanhToanTableProps & { setThanhToanToDelete: (t: 
               Tải biên lai
             </DropdownMenuItem>
           )}
+
+          {row.original.trangThai === 'choDuyet' && props.onUpdateStatus && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                className="text-emerald-600 focus:text-emerald-600 font-medium"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  props.onUpdateStatus!(row.original._id!, 'duyet');
+                }}
+              >
+                Duyệt biên lai
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className="text-orange-600 focus:text-orange-600 font-medium"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  props.onUpdateStatus!(row.original._id!, 'tuChoi');
+                }}
+              >
+                Từ chối
+              </DropdownMenuItem>
+            </>
+          )}
+
           <DropdownMenuSeparator />
           <DropdownMenuItem 
             className="text-destructive"
@@ -308,10 +352,27 @@ type ThanhToanDataTableProps = ThanhToanTableProps & {
   onMethodChange?: (value: string) => void
   dateFilter?: string
   onDateChange?: (value: string) => void
+  startDate?: string
+  onStartDateChange?: (value: string) => void
+  endDate?: string
+  onEndDateChange?: (value: string) => void
 }
 
 export function ThanhToanDataTable(props: ThanhToanDataTableProps) {
-  const { data: initialData, searchTerm, onSearchChange, methodFilter, onMethodChange, dateFilter, onDateChange, ...tableProps } = props
+  const { 
+    data: initialData, 
+    searchTerm, 
+    onSearchChange, 
+    methodFilter, 
+    onMethodChange, 
+    dateFilter, 
+    onDateChange,
+    startDate,
+    onStartDateChange,
+    endDate,
+    onEndDateChange,
+    ...tableProps 
+  } = props
   const [data, setData] = React.useState(() => initialData)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [thanhToanToDelete, setThanhToanToDelete] = React.useState<ThanhToanPopulated | null>(null);
@@ -396,14 +457,35 @@ export function ThanhToanDataTable(props: ThanhToanDataTableProps) {
             <SelectTrigger className="w-full sm:w-[130px]">
               <SelectValue placeholder="Thời gian" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả</SelectItem>
-              <SelectItem value="today">Hôm nay</SelectItem>
-              <SelectItem value="week">Tuần này</SelectItem>
-              <SelectItem value="month">Tháng này</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+              <SelectContent>
+                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="today">Hôm nay</SelectItem>
+                <SelectItem value="week">Tuần này</SelectItem>
+                <SelectItem value="month">Tháng này</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-2 border rounded-md px-2 h-10 bg-background min-w-[320px]">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-[10px] text-muted-foreground font-black uppercase shrink-0">Từ</span>
+                <Input 
+                  type="date" 
+                  value={startDate || ''} 
+                  onChange={(e) => onStartDateChange?.(e.target.value)} 
+                  className="h-7 text-xs border-none p-0 focus-visible:ring-0 w-28 shrink-0" 
+                />
+              </div>
+              <div className="h-4 w-px bg-border shrink-0" />
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-[10px] text-muted-foreground font-black uppercase shrink-0">Đến</span>
+                <Input 
+                  type="date" 
+                  value={endDate || ''} 
+                  onChange={(e) => onEndDateChange?.(e.target.value)} 
+                  className="h-7 text-xs border-none p-0 focus-visible:ring-0 w-28 shrink-0" 
+                />
+              </div>
+            </div>
+          </div>
 
         {/* Tùy chỉnh cột bên phải */}
         <div className="flex items-center gap-2">

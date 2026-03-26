@@ -187,7 +187,7 @@ export interface HoaDon {
   tongTien: number;
   daThanhToan: number;
   conLai: number;
-  trangThai: 'chuaThanhToan' | 'daThanhToanMotPhan' | 'daThanhToan' | 'quaHan';
+  trangThai: 'chuaThanhToan' | 'daThanhToanMotPhan' | 'daThanhToan' | 'quaHan' | 'choDuyet';
   hanThanhToan: Date;
   ghiChu?: string;
   checkoutUrl?: string;
@@ -203,10 +203,11 @@ export interface ThanhToan {
   phuongThuc: 'tienMat' | 'chuyenKhoan' | 'viDienTu';
   thongTinChuyenKhoan?: ThongTinChuyenKhoan;
   ngayThanhToan: Date;
-  nguoiNhan: string; // ObjectId ref NguoiDung
+  nguoiNhan: string | Partial<NguoiDung>;
   ghiChu?: string;
   anhBienLai?: string;
   ngayTao: Date;
+  trangThai?: 'choDuyet' | 'daDuyet' | 'tuChoi';
 }
 
 export interface SuCo {

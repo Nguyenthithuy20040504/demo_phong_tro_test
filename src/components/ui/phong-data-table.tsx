@@ -72,7 +72,7 @@ export function PhongDataTable({ data, onEdit, onDelete }: PhongDataTableProps) 
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
-            Số phòng
+            Mã phòng
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         )
@@ -293,7 +293,7 @@ export function PhongDataTable({ data, onEdit, onDelete }: PhongDataTableProps) 
     <div className="w-full">
       <div className="flex items-center py-4">
         <Input
-          placeholder="Tìm kiếm theo số phòng..."
+          placeholder="Tìm kiếm theo mã phòng..."
           value={(table.getColumn("maPhong")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
             table.getColumn("maPhong")?.setFilterValue(event.target.value)
@@ -320,7 +320,7 @@ export function PhongDataTable({ data, onEdit, onDelete }: PhongDataTableProps) 
                       column.toggleVisibility(!!value)
                     }
                   >
-                    {column.id === "maPhong" ? "Số phòng" :
+                    {column.id === "maPhong" ? "Mã phòng" :
                      column.id === "toaNha" ? "Tòa nhà" :
                      column.id === "tang" ? "Tầng" :
                      column.id === "dienTich" ? "Diện tích" :

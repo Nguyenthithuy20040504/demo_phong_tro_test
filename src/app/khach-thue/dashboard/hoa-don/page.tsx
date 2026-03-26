@@ -115,6 +115,8 @@ export default function HoaDonKhachThuePage() {
         return <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 border-blue-500/20">Một phần</Badge>;
       case 'quaHan':
         return <Badge variant="destructive" className="bg-rose-500/10 text-rose-600 border-rose-500/20">Quá hạn</Badge>;
+      case 'choDuyet':
+        return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">Chờ duyệt</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -126,6 +128,7 @@ export default function HoaDonKhachThuePage() {
       case 'chuaThanhToan': return 'Chưa thanh toán';
       case 'daThanhToanMotPhan': return 'Một phần';
       case 'quaHan': return 'Quá hạn';
+      case 'choDuyet': return 'Chờ duyệt';
       default: return status;
     }
   };
@@ -281,6 +284,7 @@ export default function HoaDonKhachThuePage() {
                 <SelectItem value="all">Tất cả trạng thái</SelectItem>
                 <SelectItem value="daThanhToan">Đã thanh toán</SelectItem>
                 <SelectItem value="chuaThanhToan">Chưa thanh toán</SelectItem>
+                <SelectItem value="choDuyet">Chờ duyệt</SelectItem>
                 <SelectItem value="quaHan">Quá hạn</SelectItem>
               </SelectContent>
             </Select>
@@ -543,32 +547,57 @@ export default function HoaDonKhachThuePage() {
                 </div>
               )}
 
+              {/* Note about waiting approval if in choDuyet */}
+              {selectedHoaDon.trangThai === 'choDuyet' && (
+                <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-3 text-sm text-yellow-800 flex items-start gap-2">
+                  <span className="text-yellow-600 mt-0.5 animate-pulse">⏳</span>
+                  <span>Đang chờ chủ trọ xác nhận biên lai giải ngân. Hóa đơn sẽ cập nhật trạng thái sau khi được duyệt.</span>
+                </div>
+              )}
+
+              {/* Thông tin chuyển khoản & QR */}
               {selectedHoaDon.trangThai !== 'daThanhToan' && (
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="size-2 rounded-full bg-blue-500" />
+                    <h4 className="text-sm font-bold text-slate-700 uppercase tracking-tight">Thanh toán chuyển khoản</h4>
+                  </div>
+                  
+                  {selectedHoaDon.checkoutUrl ? (
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
+                        <img 
+                          src={selectedHoaDon.checkoutUrl} 
+                          alt="VietQR Landlord" 
+                          className="w-full max-w-[220px] aspect-square object-contain"
+                        />
+                      </div>
+                      <div className="w-full space-y-2 text-sm">
+                        <div className="flex justify-between items-center py-1 border-b border-slate-200 border-dashed">
+                          <span className="text-slate-500">Ngân hàng:</span>
+                          <span className="font-bold text-slate-800">{(selectedHoaDon as any).chuNha?.thongTinThanhToan?.nganHang || '—'}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-1 border-b border-slate-200 border-dashed">
+                          <span className="text-slate-500">Số tài khoản:</span>
+                          <span className="font-bold text-blue-600">{(selectedHoaDon as any).chuNha?.thongTinThanhToan?.soTaiKhoan || '—'}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-1">
+                          <span className="text-slate-500">Chủ tài khoản:</span>
+                          <span className="font-bold text-slate-800">{(selectedHoaDon as any).chuNha?.thongTinThanhToan?.chuTaiKhoan || '—'}</span>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-center text-slate-400 italic">Quét mã QR bằng ứng dụng Ngân hàng để thanh toán nhanh</p>
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-slate-500 text-sm">
+                      Chủ trọ chưa cập nhật thông tin thanh toán.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {selectedHoaDon.trangThai !== 'daThanhToan' && selectedHoaDon.trangThai !== 'choDuyet' && (
                 <div className="grid grid-cols-1 gap-2">
-                   <Button 
-                    className="w-full rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 font-bold py-6 text-base shadow-sm"
-                    onClick={async () => {
-                      const toastId = toast.loading('Đang khởi tạo cổng thanh toán VietQR...');
-                      try {
-                        const res = await fetch('/api/hoa-don/payos/create', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ hoaDonId: selectedHoaDon._id })
-                        });
-                        const data = await res.json();
-                        if (data.success && data.checkoutUrl) {
-                          toast.success('Đang chuyển hướng đến cổng thanh toán...', { id: toastId });
-                          window.location.href = data.checkoutUrl;
-                        } else {
-                          toast.error(data.message || 'Lỗi khởi tạo thanh toán', { id: toastId });
-                        }
-                      } catch (error) {
-                        toast.error('Lỗi kết nối máy chủ', { id: toastId });
-                      }
-                    }}
-                  >
-                    🚀 Thanh toán bằng VietQR (Tự động)
-                  </Button>
                   <Button 
                     variant="outline"
                     className="w-full rounded-xl border-[#0068FF] text-[#0068FF] hover:bg-[#0068FF]/5" 
@@ -632,7 +661,7 @@ export default function HoaDonKhachThuePage() {
                   if(res.ok) {
                     toast.success('Gửi xác nhận thanh toán thành công!');
                     setIsPaymentDialogOpen(false);
-                    setSelectedHoaDon((prev: any) => ({...prev, trangThai: 'chờ xử lý'})); 
+                    setSelectedHoaDon((prev: any) => ({...prev, trangThai: 'choDuyet'})); 
                     fetchHoaDons();
                   } else {
                     toast.error('Có lỗi khi ghi nhận thanh toán');

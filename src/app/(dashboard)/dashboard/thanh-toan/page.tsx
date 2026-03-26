@@ -71,6 +71,8 @@ export default function ThanhToanPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [methodFilter, setMethodFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>('all');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingThanhToan, setEditingThanhToan] = useState<ThanhToanPopulated | null>(null);
 
@@ -126,18 +128,6 @@ export default function ThanhToanPage() {
     toast.success('Dữ liệu thanh toán đã được làm mới!');
   };
 
-  const testPaymentAPI = async () => {
-    try {
-      const response = await fetch('/api/test-payment');
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Test API response:', data);
-        alert('Check console for test data');
-      }
-    } catch (error) {
-      console.error('Test API error:', error);
-    }
-  };
   const filteredThanhToan = thanhToanList.filter(thanhToan => {
     const searchStr = (searchTerm || '').toLowerCase();
     const paymentDate = new Date(thanhToan.ngayThanhToan);
@@ -165,10 +155,12 @@ export default function ThanhToanPage() {
                          khachThueInfo?.hoTen?.toLowerCase().includes(searchStr);
     const matchesMethod = methodFilter === 'all' || thanhToan.phuongThuc === methodFilter;
     
-    const matchesDate = dateFilter === 'all' || 
+    const matchesDate = (dateFilter === 'all' || 
                        (dateFilter === 'today' && isToday(paymentDate)) ||
                        (dateFilter === 'week' && isThisWeek(paymentDate)) ||
-                       (dateFilter === 'month' && isThisMonth(paymentDate));
+                       (dateFilter === 'month' && isThisMonth(paymentDate))) &&
+                       (!startDate || paymentDate >= new Date(startDate)) &&
+                       (!endDate || paymentDate <= new Date(endDate + 'T23:59:59'));
     
     return matchesSearch && matchesMethod && matchesDate;
   });
@@ -187,22 +179,17 @@ export default function ThanhToanPage() {
   };
 
   const getHoaDonInfo = (hoaDon: string | any) => {
-    console.log('getHoaDonInfo called with:', hoaDon, 'type:', typeof hoaDon);
-    
     // Nếu hoaDon là object (đã được populate), lấy maHoaDon trực tiếp
     if (typeof hoaDon === 'object' && hoaDon?.maHoaDon) {
-      console.log('Returning populated maHoaDon:', hoaDon.maHoaDon);
       return hoaDon.maHoaDon;
     }
     
     // Nếu hoaDon là string (ID), tìm trong hoaDonList
     if (typeof hoaDon === 'string') {
       const hoaDonItem = hoaDonList.find(h => h._id === hoaDon);
-      console.log('Found hoaDon in list:', hoaDonItem?.maHoaDon);
       return hoaDonItem?.maHoaDon || 'Không xác định';
     }
     
-    console.log('Returning default: Không xác định');
     return 'Không xác định';
   };
 
@@ -259,6 +246,24 @@ export default function ThanhToanPage() {
       }
     } catch (error) {
       toast.error('Lỗi kết nối rồi. Bạn kiểm tra lại mạng xem sao!');
+    }
+  };
+
+  const handleUpdateStatus = async (id: string, action: 'duyet' | 'tuChoi') => {
+    try {
+      const toastId = toast.loading('Đang xử lý...');
+      const url = action === 'duyet' ? `/api/thanh-toan/${id}/duyet` : `/api/thanh-toan/${id}/tu-choi`;
+      const response = await fetch(url, { method: 'PATCH' });
+      
+      if (response.ok) {
+        toast.success(action === 'duyet' ? 'Đã duyệt thanh toán thành công!' : 'Đã từ chối thanh toán', { id: toastId });
+        handleRefresh();
+      } else {
+        const errorData = await response.json();
+        toast.error('Chưa thể cập nhật trạng thái: ' + (errorData.message || ''), { id: toastId });
+      }
+    } catch (error) {
+      toast.error('Lỗi kết nối khi cập nhật trạng thái.');
     }
   };
 
@@ -440,11 +445,16 @@ export default function ThanhToanPage() {
             onMethodChange={setMethodFilter}
             dateFilter={dateFilter}
             onDateChange={setDateFilter}
+            startDate={startDate}
+            onStartDateChange={setStartDate}
+            endDate={endDate}
+            onEndDateChange={setEndDate}
+            onUpdateStatus={handleUpdateStatus}
           />
         </CardContent>
       </Card>
 
-      {/* Mobile Cards */}
+      {/* Mobile view */}
       <div className="md:hidden">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Danh sách thanh toán</h2>
@@ -489,6 +499,26 @@ export default function ThanhToanPage() {
               </SelectContent>
             </Select>
           </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground font-bold uppercase">Từ</span>
+              <Input 
+                type="date" 
+                value={startDate} 
+                onChange={(e) => setStartDate(e.target.value)} 
+                className="pl-7 text-xs h-9" 
+              />
+            </div>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground font-bold uppercase">Đến</span>
+              <Input 
+                type="date" 
+                value={endDate} 
+                onChange={(e) => setEndDate(e.target.value)} 
+                className="pl-9 text-xs h-9" 
+              />
+            </div>
+          </div>
         </div>
 
         {/* Mobile Card List */}
@@ -501,7 +531,6 @@ export default function ThanhToanPage() {
             return (
               <Card key={thanhToan._id} className="p-4">
                 <div className="space-y-3">
-                  {/* Header with invoice code and method */}
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="font-medium text-gray-900">
@@ -514,7 +543,6 @@ export default function ThanhToanPage() {
                     {getMethodBadge(thanhToan.phuongThuc)}
                   </div>
 
-                  {/* Room and Tenant info */}
                   {hoaDonInfo && (
                     <div className="space-y-1 text-sm">
                       <div className="flex items-center gap-2">
@@ -538,13 +566,11 @@ export default function ThanhToanPage() {
                     </div>
                   )}
 
-                  {/* Amount */}
                   <div className="border-t pt-2">
                     <span className="text-gray-500 text-sm">Số tiền:</span>
                     <p className="text-lg font-bold text-green-600">{formatCurrency(thanhToan.soTien)}</p>
                   </div>
 
-                  {/* Transfer info if available */}
                   {thanhToan.phuongThuc === 'chuyenKhoan' && thanhToan.thongTinChuyenKhoan && (
                     <div className="text-xs text-gray-500 space-y-1">
                       {thanhToan.thongTinChuyenKhoan.nganHang && (
@@ -562,7 +588,6 @@ export default function ThanhToanPage() {
                     </div>
                   )}
 
-                  {/* Note if available */}
                   {thanhToan.ghiChu && (
                     <div className="text-xs text-gray-500 border-t pt-2">
                       <span className="font-medium">Ghi chú: </span>
@@ -570,23 +595,41 @@ export default function ThanhToanPage() {
                     </div>
                   )}
 
-                  {/* Action buttons */}
                   <div className="flex justify-between items-center pt-2 border-t">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(thanhToan)}
-                    >
-                      <Edit className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(thanhToan._id!)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                       {thanhToan.trangThai === 'choDuyet' && (
+                         <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-none">Chờ duyệt</Badge>
+                       )}
+                       {thanhToan.trangThai === 'tuChoi' && (
+                         <Badge variant="destructive">Từ chối</Badge>
+                       )}
+                       {thanhToan.trangThai === 'daDuyet' && (
+                         <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-none">Đã duyệt</Badge>
+                       )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {thanhToan.trangThai === 'choDuyet' && (
+                        <>
+                          <Button variant="outline" size="sm" className="text-emerald-600 border-emerald-200" onClick={() => handleUpdateStatus(thanhToan._id!, 'duyet')}>Duyệt</Button>
+                          <Button variant="outline" size="sm" className="text-orange-600 border-orange-200 mr-2" onClick={() => handleUpdateStatus(thanhToan._id!, 'tuChoi')}>Từ chối</Button>
+                        </>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(thanhToan)}
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(thanhToan._id!)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </Card>
@@ -673,8 +716,6 @@ function ThanhToanForm({
         ghiChu: formData.ghiChu,
         anhBienLai: formData.anhBienLai
       };
-      
-      console.log('Submitting:', requestData);
       
       const url = thanhToan ? `/api/thanh-toan/${thanhToan._id}` : '/api/thanh-toan';
       const method = thanhToan ? 'PUT' : 'POST';

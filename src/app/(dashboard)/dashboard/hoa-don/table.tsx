@@ -109,6 +109,13 @@ const getStatusBadge = (status: string) => {
           Chưa thanh toán
         </Badge>
       )
+    case 'choDuyet':
+      return (
+        <Badge variant="outline" className="gap-1 border-yellow-200 bg-yellow-100 text-yellow-800">
+          <CircleCheck className="h-3 w-3" />
+          Chờ duyệt
+        </Badge>
+      )
     case 'quaHan':
       return (
         <Badge variant="outline" className="gap-1 border-orange-600 text-orange-600">

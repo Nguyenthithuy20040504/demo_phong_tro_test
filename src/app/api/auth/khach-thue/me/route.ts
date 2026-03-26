@@ -86,14 +86,16 @@ export async function GET(request: NextRequest) {
       khachThueId: { $in: linkedIds },
       trangThai: 'hoatDong'
     })
-      .populate('phong', 'maPhong dienTich giaThue tienCoc toaNha')
       .populate({
         path: 'phong',
+        select: 'maPhong dienTich giaThue tienCoc toaNha tang moTa anhPhong tienNghi',
         populate: {
           path: 'toaNha',
           select: 'tenToaNha diaChi'
         }
       })
+      .populate('khachThueId', 'hoTen soDienThoai email anhDaiDien')
+      .populate('nguoiDaiDien', 'hoTen soDienThoai email anhDaiDien')
       .sort({ ngayTao: -1 });
 
     const hopDongHienTai = hopDongList.length > 0 ? hopDongList[0] : null;

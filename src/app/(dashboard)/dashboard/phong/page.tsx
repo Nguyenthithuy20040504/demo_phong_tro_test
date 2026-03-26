@@ -814,9 +814,13 @@ function PhongForm({
                 id="maPhong"
                 value={formData.maPhong}
                 onChange={(e) => setFormData(prev => ({ ...prev, maPhong: e.target.value.toUpperCase() }))}
+                placeholder="VD: 101, 202, A103..."
                 required
                 className="text-sm"
               />
+              <p className="text-[10px] text-muted-foreground">
+                Sử dụng số tầng làm tiền tố (VD: Tầng 1 là 101, 102...) để dễ quản lý.
+              </p>
             </div>
             
             <div className="space-y-2">

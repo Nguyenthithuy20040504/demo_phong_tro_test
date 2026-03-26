@@ -12,7 +12,7 @@ import { z } from 'zod';
 import mongoose from 'mongoose';
 
 const phongSchema = z.object({
-  maPhong: z.string().min(1, 'Số phòng là bắt buộc'),
+  maPhong: z.string().min(1, 'Mã phòng là bắt buộc'),
   toaNha: z.string().min(1, 'Tòa nhà là bắt buộc'),
   tang: z.number().min(0, 'Tầng phải lớn hơn hoặc bằng 0'),
   dienTich: z.number().min(1, 'Diện tích phải lớn hơn 0'),
@@ -225,7 +225,7 @@ export async function POST(request: NextRequest) {
     const existingPhong = await Phong.findOne(filterQuery);
     if (existingPhong) {
       return NextResponse.json(
-        { message: `Số phòng "${validatedData.maPhong}" đã tồn tại trong tòa nhà này. Vui lòng sử dụng số khác!` },
+        { message: `Mã phòng "${validatedData.maPhong}" đã tồn tại trong tòa nhà này. Vui lòng sử dụng số khác!` },
         { status: 400 }
       );
     }
@@ -276,7 +276,7 @@ export async function POST(request: NextRequest) {
     // Catch MongoDB duplicate key error (if the manual check fails due to race condition)
     if (error && typeof error === 'object' && 'code' in error && (error as any).code === 11000) {
       return NextResponse.json(
-        { message: 'Số phòng này đã tồn tại trong tòa nhà. Vui lòng kiểm tra lại!' },
+        { message: 'Mã phòng này đã tồn tại trong tòa nhà. Vui lòng kiểm tra lại!' },
         { status: 400 }
       );
     }

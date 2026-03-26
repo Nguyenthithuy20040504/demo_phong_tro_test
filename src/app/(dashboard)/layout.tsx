@@ -13,7 +13,6 @@ import { DynamicBreadcrumb } from '@/components/ui/dynamic-breadcrumb';
 import { PageProgress } from '@/components/ui/page-progress';
 import { SubscriptionGuard } from '@/components/ui/subscription-guard';
 import { NotificationBell } from '@/components/ui/notification-bell';
-import { UICustomizer } from '@/components/ui-customizer';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -56,7 +55,6 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
           <Separator orientation="vertical" className="h-6" />
           <DynamicBreadcrumb />
           <div className="ml-auto flex items-center gap-1.5 md:gap-3">
-            <UICustomizer />
             <NotificationBell />
           </div>
         </header>

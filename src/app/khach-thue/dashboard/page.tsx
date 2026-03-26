@@ -3,12 +3,20 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Home, FileText, AlertCircle, MapPin, Calendar, DollarSign, Phone, Mail, ChevronRight, User, ArrowUpRight, Receipt, Loader2 } from 'lucide-react';
+import { Home, FileText, AlertCircle, MapPin, Calendar, DollarSign, Phone, Mail, ChevronRight, User, ArrowUpRight, Receipt, Loader2, ShieldCheck, Smartphone, Users, Lock, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSession } from "next-auth/react";
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function KhachThueDashboardPage() {
   const [dashboardData, setDashboardData] = useState<any>(null);
@@ -244,71 +252,212 @@ export default function KhachThueDashboardPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <Card className="border-none shadow-premium bg-white rounded-[2.5rem] overflow-hidden">
-                <CardHeader className="p-8 pb-4">
-                  <CardTitle className="flex items-center justify-between text-xl font-black text-gray-900">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-primary/10 p-2 rounded-xl text-primary"><Home className="size-5" /></div>
-                      Chi tiết hợp đồng & Phòng thuê
-                    </div>
-                    {hasMultipleRooms && (
-                      <span className="text-[10px] bg-secondary px-3 py-1 rounded-full text-secondary-foreground font-bold tracking-widest">
-                        PHÒNG {selectedRoomIndex + 1}/{hopDongList.length}
-                      </span>
-                    )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-8 pt-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                    <div className="space-y-6">
-                      <div className="p-5 bg-secondary/20 rounded-2xl border border-transparent hover:border-primary/20 transition-all cursor-default group">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">Vị trí</p>
-                        <p className="font-bold text-gray-900 leading-tight group-hover:text-primary transition-colors">
-                          Phòng {currentHopDong.phong.maPhong} - {currentHopDong.phong.toaNha.tenToaNha}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
-                          <MapPin className="size-3" /> {currentHopDong.phong.toaNha.diaChi?.duong}, {currentHopDong.phong.toaNha.diaChi?.phuong}
-                        </p>
-                      </div>
-                      
-                      <div className="flex items-center justify-between px-2">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Card className="border-none shadow-premium bg-white rounded-[2.5rem] overflow-hidden cursor-pointer hover:shadow-2xl transition-all duration-500 group">
+                    <CardHeader className="p-8 pb-4">
+                      <CardTitle className="flex items-center justify-between text-xl font-black text-gray-900 border-b border-transparent group-hover:border-primary/20 pb-4 transition-all">
                         <div className="flex items-center gap-3">
-                          <div className="bg-emerald-50 text-emerald-600 p-2 rounded-lg"><DollarSign className="size-4" /></div>
-                          <span className="text-xs font-bold text-gray-500">Giá thuê</span>
+                          <div className="bg-primary/10 p-2 rounded-xl text-primary"><Home className="size-5" /></div>
+                          Chi tiết hợp đồng & Phòng thuê
                         </div>
-                        <span className="text-lg font-black text-emerald-600">{formatCurrency(currentHopDong.phong.giaThue)}</span>
+                        <div className="flex items-center gap-2">
+                          {hasMultipleRooms && (
+                            <span className="text-[10px] bg-secondary px-3 py-1 rounded-full text-secondary-foreground font-bold tracking-widest">
+                              PHÒNG {selectedRoomIndex + 1}/{hopDongList.length}
+                            </span>
+                          )}
+                          <div className="size-8 rounded-full bg-primary/5 flex items-center justify-center text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                            <ChevronRight className="size-4" />
+                          </div>
+                        </div>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-8 pt-0">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                        <div className="space-y-6">
+                          <div className="p-5 bg-secondary/20 rounded-2xl border border-transparent group-hover:border-primary/20 transition-all cursor-default group/item">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">Vị trí</p>
+                            <p className="font-bold text-gray-900 leading-tight group-hover/item:text-primary transition-colors">
+                              Phòng {currentHopDong.phong.maPhong} - {currentHopDong.phong.toaNha.tenToaNha}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
+                              <MapPin className="size-3" /> {currentHopDong.phong.toaNha.diaChi?.duong}, {currentHopDong.phong.toaNha.diaChi?.phuong}
+                            </p>
+                          </div>
+                          
+                          <div className="flex items-center justify-between px-2">
+                            <div className="flex items-center gap-3">
+                              <div className="bg-emerald-50 text-emerald-600 p-2 rounded-lg"><DollarSign className="size-4" /></div>
+                              <span className="text-xs font-bold text-gray-500">Giá thuê</span>
+                            </div>
+                            <span className="text-lg font-black text-emerald-600">{formatCurrency(currentHopDong.phong.giaThue)}</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-6">
+                          <div className="p-5 bg-secondary/10 rounded-2xl border border-dashed border-gray-200">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">Thời hạn hợp đồng</p>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-bold text-gray-900">{formatDate(currentHopDong.ngayBatDau)}</span>
+                              <span className="text-[10px] text-gray-300">đến</span>
+                              <span className="text-xs font-bold text-gray-900">{formatDate(currentHopDong.ngayKetThuc)}</span>
+                            </div>
+                            <div className="w-full bg-gray-100 h-1.5 rounded-full mt-3 overflow-hidden">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: "75%" }}
+                                transition={{ duration: 1, ease: "easeOut" }}
+                                className="bg-primary h-full rounded-full" 
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between px-2">
+                            <div className="flex items-center gap-3">
+                              <div className="bg-orange-50 text-orange-600 p-2 rounded-lg"><FileText className="size-4" /></div>
+                              <span className="text-xs font-bold text-gray-500">Mã Hợp Đồng</span>
+                            </div>
+                            <span className="text-sm font-black text-gray-900">{currentHopDong.maHopDong}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-8 pt-6 border-t border-gray-50 text-center">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-4 py-2 rounded-full hover:bg-primary/10 transition-colors">
+                           Ấn để xem chi tiết đầy đủ 📄
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 rounded-[2.5rem] border-none shadow-premium">
+                  <div className="relative">
+                    {/* Header Image Room */}
+                    <div className="h-64 bg-gray-100 relative overflow-hidden">
+                      {currentHopDong.phong.anhPhong && currentHopDong.phong.anhPhong.length > 0 ? (
+                        <img 
+                          src={currentHopDong.phong.anhPhong[0]} 
+                          className="w-full h-full object-cover" 
+                          alt="Room" 
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-300 bg-gray-50">
+                          <Home className="size-20" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                      <div className="absolute bottom-8 left-8 text-white">
+                        <h2 className="text-4xl font-black tracking-tight">P.{currentHopDong.phong.maPhong}</h2>
+                        <p className="font-bold opacity-80 flex items-center gap-2 mt-1">
+                          <MapPin className="size-4" /> {currentHopDong.phong.toaNha.tenToaNha} - Tầng {currentHopDong.phong.tang}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="space-y-6">
-                      <div className="p-5 bg-secondary/10 rounded-2xl border border-dashed border-gray-200">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">Thời hạn hợp đồng</p>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-bold text-gray-900">{formatDate(currentHopDong.ngayBatDau)}</span>
-                          <span className="text-[10px] text-gray-300">đến</span>
-                          <span className="text-xs font-bold text-gray-900">{formatDate(currentHopDong.ngayKetThuc)}</span>
+                    <div className="p-8 space-y-10">
+                      {/* Grid thông tin chung */}
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-emerald-50/50 p-4 rounded-3xl text-center">
+                          <DollarSign className="size-6 text-emerald-600 mx-auto mb-2" />
+                          <p className="text-[10px] font-black uppercase text-emerald-600/70 mb-1">Tiền phòng</p>
+                          <p className="text-lg font-black text-emerald-800">{formatCurrency(currentHopDong.giaThue)}</p>
                         </div>
-                        <div className="w-full bg-gray-100 h-1.5 rounded-full mt-3 overflow-hidden">
-                          <motion.div 
-                            initial={{ width: 0 }}
-                            animate={{ width: "75%" }}
-                            transition={{ duration: 1, ease: "easeOut" }}
-                            className="bg-primary h-full rounded-full" 
-                          />
+                        <div className="bg-orange-50/50 p-4 rounded-3xl text-center">
+                          <ShieldCheck className="size-6 text-orange-600 mx-auto mb-2" />
+                          <p className="text-[10px] font-black uppercase text-orange-600/70 mb-1">Tiền cọc</p>
+                          <p className="text-lg font-black text-orange-800">{formatCurrency(currentHopDong.tienCoc)}</p>
+                        </div>
+                        <div className="bg-blue-50/50 p-4 rounded-3xl text-center">
+                          <Calendar className="size-6 text-blue-600 mx-auto mb-2" />
+                          <p className="text-[10px] font-black uppercase text-blue-600/70 mb-1">Ngày vào</p>
+                          <p className="text-lg font-black text-blue-800">{formatDate(currentHopDong.ngayBatDau)}</p>
+                        </div>
+                        <div className="bg-indigo-50/50 p-4 rounded-3xl text-center">
+                          <Lock className="size-6 text-indigo-600 mx-auto mb-2" />
+                          <p className="text-[10px] font-black uppercase text-indigo-600/70 mb-1">Ngày hết hạn</p>
+                          <p className="text-lg font-black text-indigo-800">{formatDate(currentHopDong.ngayKetThuc)}</p>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between px-2">
-                        <div className="flex items-center gap-3">
-                          <div className="bg-orange-50 text-orange-600 p-2 rounded-lg"><FileText className="size-4" /></div>
-                          <span className="text-xs font-bold text-gray-500">Mã Hợp Đồng</span>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Cột 1: Dịch vụ & Tiện nghi */}
+                        <div className="space-y-8">
+                          <section>
+                            <h3 className="text-sm font-black uppercase tracking-widest text-gray-900 flex items-center gap-2 mb-4">
+                              <Receipt className="size-4 text-primary" /> Bảng giá dịch vụ
+                            </h3>
+                            <div className="space-y-3 bg-gray-50/80 p-5 rounded-[2rem]">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-gray-500 font-medium">Tiền điện</span>
+                                <span className="font-bold text-gray-900">{formatCurrency(currentHopDong.giaDien)}/kWh</span>
+                              </div>
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-gray-500 font-medium">Tiền nước</span>
+                                <span className="font-bold text-gray-900">{formatCurrency(currentHopDong.giaNuoc)}/m³</span>
+                              </div>
+                              {currentHopDong.phiDichVu?.map((dv: any, i: number) => (
+                                <div key={i} className="flex items-center justify-between text-sm">
+                                  <span className="text-gray-500 font-medium">{dv.ten}</span>
+                                  <span className="font-bold text-gray-900">{formatCurrency(dv.gia)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </section>
+
+                          <section>
+                            <h3 className="text-sm font-black uppercase tracking-widest text-gray-900 flex items-center gap-2 mb-4">
+                              <Smartphone className="size-4 text-primary" /> Tiện nghi phòng
+                            </h3>
+                            <div className="flex flex-wrap gap-2">
+                              {currentHopDong.phong.tienNghi?.length > 0 ? (
+                                currentHopDong.phong.tienNghi.map((tn: string, i: number) => (
+                                  <Badge key={i} variant="outline" className="px-4 py-2 rounded-xl bg-white border-gray-100 font-bold text-xs">
+                                    {tn}
+                                  </Badge>
+                                ))
+                              ) : (
+                                <span className="text-xs italic text-gray-400">Không có thông tin tiện nghi</span>
+                              )}
+                            </div>
+                          </section>
                         </div>
-                        <span className="text-sm font-black text-gray-900">{currentHopDong.maHopDong}</span>
+
+                        {/* Cột 2: Thành viên & Liên hệ */}
+                        <div className="space-y-8">
+                          <section>
+                            <h3 className="text-sm font-black uppercase tracking-widest text-gray-900 flex items-center gap-2 mb-4">
+                              <Users className="size-4 text-primary" /> Thành viên sống tại phòng
+                            </h3>
+                            <div className="space-y-3">
+                              {currentHopDong.khachThueId?.map((member: any) => (
+                                <div key={member._id} className="flex items-center gap-3 p-3 bg-white border border-gray-50 rounded-2xl shadow-sm">
+                                  <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold">
+                                    {member.hoTen?.charAt(0)}
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="text-xs font-black text-gray-900">{member.hoTen}</p>
+                                    <p className="text-[10px] text-gray-400">{member.soDienThoai}</p>
+                                  </div>
+                                  {currentHopDong.nguoiDaiDien?._id === member._id && (
+                                    <Badge className="text-[8px] bg-indigo-500 font-black px-2 py-0">ĐẠI DIỆN</Badge>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </section>
+
+                          <section className="bg-primary/5 p-6 rounded-[2.5rem]">
+                            <h4 className="text-xs font-black uppercase text-primary mb-3">Lưu ý hợp đồng</h4>
+                            <p className="text-xs text-gray-600 leading-relaxed italic">
+                              "{currentHopDong.dieuKhoan || 'Thực hiện đầy đủ quy định của tòa nhà và pháp luật hiện hành.'}"
+                            </p>
+                          </section>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </DialogContent>
+              </Dialog>
             </motion.div>
           )}
         </div>

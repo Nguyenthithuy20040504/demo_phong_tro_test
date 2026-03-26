@@ -56,7 +56,10 @@ export default function ThongTinKhachThuePage() {
       const response = await fetch('/api/auth/khach-thue/me');
       const result = await response.json();
       if (result.success) {
-        setProfile(result.data.khachThue);
+        setProfile({
+          ...result.data.khachThue,
+          hopDongHienTai: result.data.hopDongHienTai
+        });
         setEditForm({
           hoTen: result.data.khachThue.hoTen || '',
           soDienThoai: result.data.khachThue.soDienThoai || ''
@@ -407,9 +410,19 @@ export default function ThongTinKhachThuePage() {
                         <p className="text-[10px] text-gray-500 uppercase">{profile.hopDongHienTai.phong.toaNha.tenToaNha}</p>
                       </div>
                     </div>
-                    <Button variant="outline" className="w-full rounded-xl py-5 border-gray-100 hover:bg-gray-50 text-sm">
+                    <Button 
+                      variant="outline" 
+                      className="w-full rounded-xl py-5 border-gray-100 hover:bg-gray-50 text-sm"
+                      onClick={() => {
+                        if (profile.hopDongHienTai.fileHopDong) {
+                          window.open(profile.hopDongHienTai.fileHopDong, '_blank');
+                        } else {
+                          toast.info('Hiện chưa có bản scan hợp đồng. Vui lòng liên hệ chủ nhà để bổ sung nhé!');
+                        }
+                      }}
+                    >
                       <FileText className="size-4 mr-2 text-gray-400" />
-                      Tải PDF Hợp đồng
+                      {profile.hopDongHienTai.fileHopDong ? 'Xem chi tiết / Tải PDF' : 'Dữ liệu PDF đang được cập nhật'}
                     </Button>
                   </div>
                 ) : (

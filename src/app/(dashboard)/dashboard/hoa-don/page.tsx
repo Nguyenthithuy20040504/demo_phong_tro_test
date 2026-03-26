@@ -216,6 +216,8 @@ export default function HoaDonPage() {
         return <Badge variant="secondary">Thanh toán một phần</Badge>;
       case 'daThanhToan':
         return <Badge variant="default">Đã thanh toán</Badge>;
+      case 'choDuyet':
+        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">Chờ duyệt</Badge>;
       case 'quaHan':
         return <Badge variant="outline">Quá hạn</Badge>;
       default:
@@ -710,6 +712,7 @@ export default function HoaDonPage() {
                 <SelectItem value="all" className="text-sm">Tất cả</SelectItem>
                 <SelectItem value="chuaThanhToan" className="text-sm">Chưa thanh toán</SelectItem>
                 <SelectItem value="daThanhToan" className="text-sm">Đã thanh toán</SelectItem>
+                <SelectItem value="choDuyet" className="text-sm">Chờ duyệt</SelectItem>
                 <SelectItem value="thanhToanMotPhan" className="text-sm">Thanh toán 1 phần</SelectItem>
               </SelectContent>
             </Select>

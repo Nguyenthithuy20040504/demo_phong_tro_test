@@ -90,6 +90,32 @@ export async function GET(request: NextRequest) {
         hoaDonObj.chiSoNuocCuoiKy = hoaDonObj.chiSoNuocBanDau;
       }
 
+      try {
+        const ToaNhaModel = mongoose.models.ToaNha || mongoose.model('ToaNha');
+        const toaNha = await ToaNhaModel.findById(toaNhaId);
+        if (toaNha && toaNha.chuSoHuu) {
+           const chuNha = await NguoiDungModel.findById(toaNha.chuSoHuu).select('thongTinThanhToan ten hoTen name email soDienThoai').lean();
+           (hoaDonObj as any).chuNha = chuNha;
+
+           // Nếu chưa có checkoutUrl (mã QR tĩnh), thử tạo lại dựa trên chủ nhà thực tế
+           const chuNhaAny = chuNha as any;
+           if (!hoaDonObj.checkoutUrl && chuNhaAny?.thongTinThanhToan?.nganHang && chuNhaAny?.thongTinThanhToan?.soTaiKhoan) {
+              const bank = chuNhaAny.thongTinThanhToan.nganHang.trim();
+              const account = chuNhaAny.thongTinThanhToan.soTaiKhoan.trim();
+              const name = encodeURIComponent((chuNhaAny.thongTinThanhToan.chuTaiKhoan || '').trim());
+              const amount = hoaDonObj.conLai;
+              const descriptionText = `TT PHONG ${hoaDonObj.maHoaDon.slice(-10)}`;
+              const description = encodeURIComponent(descriptionText);
+              
+              let qrUrl = `https://img.vietqr.io/image/${bank}-${account}-compact2.png?amount=${amount}&addInfo=${description}`;
+              if (name) qrUrl += `&accountName=${name}`;
+              hoaDonObj.checkoutUrl = qrUrl;
+           }
+        }
+      } catch (e) {
+        console.error('Lỗi lấy thông tin chủ nhà cho chi tiết hóa đơn:', e);
+      }
+
       return NextResponse.json({
         success: true,
         data: hoaDonObj
@@ -221,6 +247,7 @@ export async function POST(request: NextRequest) {
     }
 
     await connectToDatabase();
+    const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
 
     const body = await request.json();
     const {
@@ -411,23 +438,18 @@ export async function POST(request: NextRequest) {
     let checkoutUrl = '';
     if (hoaDon.conLai > 0) {
       try {
-        let chuNhaId = session!.user!.id;
-        const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+        // TÌM CHỦ NHÀ THỰC TẾ (Building Owner) thay vì lấy UserID người tạo (có thể là Admin)
+        const ToaNhaModel = mongoose.models.ToaNha || mongoose.model('ToaNha');
+        const toaNha = await ToaNhaModel.findById(toaNhaId);
+        let chuNhaRealId = toaNha && toaNha.chuSoHuu ? toaNha.chuSoHuu : session!.user!.id;
+
+        const chuNha = await NguoiDungModel.findById(chuNhaRealId);
+        const chuNhaAny = chuNha as any;
         
-        // Nếu người tạo là nhân viên, lấy tài khoản ngân hàng của chủ nhà quản lý
-        if (session!.user!.role === 'nhanVien') {
-          const staff = await NguoiDungModel.findById(session!.user!.id);
-          if (staff && staff.nguoiQuanLy) {
-            chuNhaId = staff.nguoiQuanLy;
-          }
-        }
-        
-        const chuNha = await NguoiDungModel.findById(chuNhaId);
-        
-        if (chuNha && chuNha.thongTinThanhToan && chuNha.thongTinThanhToan.nganHang && chuNha.thongTinThanhToan.soTaiKhoan) {
-          const bank = chuNha.thongTinThanhToan.nganHang.trim();
-          const account = chuNha.thongTinThanhToan.soTaiKhoan.trim();
-          const name = encodeURIComponent((chuNha.thongTinThanhToan.chuTaiKhoan || '').trim());
+        if (chuNhaAny && chuNhaAny.thongTinThanhToan && chuNhaAny.thongTinThanhToan.nganHang && chuNhaAny.thongTinThanhToan.soTaiKhoan) {
+          const bank = chuNhaAny.thongTinThanhToan.nganHang.trim();
+          const account = chuNhaAny.thongTinThanhToan.soTaiKhoan.trim();
+          const name = encodeURIComponent((chuNhaAny.thongTinThanhToan.chuTaiKhoan || '').trim());
           const amount = hoaDon.conLai;
           const descriptionText = `TT PHONG ${hoaDon.maHoaDon.slice(-10)}`;
           const description = encodeURIComponent(descriptionText);
@@ -470,7 +492,6 @@ export async function POST(request: NextRequest) {
     // Populate để trả về dữ liệu đầy đủ (bao gồm polymorphic khachThue)
     const hoaDonObj = hoaDon.toObject();
     const KhachThueModel = (await import('@/models/KhachThue')).default;
-    const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
 
     let ktInfo: any = await KhachThueModel.findById(hoaDonObj.khachThue).select('hoTen soDienThoai').lean();
     if (!ktInfo) {
@@ -515,6 +536,7 @@ export async function PUT(request: NextRequest) {
     }
 
     await connectToDatabase();
+    const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
     console.log('Database connected');
 
     const body = await request.json();
@@ -631,10 +653,36 @@ export async function PUT(request: NextRequest) {
       { new: true }
     );
 
+    // Cập nhật lại Link thanh toán VietQR nếu có thay đổi và có số dư
+    if (updatedHoaDon && updatedHoaDon.conLai > 0) {
+      try {
+        const ToaNhaModel = mongoose.models.ToaNha || mongoose.model('ToaNha');
+        const toaNha = await ToaNhaModel.findById(toaNhaId);
+        const chuNhaId = toaNha && toaNha.chuSoHuu ? toaNha.chuSoHuu : session!.user!.id;
+        
+        const chuNha = await NguoiDungModel.findById(chuNhaId);
+        const chuNhaAny = chuNha as any;
+        if (chuNhaAny && chuNhaAny.thongTinThanhToan?.nganHang && chuNhaAny.thongTinThanhToan?.soTaiKhoan) {
+          const bank = chuNhaAny.thongTinThanhToan.nganHang.trim();
+          const account = chuNhaAny.thongTinThanhToan.soTaiKhoan.trim();
+          const name = encodeURIComponent((chuNhaAny.thongTinThanhToan.chuTaiKhoan || '').trim());
+          const amount = updatedHoaDon.conLai;
+          const description = encodeURIComponent(`TT PHONG ${updatedHoaDon.maHoaDon.slice(-10)}`);
+          
+          let qrUrl = `https://img.vietqr.io/image/${bank}-${account}-compact2.png?amount=${amount}&addInfo=${description}`;
+          if (name) qrUrl += `&accountName=${name}`;
+          
+          updatedHoaDon.checkoutUrl = qrUrl;
+          await updatedHoaDon.save();
+        }
+      } catch (e) {
+        console.error('Lỗi cập nhật mã QR khi sửa hóa đơn:', e);
+      }
+    }
+
     // Populate để trả về dữ liệu đầy đủ (bao gồm polymorphic khachThue)
     const hoaDonObj = updatedHoaDon.toObject();
     const KhachThueModel = (await import('@/models/KhachThue')).default;
-    const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
 
     let ktInfo: any = await KhachThueModel.findById(hoaDonObj.khachThue).select('hoTen soDienThoai').lean();
     if (!ktInfo) {

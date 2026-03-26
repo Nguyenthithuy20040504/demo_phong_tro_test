@@ -160,6 +160,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Xác định trạng thái dựa trên role
+    const isTenant = session.user.role === 'khachThue';
+
     // Tạo thanh toán mới
     const thanhToan = new ThanhToan({
       hoaDon: hoaDonId,
@@ -167,21 +170,26 @@ export async function POST(request: NextRequest) {
       phuongThuc,
       thongTinChuyenKhoan: phuongThuc === 'chuyenKhoan' ? thongTinChuyenKhoan : undefined,
       ngayThanhToan: ngayThanhToan ? new Date(ngayThanhToan) : new Date(),
-      nguoiNhan: session.user.id,
+      nguoiNhan: session.user.id, // For tenants, this is themselves, but it records who submitted
       ghiChu,
-      anhBienLai
+      anhBienLai,
+      trangThai: isTenant ? 'choDuyet' : 'daDuyet'
     });
 
     await thanhToan.save();
 
     // Cập nhật hóa đơn
-    hoaDon.daThanhToan += soTien;
-    hoaDon.conLai = hoaDon.tongTien - hoaDon.daThanhToan;
-    
-    if (hoaDon.conLai <= 0) {
-      hoaDon.trangThai = 'daThanhToan';
-    } else if (hoaDon.daThanhToan > 0) {
-      hoaDon.trangThai = 'daThanhToanMotPhan';
+    if (isTenant) {
+      hoaDon.trangThai = 'choDuyet';
+    } else {
+      hoaDon.daThanhToan += soTien;
+      hoaDon.conLai = hoaDon.tongTien - hoaDon.daThanhToan;
+      
+      if (hoaDon.conLai <= 0) {
+        hoaDon.trangThai = 'daThanhToan';
+      } else if (hoaDon.daThanhToan > 0) {
+        hoaDon.trangThai = 'daThanhToanMotPhan';
+      }
     }
 
     await hoaDon.save();
