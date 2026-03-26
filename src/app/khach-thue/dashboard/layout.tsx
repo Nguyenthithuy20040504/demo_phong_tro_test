@@ -27,10 +27,11 @@ export default function KhachThueDashboardLayout({ children }: { children: React
       return;
     }
 
-      if (user?.role !== 'khachThue') {
-    router.replace('/dashboard'); 
-    return;
-      }
+    // Role check - Only redirect if we ARE CERTAIN they are NOT a tenant
+    if (user?.role && user.role !== 'khachThue') {
+      router.replace('/dashboard');
+      return;
+    }
   }, [status, session, user?.role, router]);
 
   const handleLogout = async () => {

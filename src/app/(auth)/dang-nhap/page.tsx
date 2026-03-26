@@ -32,10 +32,15 @@ function LoginFormContent() {
   const { data: session, status } = useSession();
 
   useEffect(() => {
-    if (status === 'authenticated') {
-      router.push('/dashboard');
+    if (status === 'authenticated' && session?.user) {
+      const role = session.user.role;
+      if (role === 'khachThue') {
+        router.push('/khach-thue/dashboard');
+      } else {
+        router.push('/dashboard');
+      }
     }
-  }, [status, router]);
+  }, [status, session, router]);
 
   const {
     register,

@@ -19,7 +19,10 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
+import { useRouter } from 'next/navigation';
+
 function DashboardLayoutContent({ children }: DashboardLayoutProps) {
+  const router = useRouter();
   const { data: session, status } = useSession();
 
   if (status === 'loading') {
@@ -34,6 +37,12 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
   }
 
   if (!session) {
+    return null;
+  }
+
+  // Redirect tenants to their dashboard if they land here
+  if (session.user.role === 'khachThue') {
+    router.replace('/khach-thue/dashboard');
     return null;
   }
 
