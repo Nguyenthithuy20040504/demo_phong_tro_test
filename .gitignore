@@ -57,16 +57,16 @@ next-env.d.ts
 /_agents/
 /*-skill*/
 
-# Non-project files / Backups / Documentation (not part of production code)
+# Non-project files / Backups / Documentation (Anchored to root to allow them in subfolders like /scripts/debug if needed)
 /demo_phong_tro-main/
 /impeccable-main/
 /design-system/
 /tmp/
 /*.md
 !/README.md
-*.xlsx
-*.docx
-*.pdf
-stats.json
-users.json
+/*.xlsx
+/*.docx
+/*.pdf
+/stats.json
+/users.json
 /output.txt
