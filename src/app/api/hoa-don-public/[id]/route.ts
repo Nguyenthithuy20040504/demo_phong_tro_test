@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/mongodb';
 import HoaDon from '@/models/HoaDon';
 import ThanhToan from '@/models/ThanhToan';
+import '@/models/HopDong';
+import '@/models/Phong';
+import '@/models/KhachThue';
 
 export async function GET(
   request: NextRequest,

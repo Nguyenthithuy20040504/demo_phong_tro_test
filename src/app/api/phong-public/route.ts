@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Phong from '@/models/Phong';
 import ToaNha from '@/models/ToaNha';
+import '@/models/NguoiDung';
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,8 +30,6 @@ export async function GET(request: NextRequest) {
       query.toaNha = toaNha;
     }
 
-    // Import model NguoiDung để populate chuSoHuu
-    require('@/models/NguoiDung');
 
     const phongList = await Phong.find(query)
       .populate({
