@@ -37,8 +37,8 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 .env*.local
-.env.local
-# Chỉ commit file mẫu
+
+# Chỉ commit file mẫu env.example
 !env.example
 
 # vercel
@@ -48,3 +48,25 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .gitnexus
+
+# Agent / Skill tools (Antigravity & others)
+/.agent/
+/.agents/
+/.claude/
+/_agent/
+/_agents/
+/*-skill*/
+
+# Non-project files / Backups / Documentation (not part of production code)
+/demo_phong_tro-main/
+/impeccable-main/
+/design-system/
+/tmp/
+/*.md
+!/README.md
+*.xlsx
+*.docx
+*.pdf
+stats.json
+users.json
+/output.txt
