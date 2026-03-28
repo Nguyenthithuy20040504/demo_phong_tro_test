@@ -14,8 +14,8 @@ export async function POST(request: NextRequest) {
 
     await dbConnect();
 
-    // 1. Phục hồi 5 phòng trọ để hiển thị đa dạng dữ liệu
-    const availableRooms = await Phong.find({ trangThai: 'trong' })
+    // 1. Mở rộng tìm kiếm (50 phòng) để lọc ra những phòng có đầy đủ số điện thoại chủ nhà
+    const allAvailableRooms = await Phong.find({ trangThai: 'trong' })
       .populate({
         path: 'toaNha',
         select: 'tenToaNha diaChi chuSoHuu',
@@ -24,9 +24,16 @@ export async function POST(request: NextRequest) {
           select: 'soDienThoai'
         }
       })
-      .limit(5);
+      .limit(50);
 
-    const roomsInfo = availableRooms.map((p: IPhong) => {
+    // 2. Lọc và ưu tiên những phòng có số điện thoại chủ nhà lên đầu
+    const roomsWithContact = allAvailableRooms.filter((p: any) => p.toaNha?.chuSoHuu?.soDienThoai);
+    const roomsWithoutContact = allAvailableRooms.filter((p: any) => !p.toaNha?.chuSoHuu?.soDienThoai);
+    
+    // Gộp lại và lấy đúng 5 phòng "chất lượng" nhất
+    const topRooms = [...roomsWithContact, ...roomsWithoutContact].slice(0, 5);
+
+    const roomsInfo = topRooms.map((p: IPhong) => {
       const toaNha = p.toaNha as any;
       const chuSoHuu = toaNha?.chuSoHuu as any;
       return {
@@ -43,14 +50,13 @@ export async function POST(request: NextRequest) {
 
     const systemPrompt = `
  Bạn là một trợ lý ảo thông minh của hệ thống PiRoom.
- Hãy giúp khách tìm phòng dựa trên dữ liệu:
+ Hãy giúp khách tìm phòng dựa trên dữ liệu thật sau:
  ${JSON.stringify(roomsInfo, null, 2)}
  
- Trả lời ngắn gọn, lịch sự. PHẢI dùng bảng Markdown:
- | Mã Phòng | Tòa Nhà | Địa Chỉ | Giá Thuê | Diện Tích | Liên Hệ |
- | :--- | :--- | :--- | :--- | :--- | :--- |
- 
- Luôn định dạng giá (VD: 3.500.000 VNĐ).
+ HƯỚNG DẪN TRẢ LỜI:
+ 1. LUÔN dùng bảng Markdown với các cột: | Mã Phòng | Tòa Nhà | Địa Chỉ | Giá Thuê | Diện Tích | Liên Hệ |
+ 2. Cột "Liên Hệ" cực kỳ quan trọng, hãy lấy số điện thoại từ trường "lienHe".
+ 3. Định dạng giá thuê (VD: 3.500.000 VNĐ).
     `;
 
     const apiKey = process.env.GEMINI_API_KEY;
