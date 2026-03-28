@@ -285,7 +285,24 @@ export default function PhongPage() {
   }, []);
 
   useEffect(() => {
-    fetchPhong();
+    // Nếu cache bị xóa (do trang khác thao tác), force refresh
+    const cachedData = cache.getCache();
+    fetchPhong(!cachedData);
+  }, []);
+
+  // Tự động refetch khi chuyển trang hoặc quay lại tab
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Nếu cache đã bị xóa (từ trang khác), tự động fetch lại
+        const cachedData = cache.getCache();
+        if (!cachedData) {
+          fetchPhong(true);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   const fetchPhong = async (forceRefresh = false) => {

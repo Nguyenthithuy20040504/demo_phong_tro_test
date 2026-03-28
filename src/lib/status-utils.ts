@@ -19,6 +19,34 @@ export async function calculatePhongStatus(phongId: string): Promise<'trong' | '
     });
 
     if (hopDongHoatDong) {
+      // Kiểm tra khách thuê còn tồn tại không (tránh hợp đồng mồ côi)
+      const ktIds = hopDongHoatDong.khachThueId || [];
+      let hasValidTenant = false;
+      
+      for (const ktId of ktIds) {
+        const kt = await KhachThue.findById(ktId);
+        if (kt) {
+          hasValidTenant = true;
+          break;
+        }
+        // Check NguoiDung collection too
+        const NguoiDung = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+        const nd = await NguoiDung.findById(ktId);
+        if (nd) {
+          hasValidTenant = true;
+          break;
+        }
+      }
+
+      if (!hasValidTenant && ktIds.length > 0) {
+        // Hợp đồng mồ côi - tự động kết thúc
+        console.log(`[Auto-fix] Orphaned contract ${hopDongHoatDong.maHopDong} - terminating`);
+        hopDongHoatDong.trangThai = 'daKetThuc';
+        hopDongHoatDong.ngayKetThuc = new Date();
+        await hopDongHoatDong.save();
+        return 'trong';
+      }
+
       return 'dangThue';
     }
 

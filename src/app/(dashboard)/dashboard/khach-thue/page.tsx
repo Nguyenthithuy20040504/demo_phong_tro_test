@@ -38,7 +38,8 @@ import {
   Info,
   CreditCard,
   RefreshCw,
-  Copy
+  Copy,
+  UserPlus
 } from 'lucide-react';
 import { KhachThue } from '@/types';
 import { KhachThueDataTable } from './table';
@@ -166,6 +167,68 @@ export default function KhachThuePage() {
       toast.error('Mất kết nối với máy chủ. Vui lòng thử lại sau ít phút!');
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  // State cho dialog tạo tài khoản
+  const [isCreateAccountOpen, setIsCreateAccountOpen] = useState(false);
+  const [createAccountTarget, setCreateAccountTarget] = useState<KhachThue | null>(null);
+  const [accountForm, setAccountForm] = useState({ email: '', matKhau: '', xacNhanMatKhau: '' });
+  const [creatingAccount, setCreatingAccount] = useState(false);
+
+  const handleCreateAccount = (khachThue: KhachThue) => {
+    setCreateAccountTarget(khachThue);
+    setAccountForm({
+      email: khachThue.email || '',
+      matKhau: '',
+      xacNhanMatKhau: '',
+    });
+    setIsCreateAccountOpen(true);
+  };
+
+  const submitCreateAccount = async () => {
+    if (!createAccountTarget) return;
+    
+    if (!accountForm.email) {
+      toast.error('Vui lòng nhập email!');
+      return;
+    }
+    if (!accountForm.matKhau || accountForm.matKhau.length < 6) {
+      toast.error('Mật khẩu phải có ít nhất 6 ký tự!');
+      return;
+    }
+    if (accountForm.matKhau !== accountForm.xacNhanMatKhau) {
+      toast.error('Mật khẩu xác nhận không khớp!');
+      return;
+    }
+
+    setCreatingAccount(true);
+    try {
+      const response = await fetch('/api/khach-thue/tao-tai-khoan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          khachThueId: createAccountTarget._id,
+          email: accountForm.email,
+          matKhau: accountForm.matKhau,
+        }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        cache.clearCache();
+        await fetchKhachThue(true);
+        setIsCreateAccountOpen(false);
+        setCreateAccountTarget(null);
+        toast.success(`Đã tạo tài khoản cho ${createAccountTarget.hoTen}!`, { duration: 5000 });
+      } else {
+        toast.error(result.message || 'Không thể tạo tài khoản');
+      }
+    } catch (error) {
+      console.error('Error creating account:', error);
+      toast.error('Lỗi kết nối. Vui lòng thử lại!');
+    } finally {
+      setCreatingAccount(false);
     }
   };
 
@@ -314,6 +377,7 @@ export default function KhachThuePage() {
             onView={handleView}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onCreateAccount={!isNhanVien ? handleCreateAccount : undefined}
             actionLoading={actionLoading}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
@@ -374,11 +438,28 @@ export default function KhachThuePage() {
                     <h3 className="font-medium text-gray-900 hover:text-primary transition-colors">{khachThue.hoTen}</h3>
                     <p className="text-sm text-gray-500 capitalize">{khachThue.gioiTinh === 'nam' ? 'Nam' : 'Nữ'}</p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-center">
                     {!!(khachThue as any).matKhau ? (
                       <Badge variant="default" className="text-xs bg-emerald-600">Đã có tài khoản</Badge>
                     ) : (
-                      <Badge variant="outline" className="text-xs text-muted-foreground border-dashed">Chưa có tài khoản</Badge>
+                      <>
+                        <Badge variant="outline" className="text-xs text-muted-foreground border-dashed">Chưa có TK</Badge>
+                        {!isNhanVien && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 text-[10px] gap-1 text-blue-600 border-blue-200 hover:bg-blue-50"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCreateAccount(khachThue);
+                            }}
+                            disabled={actionLoading === `create-account-${khachThue._id}`}
+                          >
+                            <UserPlus className="h-3 w-3" />
+                            {actionLoading === `create-account-${khachThue._id}` ? 'Đang...' : 'Tạo TK'}
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -467,6 +548,87 @@ export default function KhachThuePage() {
           </div>
         )}
       </div>
+
+      {/* Dialog tạo tài khoản */}
+      <Dialog open={isCreateAccountOpen} onOpenChange={setIsCreateAccountOpen}>
+        <DialogContent className="w-[95vw] md:w-full max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-blue-600" />
+              Tạo tài khoản đăng nhập
+            </DialogTitle>
+            <DialogDescription>
+              Tạo tài khoản cho khách thuê <strong>{createAccountTarget?.hoTen}</strong> để đăng nhập vào hệ thống.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-2">
+            {/* Thông tin khách thuê (chỉ đọc) */}
+            <div className="p-3 bg-gray-50 rounded-lg space-y-2">
+              <div className="flex items-center gap-2 text-sm">
+                <Users className="h-4 w-4 text-gray-400" />
+                <span className="font-medium">{createAccountTarget?.hoTen}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Phone className="h-4 w-4" />
+                <span>{createAccountTarget?.soDienThoai}</span>
+              </div>
+            </div>
+
+            {/* Email */}
+            <div className="space-y-2">
+              <Label htmlFor="acc-email">Email đăng nhập <span className="text-red-500">*</span></Label>
+              <Input
+                id="acc-email"
+                type="email"
+                placeholder="Nhập email cho khách thuê"
+                value={accountForm.email}
+                onChange={(e) => setAccountForm(prev => ({ ...prev, email: e.target.value }))}
+              />
+            </div>
+
+            {/* Mật khẩu */}
+            <div className="space-y-2">
+              <Label htmlFor="acc-password">Mật khẩu <span className="text-red-500">*</span></Label>
+              <Input
+                id="acc-password"
+                type="password"
+                placeholder="Tối thiểu 6 ký tự"
+                value={accountForm.matKhau}
+                onChange={(e) => setAccountForm(prev => ({ ...prev, matKhau: e.target.value }))}
+              />
+            </div>
+
+            {/* Xác nhận mật khẩu */}
+            <div className="space-y-2">
+              <Label htmlFor="acc-confirm-password">Xác nhận mật khẩu <span className="text-red-500">*</span></Label>
+              <Input
+                id="acc-confirm-password"
+                type="password"
+                placeholder="Nhập lại mật khẩu"
+                value={accountForm.xacNhanMatKhau}
+                onChange={(e) => setAccountForm(prev => ({ ...prev, xacNhanMatKhau: e.target.value }))}
+              />
+              {accountForm.xacNhanMatKhau && accountForm.matKhau !== accountForm.xacNhanMatKhau && (
+                <p className="text-xs text-red-500">Mật khẩu xác nhận không khớp</p>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsCreateAccountOpen(false)}>
+              Hủy
+            </Button>
+            <Button 
+              onClick={submitCreateAccount} 
+              disabled={creatingAccount || !accountForm.email || !accountForm.matKhau || accountForm.matKhau !== accountForm.xacNhanMatKhau}
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              {creatingAccount ? 'Đang tạo...' : 'Tạo tài khoản'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

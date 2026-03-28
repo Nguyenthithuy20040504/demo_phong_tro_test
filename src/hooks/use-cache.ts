@@ -71,8 +71,14 @@ export function useCache<T>(config: CacheConfig) {
       'su-co-data',
       'tai-khoan-data',
     ];
-    keys.forEach(k => sessionStorage.removeItem(k));
-  }, []);
+    keys.forEach(k => {
+      // Xóa cả key không prefix và có prefix userId
+      sessionStorage.removeItem(k);
+      if (userId) {
+        sessionStorage.removeItem(`${userId}_${k}`);
+      }
+    });
+  }, [userId]);
 
   // Clear cache for current key AND all other caches to prevent cross-entity sync issues
   const clearCache = useCallback(() => {

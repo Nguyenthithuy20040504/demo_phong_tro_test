@@ -245,20 +245,70 @@ export async function DELETE(
 
     await dbConnect();
     const { id } = await params;
+    const NguoiDung = mongoose.model('NguoiDung');
+    const Phong = mongoose.model('Phong');
 
+    // Tìm khách thuê trong KhachThue hoặc NguoiDung
     const khachThue = await KhachThue.findById(id);
-    if (!khachThue) {
+    const nguoiDungKT = await NguoiDung.findOne({ _id: id, vaiTro: 'khachThue' });
+    
+    if (!khachThue && !nguoiDungKT) {
       return NextResponse.json(
         { message: 'Khách thuê không tồn tại' },
         { status: 404 }
       );
     }
 
-    await KhachThue.findByIdAndDelete(id);
+    // Lấy thông tin để tìm liên kết
+    const tenantPhone = khachThue?.soDienThoai || nguoiDungKT?.soDienThoai || nguoiDungKT?.phone;
+    const tenantEmail = khachThue?.email || nguoiDungKT?.email;
+    const tenantName = khachThue?.hoTen || nguoiDungKT?.ten || nguoiDungKT?.name;
 
+    // 1. Tìm tất cả hợp đồng hoạt động/chờ duyệt của khách thuê
+    const activeContracts = await HopDong.find({
+      $or: [
+        { khachThueId: { $in: [id, new mongoose.Types.ObjectId(id)] } },
+        { nguoiDaiDien: { $in: [id, new mongoose.Types.ObjectId(id)] } }
+      ],
+      trangThai: { $in: ['hoatDong', 'choDuyet'] }
+    });
+
+    // 2. Kết thúc hợp đồng và reset phòng về trạng thái trống
+    for (const hopDong of activeContracts) {
+      hopDong.trangThai = 'daKetThuc';
+      hopDong.ngayKetThuc = new Date();
+      await hopDong.save();
+
+      if (hopDong.phong) {
+        await Phong.findByIdAndUpdate(hopDong.phong, {
+          trangThai: 'trong',
+          nguoiThue: null,
+        });
+      }
+    }
+
+    // 3. Xóa tài khoản NguoiDung liên kết
+    const deleteOrConditions: any[] = [{ _id: id }];
+    if (tenantPhone) {
+      deleteOrConditions.push(
+        { vaiTro: 'khachThue', soDienThoai: tenantPhone },
+        { vaiTro: 'khachThue', phone: tenantPhone }
+      );
+    }
+    if (tenantEmail) {
+      deleteOrConditions.push({ vaiTro: 'khachThue', email: tenantEmail.toLowerCase() });
+    }
+    await NguoiDung.deleteMany({ $or: deleteOrConditions });
+
+    // 4. Xóa khách thuê từ KhachThue collection (nếu có)
+    if (khachThue) {
+      await KhachThue.findByIdAndDelete(id);
+    }
+
+    const roomCount = activeContracts.length;
     return NextResponse.json({
       success: true,
-      message: 'Khách thuê đã được xóa thành công',
+      message: `Đã xóa khách thuê ${tenantName}${roomCount > 0 ? `, kết thúc ${roomCount} hợp đồng và reset phòng` : ''}`,
     });
 
   } catch (error) {

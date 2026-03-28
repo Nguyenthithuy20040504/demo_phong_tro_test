@@ -34,12 +34,39 @@ export async function GET(request: NextRequest) {
     const loai = searchParams.get('loai') || '';
 
     const query: any = {};
+
+    // Phân quyền: ai thấy thông báo nào
+    const userRole = session.user.role;
+    const userId = session.user.id;
+
+    if (userRole === 'khachThue') {
+      // Khách thuê chỉ thấy thông báo gửi cho mình
+      query.nguoiNhan = userId;
+    } else if (userRole === 'chuTro' || userRole === 'chuNha') {
+      // Chủ trọ thấy thông báo mình gửi + thông báo gửi cho mình
+      const mongoose = (await import('mongoose')).default;
+      const userObjId = new mongoose.Types.ObjectId(userId);
+      query.$or = [
+        { nguoiGui: userObjId },
+        { nguoiNhan: userObjId }
+      ];
+    }
+    // admin/quanLy: không filter → thấy tất cả
     
     if (search) {
-      query.$or = [
-        { tieuDe: { $regex: search, $options: 'i' } },
-        { noiDung: { $regex: search, $options: 'i' } },
-      ];
+      // Nếu đã có $or từ phân quyền, cần dùng $and
+      const searchCondition = {
+        $or: [
+          { tieuDe: { $regex: search, $options: 'i' } },
+          { noiDung: { $regex: search, $options: 'i' } },
+        ]
+      };
+      if (query.$or) {
+        query.$and = [{ $or: query.$or }, searchCondition];
+        delete query.$or;
+      } else {
+        query.$or = searchCondition.$or;
+      }
     }
     
     if (loai) {
@@ -150,6 +177,22 @@ export async function PUT(request: NextRequest) {
 
     await dbConnect();
 
+    const existingThongBao = await ThongBao.findById(id);
+    if (!existingThongBao) {
+      return NextResponse.json(
+        { message: 'Không tìm thấy thông báo' },
+        { status: 404 }
+      );
+    }
+
+    // Chỉ người gửi hoặc admin mới được sửa
+    if (existingThongBao.nguoiGui.toString() !== session.user.id && session.user.role !== 'admin') {
+      return NextResponse.json(
+        { message: 'Bạn không có quyền sửa thông báo này' },
+        { status: 403 }
+      );
+    }
+
     const updatedThongBao = await ThongBao.findByIdAndUpdate(
       id,
       {
@@ -159,13 +202,6 @@ export async function PUT(request: NextRequest) {
       },
       { new: true }
     );
-
-    if (!updatedThongBao) {
-      return NextResponse.json(
-        { message: 'Không tìm thấy thông báo' },
-        { status: 404 }
-      );
-    }
 
     return NextResponse.json({
       success: true,
@@ -212,14 +248,23 @@ export async function DELETE(request: NextRequest) {
 
     await dbConnect();
 
-    const deletedThongBao = await ThongBao.findByIdAndDelete(id);
-
-    if (!deletedThongBao) {
+    const existingThongBao = await ThongBao.findById(id);
+    if (!existingThongBao) {
       return NextResponse.json(
         { message: 'Không tìm thấy thông báo' },
         { status: 404 }
       );
     }
+
+    // Chỉ người gửi hoặc admin mới được xóa
+    if (existingThongBao.nguoiGui.toString() !== session.user.id && session.user.role !== 'admin') {
+      return NextResponse.json(
+        { message: 'Bạn không có quyền xóa thông báo này' },
+        { status: 403 }
+      );
+    }
+
+    await ThongBao.findByIdAndDelete(id);
 
     return NextResponse.json({
       success: true,

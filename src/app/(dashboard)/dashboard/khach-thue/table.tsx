@@ -24,6 +24,7 @@ import {
   Key,
   Check,
   X,
+  UserPlus,
 } from "lucide-react";
 import {
   ColumnDef,
@@ -101,6 +102,7 @@ type KhachThueTableProps = {
   onView?: (khachThue: KhachThue) => void;
   onEdit: (khachThue: KhachThue) => void;
   onDelete: (id: string) => void;
+  onCreateAccount?: (khachThue: KhachThue) => void;
   actionLoading: string | null;
   canEdit?: boolean;
 };
@@ -242,7 +244,27 @@ const createColumns = (props: KhachThueTableProps & { setKhachThueToDelete: (k: 
     cell: ({ row }) => {
       const khachThue = row.original as any;
       const hasAccount = !!khachThue.matKhau && khachThue.matKhau !== '';
-      return getAccountStatusBadge(hasAccount);
+      if (hasAccount) return getAccountStatusBadge(true);
+      return (
+        <div className="flex items-center gap-2">
+          {getAccountStatusBadge(false)}
+          {props.onCreateAccount && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+              onClick={(e) => {
+                e.stopPropagation();
+                props.onCreateAccount!(row.original);
+              }}
+              disabled={props.actionLoading === `create-account-${row.original._id}`}
+            >
+              <UserPlus className="h-3 w-3" />
+              {props.actionLoading === `create-account-${row.original._id}` ? 'Đang tạo...' : 'Tạo TK'}
+            </Button>
+          )}
+        </div>
+      );
     },
   },
   {
@@ -293,6 +315,21 @@ const createColumns = (props: KhachThueTableProps & { setKhachThueToDelete: (k: 
               <Trash2 className="mr-2 h-4 w-4" />
               {props.actionLoading === `delete-${row.original._id}` ? 'Đang xóa...' : 'Xóa'}
             </DropdownMenuItem>
+          )}
+          {props.onCreateAccount && !(row.original as any).matKhau && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  props.onCreateAccount!(row.original);
+                }}
+                disabled={props.actionLoading === `create-account-${row.original._id}`}
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                Tạo tài khoản
+              </DropdownMenuItem>
+            </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>

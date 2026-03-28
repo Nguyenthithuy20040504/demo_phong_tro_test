@@ -96,9 +96,18 @@ export async function GET(request: NextRequest) {
       .limit(limit);
 
     // Lấy thông tin tài khoản để kiểm tra trạng thái "Đã tạo tài khoản"
+    // Tìm bằng email hoặc SĐT (vì NguoiDung có ID khác với KhachThue)
+    const tenantPhones = updatedKhachThueList.map(k => k.soDienThoai).filter(Boolean);
+    const tenantEmails = updatedKhachThueList.map(k => k.email?.toLowerCase()).filter(Boolean);
     const tenantIds = updatedKhachThueList.map(k => k._id);
+    
     const userAccounts = await mongoose.model('NguoiDung').find({
-      _id: { $in: tenantIds }
+      $or: [
+        { _id: { $in: tenantIds } },
+        { soDienThoai: { $in: tenantPhones } },
+        { phone: { $in: tenantPhones } },
+        ...(tenantEmails.length > 0 ? [{ email: { $in: tenantEmails } }] : [])
+      ]
     }).select('+matKhau');
 
     // Thêm thông tin tất cả hợp đồng và phòng cho mỗi khách thuê
@@ -106,8 +115,13 @@ export async function GET(request: NextRequest) {
       try {
         const tenantId = tenantData._id.toString();
         
-        // Tìm tài khoản tương ứng
-        const userAccount = userAccounts.find(u => u._id.toString() === tenantId);
+        // Tìm tài khoản tương ứng bằng ID, SĐT, hoặc email
+        const userAccount = userAccounts.find(u => 
+          u._id.toString() === tenantId || 
+          u.soDienThoai === tenantData.soDienThoai ||
+          u.phone === tenantData.soDienThoai ||
+          (tenantData.email && u.email === tenantData.email.toLowerCase())
+        );
         
         // Truy vấn tất cả hợp đồng của khách thuê này
         // Sử dụng cả định dạng String và ObjectId để đảm bảo tìm thấy

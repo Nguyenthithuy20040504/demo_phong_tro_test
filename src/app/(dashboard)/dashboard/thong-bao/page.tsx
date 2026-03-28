@@ -71,6 +71,8 @@ export default function ThongBaoPage() {
   const [viewingThongBao, setViewingThongBao] = useState<ThongBao | null>(null);
   const [editingThongBao, setEditingThongBao] = useState<ThongBao | null>(null);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     document.title = 'Quản lý Thông báo';
@@ -172,6 +174,23 @@ export default function ThongBaoPage() {
     
     return matchesSearch && matchesType;
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredThongBao.length / pageSize);
+  const paginatedThongBao = filteredThongBao.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  // Reset page khi filter thay đổi
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+  };
+  const handleTypeFilterChange = (value: string) => {
+    setTypeFilter(value);
+    setCurrentPage(1);
+  };
 
   const getTypeBadge = (type: string) => {
     switch (type) {
@@ -392,12 +411,12 @@ export default function ThongBaoPage() {
                   <Input
                     placeholder="Tìm kiếm theo tiêu đề, nội dung..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => handleSearchChange(e.target.value)}
                     className="pl-10"
                   />
                 </div>
               </div>
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
                 <SelectTrigger className="w-full sm:w-[160px]">
                   <SelectValue placeholder="Loại" />
                 </SelectTrigger>
@@ -428,7 +447,7 @@ export default function ThongBaoPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredThongBao.map((thongBao) => (
+                {paginatedThongBao.map((thongBao) => (
                   <TableRow 
                     key={thongBao._id}
                     className="cursor-pointer hover:bg-gray-50"
@@ -512,6 +531,35 @@ export default function ThongBaoPage() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-between pt-4 border-t">
+            <div className="text-sm text-muted-foreground">
+              Hiển thị {((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, filteredThongBao.length)} trong {filteredThongBao.length} thông báo
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Số hàng</span>
+                <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1); }}>
+                  <SelectTrigger className="w-[70px] h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[5, 10, 20, 50].map(s => (
+                      <SelectItem key={s} value={String(s)}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setCurrentPage(1)}>«</Button>
+                <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>‹</Button>
+                <span className="text-sm font-medium px-2">Trang {currentPage}/{totalPages || 1}</span>
+                <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>›</Button>
+                <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(totalPages)}>»</Button>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -529,11 +577,11 @@ export default function ThongBaoPage() {
             <Input
               placeholder="Tìm kiếm thông báo..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-10 text-sm"
             />
           </div>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
             <SelectTrigger className="text-sm">
               <SelectValue placeholder="Loại thông báo" />
             </SelectTrigger>
@@ -550,7 +598,7 @@ export default function ThongBaoPage() {
 
         {/* Mobile Card List */}
         <div className="space-y-3">
-          {filteredThongBao.map((thongBao) => {
+          {paginatedThongBao.map((thongBao) => {
             return (
               <Card key={thongBao._id} className="p-4">
                 <div className="space-y-3">
@@ -649,6 +697,20 @@ export default function ThongBaoPage() {
           <div className="text-center py-8">
             <Bell className="h-12 w-12 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500">Không có thông báo nào</p>
+          </div>
+        )}
+
+        {/* Mobile Pagination */}
+        {filteredThongBao.length > 0 && (
+          <div className="flex items-center justify-between pt-4 mt-4 border-t">
+            <span className="text-xs text-muted-foreground">
+              {((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, filteredThongBao.length)} / {filteredThongBao.length}
+            </span>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>‹</Button>
+              <span className="text-xs font-medium px-2">{currentPage}/{totalPages || 1}</span>
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>›</Button>
+            </div>
           </div>
         )}
         </div>
