@@ -214,6 +214,46 @@ export async function GET(request: NextRequest) {
         hoaDonObj.chiSoNuocCuoiKy = hoaDonObj.chiSoNuocBanDau;
       }
 
+      // Lấy thông tin chủ nhà + VietQR cho khách thuê
+      if (session.user.role === 'khachThue') {
+        try {
+          const phongData = hoaDonObj.phong as any;
+          const phongId = phongData?._id || hoaDonObj.phong;
+          if (phongId) {
+            const PhongModel = mongoose.models.Phong || mongoose.model('Phong');
+            const phongDoc = await PhongModel.findById(phongId).select('toaNha').lean();
+            const toaNhaId = (phongDoc as any)?.toaNha;
+            if (toaNhaId) {
+              const ToaNhaModel = mongoose.models.ToaNha || mongoose.model('ToaNha');
+              const toaNha = await ToaNhaModel.findById(toaNhaId).lean();
+              if (toaNha && (toaNha as any).chuSoHuu) {
+                const chuNha = await NguoiDungModel.findById((toaNha as any).chuSoHuu)
+                  .select('thongTinThanhToan ten hoTen name email soDienThoai')
+                  .lean();
+                (hoaDonObj as any).chuNha = chuNha;
+
+                // Tạo VietQR URL nếu chưa có checkoutUrl
+                const chuNhaAny = chuNha as any;
+                if (!hoaDonObj.checkoutUrl && chuNhaAny?.thongTinThanhToan?.nganHang && chuNhaAny?.thongTinThanhToan?.soTaiKhoan) {
+                  const bank = chuNhaAny.thongTinThanhToan.nganHang.trim();
+                  const account = chuNhaAny.thongTinThanhToan.soTaiKhoan.trim();
+                  const name = encodeURIComponent((chuNhaAny.thongTinThanhToan.chuTaiKhoan || '').trim());
+                  const amount = hoaDonObj.conLai;
+                  const descriptionText = `TT PHONG ${hoaDonObj.maHoaDon.slice(-10)}`;
+                  const description = encodeURIComponent(descriptionText);
+                  
+                  let qrUrl = `https://img.vietqr.io/image/${bank}-${account}-compact2.png?amount=${amount}&addInfo=${description}`;
+                  if (name) qrUrl += `&accountName=${name}`;
+                  hoaDonObj.checkoutUrl = qrUrl;
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Lỗi lấy thông tin chủ nhà cho danh sách hóa đơn:', e);
+        }
+      }
+
       return hoaDonObj;
     }));
 
