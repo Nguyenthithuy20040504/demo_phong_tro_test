@@ -121,14 +121,14 @@ export function ChatBot() {
               opacity: 1, 
               scale: 1, 
               y: 0,
-              height: isMinimized ? 'auto' : (isExpanded ? '750px' : '650px'),
-              width: isMinimized ? '350px' : (isExpanded ? '1000px' : '450px')
+              height: isMinimized ? 'auto' : (isExpanded ? 'min(850px, 90vh)' : '650px'),
+              width: isMinimized ? '500px' : (isExpanded ? 'min(1300px, 95vw)' : '550px')
             }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
             className="mb-4 overflow-hidden rounded-2xl shadow-2xl border border-teal-100 bg-white/95 backdrop-blur-md"
           >
             <Card className="border-0 shadow-none bg-transparent h-full flex flex-col p-0 gap-0">
-              <CardHeader className="p-4 bg-teal-500 text-white flex flex-row items-center justify-between space-y-0">
+              <CardHeader className="pl-4 pr-6 py-4 bg-teal-500 text-white flex flex-row items-center justify-between space-y-0">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
                     <Bot className="w-5 h-5" />
@@ -141,37 +141,37 @@ export function ChatBot() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-3">
                   {!isMinimized && (
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="h-8 w-8 text-white hover:bg-white/20"
+                      className="h-8 w-8 text-white hover:bg-white/30 transition-colors"
                       onClick={() => setIsExpanded(!isExpanded)}
                       title={isExpanded ? "Thu nhỏ chiều rộng" : "Mở rộng chiều rộng"}
                     >
-                      {isExpanded ? <Minimize2 className="h-4 w-4 rotate-90" /> : <Maximize2 className="h-4 w-4 rotate-90" />}
+                      {isExpanded ? <Minimize2 className="h-5 w-5 rotate-90" /> : <Maximize2 className="h-5 w-5 rotate-90" />}
                     </Button>
                   )}
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-8 w-8 text-white hover:bg-white/20"
+                    className="h-8 w-8 text-white hover:bg-white/30 transition-colors"
                     onClick={() => {
                       setIsMinimized(!isMinimized);
                       if (!isMinimized) setIsExpanded(false);
                     }}
                     title={isMinimized ? "Phóng to" : "Thu nhỏ"}
                   >
-                    {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
+                    {isMinimized ? <Maximize2 className="h-5 w-5" /> : <Minimize2 className="h-5 w-5" />}
                   </Button>
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-8 w-8 text-white hover:bg-white/20"
+                    className="h-8 w-8 text-white hover:bg-red-500/80 transition-colors"
                     onClick={() => setIsOpen(false)}
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-5 w-5" />
                   </Button>
                 </div>
               </CardHeader>
@@ -184,9 +184,9 @@ export function ChatBot() {
                         {messages.map((msg) => (
                           <div
                             key={msg.id}
-                            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                            className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                           >
-                            <div className={`flex gap-2 items-start ${msg.role === 'user' ? 'max-w-[85%] flex-row-reverse' : (isExpanded ? 'max-w-[98%] flex-1' : 'max-w-[85%]')}`}>
+                            <div className={`flex gap-2 items-start ${msg.role === 'user' ? 'max-w-[85%] flex-row-reverse' : (isExpanded ? 'w-full max-w-[98%]' : 'max-w-[85%]')}`}>
                               <Avatar className="w-8 h-8 flex-shrink-0 border border-teal-100 bg-white">
                                 {msg.role === 'bot' ? (
                                   <AvatarFallback className="bg-teal-500 text-white"><Bot size={16} /></AvatarFallback>
@@ -196,6 +196,8 @@ export function ChatBot() {
                               </Avatar>
                               <div
                                 className={`p-3 rounded-2xl text-sm shadow-sm overflow-x-auto ${
+                                  isExpanded && msg.role === 'bot' ? 'w-full' : ''
+                                } ${
                                   msg.role === 'user'
                                     ? 'bg-teal-500 text-white rounded-tr-none'
                                     : 'bg-white text-slate-700 border border-teal-50 rounded-tl-none'
@@ -206,14 +208,14 @@ export function ChatBot() {
                                     remarkPlugins={[remarkGfm]}
                                     components={{
                                       table: ({node: _node, ...props}) => (
-                                        <div className="overflow-x-auto my-2 rounded-lg border border-teal-100">
-                                          <table className="min-w-full divide-y divide-teal-100 text-[11px]" {...props} />
+                                        <div className="overflow-x-auto my-2 rounded-lg border border-teal-100 bg-white">
+                                          <table className="min-w-full divide-y divide-teal-100 text-xs" {...props} />
                                         </div>
                                       ),
                                       thead: ({node: _node, ...props}) => <thead className="bg-teal-50" {...props} />,
-                                      th: ({node: _node, ...props}) => <th className="px-2 py-1.5 text-left font-bold text-teal-700 uppercase tracking-wider border-b border-teal-100" {...props} />,
-                                      td: ({node: _node, ...props}) => <td className="px-2 py-1.5 whitespace-nowrap border-b border-teal-50" {...props} />,
-                                      tr: ({node: _node, ...props}) => <tr className="hover:bg-teal-50/30 transition-colors" {...props} />,
+                                      th: ({node: _node, ...props}) => <th className="px-3 py-2 text-left font-bold text-teal-700 uppercase tracking-wider border-b border-teal-100" {...props} />,
+                                      td: ({node: _node, ...props}) => <td className="px-3 py-2 border-b border-teal-50 leading-relaxed" {...props} />,
+                                      tr: ({node: _node, ...props}) => <tr className="hover:bg-teal-50/10 transition-colors" {...props} />,
                                       p: ({node: _node, ...props}) => <p className="mb-1 last:mb-0" {...props} />,
                                       ul: ({node: _node, ...props}) => <ul className="list-disc ml-4 mb-2" {...props} />,
                                       li: ({node: _node, ...props}) => <li className="mb-0.5" {...props} />,
