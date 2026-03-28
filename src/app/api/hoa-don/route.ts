@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
               const bank = bankCode;
               const account = chuNhaAny.thongTinThanhToan.soTaiKhoan.trim();
               const name = encodeURIComponent((chuNhaAny.thongTinThanhToan.chuTaiKhoan || '').trim());
-              const amount = hoaDonObj.conLai > 0 ? hoaDonObj.conLai : (hoaDonObj.tongTien || 0);
+              const amount = hoaDonObj.tongTien || 0;
               const descriptionText = `TT PHONG ${hoaDonObj.maHoaDon.slice(-10)}`;
               const description = encodeURIComponent(descriptionText);
               
@@ -283,7 +283,7 @@ export async function GET(request: NextRequest) {
                   const bank = bankCode;
                   const account = chuNhaAny.thongTinThanhToan.soTaiKhoan.trim();
                   const name = encodeURIComponent((chuNhaAny.thongTinThanhToan.chuTaiKhoan || '').trim());
-                  const amount = hoaDonObj.conLai > 0 ? hoaDonObj.conLai : (hoaDonObj.tongTien || 0);
+                  const amount = hoaDonObj.tongTien || 0;
                   const descriptionText = `TT PHONG ${hoaDonObj.maHoaDon.slice(-10)}`;
                   const description = encodeURIComponent(descriptionText);
                   

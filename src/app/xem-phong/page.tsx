@@ -48,7 +48,7 @@ function XemPhongContent() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedToaNha, setSelectedToaNha] = useState('all');
-  const [selectedTrangThai, setSelectedTrangThai] = useState('all');
+  const [selectedSort, setSelectedSort] = useState('all');
   const [selectedCity, setSelectedCity] = useState('all');
   const [selectedDistrict, setSelectedDistrict] = useState('all');
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
@@ -143,7 +143,9 @@ function XemPhongContent() {
       const params = new URLSearchParams();
       params.append('limit', '100');
       if (selectedToaNha && selectedToaNha !== 'all') params.append('toaNha', selectedToaNha);
-      if (selectedTrangThai && selectedTrangThai !== 'all') params.append('trangThai', selectedTrangThai);
+      // We don't filter by trangThai here as the public API is restricted to 'trong'
+      // But we pass it if needed for future proofing
+      if (selectedSort && selectedSort !== 'all') params.append('sort', selectedSort);
 
       const response = await fetch(`/api/phong-public?${params.toString()}`);
       if (response.ok) {
@@ -176,7 +178,7 @@ function XemPhongContent() {
 
   useEffect(() => {
     fetchPhong();
-  }, [selectedToaNha, selectedTrangThai]);
+  }, [selectedToaNha, selectedSort]);
 
   // Auto-open phong details when phong parameter is in URL
   useEffect(() => {
@@ -199,17 +201,18 @@ function XemPhongContent() {
 
   const filteredPhong = phongList
     .filter(phong => {
+      if (!phong) return false;
       const pToaNha = typeof phong.toaNha === 'object' ? (phong.toaNha as any) : toaNhaList.find(t => t._id === phong.toaNha);
 
       const searchLower = searchTerm.toLowerCase();
-      const matchesSearch =
-        phong.maPhong.toLowerCase().includes(searchLower) ||
+      const matchesSearch = !searchTerm ||
+        (phong.maPhong && phong.maPhong.toLowerCase().includes(searchLower)) ||
         (phong.moTa && phong.moTa.toLowerCase().includes(searchLower)) ||
         (pToaNha?.tenToaNha?.toLowerCase().includes(searchLower));
 
       const matchesCity = selectedCity === 'all' || pToaNha?.diaChi?.thanhPho === selectedCity;
       const matchesDistrict = selectedDistrict === 'all' || pToaNha?.diaChi?.quan === selectedDistrict;
-      const matchesToaNha = selectedToaNha === 'all' || (typeof phong.toaNha === 'string' ? phong.toaNha : (phong.toaNha as any)._id) === selectedToaNha;
+      const matchesToaNha = selectedToaNha === 'all' || (typeof phong.toaNha === 'string' ? phong.toaNha : (phong.toaNha as any)?._id) === selectedToaNha;
 
       // Amenities filter (must match all selected)
       const matchesAmenities = selectedAmenities.length === 0 ||
@@ -217,11 +220,11 @@ function XemPhongContent() {
           phong.tienNghi?.map(formatAmenity).includes(amenity)
         );
 
-      return matchesSearch && matchesCity && matchesDistrict && matchesToaNha && matchesAmenities;
+      return !!matchesSearch && matchesCity && matchesDistrict && matchesToaNha && matchesAmenities;
     })
     .sort((a, b) => {
-      if (selectedTrangThai === 'asc') return a.giaThue - b.giaThue;
-      if (selectedTrangThai === 'desc') return b.giaThue - a.giaThue;
+      if (selectedSort === 'asc') return a.giaThue - b.giaThue;
+      if (selectedSort === 'desc') return b.giaThue - a.giaThue;
       return 0;
     });
 
@@ -715,7 +718,7 @@ function XemPhongContent() {
                   {/* Sort filter */}
                   <div className="space-y-3">
                     <label className="block text-sm font-black font-josefin text-[#134E4A] uppercase tracking-widest">Sắp xếp giá</label>
-                    <Select value={selectedTrangThai} onValueChange={setSelectedTrangThai}>
+                    <Select value={selectedSort} onValueChange={setSelectedSort}>
                       <SelectTrigger className="h-14 bg-gray-50/50 border-gray-100 rounded-2xl focus:ring-[#14B8A6]">
                         <SelectValue placeholder="Mặc định" />
                       </SelectTrigger>

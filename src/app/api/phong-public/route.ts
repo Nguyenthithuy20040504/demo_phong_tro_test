@@ -14,10 +14,14 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const toaNha = searchParams.get('toaNha') || '';
     const trangThai = searchParams.get('trangThai') || '';
-
-    const query: any = {
-      trangThai: 'trong' // Chỉ lấy những phòng chưa cho thuê (đang trống)
-    };
+    const query: any = {};
+    
+    // Default to 'trong' if no specific status is requested
+    if (trangThai && trangThai !== 'all') {
+      query.trangThai = trangThai;
+    } else {
+      query.trangThai = 'trong';
+    }
     
     if (search) {
       query.$or = [
