@@ -59,7 +59,13 @@ export async function GET(request: NextRequest) {
     }
     
     if (trangThai) {
-      query.trangThai = trangThai;
+      if (trangThai === 'hasAccount') {
+        query.matKhau = { $exists: true, $ne: '' };
+      } else if (trangThai === 'noAccount') {
+        query.matKhau = { $exists: false };
+      } else {
+        query.trangThai = trangThai;
+      }
     }
 
     const accessibleKhachThueIds = await getAccessibleKhachThueIds(session.user);

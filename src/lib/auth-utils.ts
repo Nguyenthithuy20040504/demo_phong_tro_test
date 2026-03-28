@@ -28,25 +28,21 @@ export async function getAccessibleToaNhaIds(user: any): Promise<mongoose.Types.
   try {
     const userId = new mongoose.Types.ObjectId(user.id);
     
-    if (user.role === 'chuNha') {
-      toaNhas = await ToaNha.find({ chuSoHuu: userId }).select('_id');
-    } else if (user.role === 'nhanVien') {
-      // Nhân viên có thể xem các tòa nhà họ được gán trực tiếp
-      // HOẶC tất cả tòa nhà của chủ nhà (nguoiQuanLy của họ)
-      const managedBuildings = await ToaNha.find({ 
-        $or: [
-          { nguoiQuanLy: userId },
-          { chuSoHuu: user.id } // dự phòng
-        ]
-      }).select('_id');
-      
-      // Lấy thêm thông tin người quản lý của nhân viên
+    // Tìm tất cả tòa nhà mà User này là Chủ Sở Hữu HOẶC là Người Quản Lý
+    // Điều này áp dụng cho cả chuNha và nhanVien
+    toaNhas = await ToaNha.find({ 
+      $or: [
+        { chuSoHuu: userId },
+        { nguoiQuanLy: userId }
+      ]
+    }).select('_id');
+    
+    // Nếu là nhân viên, có thể được xem thêm các tòa nhà thuộc về Chủ Nhà của họ
+    if (user.role === 'nhanVien') {
       const nhanVien = await mongoose.model('NguoiDung').findById(userId).select('nguoiQuanLy');
       if (nhanVien && nhanVien.nguoiQuanLy) {
         const ownersBuildings = await ToaNha.find({ chuSoHuu: nhanVien.nguoiQuanLy }).select('_id');
-        toaNhas = [...managedBuildings, ...ownersBuildings];
-      } else {
-        toaNhas = managedBuildings;
+        toaNhas = [...toaNhas, ...ownersBuildings];
       }
     }
     

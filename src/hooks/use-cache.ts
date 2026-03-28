@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
 
 interface CacheConfig {
   key: string;
@@ -8,34 +9,41 @@ interface CacheConfig {
 interface CachedData<T> {
   timestamp: number;
   data: T;
+  userId?: string;
 }
 
 export function useCache<T>(config: CacheConfig) {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  
   const { key, duration = 300000 } = config; // 5 phút mặc định
+  const storageKey = userId ? `${userId}_${key}` : key;
+  
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Get cached data
   const getCache = useCallback((): T | null => {
     try {
-      const cached = sessionStorage.getItem(key);
+      const cached = sessionStorage.getItem(storageKey);
       if (!cached) return null;
 
       const parsed: CachedData<T> = JSON.parse(cached);
       const now = Date.now();
 
       // Kiểm tra cache còn hiệu lực không
-      if (now - parsed.timestamp < duration) {
+      // Và kiểm tra xem có đúng User ID của cache đó không (đề phòng)
+      if (now - parsed.timestamp < duration && (!parsed.userId || parsed.userId === userId)) {
         return parsed.data;
       }
 
-      // Cache hết hạn, xóa luôn
-      sessionStorage.removeItem(key);
+      // Cache hết hạn hoặc sai user, xóa luôn
+      sessionStorage.removeItem(storageKey);
       return null;
     } catch (error) {
       console.error('Error reading cache:', error);
       return null;
     }
-  }, [key, duration]);
+  }, [storageKey, duration, userId]);
 
   // Set cached data
   const setCache = useCallback((data: T) => {
@@ -43,12 +51,13 @@ export function useCache<T>(config: CacheConfig) {
       const cacheData: CachedData<T> = {
         timestamp: Date.now(),
         data,
+        userId: userId || undefined,
       };
-      sessionStorage.setItem(key, JSON.stringify(cacheData));
+      sessionStorage.setItem(storageKey, JSON.stringify(cacheData));
     } catch (error) {
       console.error('Error setting cache:', error);
     }
-  }, [key]);
+  }, [storageKey, userId]);
 
   // Clear all dashboard caches
   const clearAllCaches = useCallback(() => {
@@ -67,9 +76,9 @@ export function useCache<T>(config: CacheConfig) {
 
   // Clear cache for current key AND all other caches to prevent cross-entity sync issues
   const clearCache = useCallback(() => {
-    sessionStorage.removeItem(key);
+    sessionStorage.removeItem(storageKey);
     clearAllCaches();
-  }, [key, clearAllCaches]);
+  }, [storageKey, clearAllCaches]);
 
   return {
     getCache,

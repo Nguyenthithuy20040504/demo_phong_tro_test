@@ -80,30 +80,21 @@ import {
 import type { KhachThue } from '@/types';
 
 // Helper functions
-const getStatusBadge = (status: string) => {
-  switch (status) {
-    case 'dangThue':
-      return (
-        <Badge variant="default" className="gap-1">
-          <User className="h-3 w-3" />
-          Đang thuê
-        </Badge>
-      );
-    case 'daTraPhong':
-      return (
-        <Badge variant="secondary" className="gap-1">
-          Đã trả phòng
-        </Badge>
-      );
-    case 'chuaThue':
-      return (
-        <Badge variant="outline" className="gap-1">
-          Chưa thuê
-        </Badge>
-      );
-    default:
-      return <Badge variant="outline">{status}</Badge>;
+const getAccountStatusBadge = (hasAccount: boolean) => {
+  if (hasAccount) {
+    return (
+      <Badge variant="default" className="gap-1 bg-emerald-600 hover:bg-emerald-700">
+        <Check className="h-3 w-3" />
+        Đã có tài khoản
+      </Badge>
+    );
   }
+  return (
+    <Badge variant="outline" className="gap-1 text-muted-foreground border-dashed">
+      <X className="h-3 w-3" />
+      Chưa có tài khoản
+    </Badge>
+  );
 };
 
 type KhachThueTableProps = {
@@ -247,8 +238,12 @@ const createColumns = (props: KhachThueTableProps & { setKhachThueToDelete: (k: 
   },
   {
     accessorKey: "trangThai",
-    header: "Trạng thái",
-    cell: ({ row }) => getStatusBadge(row.original.trangThai),
+    header: "Tài khoản",
+    cell: ({ row }) => {
+      const khachThue = row.original as any;
+      const hasAccount = !!khachThue.matKhau && khachThue.matKhau !== '';
+      return getAccountStatusBadge(hasAccount);
+    },
   },
   {
     id: "actions",

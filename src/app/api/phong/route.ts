@@ -78,7 +78,14 @@ export async function GET(request: NextRequest) {
     }
 
     const phongList = await Phong.find(query)
-      .populate('toaNha', 'tenToaNha diaChi')
+      .populate({
+        path: 'toaNha',
+        select: 'tenToaNha diaChi chuSoHuu',
+        populate: {
+          path: 'chuSoHuu',
+          select: 'ten email soDienThoai'
+        }
+      })
       .sort({ tang: 1, maPhong: 1 })
       .skip((page - 1) * limit)
       .limit(limit);
@@ -90,7 +97,14 @@ export async function GET(request: NextRequest) {
 
     // Lấy lại dữ liệu với trạng thái đã cập nhật và thông tin hợp đồng
     const updatedPhongList = await Phong.find(query)
-      .populate('toaNha', 'tenToaNha diaChi')
+      .populate({
+        path: 'toaNha',
+        select: 'tenToaNha diaChi chuSoHuu',
+        populate: {
+          path: 'chuSoHuu',
+          select: 'ten email soDienThoai'
+        }
+      })
       .sort({ tang: 1, maPhong: 1 })
       .skip((page - 1) * limit)
       .limit(limit);
@@ -98,7 +112,7 @@ export async function GET(request: NextRequest) {
     // Thêm thông tin hợp đồng, khách thuê, hóa đơn, sự cố cho mỗi phòng
     const phongListWithContracts = await Promise.all(
       updatedPhongList.map(async (phongDoc) => {
-        const phong = phongDoc.toObject();
+        const phong: any = phongDoc.toObject();
         const hopDongRaw: any = await HopDong.findOne({
           phong: phong._id,
           trangThai: 'hoatDong',
@@ -112,7 +126,7 @@ export async function GET(request: NextRequest) {
             }
           ]
         }).lean();
-
+ 
         // === ENRICHED DATA: Hóa đơn mới nhất + Sự cố chưa xử lý ===
         const [hoaDonMoiNhat, suCoCount] = await Promise.all([
           HoaDon.findOne({ phong: phong._id })
@@ -124,7 +138,7 @@ export async function GET(request: NextRequest) {
             trangThai: { $in: ['moi', 'dangXuLy'] }
           })
         ]);
-
+ 
         // Tính trạng thái tổng hợp (ưu tiên: suCo > treTien > daThanhToan > trong)
         let trangThaiTongHop: string = 'trong';
         if (phong.trangThai === 'baoTri' || suCoCount > 0) {

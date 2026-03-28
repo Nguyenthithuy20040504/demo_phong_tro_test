@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     }
 
     const toaNhaList = await ToaNha.find(query)
-      .populate('chuSoHuu', 'ten email')
+      .populate('chuSoHuu', 'ten email soDienThoai')
       .sort({ ngayTao: -1 })
       .skip((page - 1) * limit)
       .limit(limit);

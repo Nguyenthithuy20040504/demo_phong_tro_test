@@ -239,50 +239,53 @@ export default function KhachThuePage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 md:gap-4 lg:gap-6">
-        <Card className="p-2 md:p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 md:gap-4 lg:gap-6">
+        <Card className="p-2 md:p-4 bg-gradient-to-br from-gray-50 to-white border-gray-100 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Tổng khách thuê</p>
-              <p className="text-base md:text-2xl font-bold">{khachThueList.length}</p>
+              <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Tổng khách thuê</p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl md:text-3xl font-black text-gray-900">{khachThueList.length}</span>
+                <span className="text-[10px] text-gray-400 font-bold">người</span>
+              </div>
             </div>
-            <Users className="h-3 w-3 md:h-4 md:w-4 text-gray-500" />
+            <div className="bg-gray-100 p-2 rounded-xl">
+              <Users className="h-4 w-4 md:h-5 md:w-5 text-gray-500" />
+            </div>
           </div>
         </Card>
 
-        <Card className="p-2 md:p-4">
+        <Card className="p-2 md:p-4 bg-gradient-to-br from-emerald-50 to-white border-emerald-100 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Đang thuê</p>
-              <p className="text-base md:text-2xl font-bold text-blue-600">
-                {khachThueList.filter(k => k.trangThai === 'dangThue').length}
-              </p>
+              <p className="text-[10px] md:text-xs font-bold text-emerald-600 uppercase tracking-widest mb-1">Đã có tài khoản</p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl md:text-3xl font-black text-emerald-700">
+                  {khachThueList.filter(k => !!(k as any).matKhau).length}
+                </span>
+                <span className="text-[10px] text-emerald-500 font-bold">người</span>
+              </div>
             </div>
-            <Users className="h-3 w-3 md:h-4 md:w-4 text-blue-600" />
+            <div className="bg-emerald-100 p-2 rounded-xl">
+              <RefreshCw className="h-4 w-4 md:h-5 md:w-5 text-emerald-600" />
+            </div>
           </div>
         </Card>
 
-        <Card className="p-2 md:p-4">
+        <Card className="p-2 md:p-4 bg-gradient-to-br from-amber-50 to-white border-amber-100 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Đã trả phòng</p>
-              <p className="text-base md:text-2xl font-bold text-gray-600">
-                {khachThueList.filter(k => k.trangThai === 'daTraPhong').length}
-              </p>
+              <p className="text-[10px] md:text-xs font-bold text-amber-600 uppercase tracking-widest mb-1">Chưa có tài khoản</p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl md:text-3xl font-black text-amber-700">
+                  {khachThueList.filter(k => !(k as any).matKhau).length}
+                </span>
+                <span className="text-[10px] text-amber-500 font-bold">người</span>
+              </div>
             </div>
-            <Users className="h-3 w-3 md:h-4 md:w-4 text-gray-600" />
-          </div>
-        </Card>
-
-        <Card className="p-2 md:p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Chưa thuê/Mới</p>
-              <p className="text-base md:text-2xl font-bold text-orange-600">
-                {khachThueList.filter(k => k.trangThai === 'chuaThue').length}
-              </p>
+            <div className="bg-amber-100 p-2 rounded-xl">
+              <Info className="h-4 w-4 md:h-5 md:w-5 text-amber-600" />
             </div>
-            <Users className="h-3 w-3 md:h-4 md:w-4 text-orange-600" />
           </div>
         </Card>
       </div>
@@ -350,13 +353,12 @@ export default function KhachThuePage() {
           </div>
           <Select value={selectedTrangThai} onValueChange={setSelectedTrangThai}>
             <SelectTrigger className="text-sm">
-              <SelectValue placeholder="Trạng thái" />
+              <SelectValue placeholder="Tài khoản" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all" className="text-sm">Tất cả trạng thái</SelectItem>
-              <SelectItem value="dangThue" className="text-sm">Đang thuê</SelectItem>
-              <SelectItem value="daTraPhong" className="text-sm">Đã trả phòng</SelectItem>
-              <SelectItem value="chuaThue" className="text-sm">Chưa thuê</SelectItem>
+              <SelectItem value="all" className="text-sm">Tất cả tài khoản</SelectItem>
+              <SelectItem value="hasAccount" className="text-sm">Đã có tài khoản</SelectItem>
+              <SelectItem value="noAccount" className="text-sm">Chưa có tài khoản</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -373,18 +375,11 @@ export default function KhachThuePage() {
                     <p className="text-sm text-gray-500 capitalize">{khachThue.gioiTinh === 'nam' ? 'Nam' : 'Nữ'}</p>
                   </div>
                   <div className="flex gap-2">
-                    {(() => {
-                      switch (khachThue.trangThai) {
-                        case 'dangThue':
-                          return <Badge variant="default" className="text-xs">Đang thuê</Badge>;
-                        case 'daTraPhong':
-                          return <Badge variant="secondary" className="text-xs">Đã trả phòng</Badge>;
-                        case 'chuaThue':
-                          return <Badge variant="outline" className="text-xs">Chưa thuê</Badge>;
-                        default:
-                          return <Badge variant="outline" className="text-xs">{khachThue.trangThai}</Badge>;
-                      }
-                    })()}
+                    {!!(khachThue as any).matKhau ? (
+                      <Badge variant="default" className="text-xs bg-emerald-600">Đã có tài khoản</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs text-muted-foreground border-dashed">Chưa có tài khoản</Badge>
+                    )}
                   </div>
                 </div>
 
