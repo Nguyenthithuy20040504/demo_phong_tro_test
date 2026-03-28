@@ -8,13 +8,13 @@ import { useSession, signOut } from 'next-auth/react';
 
 import { Button } from '@/components/ui/button';
 import { Home, FileText, AlertCircle, User, LogOut, Menu, X, Bell } from 'lucide-react';
-import { useEffect as useEffectCount, useState as useStateCount, useRef } from 'react';
 
 export default function KhachThueDashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const { data: session, status } = useSession();
   const user = session?.user;
@@ -34,6 +34,15 @@ export default function KhachThueDashboardLayout({ children }: { children: React
     }
   }, [status, session, user?.role, router]);
 
+  useEffect(() => {
+    if (!session) return;
+    fetch('/api/thong-bao/unread-count').then(r => r.json()).then(d => setUnreadCount(d.count || 0)).catch(() => {});
+    const interval = setInterval(() => {
+      fetch('/api/thong-bao/unread-count').then(r => r.json()).then(d => setUnreadCount(d.count || 0)).catch(() => {});
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [session]);
+
   const handleLogout = async () => {
     toast.success('Đã đăng xuất');
     await signOut({ callbackUrl: '/' });
@@ -48,16 +57,6 @@ export default function KhachThueDashboardLayout({ children }: { children: React
   }
 
   if (!session) return null;
-
-  const [unreadCount, setUnreadCount] = useStateCount(0);
-
-  useEffectCount(() => {
-    fetch('/api/thong-bao/unread-count').then(r => r.json()).then(d => setUnreadCount(d.count || 0)).catch(() => {});
-    const interval = setInterval(() => {
-      fetch('/api/thong-bao/unread-count').then(r => r.json()).then(d => setUnreadCount(d.count || 0)).catch(() => {});
-    }, 60000);
-    return () => clearInterval(interval);
-  }, []);
 
   const navigation = [
     { name: 'Tổng quan', href: '/khach-thue/dashboard', icon: Home },
