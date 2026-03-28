@@ -6,6 +6,8 @@ import Phong from '@/models/Phong';
 import ToaNha from '@/models/ToaNha';
 import HopDong from '@/models/HopDong';
 import KhachThue from '@/models/KhachThue';
+import HoaDon from '@/models/HoaDon';
+import SuCo from '@/models/SuCo';
 import { updatePhongStatus } from '@/lib/status-utils';
 import { getAccessibleToaNhaIds, isToaNhaAccessible } from '@/lib/auth-utils';
 import { z } from 'zod';
@@ -93,7 +95,7 @@ export async function GET(request: NextRequest) {
       .skip((page - 1) * limit)
       .limit(limit);
 
-    // Thêm thông tin hợp đồng và khách thuê cho mỗi phòng (với hỗ trợ polymorphic tenants)
+    // Thêm thông tin hợp đồng, khách thuê, hóa đơn, sự cố cho mỗi phòng
     const phongListWithContracts = await Promise.all(
       updatedPhongList.map(async (phongDoc) => {
         const phong = phongDoc.toObject();
@@ -110,6 +112,38 @@ export async function GET(request: NextRequest) {
             }
           ]
         }).lean();
+
+        // === ENRICHED DATA: Hóa đơn mới nhất + Sự cố chưa xử lý ===
+        const [hoaDonMoiNhat, suCoCount] = await Promise.all([
+          HoaDon.findOne({ phong: phong._id })
+            .sort({ nam: -1, thang: -1 })
+            .select('trangThai thang nam tongTien conLai hanThanhToan')
+            .lean(),
+          SuCo.countDocuments({
+            phong: phong._id,
+            trangThai: { $in: ['moi', 'dangXuLy'] }
+          })
+        ]);
+
+        // Tính trạng thái tổng hợp (ưu tiên: suCo > treTien > daThanhToan > trong)
+        let trangThaiTongHop: string = 'trong';
+        if (phong.trangThai === 'baoTri' || suCoCount > 0) {
+          trangThaiTongHop = 'suCo';
+        } else if (phong.trangThai === 'dangThue' || phong.trangThai === 'daDat') {
+          if (hoaDonMoiNhat) {
+            const hdStatus = hoaDonMoiNhat.trangThai;
+            if (hdStatus === 'quaHan' || hdStatus === 'chuaThanhToan' || hdStatus === 'daThanhToanMotPhan') {
+              trangThaiTongHop = 'treTien';
+            } else if (hdStatus === 'daThanhToan') {
+              trangThaiTongHop = 'daThanhToan';
+            } else {
+              trangThaiTongHop = 'daThanhToan'; // choDuyet cũng coi như đã nộp
+            }
+          } else {
+            trangThaiTongHop = 'daThanhToan'; // Có hợp đồng nhưng chưa có hóa đơn
+          }
+        }
+        // === END ENRICHED DATA ===
 
         if (hopDongRaw) {
           // Thủ công populate khachThueId và nguoiDaiDien
@@ -149,13 +183,19 @@ export async function GET(request: NextRequest) {
               ...hopDongRaw,
               khachThueId: allKt,
               nguoiDaiDien: nguoiDaiDien
-            }
+            },
+            hoaDonMoiNhat: hoaDonMoiNhat || null,
+            suCoMoi: suCoCount,
+            trangThaiTongHop
           };
         }
 
         return {
           ...phong,
-          hopDongHienTai: null
+          hopDongHienTai: null,
+          hoaDonMoiNhat: hoaDonMoiNhat || null,
+          suCoMoi: suCoCount,
+          trangThaiTongHop
         };
       })
     );
