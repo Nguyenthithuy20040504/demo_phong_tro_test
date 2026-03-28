@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
 
     const phongList = await Phong.find(query)
       .populate('toaNha', 'tenToaNha diaChi')
-      .sort({ maPhong: 1 })
+      .sort({ tang: 1, maPhong: 1 })
       .skip((page - 1) * limit)
       .limit(limit);
 
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
     // Lấy lại dữ liệu với trạng thái đã cập nhật và thông tin hợp đồng
     const updatedPhongList = await Phong.find(query)
       .populate('toaNha', 'tenToaNha diaChi')
-      .sort({ maPhong: 1 })
+      .sort({ tang: 1, maPhong: 1 })
       .skip((page - 1) * limit)
       .limit(limit);
 

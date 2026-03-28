@@ -375,7 +375,7 @@ export default function PhongPage() {
     });
     return Object.entries(groups)
       .map(([tang, rooms]) => ({ tang: parseInt(tang), rooms }))
-      .sort((a, b) => b.tang - a.tang); // Tầng cao nhất ở trên
+      .sort((a, b) => a.tang - b.tang); // Tầng thấp nhất ở trên
   }, [filteredPhong]);
 
   // Stats cho tòa nhà đang chọn
