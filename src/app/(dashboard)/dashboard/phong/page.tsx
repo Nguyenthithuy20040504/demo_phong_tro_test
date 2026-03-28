@@ -141,9 +141,11 @@ function getTenantName(phong: EnrichedPhong): string {
 function RoomCard({ 
   phong,
   onClick,
+  onEdit,
 }: { 
   phong: EnrichedPhong;
   onClick: () => void;
+  onEdit: (e: React.MouseEvent, phong: EnrichedPhong) => void;
 }) {
   const status = getStatusConfig(phong.trangThaiTongHop || 'trong');
   const StatusIcon = status.icon;
@@ -162,6 +164,14 @@ function RoomCard({
         text-left group
       `}
     >
+      {/* Edit button */}
+      <div 
+        onClick={(e) => onEdit(e, phong)}
+        className="absolute -top-1.5 -left-1.5 h-8 w-8 bg-indigo-500 rounded-lg shadow-lg flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 hover:bg-indigo-600 z-10"
+      >
+        <Edit className="h-4 w-4" />
+      </div>
+
       {/* Sự cố badge */}
       {(phong.suCoMoi ?? 0) > 0 && phong.trangThaiTongHop !== 'suCo' && (
         <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
@@ -209,10 +219,12 @@ function FloorSection({
   tang,
   rooms,
   onRoomClick,
+  onEditClick,
 }: {
   tang: number;
   rooms: EnrichedPhong[];
   onRoomClick: (phong: EnrichedPhong) => void;
+  onEditClick: (e: React.MouseEvent, phong: EnrichedPhong) => void;
 }) {
   return (
     <div className="space-y-3">
@@ -232,6 +244,7 @@ function FloorSection({
               key={phong._id}
               phong={phong}
               onClick={() => onRoomClick(phong)}
+              onEdit={onEditClick}
             />
           ))}
       </div>
@@ -661,6 +674,10 @@ export default function PhongPage() {
               tang={tang}
               rooms={rooms}
               onRoomClick={handleViewDetail}
+              onEditClick={(e, p) => {
+                e.stopPropagation();
+                handleEdit(p);
+              }}
             />
           ))
         )}
@@ -770,6 +787,10 @@ export default function PhongPage() {
         isOpen={isDetailDialogOpen}
         onClose={() => setIsDetailDialogOpen(false)}
         toaNhaList={toaNhaList}
+        onEdit={(phong) => {
+          setIsDetailDialogOpen(false);
+          handleEdit(phong);
+        }}
       />
     </div>
   );

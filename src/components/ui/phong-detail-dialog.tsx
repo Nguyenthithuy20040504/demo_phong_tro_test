@@ -43,15 +43,19 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { Edit } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface PhongDetailDialogProps {
   phong: Phong | null;
   isOpen: boolean;
   onClose: () => void;
   toaNhaList: ToaNha[];
+  onEdit?: (phong: Phong) => void;
 }
 
-export function PhongDetailDialog({ phong, isOpen, onClose, toaNhaList }: PhongDetailDialogProps) {
+export function PhongDetailDialog({ phong, isOpen, onClose, toaNhaList, onEdit }: PhongDetailDialogProps) {
   if (!phong) return null;
 
   const capitalizeFirstLetter = (string?: string) => {
@@ -178,6 +182,19 @@ export function PhongDetailDialog({ phong, isOpen, onClose, toaNhaList }: PhongD
                     <SheetTitle className="text-4xl font-black tracking-tight text-foreground leading-none mb-1">
                       Phòng {phong.maPhong}
                     </SheetTitle>
+                    {onEdit && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(phong);
+                          }}
+                          className="h-8 w-8 ml-2 rounded-lg hover:bg-indigo-50 text-indigo-500 transition-all"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
                     <SheetDescription className="text-muted-foreground font-semibold flex items-center gap-2">
                        Chi tiết cấu hình và trạng thái hiện tại
                     </SheetDescription>
