@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     // 2. Lọc và ưu tiên những phòng có số điện thoại chủ nhà lên đầu
     const roomsWithContact = allAvailableRooms.filter((p: any) => p.toaNha?.chuSoHuu?.soDienThoai);
     const roomsWithoutContact = allAvailableRooms.filter((p: any) => !p.toaNha?.chuSoHuu?.soDienThoai);
-    
+
     // Gộp lại và lấy đúng 5 phòng "chất lượng" nhất
     const topRooms = [...roomsWithContact, ...roomsWithoutContact].slice(0, 5);
 
@@ -39,7 +39,11 @@ export async function POST(request: NextRequest) {
       return {
         maPhong: p.maPhong,
         toaNha: toaNha?.tenToaNha || 'N/A',
-        diaChi: toaNha?.diaChi ? `${toaNha.diaChi.quan}, ${toaNha.diaChi.thanhPho}` : 'N/A',
+        diaChi: toaNha?.diaChi 
+          ? [toaNha.diaChi.soNha, toaNha.diaChi.duong, toaNha.diaChi.phuong, toaNha.diaChi.quan, toaNha.diaChi.thanhPho]
+              .filter(Boolean)
+              .join(', ') 
+          : 'N/A',
         giaThue: p.giaThue,
         dienTich: p.dienTich,
         tienNghi: p.tienNghi?.join(', ') || 'Cơ bản',
@@ -57,6 +61,9 @@ export async function POST(request: NextRequest) {
  1. LUÔN dùng bảng Markdown với các cột: | Mã Phòng | Tòa Nhà | Địa Chỉ | Giá Thuê | Diện Tích | Liên Hệ |
  2. Cột "Liên Hệ" cực kỳ quan trọng, hãy lấy số điện thoại từ trường "lienHe".
  3. Định dạng giá thuê (VD: 3.500.000 VNĐ).
+ 4. CỰC KỲ QUAN TRỌNG: Bạn CẦN PHẢI so khớp (map) địa chỉ phòng với địa điểm người dùng đang tìm kiếm (dựa vào tên đường, phường, quận, thành phố...). 
+    - CHÚ Ý: Người dùng có thể nhập tên địa điểm CÓ DẤU hoặc KHÔNG DẤU (ví dụ: nhập "cau giay", "ha noi", "ho chi minh"). Bạn phải tự động suy luận hiểu đó là "Cầu Giấy", "Hà Nội", "Hồ Chí Minh" để lấy phòng đúng.
+    - Nếu phòng KHÔNG nằm ở khu vực người dùng yêu cầu, TUYỆT ĐỐI KHÔNG hiển thị phòng đó.
     `;
 
     const apiKey = process.env.GEMINI_API_KEY;
