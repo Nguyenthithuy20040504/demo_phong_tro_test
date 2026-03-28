@@ -91,7 +91,11 @@ export async function GET(request: NextRequest) {
         select: 'maPhong dienTich giaThue tienCoc toaNha tang moTa anhPhong tienNghi',
         populate: {
           path: 'toaNha',
-          select: 'tenToaNha diaChi'
+          select: 'tenToaNha diaChi chuSoHuu',
+          populate: {
+            path: 'chuSoHuu',
+            select: 'ten hoTen soDienThoai email'
+          }
         }
       })
       .populate('khachThueId', 'hoTen soDienThoai email anhDaiDien')
@@ -118,6 +122,17 @@ export async function GET(request: NextRequest) {
       .sort({ ngayTao: -1 })
       .populate('phong', 'maPhong');
 
+    // Lấy thông tin chủ nhà từ tòa nhà của hợp đồng đầu tiên
+    let chuNha: any = null;
+    if (hopDongHienTai?.phong?.toaNha?.chuSoHuu) {
+      const owner = hopDongHienTai.phong.toaNha.chuSoHuu;
+      chuNha = {
+        hoTen: owner.hoTen || owner.ten || 'Chủ nhà',
+        soDienThoai: owner.soDienThoai || '',
+        email: owner.email || '',
+      };
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -125,7 +140,8 @@ export async function GET(request: NextRequest) {
         hopDongHienTai,
         hopDongList,
         soHoaDonChuaThanhToan,
-        hoaDonGanNhat
+        hoaDonGanNhat,
+        chuNha
       }
     });
 

@@ -178,9 +178,6 @@ export default function KhachThueDashboardPage() {
                       {hopDongList.length} PHÒNG
                     </Badge>
                   )}
-                  <Link href="/khach-thue/dashboard/hoa-don" className="text-gray-300 hover:text-primary transition-colors">
-                    <ArrowUpRight className="size-6" />
-                  </Link>
                 </div>
               </div>
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-1">Đang xem phòng</p>
@@ -508,22 +505,37 @@ export default function KhachThueDashboardPage() {
 
           <motion.div variants={itemVariants}>
             <Card className="border-none shadow-sm bg-secondary/10 rounded-[2rem] overflow-hidden p-8">
-              <h3 className="font-black text-gray-900 mb-6">Hotline Hỗ Trợ</h3>
+              <h3 className="font-black text-gray-900 mb-6">Liên hệ Chủ nhà</h3>
               <div className="space-y-4">
                 <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm">
                   <div className="bg-primary/5 p-2 rounded-xl text-primary"><Phone className="size-4" /></div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Gọi phản ánh</span>
-                    <span className="text-sm font-black text-gray-900">0123.456.789</span>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Số điện thoại</span>
+                    <span className="text-sm font-black text-gray-900">
+                      {dashboardData?.chuNha?.soDienThoai || 'Chưa cập nhật'}
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm">
                   <div className="bg-indigo-50 p-2 rounded-xl text-indigo-500"><Mail className="size-4" /></div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email cứu hộ</span>
-                    <span className="text-sm font-black text-gray-900">sos@rent.vn</span>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email</span>
+                    <span className="text-sm font-black text-gray-900">
+                      {dashboardData?.chuNha?.email || 'Chưa cập nhật'}
+                    </span>
                   </div>
                 </div>
+                {dashboardData?.chuNha?.hoTen && (
+                  <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm">
+                    <div className="bg-emerald-50 p-2 rounded-xl text-emerald-500"><User className="size-4" /></div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Chủ nhà</span>
+                      <span className="text-sm font-black text-gray-900">
+                        {dashboardData.chuNha.hoTen}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
           </motion.div>
