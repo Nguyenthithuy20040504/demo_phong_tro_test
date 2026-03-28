@@ -1,0 +1,10 @@
+﻿src/components/ui/phong-detail-dialog.tsx(9,8): error TS2307: Cannot find module '@/components/ui/dialog' or its corresponding type declarations.
+src/components/ui/phong-detail-dialog.tsx(16,8): error TS2307: Cannot find module '@/components/ui/carousel' or its corresponding type declarations.
+src/components/ui/phong-detail-dialog.tsx(17,23): error TS2307: Cannot find module '@/components/ui/badge' or its corresponding type declarations.
+src/components/ui/phong-detail-dialog.tsx(48,36): error TS2307: Cannot find module '@/types' or its corresponding type declarations.
+src/components/ui/phong-detail-dialog.tsx(49,35): error TS2307: Cannot find module '@/components/ui/card' or its corresponding type declarations.
+src/components/ui/phong-detail-dialog.tsx(50,28): error TS2307: Cannot find module '@/components/ui/scroll-area' or its corresponding type declarations.
+src/components/ui/phong-detail-dialog.tsx(51,27): error TS2307: Cannot find module '@/components/ui/separator' or its corresponding type declarations.
+src/components/ui/phong-detail-dialog.tsx(52,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
+src/components/ui/phong-detail-dialog.tsx(54,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+src/components/ui/phong-detail-dialog.tsx(55,74): error TS2307: Cannot find module '@/components/ui/tooltip' or its corresponding type declarations.

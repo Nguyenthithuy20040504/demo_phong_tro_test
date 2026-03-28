@@ -909,8 +909,7 @@ function PhongForm({
         </TabsList>
         
         <TabsContent value="thong-tin" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-            <div className="space-y-2">
+          <div className="space-y-2">
               <Label htmlFor="maPhong" className="text-sm">Mã phòng</Label>
               <Input
                 id="maPhong"
@@ -924,7 +923,8 @@ function PhongForm({
                 Sử dụng số tầng làm tiền tố (VD: Tầng 1 là 101, 102...) để dễ quản lý.
               </p>
             </div>
-            
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
             <div className="space-y-2">
               <Label htmlFor="toaNha" className="text-sm">Tòa nhà</Label>
               <Select value={formData.toaNha} onValueChange={(value) => setFormData(prev => ({ ...prev, toaNha: value }))}>
@@ -1096,3 +1096,4 @@ function PhongForm({
     </form>
   );
 }
+
