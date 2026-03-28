@@ -321,7 +321,10 @@ export default function ThemMoiHopDongPage() {
 
               {/* Khách thuê - cạnh mã hợp đồng */}
               <div className="space-y-2">
-                <Label className="text-xs md:text-sm">Khách thuê</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs md:text-sm">Khách thuê</Label>
+                  <span className="text-[10px] text-amber-600 font-medium italic">* Chỉ áp dụng với những khách thuê đã có tài khoản</span>
+                </div>
                 <Popover open={openKhachThue} onOpenChange={setOpenKhachThue}>
                   <PopoverTrigger asChild>
                     <Button
@@ -354,7 +357,12 @@ export default function ThemMoiHopDongPage() {
                       <CommandInput placeholder="Gõ tên, SĐT để tìm thêm khách thuê..." className="text-sm" />
                       <CommandEmpty className="text-sm">Không tìm thấy khách thuê.</CommandEmpty>
                       <CommandGroup className="max-h-64 overflow-auto">
-                        {khachThueList.map((khachThue) => (
+                        {khachThueList.filter(k => k.matKhau === '******').length === 0 && (
+                          <div className="p-4 text-center text-xs text-muted-foreground italic">
+                            Chưa có khách thuê nào có tài khoản lẻ. Hãy tạo tài khoản cho khách trước nhé!
+                          </div>
+                        )}
+                        {khachThueList.filter(k => k.matKhau === '******').map((khachThue) => (
                           <CommandItem
                             key={khachThue._id}
                             value={`${khachThue.hoTen} ${khachThue.soDienThoai || ''} ${khachThue.email || ''}`}
@@ -480,7 +488,10 @@ export default function ThemMoiHopDongPage() {
 
             {/* Người đại diện - chọn trước, tự động thêm vào khách thuê */}
             <div className="space-y-2">
-              <Label className="text-xs md:text-sm">Người đại diện *</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs md:text-sm">Người đại diện *</Label>
+                <span className="text-[10px] text-amber-600 font-medium italic">* Chỉ áp dụng với những khách thuê đã có tài khoản</span>
+              </div>
               <Popover open={openNguoiDaiDien} onOpenChange={setOpenNguoiDaiDien}>
                 <PopoverTrigger asChild>
                   <Button
@@ -501,7 +512,12 @@ export default function ThemMoiHopDongPage() {
                     <CommandInput placeholder="Gõ tên, SĐT hoặc email để tìm..." className="text-sm" />
                     <CommandEmpty className="text-sm">Không tìm thấy khách thuê.</CommandEmpty>
                     <CommandGroup className="max-h-64 overflow-auto">
-                      {khachThueList.map((khachThue) => (
+                      {khachThueList.filter(k => k.matKhau === '******').length === 0 && (
+                        <div className="p-4 text-center text-xs text-muted-foreground italic">
+                          Chưa có khách thuê nào có tài khoản lẻ. Hãy tạo tài khoản cho khách trước nhé!
+                        </div>
+                      )}
+                      {khachThueList.filter(k => k.matKhau === '******').map((khachThue) => (
                         <CommandItem
                           key={khachThue._id}
                           value={`${khachThue.hoTen} ${khachThue.soDienThoai || ''} ${khachThue.email || ''}`}

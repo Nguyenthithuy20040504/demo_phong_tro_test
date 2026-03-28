@@ -37,7 +37,8 @@ import {
   GalleryVerticalEnd,
   LayoutDashboard,
   Mail,
-  Calendar
+  Calendar,
+  FileText
 } from "lucide-react";
 import type { Phong, ToaNha } from '@/types';
 import { Card, CardContent } from "@/components/ui/card";
@@ -249,6 +250,21 @@ export function PhongDetailDialog({ phong, isOpen, onClose, toaNhaList, onEdit }
                   )}
                 </div>
               </div>
+
+              {/* Room Description section */}
+              {phong.moTa && (
+                <div className="space-y-3">
+                  <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Mô tả chi tiết
+                  </h3>
+                  <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                    <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line italic">
+                      "{phong.moTa}"
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Amenities List section */}
               <div className="space-y-3">
