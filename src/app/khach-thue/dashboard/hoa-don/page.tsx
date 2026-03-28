@@ -575,7 +575,7 @@ export default function HoaDonKhachThuePage() {
                       <div className="w-full space-y-2 text-sm">
                         <div className="flex justify-between items-center py-1 border-b border-slate-200 border-dashed">
                           <span className="text-slate-500">Ngân hàng:</span>
-                          <span className="font-bold text-slate-800">{(selectedHoaDon as any).chuNha?.thongTinThanhToan?.nganHang || '—'}</span>
+                          <span className="font-bold text-slate-800">{(selectedHoaDon as any).chuNha?.thongTinThanhToan?.tenNganHang || (selectedHoaDon as any).chuNha?.thongTinThanhToan?.nganHang || '—'}</span>
                         </div>
                         <div className="flex justify-between items-center py-1 border-b border-slate-200 border-dashed">
                           <span className="text-slate-500">Số tài khoản:</span>

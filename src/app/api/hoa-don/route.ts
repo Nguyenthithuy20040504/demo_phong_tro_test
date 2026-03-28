@@ -95,12 +95,33 @@ export async function GET(request: NextRequest) {
         const toaNha = await ToaNhaModel.findById(toaNhaId);
         if (toaNha && toaNha.chuSoHuu) {
            const chuNha = await NguoiDungModel.findById(toaNha.chuSoHuu).select('thongTinThanhToan ten hoTen name email soDienThoai').lean();
+           
+           // Map BIN code sang tên ngân hàng
+           const BANK_BIN_MAP: Record<string, string> = {
+             '970436': 'Vietcombank', '970418': 'BIDV', '970415': 'VietinBank',
+             '970405': 'Agribank', '970407': 'Techcombank', '970423': 'TPBank',
+             '970422': 'MB Bank', '970432': 'VPBank', '970403': 'Sacombank',
+             '970416': 'ACB', '970437': 'HDBank', '970441': 'VIB',
+             '970443': 'SHB', '970431': 'Eximbank', '970426': 'MSB',
+             '970414': 'OCB', '970448': 'OCB', '970406': 'DongA Bank',
+             '970429': 'SCB', '970428': 'Nam A Bank', '970419': 'NCB',
+             '970424': 'Shinhan Bank', '970400': 'Saigonbank',
+             '970427': 'Viet A Bank', '970433': 'VietBank',
+             '970454': 'Viet Capital Bank', '970449': 'LienVietPostBank',
+             '970412': 'PVcomBank', '970425': 'BaoViet Bank',
+             '970434': 'Indovina Bank', '970452': 'KienLong Bank',
+           };
+           
+           const chuNhaAny = chuNha as any;
+           const bankCode = chuNhaAny?.thongTinThanhToan?.nganHang?.trim() || '';
+           if (chuNhaAny?.thongTinThanhToan) {
+             (chuNhaAny as any).thongTinThanhToan.tenNganHang = BANK_BIN_MAP[bankCode] || bankCode;
+           }
            (hoaDonObj as any).chuNha = chuNha;
 
-           // Nếu chưa có checkoutUrl (mã QR tĩnh), thử tạo lại dựa trên chủ nhà thực tế
-           const chuNhaAny = chuNha as any;
-           if (!hoaDonObj.checkoutUrl && chuNhaAny?.thongTinThanhToan?.nganHang && chuNhaAny?.thongTinThanhToan?.soTaiKhoan) {
-              const bank = chuNhaAny.thongTinThanhToan.nganHang.trim();
+           // Luôn tạo VietQR URL mới từ bank info chủ nhà
+           if (chuNhaAny?.thongTinThanhToan?.nganHang && chuNhaAny?.thongTinThanhToan?.soTaiKhoan) {
+              const bank = bankCode;
               const account = chuNhaAny.thongTinThanhToan.soTaiKhoan.trim();
               const name = encodeURIComponent((chuNhaAny.thongTinThanhToan.chuTaiKhoan || '').trim());
               const amount = hoaDonObj.conLai;
@@ -230,12 +251,36 @@ export async function GET(request: NextRequest) {
                 const chuNha = await NguoiDungModel.findById((toaNha as any).chuSoHuu)
                   .select('thongTinThanhToan ten hoTen name email soDienThoai')
                   .lean();
+                
+                // Map BIN code sang tên ngân hàng
+                const BANK_BIN_MAP: Record<string, string> = {
+                  '970436': 'Vietcombank', '970418': 'BIDV', '970415': 'VietinBank',
+                  '970405': 'Agribank', '970407': 'Techcombank', '970423': 'TPBank',
+                  '970422': 'MB Bank', '970432': 'VPBank', '970403': 'Sacombank',
+                  '970416': 'ACB', '970437': 'HDBank', '970441': 'VIB',
+                  '970443': 'SHB', '970431': 'Eximbank', '970426': 'MSB',
+                  '970414': 'OCB', '970448': 'OCB', '970406': 'DongA Bank',
+                  '970429': 'SCB', '970428': 'Nam A Bank', '970419': 'NCB',
+                  '970424': 'Shinhan Bank', '970400': 'Saigonbank',
+                  '970427': 'Viet A Bank', '970433': 'VietBank',
+                  '970454': 'Viet Capital Bank', '970449': 'LienVietPostBank',
+                  '970412': 'PVcomBank', '970425': 'BaoViet Bank',
+                  '970434': 'Indovina Bank', '970452': 'KienLong Bank',
+                };
+                
+                const chuNhaAny = chuNha as any;
+                const bankCode = chuNhaAny?.thongTinThanhToan?.nganHang?.trim() || '';
+                const tenNganHang = BANK_BIN_MAP[bankCode] || bankCode;
+                
+                // Gắn tên ngân hàng readable vào response
+                if (chuNhaAny?.thongTinThanhToan) {
+                  (chuNhaAny as any).thongTinThanhToan.tenNganHang = tenNganHang;
+                }
                 (hoaDonObj as any).chuNha = chuNha;
 
-                // Tạo VietQR URL nếu chưa có checkoutUrl
-                const chuNhaAny = chuNha as any;
-                if (!hoaDonObj.checkoutUrl && chuNhaAny?.thongTinThanhToan?.nganHang && chuNhaAny?.thongTinThanhToan?.soTaiKhoan) {
-                  const bank = chuNhaAny.thongTinThanhToan.nganHang.trim();
+                // Luôn tạo VietQR URL mới từ bank info chủ nhà
+                if (chuNhaAny?.thongTinThanhToan?.nganHang && chuNhaAny?.thongTinThanhToan?.soTaiKhoan) {
+                  const bank = bankCode;
                   const account = chuNhaAny.thongTinThanhToan.soTaiKhoan.trim();
                   const name = encodeURIComponent((chuNhaAny.thongTinThanhToan.chuTaiKhoan || '').trim());
                   const amount = hoaDonObj.conLai;
