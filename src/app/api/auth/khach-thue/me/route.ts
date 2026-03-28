@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
     // Lấy tất cả hợp đồng hiện tại - Tìm theo bất kỳ ID nào trong linkedIds
     const hopDongList = await HopDong.find({
       khachThueId: { $in: linkedIds },
-      trangThai: 'hoatDong'
+      trangThai: { $in: ['hoatDong', 'choDuyet'] }
     })
       .populate({
         path: 'phong',

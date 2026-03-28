@@ -189,6 +189,8 @@ export default function HopDongPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case 'choDuyet':
+        return <Badge className="bg-amber-500 text-white border-none">Chờ duyệt</Badge>;
       case 'hoatDong':
         return <Badge variant="default">Hoạt động</Badge>;
       case 'hetHan':
@@ -1295,7 +1297,7 @@ export default function HopDongPage() {
       </Dialog>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 md:gap-4 lg:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-1.5 md:gap-4 lg:gap-6">
         <Card className="p-2 md:p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -1303,6 +1305,18 @@ export default function HopDongPage() {
               <p className="text-base md:text-2xl font-bold">{hopDongList.length}</p>
             </div>
             <FileText className="h-3 w-3 md:h-4 md:w-4 text-gray-500" />
+          </div>
+        </Card>
+
+        <Card className="p-2 md:p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] md:text-xs font-medium text-amber-600 uppercase tracking-wider">Chờ duyệt</p>
+              <p className="text-base md:text-2xl font-bold text-amber-600">
+                {hopDongList.filter(h => h.trangThai === 'choDuyet').length}
+              </p>
+            </div>
+            <FileText className="h-3 w-3 md:h-4 md:w-4 text-amber-500" />
           </div>
         </Card>
 
@@ -1459,6 +1473,8 @@ export default function HopDongPage() {
                     <div className="flex flex-col gap-1 items-end">
                       {(() => {
                         switch (hopDong.trangThai) {
+                          case 'choDuyet':
+                            return <Badge className="text-xs bg-amber-500 text-white border-none">Chờ duyệt</Badge>;
                           case 'hoatDong':
                             return <Badge variant="default" className="text-xs">Hoạt động</Badge>;
                           case 'hetHan':

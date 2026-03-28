@@ -22,7 +22,7 @@ export interface IHopDong extends Document {
     ten: string;
     gia: number;
   }>;
-  trangThai: 'hoatDong' | 'hetHan' | 'daHuy';
+  trangThai: 'choDuyet' | 'hoatDong' | 'hetHan' | 'daHuy';
   fileHopDong?: string;
   ngayTao: Date;
   ngayCapNhat: Date;
@@ -121,8 +121,8 @@ const HopDongSchema = new Schema<IHopDong>({
   phiDichVu: [PhiDichVuSchema],
   trangThai: {
     type: String,
-    enum: ['hoatDong', 'hetHan', 'daHuy'],
-    default: 'hoatDong'
+    enum: ['choDuyet', 'hoatDong', 'hetHan', 'daHuy'],
+    default: 'choDuyet'
   },
   fileHopDong: {
     type: String,

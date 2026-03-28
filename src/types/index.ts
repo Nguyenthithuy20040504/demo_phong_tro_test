@@ -142,7 +142,7 @@ export interface HopDong {
   chiSoDienBanDau: number;
   chiSoNuocBanDau: number;
   phiDichVu: PhiDichVu[];
-  trangThai: 'hoatDong' | 'hetHan' | 'daHuy';
+  trangThai: 'choDuyet' | 'hoatDong' | 'hetHan' | 'daHuy';
   fileHopDong?: string;
   ngayTao: Date;
   ngayCapNhat: Date;

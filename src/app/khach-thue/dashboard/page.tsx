@@ -22,6 +22,7 @@ export default function KhachThueDashboardPage() {
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedRoomIndex, setSelectedRoomIndex] = useState(0);
+  const [approving, setApproving] = useState(false);
 
   const { data: session, status } = useSession();
 
@@ -118,6 +119,31 @@ export default function KhachThueDashboardPage() {
   const currentHopDong = hopDongList[selectedRoomIndex] || hopDongList[0];
   const hasMultipleRooms = hopDongList.length > 1;
 
+  // Tìm hợp đồng chờ duyệt
+  const pendingContracts = hopDongList.filter((hd: any) => hd.trangThai === 'choDuyet');
+
+  const handleApproval = async (hopDongId: string, action: 'duyet' | 'tuChoi') => {
+    setApproving(true);
+    try {
+      const res = await fetch(`/api/hop-dong/${hopDongId}/duyet`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success(action === 'duyet' ? 'Đã duyệt hợp đồng thành công!' : 'Đã từ chối hợp đồng');
+        fetchDashboardData(); // Refresh data
+      } else {
+        toast.error(result.message || 'Có lỗi xảy ra');
+      }
+    } catch {
+      toast.error('Mất kết nối với máy chủ');
+    } finally {
+      setApproving(false);
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -136,6 +162,60 @@ export default function KhachThueDashboardPage() {
       animate="visible"
       className="space-y-8 pb-10"
     >
+      {/* Banner hợp đồng chờ duyệt */}
+      {pendingContracts.length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-4"
+        >
+          {pendingContracts.map((hd: any) => (
+            <Card key={hd._id} className="border-2 border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 rounded-[2rem] overflow-hidden shadow-lg shadow-amber-100/50">
+              <CardContent className="p-6 md:p-8">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div className="flex items-start gap-4">
+                    <div className="size-14 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0">
+                      <FileText className="size-7" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-black text-gray-900">Hợp đồng chờ duyệt</h3>
+                        <Badge className="bg-amber-500 text-white border-none font-bold text-[10px] px-2.5 rounded-lg animate-pulse">
+                          CHỜ DUYỆT
+                        </Badge>
+                      </div>
+                      <div className="space-y-1 text-sm text-gray-600">
+                        <p><span className="font-bold text-gray-900">Phòng:</span> {hd.phong?.maPhong} - {hd.phong?.toaNha?.tenToaNha}</p>
+                        <p><span className="font-bold text-gray-900">Mã HĐ:</span> {hd.maHopDong}</p>
+                        <p><span className="font-bold text-gray-900">Giá thuê:</span> {formatCurrency(hd.giaThue)}/tháng • <span className="font-bold text-gray-900">Cọc:</span> {formatCurrency(hd.tienCoc)}</p>
+                        <p><span className="font-bold text-gray-900">Thời hạn:</span> {formatDate(hd.ngayBatDau)} → {formatDate(hd.ngayKetThuc)}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 md:flex-col">
+                    <Button
+                      onClick={() => handleApproval(hd._id, 'duyet')}
+                      disabled={approving}
+                      className="flex-1 md:w-40 h-12 rounded-2xl font-black bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-200 transition-all"
+                    >
+                      {approving ? <Loader2 className="size-4 animate-spin mr-2" /> : <CheckCircle2 className="size-4 mr-2" />}
+                      Duyệt
+                    </Button>
+                    <Button
+                      onClick={() => handleApproval(hd._id, 'tuChoi')}
+                      disabled={approving}
+                      variant="outline"
+                      className="flex-1 md:w-40 h-12 rounded-2xl font-black border-2 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 transition-all"
+                    >
+                      Từ chối
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </motion.div>
+      )}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-2 border-b border-gray-50/50">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-20">
           <h1 className="text-4xl font-black text-gray-900 tracking-tight">Tổng quan</h1>

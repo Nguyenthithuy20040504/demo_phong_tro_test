@@ -222,10 +222,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Kiểm tra phòng có hợp đồng đang hoạt động không
+    // Kiểm tra phòng có hợp đồng đang hoạt động hoặc chờ duyệt không
     const existingHopDong = await HopDong.findOne({
       phong: validatedData.phong,
-      trangThai: 'hoatDong',
+      trangThai: { $in: ['hoatDong', 'choDuyet'] },
       $or: [
         {
           ngayBatDau: { $lte: new Date() },
@@ -250,18 +250,40 @@ export async function POST(request: NextRequest) {
       ngayBatDau: new Date(validatedData.ngayBatDau),
       ngayKetThuc: new Date(validatedData.ngayKetThuc),
       phiDichVu: validatedData.phiDichVu || [],
+      trangThai: 'choDuyet', // Chờ khách thuê duyệt
     });
 
     await newHopDong.save();
 
-    // Cập nhật trạng thái phòng và khách thuê tự động
-    await updatePhongStatus(validatedData.phong);
-    await updateAllKhachThueStatus(validatedData.khachThueId);
+    // KHÔNG cập nhật trạng thái phòng/khách thuê ở đây
+    // Chỉ cập nhật khi khách thuê duyệt hợp đồng
+
+    // Gửi thông báo cho khách thuê
+    try {
+      const ThongBao = (await import('@/models/ThongBao')).default;
+      
+      // Lấy thông tin phòng để hiển thị trong thông báo
+      const phongInfo = await Phong.findById(validatedData.phong).select('maPhong');
+      const tenPhong = phongInfo?.maPhong || 'N/A';
+
+      await ThongBao.create({
+        tieuDe: `Hợp đồng mới chờ duyệt - Phòng ${tenPhong}`,
+        noiDung: `Bạn có hợp đồng thuê phòng ${tenPhong} (Mã: ${validatedData.maHopDong}) đang chờ xác nhận. Vui lòng xem chi tiết và duyệt hoặc từ chối hợp đồng.`,
+        loai: 'hopDong',
+        nguoiGui: new mongoose.Types.ObjectId(session.user.id),
+        nguoiNhan: validatedData.khachThueId.map(id => new mongoose.Types.ObjectId(id)),
+        phong: [new mongoose.Types.ObjectId(validatedData.phong)],
+        ngayGui: new Date(),
+      });
+    } catch (notifError) {
+      console.error('Error sending notification:', notifError);
+      // Không fail request nếu gửi thông báo lỗi
+    }
 
     return NextResponse.json({
       success: true,
       data: newHopDong,
-      message: 'Hợp đồng đã được tạo thành công',
+      message: 'Hợp đồng đã được tạo và gửi cho khách thuê duyệt',
     }, { status: 201 });
 
   } catch (error) {

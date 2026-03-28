@@ -86,6 +86,13 @@ const formatCurrency = (amount: number) => {
 
 const getStatusBadge = (status: string) => {
   switch (status) {
+    case 'choDuyet':
+      return (
+        <Badge className="bg-amber-500 text-white border-none gap-1">
+          <Loader className="h-3 w-3" />
+          Chờ duyệt
+        </Badge>
+      )
     case 'hoatDong':
       return (
         <Badge variant="default" className="gap-1">
@@ -415,6 +422,7 @@ export function HopDongDataTable(props: HopDongDataTableProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="choDuyet">Chờ duyệt</SelectItem>
               <SelectItem value="hoatDong">Hoạt động</SelectItem>
               <SelectItem value="hetHan">Hết hạn</SelectItem>
               <SelectItem value="daHuy">Đã hủy</SelectItem>
