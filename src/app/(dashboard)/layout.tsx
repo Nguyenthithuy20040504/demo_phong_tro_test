@@ -48,7 +48,7 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="overflow-hidden">
+      <SidebarInset className="min-w-0 overflow-x-hidden">
         <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b bg-background/80 backdrop-blur-md px-4 transition-all duration-300">
           <PageProgress />
           <SidebarTrigger className="-ml-1" />
@@ -58,7 +58,7 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
             <NotificationBell />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6">
           <SubscriptionGuard>{children}</SubscriptionGuard>
         </main>
       </SidebarInset>
