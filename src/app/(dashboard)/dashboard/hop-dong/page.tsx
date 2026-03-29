@@ -296,11 +296,49 @@ export default function HopDongPage() {
       const phongInfo = getPhongInfo(hopDong.phong);
       const nguoiDaiDien = getKhachThueName(hopDong.nguoiDaiDien);
       
-      const nguoiDaiDienObj = khachThueList.find(kt => {
-        const ktId = typeof kt._id === 'object' ? (kt._id as { _id: string })._id : kt._id;
-        const daiDienId = typeof hopDong.nguoiDaiDien === 'object' ? (hopDong.nguoiDaiDien as { _id: string })._id : hopDong.nguoiDaiDien;
-        return ktId === daiDienId;
-      });
+      // Lấy thông tin chủ sở hữu (Bên A) từ toà nhà
+      let tenChuTro = '';
+      let sdtChuTro = '';
+      const phongObj = typeof hopDong.phong === 'object' ? hopDong.phong as any : null;
+      const toaNhaId = phongObj?.toaNha?._id || phongObj?.toaNha;
+      if (toaNhaId) {
+        const toaNha = toaNhaList.find(t => t._id === toaNhaId || t._id === (typeof toaNhaId === 'object' ? toaNhaId._id : toaNhaId));
+        if (toaNha && (toaNha as any).chuSoHuu) {
+          const chuSoHuu = (toaNha as any).chuSoHuu;
+          tenChuTro = chuSoHuu.ten || chuSoHuu.name || '';
+          sdtChuTro = chuSoHuu.soDienThoai || chuSoHuu.phone || '';
+        }
+      }
+      // Fallback: lấy từ toà nhà đầu tiên nếu không tìm được
+      if (!tenChuTro && toaNhaList.length > 0) {
+        const firstToaNha = toaNhaList[0] as any;
+        if (firstToaNha.chuSoHuu) {
+          tenChuTro = firstToaNha.chuSoHuu.ten || firstToaNha.chuSoHuu.name || '';
+          sdtChuTro = firstToaNha.chuSoHuu.soDienThoai || firstToaNha.chuSoHuu.phone || '';
+        }
+      }
+
+      // Lấy thông tin khách thuê (Bên B)
+      const nguoiDaiDienPhone = typeof hopDong.nguoiDaiDien === 'object' 
+        ? (hopDong.nguoiDaiDien as any)?.soDienThoai || '' 
+        : '';
+
+      // Lấy danh sách tất cả khách thuê từ khachThueId (populated) và snapshotKhachThue
+      const allTenantNames: string[] = [];
+      if (Array.isArray(hopDong.khachThueId)) {
+        for (const kt of hopDong.khachThueId) {
+          const name = typeof kt === 'object' ? (kt as any).hoTen : getKhachThueName(kt);
+          if (name && !allTenantNames.includes(name)) allTenantNames.push(name);
+        }
+      }
+      // Thêm từ snapshot nếu có
+      if ((hopDong as any).snapshotKhachThue) {
+        for (const snap of (hopDong as any).snapshotKhachThue) {
+          if (snap.hoTen && !allTenantNames.includes(snap.hoTen)) {
+            allTenantNames.push(snap.hoTen);
+          }
+        }
+      }
       
       const ngayBatDau = new Date(hopDong.ngayBatDau);
       const ngayKetThuc = new Date(hopDong.ngayKetThuc);
@@ -402,7 +440,7 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: "Ông/bà: ................................................................................. Sinh ngày: .................................",
+                  text: `Ông/bà: ${tenChuTro || '......................................................................'}`,
                   size: 20,
                 }),
               ],
@@ -411,7 +449,7 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: "Nơi đăng ký hộ khẩu thường trú: ....................................................................................................",
+                  text: `Nơi đăng ký hộ khẩu thường trú: ....................................................................................................`,
                   size: 20,
                 }),
               ],
@@ -420,7 +458,7 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: "CMND (CCCD) số: .......................................... cấp ngày: ............................. tại: .............................",
+                  text: `CMND(CCCD) số: .......................................... cấp ngày: ............................. tại: .............................`,
                   size: 20,
                 }),
               ],
@@ -429,7 +467,7 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: "Số điện thoại liên hệ: .......................................................................................................................",
+                  text: `Số điện thoại liên hệ: ${sdtChuTro || '......................................................................................................................'}`,
                   size: 20,
                 }),
               ],
@@ -449,7 +487,17 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: `Ông/bà: ................................................................................. Sinh ngày: .................................`,
+                  text: `Người đại diện: ${nguoiDaiDien}`,
+                  size: 20,
+                  bold: true,
+                }),
+              ],
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `Số điện thoại: ${nguoiDaiDienPhone || '......................................................................................................................'}`,
                   size: 20,
                 }),
               ],
@@ -473,13 +521,19 @@ export default function HopDongPage() {
               ],
               spacing: { after: 100 },
             }),
+            ...(allTenantNames.length > 1 ? [
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: `Người cùng thuê: ${allTenantNames.filter(n => n !== nguoiDaiDien).join(', ')}`,
+                    size: 20,
+                  }),
+                ],
+                spacing: { after: 100 },
+              }),
+            ] : []),
             new Paragraph({
-              children: [
-                new TextRun({
-                  text: `Số điện thoại liên hệ: .......................................................................................................................`,
-                  size: 20,
-                }),
-              ],
+              children: [],
               spacing: { after: 400 },
             }),
             
@@ -887,7 +941,17 @@ export default function HopDongPage() {
                   italics: true,
                 }),
               ],
-              spacing: { after: 800 },
+              spacing: { after: 600 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `        ${tenChuTro || '.....................'}                                    ${nguoiDaiDien || '.....................'}`,
+                  bold: true,
+                  size: 20,
+                }),
+              ],
+              spacing: { after: 300 },
             }),
 
             // Footer info

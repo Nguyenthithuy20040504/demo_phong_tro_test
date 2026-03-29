@@ -5,7 +5,7 @@ import {
   User, Mail, Phone, MapPin, Briefcase, Calendar, 
   ShieldCheck, BadgeCheck, Loader2, Home, FileText, 
   Smartphone, Camera, Lock, PlusCircle, Clock, CheckCircle2,
-  XCircle, AlertCircle, Trash2, Edit
+  XCircle, AlertCircle, Trash2, Edit, Printer, Download, Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
@@ -34,6 +34,7 @@ export default function ThongTinKhachThuePage() {
   const [openEditProfile, setOpenEditProfile] = useState(false);
   const [openChangePassword, setOpenChangePassword] = useState(false);
   const [openRequestDocs, setOpenRequestDocs] = useState(false);
+  const [openContractDoc, setOpenContractDoc] = useState(false);
   
   // Form states
   const [editForm, setEditForm] = useState({ hoTen: '', soDienThoai: '' });
@@ -402,7 +403,7 @@ export default function ThongTinKhachThuePage() {
               </CardHeader>
               <CardContent className="p-6 pt-2">
                 {profile?.hopDongHienTai ? (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <div className="p-4 bg-primary/5 rounded-2xl flex items-center gap-3">
                       <Home className="size-5 text-primary" />
                       <div>
@@ -412,24 +413,370 @@ export default function ThongTinKhachThuePage() {
                     </div>
                     <Button 
                       variant="outline" 
-                      className="w-full rounded-xl py-5 border-gray-100 hover:bg-gray-50 text-sm"
-                      onClick={() => {
-                        if (profile.hopDongHienTai.fileHopDong) {
-                          window.open(profile.hopDongHienTai.fileHopDong, '_blank');
-                        } else {
-                          toast.info('Hiện chưa có bản scan hợp đồng. Vui lòng liên hệ chủ nhà để bổ sung nhé!');
-                        }
-                      }}
+                      className="w-full rounded-xl py-5 border-primary/20 hover:bg-primary/5 text-sm text-primary font-semibold"
+                      onClick={() => setOpenContractDoc(true)}
                     >
-                      <FileText className="size-4 mr-2 text-gray-400" />
-                      {profile.hopDongHienTai.fileHopDong ? 'Xem chi tiết / Tải PDF' : 'Dữ liệu PDF đang được cập nhật'}
+                      <Eye className="size-4 mr-2" />
+                      Xem chi tiết hợp đồng
                     </Button>
+                    {profile.hopDongHienTai.fileHopDong && (
+                      <Button 
+                        variant="ghost" 
+                        className="w-full rounded-xl py-4 text-xs text-gray-500 hover:text-gray-700"
+                        onClick={() => window.open(profile.hopDongHienTai.fileHopDong, '_blank')}
+                      >
+                        <Download className="size-3.5 mr-2" />
+                        Tải bản PDF đã ký
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-6 text-gray-400 italic text-sm">Chưa có hợp đồng hoạt động</div>
                 )}
               </CardContent>
             </Card>
+
+            {/* ======= DIALOG XEM CHI TIẾT HỢP ĐỒNG - BẢN DOC ======= */}
+            {profile?.hopDongHienTai && (
+              <Dialog open={openContractDoc} onOpenChange={setOpenContractDoc}>
+                <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto rounded-2xl p-0">
+                  <DialogHeader className="p-6 pb-0 flex flex-row items-center justify-between">
+                    <div>
+                      <DialogTitle className="text-xl">Chi tiết Hợp đồng thuê phòng</DialogTitle>
+                      <DialogDescription>Mã hợp đồng: {profile.hopDongHienTai.maHopDong}</DialogDescription>
+                    </div>
+                  </DialogHeader>
+                  
+                  {/* Contract Document Content */}
+                  <div className="px-6 md:px-10 pb-8">
+                    <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 md:p-10 space-y-6" id="contract-doc">
+                      {/* Header quốc hiệu */}
+                      <div className="text-center space-y-1">
+                        <p className="text-sm md:text-base font-bold uppercase tracking-wider">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</p>
+                        <p className="text-sm md:text-base font-bold">Độc lập – Tự do – Hạnh phúc</p>
+                        <div className="flex items-center justify-center">
+                          <div className="w-24 h-[2px] bg-black mt-1"></div>
+                        </div>
+                      </div>
+
+                      {/* Tiêu đề hợp đồng */}
+                      <div className="text-center space-y-2 pt-4">
+                        <h2 className="text-lg md:text-xl font-bold uppercase">HỢP ĐỒNG THUÊ PHÒNG TRỌ</h2>
+                        <p className="text-sm text-gray-600 italic">Số: {profile.hopDongHienTai.maHopDong}</p>
+                      </div>
+
+                      {/* Căn cứ */}
+                      <div className="text-sm leading-relaxed space-y-1 pt-2">
+                        <p className="italic text-gray-600">- Căn cứ Bộ luật Dân sự số 91/2015/QH13;</p>
+                        <p className="italic text-gray-600">- Căn cứ Luật Nhà ở số 65/2014/QH13;</p>
+                        <p className="italic text-gray-600">- Căn cứ nhu cầu và khả năng thực tế của hai bên;</p>
+                        <p className="mt-2">Hôm nay, ngày <strong>{new Date(profile.hopDongHienTai.ngayBatDau).toLocaleDateString('vi-VN')}</strong>, tại <strong>{(() => {
+                          const diaChi = profile.hopDongHienTai.phong?.toaNha?.diaChi;
+                          if (diaChi) {
+                            return `${diaChi.soNha || ''} ${diaChi.duong || ''}, ${diaChi.phuong || ''}, ${diaChi.quan || ''}, ${diaChi.thanhPho || ''}`;
+                          }
+                          return profile.hopDongHienTai.phong?.toaNha?.tenToaNha || 'N/A';
+                        })()}</strong>, chúng tôi gồm:</p>
+                      </div>
+
+                      {/* BÊN A */}
+                      <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-5 space-y-2">
+                        <h3 className="font-bold text-base uppercase text-blue-800">BÊN A (Bên cho thuê):</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                          <div><span className="text-gray-500">Ông/Bà:</span> <strong>{(() => {
+                            const owner = profile.hopDongHienTai.phong?.toaNha?.chuSoHuu;
+                            return owner?.hoTen || owner?.ten || 'Chủ nhà';
+                          })()}</strong></div>
+                          <div><span className="text-gray-500">Điện thoại:</span> <strong>{profile.hopDongHienTai.phong?.toaNha?.chuSoHuu?.soDienThoai || 'N/A'}</strong></div>
+                          <div className="md:col-span-2"><span className="text-gray-500">Địa chỉ cho thuê:</span> <strong>{profile.hopDongHienTai.phong?.toaNha?.tenToaNha || 'N/A'}</strong></div>
+                        </div>
+                      </div>
+
+                      {/* BÊN B */}
+                      <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-5 space-y-2">
+                        <h3 className="font-bold text-base uppercase text-emerald-800">BÊN B (Bên thuê):</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                          <div><span className="text-gray-500">Ông/Bà:</span> <strong>{(() => {
+                            const nd = profile.hopDongHienTai.nguoiDaiDien;
+                            return nd?.hoTen || profile.hoTen || 'N/A';
+                          })()}</strong></div>
+                          <div><span className="text-gray-500">Điện thoại:</span> <strong>{(() => {
+                            const nd = profile.hopDongHienTai.nguoiDaiDien;
+                            return nd?.soDienThoai || profile.soDienThoai || 'N/A';
+                          })()}</strong></div>
+                          <div><span className="text-gray-500">CCCD/CMND:</span> <strong>{profile.cccd || '••••••••••••'}</strong></div>
+                        </div>
+                        {/* Danh sách thành viên */}
+                        {profile.hopDongHienTai.khachThueId && profile.hopDongHienTai.khachThueId.length > 1 && (
+                          <div className="mt-3 pt-3 border-t border-emerald-200">
+                            <p className="text-xs font-bold text-emerald-700 mb-2">Cùng sinh sống ({profile.hopDongHienTai.khachThueId.length} người):</p>
+                            <div className="space-y-1">
+                              {profile.hopDongHienTai.khachThueId.map((kt: any, i: number) => (
+                                <p key={kt._id || i} className="text-xs text-gray-600">• {kt.hoTen} – {kt.soDienThoai || 'N/A'}</p>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* ĐIỀU 1: ĐỐI TƯỢNG HỢP ĐỒNG */}
+                      <div className="space-y-2">
+                        <h3 className="font-bold text-base">Điều 1: Đối tượng hợp đồng</h3>
+                        <div className="text-sm leading-relaxed space-y-1">
+                          <p>Bên A đồng ý cho Bên B thuê phòng trọ với các thông tin sau:</p>
+                          <div className="bg-gray-50 rounded-xl p-4 mt-2 space-y-2">
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                              <div><span className="text-gray-500">Phòng số:</span> <strong>{profile.hopDongHienTai.phong?.maPhong || 'N/A'}</strong></div>
+                              <div><span className="text-gray-500">Tầng:</span> <strong>{profile.hopDongHienTai.phong?.tang || 'N/A'}</strong></div>
+                              <div><span className="text-gray-500">Diện tích:</span> <strong>{profile.hopDongHienTai.phong?.dienTich || 'N/A'} m²</strong></div>
+                              <div><span className="text-gray-500">Tòa nhà:</span> <strong>{profile.hopDongHienTai.phong?.toaNha?.tenToaNha || 'N/A'}</strong></div>
+                            </div>
+                            {profile.hopDongHienTai.phong?.tienNghi && profile.hopDongHienTai.phong.tienNghi.length > 0 && (
+                              <div className="pt-2 border-t border-gray-200">
+                                <p className="text-xs text-gray-500 mb-1">Tiện nghi đi kèm:</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {profile.hopDongHienTai.phong.tienNghi.map((tn: string, i: number) => (
+                                    <span key={i} className="text-[10px] bg-white border border-gray-200 px-2 py-0.5 rounded-full">{tn}</span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ĐIỀU 2: THỜI HẠN */}
+                      <div className="space-y-2">
+                        <h3 className="font-bold text-base">Điều 2: Thời hạn hợp đồng</h3>
+                        <div className="text-sm leading-relaxed">
+                          <div className="bg-gray-50 rounded-xl p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div><span className="text-gray-500">Ngày bắt đầu:</span> <strong>{new Date(profile.hopDongHienTai.ngayBatDau).toLocaleDateString('vi-VN')}</strong></div>
+                            <div><span className="text-gray-500">Ngày kết thúc:</span> <strong>{new Date(profile.hopDongHienTai.ngayKetThuc).toLocaleDateString('vi-VN')}</strong></div>
+                            <div className="md:col-span-2"><span className="text-gray-500">Thời hạn:</span> <strong>{(() => {
+                              const start = new Date(profile.hopDongHienTai.ngayBatDau);
+                              const end = new Date(profile.hopDongHienTai.ngayKetThuc);
+                              const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+                              return months > 0 ? `${months} tháng` : `${Math.ceil((end.getTime() - start.getTime()) / (1000*60*60*24))} ngày`;
+                            })()}</strong></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ĐIỀU 3: GIÁ THUÊ VÀ THANH TOÁN */}
+                      <div className="space-y-2">
+                        <h3 className="font-bold text-base">Điều 3: Giá thuê và phương thức thanh toán</h3>
+                        <div className="text-sm leading-relaxed space-y-3">
+                          <div className="bg-amber-50/50 border border-amber-200 rounded-xl p-4 space-y-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div className="flex justify-between md:block">
+                                <span className="text-gray-500">Giá thuê phòng:</span>
+                                <strong className="text-lg text-amber-700">{(profile.hopDongHienTai.giaThue || 0).toLocaleString('vi-VN')}đ/{profile.hopDongHienTai.chuKyThanhToan === 'thang' ? 'tháng' : profile.hopDongHienTai.chuKyThanhToan === 'quy' ? 'quý' : 'năm'}</strong>
+                              </div>
+                              <div className="flex justify-between md:block">
+                                <span className="text-gray-500">Tiền đặt cọc:</span>
+                                <strong>{(profile.hopDongHienTai.tienCoc || 0).toLocaleString('vi-VN')}đ</strong>
+                              </div>
+                            </div>
+                            <div className="pt-2 border-t border-amber-200">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="flex justify-between md:block">
+                                  <span className="text-gray-500">Giá điện:</span>
+                                  <strong>{(profile.hopDongHienTai.giaDien || 0).toLocaleString('vi-VN')}đ/kWh</strong>
+                                </div>
+                                <div className="flex justify-between md:block">
+                                  <span className="text-gray-500">Giá nước:</span>
+                                  <strong>{(profile.hopDongHienTai.giaNuoc || 0).toLocaleString('vi-VN')}đ/m³</strong>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="pt-2 border-t border-amber-200">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="flex justify-between md:block">
+                                  <span className="text-gray-500">Chỉ số điện ban đầu:</span>
+                                  <strong>{profile.hopDongHienTai.chiSoDienBanDau || 0} kWh</strong>
+                                </div>
+                                <div className="flex justify-between md:block">
+                                  <span className="text-gray-500">Chỉ số nước ban đầu:</span>
+                                  <strong>{profile.hopDongHienTai.chiSoNuocBanDau || 0} m³</strong>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Phí dịch vụ */}
+                          {profile.hopDongHienTai.phiDichVu && profile.hopDongHienTai.phiDichVu.length > 0 && (
+                            <div className="bg-gray-50 rounded-xl p-4">
+                              <p className="font-semibold text-sm mb-2">Phí dịch vụ hàng tháng:</p>
+                              <div className="space-y-1.5">
+                                {profile.hopDongHienTai.phiDichVu.map((dv: any, i: number) => (
+                                  <div key={i} className="flex justify-between text-sm">
+                                    <span className="text-gray-600">• {dv.ten}</span>
+                                    <strong>{(dv.gia || 0).toLocaleString('vi-VN')}đ</strong>
+                                  </div>
+                                ))}
+                                <div className="flex justify-between text-sm font-bold pt-2 border-t border-gray-200">
+                                  <span>Tổng phí dịch vụ:</span>
+                                  <span className="text-primary">{profile.hopDongHienTai.phiDichVu.reduce((s: number, d: any) => s + (d.gia || 0), 0).toLocaleString('vi-VN')}đ/tháng</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Hình thức thanh toán */}
+                          <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
+                            <p className="font-semibold text-sm text-blue-800 mb-2">📌 Hình thức thanh toán:</p>
+                            <ul className="text-sm space-y-1.5 text-gray-700">
+                              <li>• Bên B thanh toán tiền thuê phòng vào <strong className="text-blue-700">ngày {profile.hopDongHienTai.ngayThanhToan || 'N/A'}</strong> hàng tháng.</li>
+                              <li>• Chu kỳ thanh toán: <strong>{profile.hopDongHienTai.chuKyThanhToan === 'thang' ? 'Hàng tháng' : profile.hopDongHienTai.chuKyThanhToan === 'quy' ? 'Hàng quý' : 'Hàng năm'}</strong>.</li>
+                              <li>• Phương thức: Tiền mặt hoặc chuyển khoản ngân hàng.</li>
+                              <li>• Tiền điện, nước và phí dịch vụ được tính theo thực tế sử dụng hàng tháng và thanh toán cùng tiền thuê phòng.</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ĐIỀU 4: NGHĨA VỤ VÀ QUYỀN HẠN BÊN A */}
+                      <div className="space-y-2">
+                        <h3 className="font-bold text-base">Điều 4: Nghĩa vụ và quyền hạn của Bên A</h3>
+                        <div className="text-sm leading-relaxed">
+                          <ul className="space-y-1.5 list-decimal pl-5">
+                            <li>Giao phòng trọ cho Bên B đúng tình trạng như đã thỏa thuận.</li>
+                            <li>Đảm bảo quyền sử dụng phòng trọ ổn định cho Bên B trong suốt thời hạn hợp đồng.</li>
+                            <li>Bảo trì, sửa chữa phòng trọ khi có hư hỏng không do lỗi của Bên B (trừ hao mòn tự nhiên).</li>
+                            <li>Cung cấp hóa đơn thanh toán tiền thuê, điện, nước đầy đủ hàng tháng.</li>
+                            <li>Thông báo trước ít nhất 30 ngày nếu muốn chấm dứt hợp đồng trước thời hạn.</li>
+                            <li>Không được tự ý tăng giá thuê trong thời hạn hợp đồng trừ khi có sự đồng ý bằng văn bản của Bên B.</li>
+                            <li>Hoàn trả tiền đặt cọc cho Bên B khi kết thúc hợp đồng, sau khi trừ các khoản phí hư hỏng (nếu có).</li>
+                          </ul>
+                        </div>
+                      </div>
+
+                      {/* ĐIỀU 5: NGHĨA VỤ VÀ QUYỀN HẠN BÊN B */}
+                      <div className="space-y-2">
+                        <h3 className="font-bold text-base">Điều 5: Nghĩa vụ và quyền hạn của Bên B</h3>
+                        <div className="text-sm leading-relaxed">
+                          <ul className="space-y-1.5 list-decimal pl-5">
+                            <li>Thanh toán đầy đủ và đúng hạn tiền thuê phòng, tiền điện, nước và các phí dịch vụ khác.</li>
+                            <li>Giữ gìn phòng trọ sạch sẽ, không làm hư hỏng tài sản của Bên A.</li>
+                            <li>Không được tự ý sửa chữa, cải tạo phòng khi chưa có sự đồng ý của Bên A.</li>
+                            <li>Thực hiện đúng nội quy của tòa nhà/khu nhà trọ (giờ giấc, an ninh, vệ sinh chung).</li>
+                            <li>Không được cho người khác thuê lại hoặc chuyển nhượng hợp đồng khi chưa được Bên A đồng ý.</li>
+                            <li>Đăng ký tạm trú theo quy định pháp luật.</li>
+                            <li>Thông báo trước ít nhất 30 ngày nếu muốn chấm dứt hợp đồng trước thời hạn.</li>
+                            <li>Bồi thường thiệt hại nếu làm hư hỏng tài sản của Bên A ngoài phạm vi hao mòn tự nhiên.</li>
+                          </ul>
+                        </div>
+                      </div>
+
+                      {/* ĐIỀU 6: CÁC ĐIỀU KHOẢN DỊCH VỤ */}
+                      <div className="space-y-2">
+                        <h3 className="font-bold text-base">Điều 6: Điều khoản dịch vụ</h3>
+                        <div className="text-sm leading-relaxed">
+                          <ul className="space-y-1.5 list-decimal pl-5">
+                            <li>Tiền điện được tính theo chỉ số công tơ thực tế với đơn giá <strong>{(profile.hopDongHienTai.giaDien || 0).toLocaleString('vi-VN')}đ/kWh</strong>.</li>
+                            <li>Tiền nước được tính theo chỉ số đồng hồ thực tế với đơn giá <strong>{(profile.hopDongHienTai.giaNuoc || 0).toLocaleString('vi-VN')}đ/m³</strong>.</li>
+                            {profile.hopDongHienTai.phiDichVu && profile.hopDongHienTai.phiDichVu.map((dv: any, i: number) => (
+                              <li key={i}>Phí {dv.ten}: <strong>{(dv.gia || 0).toLocaleString('vi-VN')}đ/tháng</strong> (cố định).</li>
+                            ))}
+                            <li>Các khoản phí dịch vụ có thể được điều chỉnh khi có sự thỏa thuận bằng văn bản giữa hai bên.</li>
+                          </ul>
+                        </div>
+                      </div>
+
+                      {/* ĐIỀU 7: CHẤM DỨT HỢP ĐỒNG */}
+                      <div className="space-y-2">
+                        <h3 className="font-bold text-base">Điều 7: Chấm dứt hợp đồng</h3>
+                        <div className="text-sm leading-relaxed">
+                          <ul className="space-y-1.5 list-decimal pl-5">
+                            <li>Hợp đồng chấm dứt khi hết thời hạn mà hai bên không gia hạn.</li>
+                            <li>Hai bên có thể thỏa thuận chấm dứt hợp đồng trước thời hạn với điều kiện thông báo trước ít nhất 30 ngày.</li>
+                            <li>Nếu Bên B chấm dứt hợp đồng trước thời hạn mà không có lý do chính đáng, Bên A có quyền không hoàn trả tiền cọc.</li>
+                            <li>Nếu Bên A chấm dứt hợp đồng trước thời hạn mà không có lý do chính đáng, Bên A phải bồi thường cho Bên B một khoản bằng tiền cọc đã nhận.</li>
+                          </ul>
+                        </div>
+                      </div>
+
+                      {/* ĐIỀU 8: ĐIỀU KHOẢN BỔ SUNG (từ DB) */}
+                      {profile.hopDongHienTai.dieuKhoan && (
+                        <div className="space-y-2">
+                          <h3 className="font-bold text-base">Điều 8: Điều khoản bổ sung</h3>
+                          <div className="bg-gray-50 rounded-xl p-4 text-sm leading-relaxed whitespace-pre-line">
+                            {profile.hopDongHienTai.dieuKhoan}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ĐIỀU KHOẢN CUỐI */}
+                      <div className="space-y-2">
+                        <h3 className="font-bold text-base">Điều {profile.hopDongHienTai.dieuKhoan ? '9' : '8'}: Điều khoản chung</h3>
+                        <div className="text-sm leading-relaxed space-y-1.5">
+                          <p>1. Hai bên cam kết thực hiện đúng và đầy đủ các điều khoản đã ghi trong hợp đồng.</p>
+                          <p>2. Mọi tranh chấp phát sinh được giải quyết trên tinh thần thương lượng, hòa giải. Nếu không thỏa thuận được, sẽ được giải quyết tại cơ quan có thẩm quyền.</p>
+                          <p>3. Hợp đồng được lập thành 02 (hai) bản, mỗi bên giữ 01 (một) bản, có giá trị pháp lý như nhau.</p>
+                        </div>
+                      </div>
+
+                      {/* Chữ ký */}
+                      <div className="grid grid-cols-2 gap-8 pt-6 border-t border-gray-200 mt-6">
+                        <div className="text-center space-y-2">
+                          <p className="font-bold text-sm uppercase">BÊN A</p>
+                          <p className="text-xs text-gray-400 italic">(Ký và ghi rõ họ tên)</p>
+                          <div className="h-20"></div>
+                          <p className="font-semibold text-sm">{(() => {
+                            const owner = profile.hopDongHienTai.phong?.toaNha?.chuSoHuu;
+                            return owner?.hoTen || owner?.ten || '';
+                          })()}</p>
+                        </div>
+                        <div className="text-center space-y-2">
+                          <p className="font-bold text-sm uppercase">BÊN B</p>
+                          <p className="text-xs text-gray-400 italic">(Ký và ghi rõ họ tên)</p>
+                          <div className="h-20"></div>
+                          <p className="font-semibold text-sm">{(() => {
+                            const nd = profile.hopDongHienTai.nguoiDaiDien;
+                            return nd?.hoTen || profile.hoTen || '';
+                          })()}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex gap-3 mt-6 justify-end">
+                      <Button
+                        variant="outline"
+                        className="rounded-xl"
+                        onClick={() => {
+                          const printContent = document.getElementById('contract-doc');
+                          if (printContent) {
+                            const printWindow = window.open('', '_blank');
+                            if (printWindow) {
+                              printWindow.document.write(`
+                                <html><head><title>Hợp đồng ${profile.hopDongHienTai.maHopDong}</title>
+                                <style>
+                                  body { font-family: 'Times New Roman', serif; padding: 40px; line-height: 1.8; }
+                                  * { box-sizing: border-box; }
+                                  strong { font-weight: 700; }
+                                  ul { padding-left: 20px; }
+                                  li { margin-bottom: 4px; }
+                                  @media print { body { padding: 20px; } }
+                                </style></head><body>${printContent.innerHTML}</body></html>
+                              `);
+                              printWindow.document.close();
+                              printWindow.print();
+                            }
+                          }
+                        }}
+                      >
+                        <Printer className="size-4 mr-2" />
+                        In hợp đồng
+                      </Button>
+                      <Button className="rounded-xl" onClick={() => setOpenContractDoc(false)}>
+                        Đóng
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
 
             <Card className="border-none shadow-premium bg-white rounded-[2rem] overflow-hidden">
               <CardHeader className="p-6 pb-2">

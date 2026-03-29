@@ -451,12 +451,15 @@ export default function ThemMoiHoaDonPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {phongList
-                          .filter(p => p.toaNha === formData.toaNha)
+                          .filter(p => p.toaNha === formData.toaNha && p.trangThai === 'dangThue')
                           .map((phong) => (
                             <SelectItem key={phong._id} value={phong._id!}>
                               Phòng {phong.maPhong}
                             </SelectItem>
                           ))}
+                        {phongList.filter(p => p.toaNha === formData.toaNha && p.trangThai === 'dangThue').length === 0 && formData.toaNha && (
+                          <div className="p-3 text-center text-xs text-muted-foreground italic">Tòa nhà này chưa có phòng nào đang cho thuê</div>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>

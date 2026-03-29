@@ -64,13 +64,11 @@ const HopDongSchema = new Schema<IHopDong>({
   },
   khachThueId: [{
     type: Schema.Types.ObjectId,
-    ref: 'KhachThue',
-    required: [true, 'Khách thuê là bắt buộc']
+    ref: 'KhachThue'
   }],
   nguoiDaiDien: {
     type: Schema.Types.ObjectId,
-    ref: 'KhachThue',
-    required: [true, 'Người đại diện là bắt buộc']
+    ref: 'KhachThue'
   },
   ngayBatDau: {
     type: Date,

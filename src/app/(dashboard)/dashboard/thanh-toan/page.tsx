@@ -48,7 +48,9 @@ import {
   Receipt,
   RefreshCw,
   FileText,
-  Copy
+  Copy,
+  X,
+  ChevronDown
 } from 'lucide-react';
 import { ThanhToan, HoaDon } from '@/types';
 import { toast } from 'sonner';
@@ -500,7 +502,7 @@ export default function ThanhToanPage() {
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <div className="relative">
+            <div className="relative group">
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground font-bold uppercase">Từ</span>
               <Input 
                 type="date" 
@@ -508,8 +510,16 @@ export default function ThanhToanPage() {
                 onChange={(e) => setStartDate(e.target.value)} 
                 className="pl-7 text-xs h-9" 
               />
+              {startDate && (
+                <button
+                  onClick={() => setStartDate('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-full p-0.5 transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
-            <div className="relative">
+            <div className="relative group">
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground font-bold uppercase">Đến</span>
               <Input 
                 type="date" 
@@ -517,6 +527,14 @@ export default function ThanhToanPage() {
                 onChange={(e) => setEndDate(e.target.value)} 
                 className="pl-9 text-xs h-9" 
               />
+              {endDate && (
+                <button
+                  onClick={() => setEndDate('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-full p-0.5 transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
           </div>
         </div>

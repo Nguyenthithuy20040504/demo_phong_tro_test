@@ -91,6 +91,7 @@ export default function AccountManagementPage() {
   
   const [editUserData, setEditUserData] = useState({
     name: '',
+    email: '',
     phone: '',
     role: '',
     isActive: true
@@ -273,6 +274,7 @@ export default function AccountManagementPage() {
     setSelectedUser(user);
     setEditUserData({
       name: getUserName(user),
+      email: user.email || '',
       phone: getUserPhone(user),
       role: getUserRole(user),
       isActive: getUserIsActive(user)
@@ -699,6 +701,17 @@ export default function AccountManagementPage() {
                 value={editUserData.name}
                 onChange={(e) => setEditUserData({ ...editUserData, name: e.target.value })}
                 placeholder="Nhập họ và tên"
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-email" className="text-xs md:text-sm">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editUserData.email}
+                onChange={(e) => setEditUserData({ ...editUserData, email: e.target.value })}
+                placeholder="Nhập email"
                 className="text-sm"
               />
             </div>

@@ -123,6 +123,13 @@ const getStatusBadge = (status: string) => {
           Quá hạn
         </Badge>
       )
+    case 'tuChoi':
+      return (
+        <Badge variant="destructive" className="gap-1 bg-red-600">
+          <AlertCircle className="h-3 w-3" />
+          Từ chối
+        </Badge>
+      )
     default:
       return <Badge variant="outline">{status}</Badge>
   }
@@ -468,6 +475,7 @@ export function HoaDonDataTable(props: HoaDonDataTableProps) {
               <SelectItem value="daThanhToanMotPhan">Một phần</SelectItem>
               <SelectItem value="daThanhToan">Đã thanh toán</SelectItem>
               <SelectItem value="quaHan">Quá hạn</SelectItem>
+              <SelectItem value="tuChoi">Từ chối</SelectItem>
             </SelectContent>
           </Select>
           <Select value={monthFilter} onValueChange={onMonthChange}>

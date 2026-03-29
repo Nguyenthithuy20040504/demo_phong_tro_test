@@ -18,7 +18,7 @@ export async function PUT(
 
     const { id } = params;
     const body = await request.json();
-    const { name, phone, role, isActive } = body;
+    const { name, email, phone, role, isActive } = body;
 
     if (!ObjectId.isValid(id)) {
       return NextResponse.json({ message: 'ID người dùng không hợp lệ' }, { status: 400 });
@@ -46,27 +46,63 @@ export async function PUT(
     }
     // Admins can manage all roles, no extra check needed here
 
+    const updateData: any = {
+      // Vietnamese fields
+      ten: name,
+      soDienThoai: phone,
+      vaiTro: role,
+      trangThai: isActive ? 'hoatDong' : 'khoa',
+      // English fields
+      name,
+      phone,
+      role,
+      isActive,
+      updatedAt: new Date()
+    };
+    
+    // Cập nhật email nếu có
+    if (email !== undefined) {
+      updateData.email = email;
+    }
     
     const updatedUser = await NguoiDung.findByIdAndUpdate(
       id,
-      { 
-        // Vietnamese fields
-        ten: name,
-        soDienThoai: phone,
-        vaiTro: role,
-        trangThai: isActive ? 'hoatDong' : 'khoa',
-        // English fields
-        name,
-        phone,
-        role,
-        isActive,
-        updatedAt: new Date()
-      },
+      updateData,
       { new: true }
     ).select('-password -matKhau');
     
     if (!updatedUser) {
       return NextResponse.json({ message: 'Không tìm thấy người dùng này' }, { status: 404 });
+    }
+
+    // ===== ĐỒNG BỘ DỮ LIỆU VỚI KHÁCH THUÊ =====
+    // Nếu user có role khachThue, đồng bộ hoTen/email/soDienThoai sang bảng KhachThue
+    try {
+      const KhachThue = (await import('@/models/KhachThue')).default;
+      
+      // Tìm KhachThue bằng _id hoặc soDienThoai
+      const khachThueRecord = await KhachThue.findOne({
+        $or: [
+          { _id: id },
+          ...(phone ? [{ soDienThoai: phone }] : []),
+          ...(updatedUser.soDienThoai ? [{ soDienThoai: updatedUser.soDienThoai }] : [])
+        ]
+      });
+      
+      if (khachThueRecord) {
+        const ktUpdate: any = {};
+        if (name) ktUpdate.hoTen = name;
+        if (email !== undefined) ktUpdate.email = email;
+        if (phone) ktUpdate.soDienThoai = phone;
+        
+        if (Object.keys(ktUpdate).length > 0) {
+          await KhachThue.findByIdAndUpdate(khachThueRecord._id, ktUpdate);
+          console.log(`Đã đồng bộ thông tin sang KhachThue: ${khachThueRecord._id}`);
+        }
+      }
+    } catch (syncError) {
+      console.error('Lỗi đồng bộ KhachThue (không ảnh hưởng kết quả):', syncError);
+      // Không fail request chính nếu sync lỗi
     }
 
     return NextResponse.json(updatedUser);

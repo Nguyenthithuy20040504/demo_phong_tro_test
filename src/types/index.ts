@@ -187,7 +187,7 @@ export interface HoaDon {
   tongTien: number;
   daThanhToan: number;
   conLai: number;
-  trangThai: 'chuaThanhToan' | 'daThanhToanMotPhan' | 'daThanhToan' | 'quaHan' | 'choDuyet';
+  trangThai: 'chuaThanhToan' | 'daThanhToanMotPhan' | 'daThanhToan' | 'quaHan' | 'choDuyet' | 'tuChoi';
   hanThanhToan: Date;
   ghiChu?: string;
   checkoutUrl?: string;
