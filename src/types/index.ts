@@ -274,6 +274,30 @@ export interface RegisterForm {
 }
 
 // Dashboard stats
+export interface HoaDonQuaHanItem {
+  _id: string;
+  tenKhach: string;
+  maPhong: string;
+  soTien: number;
+  soNgayQuaHan: number;
+}
+
+export interface HopDongSapHetHanItem {
+  _id: string;
+  tenKhach: string;
+  maPhong: string;
+  ngayHetHan: string;
+  soNgayConLai: number;
+}
+
+export interface DoanhThuCongNoThang {
+  thang: number;
+  nam: number;
+  label: string;
+  daThu: number;
+  conNo: number;
+}
+
 export interface DashboardStats {
   tongSoPhong: number;
   phongTrong: number;
@@ -286,4 +310,11 @@ export interface DashboardStats {
   hoaDonSapDenHan: number;
   suCoCanXuLy: number;
   hopDongSapHetHan: number;
+  // New fields for Figma dashboard
+  tongNoKhongThu?: number;
+  soHoaDonQuaHan?: number;
+  tyLeThayDoiDoanhThu?: number;
+  doanhThuVaCongNo6Thang?: DoanhThuCongNoThang[];
+  hoaDonQuaHanList?: HoaDonQuaHanItem[];
+  hopDongSapHetHanList?: HopDongSapHetHanItem[];
 }

@@ -193,4 +193,20 @@
   .density-spacious .gap-4 {
     gap: 1.5rem;
   }
+
+  /* Remove focus outline and text caret from Recharts chart elements */
+  .recharts-wrapper,
+  .recharts-wrapper *,
+  .recharts-surface,
+  .recharts-surface *,
+  .recharts-sector,
+  .recharts-bar-rectangle,
+  .recharts-pie {
+    outline: none !important;
+    box-shadow: none !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    cursor: default !important;
+    caret-color: transparent !important;
+  }
 }
