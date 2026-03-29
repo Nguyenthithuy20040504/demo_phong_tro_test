@@ -43,6 +43,8 @@ import {
   MapPin,
   Building2,
   Layers,
+  Newspaper,
+  Send,
 } from 'lucide-react';
 import {
   Tabs,
@@ -142,10 +144,12 @@ function RoomCard({
   phong,
   onClick,
   onEdit,
+  onGeneratePost,
 }: { 
   phong: EnrichedPhong;
   onClick: () => void;
   onEdit: (e: React.MouseEvent, phong: EnrichedPhong) => void;
+  onGeneratePost: (e: React.MouseEvent, phong: EnrichedPhong) => void;
 }) {
   const status = getStatusConfig(phong.trangThaiTongHop || 'trong');
   const StatusIcon = status.icon;
@@ -164,12 +168,27 @@ function RoomCard({
         text-left group
       `}
     >
-      {/* Edit button */}
-      <div 
-        onClick={(e) => onEdit(e, phong)}
-        className="absolute -top-1.5 -left-1.5 h-8 w-8 bg-indigo-500 rounded-lg shadow-lg flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 hover:bg-indigo-600 z-10"
-      >
-        <Edit className="h-4 w-4" />
+      {/* Action buttons */}
+      <div className="absolute -top-1.5 -left-1.5 flex gap-1.5 z-10 opacity-0 group-hover:opacity-100 transition-all duration-300">
+        {/* Edit button */}
+        <div 
+          onClick={(e) => onEdit(e, phong)}
+          className="h-8 w-8 bg-indigo-500 rounded-lg shadow-lg flex items-center justify-center text-white hover:scale-110 hover:bg-indigo-600 transition-all duration-300"
+          title="Chỉnh sửa thông tin phòng"
+        >
+          <Edit className="h-4 w-4" />
+        </div>
+        
+        {/* Sell/Rent out button (only for empty rooms) */}
+        {(phong.trangThaiTongHop || 'trong') === 'trong' && (
+          <div 
+            onClick={(e) => onGeneratePost(e, phong)}
+            className="h-8 w-8 bg-emerald-500 rounded-lg shadow-lg flex items-center justify-center text-white hover:scale-110 hover:bg-emerald-600 transition-all duration-300"
+            title="Tạo bài đăng cho thuê phòng"
+          >
+            <Newspaper className="h-4 w-4" />
+          </div>
+        )}
       </div>
 
       {/* Sự cố badge */}
@@ -220,11 +239,13 @@ function FloorSection({
   rooms,
   onRoomClick,
   onEditClick,
+  onGeneratePostClick,
 }: {
   tang: number;
   rooms: EnrichedPhong[];
   onRoomClick: (phong: EnrichedPhong) => void;
   onEditClick: (e: React.MouseEvent, phong: EnrichedPhong) => void;
+  onGeneratePostClick: (e: React.MouseEvent, phong: EnrichedPhong) => void;
 }) {
   return (
     <div className="space-y-3">
@@ -245,6 +266,7 @@ function FloorSection({
               phong={phong}
               onClick={() => onRoomClick(phong)}
               onEdit={onEditClick}
+              onGeneratePost={onGeneratePostClick}
             />
           ))}
       </div>
@@ -279,6 +301,14 @@ export default function PhongPage() {
   const [viewingTenantsPhongName, setViewingTenantsPhongName] = useState('');
   const [viewingDetailPhong, setViewingDetailPhong] = useState<Phong | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+
+  // States for Auto Post Generator
+  const [isPostDialogOpen, setIsPostDialogOpen] = useState(false);
+  const [isGeneratingPost, setIsGeneratingPost] = useState(false);
+  const [generatedPostContent, setGeneratedPostContent] = useState('');
+  const [generatingForPhong, setGeneratingForPhong] = useState<string>('');
+  const [generatingPhongImages, setGeneratingPhongImages] = useState<string[]>([]);
+  const [isPostingToFacebook, setIsPostingToFacebook] = useState(false);
 
   useEffect(() => {
     document.title = 'Quản lý Phòng';
@@ -421,6 +451,37 @@ export default function PhongPage() {
   // =====================================================
   // HANDLERS
   // =====================================================
+  const handleGeneratePost = async (phong: EnrichedPhong) => {
+    setIsPostDialogOpen(true);
+    setIsGeneratingPost(true);
+    setGeneratedPostContent('');
+    setGeneratingForPhong(phong.maPhong);
+    setGeneratingPhongImages(phong.anhPhong || []);
+
+    try {
+      const response = await fetch('/api/phong/generate-post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phongId: phong._id }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setGeneratedPostContent(data.content);
+      } else {
+        toast.error(data.message || 'Lỗi khi tạo bài đăng');
+        setIsPostDialogOpen(false);
+      }
+    } catch (error) {
+      console.error('Lỗi khi gọi API tạo bài:', error);
+      toast.error('Lỗi kết nối đến máy chủ AI');
+      setIsPostDialogOpen(false);
+    } finally {
+      setIsGeneratingPost(false);
+    }
+  };
+
   const handleEdit = (phong: Phong) => {
     setEditingPhong(phong);
     setIsDialogOpen(true);
@@ -695,6 +756,10 @@ export default function PhongPage() {
                 e.stopPropagation();
                 handleEdit(p);
               }}
+              onGeneratePostClick={(e, p) => {
+                e.stopPropagation();
+                handleGeneratePost(p);
+              }}
             />
           ))
         )}
@@ -809,6 +874,120 @@ export default function PhongPage() {
           handleEdit(phong);
         }}
       />
+
+      {/* ===== AUTO POST DIALOG ===== */}
+      <Dialog open={isPostDialogOpen} onOpenChange={(open) => {
+        if (!isGeneratingPost) setIsPostDialogOpen(open);
+      }}>
+        <DialogContent className="max-w-4xl max-h-[95vh] flex flex-col w-[95vw] md:w-full overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base md:text-lg">
+              <Newspaper className="h-5 w-5 text-emerald-600" />
+              Tạo bài đăng cho thuê khu vực - Phòng {generatingForPhong}
+            </DialogTitle>
+            <DialogDescription className="text-xs md:text-sm">
+              Hệ thống sử dụng trợ lý AI kết hợp thông tin phòng để tự động viết nội dung quảng cáo.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto py-2 pr-1">
+            {isGeneratingPost ? (
+              <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                <RefreshCw className="h-10 w-10 text-emerald-500 animate-spin" />
+                <p className="text-sm font-medium text-gray-500 animate-pulse">
+                  AI đang tư duy và viết bài. Quá trình này có thể tốn 5-10 giây...
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs md:text-sm text-gray-500 font-medium">
+                  Nội dung bài viết:
+                </p>
+                <Textarea 
+                  className="min-h-[400px] lg:min-h-[500px] text-sm leading-relaxed whitespace-pre-wrap font-sans resize-none rounded-xl border-gray-200 focus:ring-emerald-500 p-4"
+                  value={generatedPostContent}
+                  onChange={(e) => setGeneratedPostContent(e.target.value)}
+                />
+
+                {generatingPhongImages.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs md:text-sm text-gray-500 font-medium flex items-center gap-2">
+                      <Image className="h-4 w-4" />
+                      Hình ảnh phòng ({generatingPhongImages.length} ảnh):
+                    </p>
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide py-1">
+                      {generatingPhongImages.map((src, i) => (
+                        <div key={i} className="flex-shrink-0 relative">
+                          <img 
+                            src={src} 
+                            alt={`Ảnh phòng ${i + 1}`} 
+                            className="h-20 w-auto md:h-28 rounded-md border border-gray-200 object-cover shadow-sm" 
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="mt-4 flex sm:justify-end gap-2 flex-col sm:flex-row">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsPostDialogOpen(false)}
+              className="w-full sm:w-auto text-sm"
+              disabled={isGeneratingPost}
+            >
+              Hủy bỏ
+            </Button>
+            <Button 
+              onClick={async () => {
+                if (!generatedPostContent) return;
+                setIsPostingToFacebook(true);
+                try {
+                  const res = await fetch('/api/facebook/post', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      message: generatedPostContent,
+                      images: generatingPhongImages,
+                    })
+                  });
+                  const data = await res.json();
+                  
+                  if (res.ok && data.success) {
+                    toast.success('Đăng bài thành công!', {
+                      description: 'Bài đăng hoàn chỉnh đã có mặt trên Fanpage Piroom.'
+                    });
+                    setIsPostDialogOpen(false);
+                  } else {
+                    toast.error(data.message || 'Lỗi từ chối đăng từ Facebook');
+                  }
+                } catch (err) {
+                  toast.error('Lỗi khi liên kết máy chủ nội dung Facebook');
+                } finally {
+                  setIsPostingToFacebook(false);
+                }
+              }}
+              className="w-full sm:w-auto text-sm bg-[#1877F2] hover:bg-blue-600 text-white border-transparent shadow-md"
+              disabled={isGeneratingPost || !generatedPostContent || isPostingToFacebook}
+            >
+              {isPostingToFacebook ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Đang xử lý xuất bản lên Fanpage...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Đăng ngay lên Fanpage (Facebook)
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

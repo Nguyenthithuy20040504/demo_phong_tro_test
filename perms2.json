@@ -1,0 +1,28 @@
+{
+  "data": [
+    {
+      "permission": "pages_show_list",
+      "status": "granted"
+    },
+    {
+      "permission": "ads_management",
+      "status": "granted"
+    },
+    {
+      "permission": "ads_read",
+      "status": "granted"
+    },
+    {
+      "permission": "business_management",
+      "status": "granted"
+    },
+    {
+      "permission": "pages_read_engagement",
+      "status": "granted"
+    },
+    {
+      "permission": "public_profile",
+      "status": "granted"
+    }
+  ]
+}
