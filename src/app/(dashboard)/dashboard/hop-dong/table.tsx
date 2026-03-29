@@ -266,13 +266,20 @@ const createColumns = (props: HopDongTableProps & { setHopDongToDelete: (h: HopD
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem onClick={(e) => {
-            e.stopPropagation();
-            props.onEdit(row.original);
-          }}>
-            <Edit className="mr-2 h-4 w-4" />
-            Chỉnh sửa
-          </DropdownMenuItem>
+          {row.original.trangThai === 'choDuyet' ? (
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              props.onEdit(row.original);
+            }}>
+              <Edit className="mr-2 h-4 w-4" />
+              Chỉnh sửa
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem disabled className="text-muted-foreground opacity-60">
+              <Edit className="mr-2 h-4 w-4" />
+              Không thể sửa (đã duyệt)
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={(e) => {
             e.stopPropagation();
             props.onDownload(row.original);

@@ -520,9 +520,18 @@ export default function PhongPage() {
     }
   };
 
-  const handleViewDetail = (phong: Phong) => {
-    setViewingDetailPhong(phong);
+  const handleViewDetail = async (phong: Phong) => {
+    setViewingDetailPhong(phong); // Show immediately with basic data
     setIsDetailDialogOpen(true);
+    try {
+      const res = await fetch(`/api/phong/${phong._id}`);
+      const result = await res.json();
+      if (result.success && result.data) {
+        setViewingDetailPhong(result.data);
+      }
+    } catch (e) {
+      console.error('Error fetching room detail:', e);
+    }
   };
 
   const handleViewTenants = (phong: Phong) => {

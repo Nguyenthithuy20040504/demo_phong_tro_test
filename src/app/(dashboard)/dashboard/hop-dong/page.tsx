@@ -1208,13 +1208,20 @@ export default function HopDongPage() {
                 <Download className="h-3 w-3 md:h-4 md:w-4 mr-2" />
                 Tải xuống
               </Button>
-              <Button size="sm" onClick={() => {
-                setViewingHopDong(null);
-                handleEdit(viewingHopDong);
-              }} className="flex-1 sm:flex-none">
-                <Edit className="h-3 w-3 md:h-4 md:w-4 mr-2" />
-                Chỉnh sửa
-              </Button>
+              {viewingHopDong.trangThai === 'choDuyet' ? (
+                <Button size="sm" onClick={() => {
+                  setViewingHopDong(null);
+                  handleEdit(viewingHopDong);
+                }} className="flex-1 sm:flex-none">
+                  <Edit className="h-3 w-3 md:h-4 md:w-4 mr-2" />
+                  Chỉnh sửa
+                </Button>
+              ) : (
+                <Button size="sm" disabled variant="secondary" className="flex-1 sm:flex-none opacity-60">
+                  <Edit className="h-3 w-3 md:h-4 md:w-4 mr-2" />
+                  Không thể sửa (đã duyệt)
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -1538,18 +1545,30 @@ export default function HopDongPage() {
 
                   {/* Action buttons */}
                   <div className="flex flex-wrap gap-2 pt-2 border-t">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(hopDong);
-                      }}
-                      className="flex-1 min-w-[30%]"
-                    >
-                      <Edit className="h-3.5 w-3.5 mr-1" />
-                      Sửa
-                    </Button>
+                    {hopDong.trangThai === 'choDuyet' ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(hopDong);
+                        }}
+                        className="flex-1 min-w-[30%]"
+                      >
+                        <Edit className="h-3.5 w-3.5 mr-1" />
+                        Sửa
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled
+                        className="flex-1 min-w-[30%] opacity-60"
+                      >
+                        <Edit className="h-3.5 w-3.5 mr-1" />
+                        Đã duyệt
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"

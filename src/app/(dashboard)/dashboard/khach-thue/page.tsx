@@ -685,8 +685,11 @@ function KhachThueForm({
       } else {
         const error = await response.json();
         const msg = (error.message || '').toLowerCase();
-        if (msg.includes('duplicate') || msg.includes('cccd') || msg.includes('sdt')) {
+        if (msg.includes('đã được sử dụng') || msg.includes('đã tồn tại') || msg.includes('duplicate')) {
             toast.error('Số điện thoại hoặc CCCD này đã tồn tại trong hệ thống rồi!');
+        } else if (msg.includes('cccd') || msg.includes('số điện thoại') || msg.includes('email')) {
+            // Validation errors - hiển thị đúng lỗi từ API
+            toast.error(error.message);
         } else {
             toast.error(error.message || 'Đã có lỗi xảy ra. Vui lòng thử lại sau!');
         }

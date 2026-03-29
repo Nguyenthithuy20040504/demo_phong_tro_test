@@ -2,6 +2,13 @@ import mongoose, { Schema, Document } from 'mongoose';
 import Phong from "@/models/Phong";
 
 
+export interface ISnapshotKhachThue {
+  id: string;
+  hoTen: string;
+  soDienThoai: string;
+  laNoiDaiDien?: boolean;
+}
+
 export interface IHopDong extends Document {
   maHopDong: string;
   phong: mongoose.Types.ObjectId;
@@ -22,6 +29,7 @@ export interface IHopDong extends Document {
     ten: string;
     gia: number;
   }>;
+  snapshotKhachThue?: ISnapshotKhachThue[];
   trangThai: 'choDuyet' | 'hoatDong' | 'hetHan' | 'daHuy';
   fileHopDong?: string;
   ngayTao: Date;
@@ -119,6 +127,12 @@ const HopDongSchema = new Schema<IHopDong>({
     min: [0, 'Chỉ số nước ban đầu phải lớn hơn hoặc bằng 0']
   },
   phiDichVu: [PhiDichVuSchema],
+  snapshotKhachThue: [{
+    id: { type: String },
+    hoTen: { type: String },
+    soDienThoai: { type: String },
+    laNoiDaiDien: { type: Boolean, default: false }
+  }],
   trangThai: {
     type: String,
     enum: ['choDuyet', 'hoatDong', 'hetHan', 'daHuy'],

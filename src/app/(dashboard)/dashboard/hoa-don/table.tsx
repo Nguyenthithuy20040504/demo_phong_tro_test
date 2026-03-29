@@ -228,7 +228,8 @@ const createColumns = (props: HoaDonTableProps & { setHoaDonToDelete: (h: HoaDon
     accessorKey: "hanThanhToan",
     header: "Hạn thanh toán",
     cell: ({ row }) => {
-      const isLate = isOverdue(row.original.hanThanhToan)
+      const isPaid = row.original.trangThai === 'daThanhToan'
+      const isLate = !isPaid && isOverdue(row.original.hanThanhToan)
       return (
         <div className="text-sm">
           <div className={isLate ? 'text-orange-600 font-medium' : ''}>

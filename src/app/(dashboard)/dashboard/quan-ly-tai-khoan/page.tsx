@@ -234,23 +234,9 @@ export default function AccountManagementPage() {
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    try {
-      const response = await fetch(`/api/admin/users/${userId}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        cache.clearCache();
-        toast.success('Tài khoản đã được xóa thành công khỏi hệ thống.');
-        fetchUsers(true);
-      } else {
-        const error = await response.json();
-        toast.error(error.message || 'Ồ, chưa xóa được tài khoản này rồi.');
-      }
-    } catch (error) {
-      toast.error('Có lỗi khi thực hiện xóa tài khoản.');
-    }
+  // Không cho phép xóa tài khoản để đảm bảo tính toàn vẹn dữ liệu
+  const handleDeleteUser = async () => {
+    toast.error('Không cho phép xóa tài khoản để đảm bảo tính toàn vẹn dữ liệu và lưu log ở các hợp đồng, hóa đơn. Vui lòng sử dụng chức năng "Khóa tài khoản".');
   };
 
   const handleToggleStatus = async (user: User) => {

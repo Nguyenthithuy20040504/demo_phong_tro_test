@@ -405,9 +405,98 @@ export function PhongDetailDialog({ phong, isOpen, onClose, toaNhaList, onEdit }
                 </div>
               </div>
 
-              <Separator className="bg-slate-200/60" />
+              {/* Thông tin chủ trọ */}
+              <div className="space-y-3">
+                <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Thông tin chủ trọ
+                </h3>
+                {(phong as any).chuTro ? (
+                  <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-black text-lg shadow-md shrink-0">
+                        {((phong as any).chuTro.hoTen || 'C')[0].toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-slate-800 truncate">{(phong as any).chuTro.hoTen}</p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                          {(phong as any).chuTro.soDienThoai && (
+                            <span className="text-xs text-slate-500 flex items-center gap-1">
+                              <Phone className="h-3 w-3" /> {(phong as any).chuTro.soDienThoai}
+                            </span>
+                          )}
+                          {(phong as any).chuTro.email && (
+                            <span className="text-xs text-slate-500 flex items-center gap-1">
+                              <Mail className="h-3 w-3" /> {(phong as any).chuTro.email}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-dashed border-slate-200 text-center">
+                    <p className="text-xs text-slate-400 italic">Chưa có thông tin chủ trọ</p>
+                  </div>
+                )}
+              </div>
 
-              {/* Landlord & Resident info would go here (omitted for brevity in this clean version, but keep the space) */}
+              {/* Thông tin khách thuê hiện tại */}
+              <div className="space-y-3">
+                <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Khách thuê hiện tại
+                </h3>
+                {(phong as any).khachThueHienTai && (phong as any).khachThueHienTai.length > 0 ? (
+                  <div className="space-y-3">
+                    {(phong as any).hopDongHienTai && (
+                      <div className="bg-indigo-50/50 px-4 py-2.5 rounded-xl border border-indigo-100 flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wide">Hợp đồng: {(phong as any).hopDongHienTai.maHopDong}</span>
+                        <span className="text-[10px] font-semibold text-indigo-400">
+                          {new Date((phong as any).hopDongHienTai.ngayBatDau).toLocaleDateString('vi-VN')} — {new Date((phong as any).hopDongHienTai.ngayKetThuc).toLocaleDateString('vi-VN')}
+                        </span>
+                      </div>
+                    )}
+                    {(phong as any).khachThueHienTai.map((kt: any, idx: number) => (
+                      <div key={kt._id || idx} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-sm shadow-md shrink-0">
+                            {(kt.hoTen || 'K')[0].toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-bold text-slate-800 truncate">{kt.hoTen}</p>
+                              {kt.laNguoiDaiDien && (
+                                <Badge variant="outline" className="text-[9px] px-2 py-0.5 rounded-full border-indigo-200 text-indigo-500 font-bold">
+                                  Người đại diện
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-0.5">
+                              {kt.soDienThoai && (
+                                <span className="text-xs text-slate-500 flex items-center gap-1">
+                                  <Phone className="h-3 w-3" /> {kt.soDienThoai}
+                                </span>
+                              )}
+                              {kt.email && (
+                                <span className="text-xs text-slate-500 flex items-center gap-1">
+                                  <Mail className="h-3 w-3" /> {kt.email}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-slate-50/80 p-6 rounded-2xl border-2 border-dashed border-slate-200 text-center">
+                    <Users className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                    <p className="text-sm text-slate-400 font-semibold">Hiện tại chưa có khách thuê</p>
+                    <p className="text-[10px] text-slate-300 mt-1">Phòng đang trống hoặc chưa có hợp đồng hoạt động</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

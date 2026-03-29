@@ -39,7 +39,7 @@ export async function GET(
     const { id } = await params;
 
     const phong = await Phong.findById(id)
-      .populate('toaNha', 'tenToaNha diaChi');
+      .populate('toaNha', 'tenToaNha diaChi chuSoHuu');
 
     if (!phong) {
       return NextResponse.json(
@@ -60,9 +60,96 @@ export async function GET(
     // Cập nhật trạng thái phòng trước khi trả về
     await updatePhongStatus(id);
 
+    const phongObj = phong.toObject();
+    const mongoose = (await import('mongoose')).default;
+
+    // 1. Lấy thông tin chủ trọ từ tòa nhà
+    let chuTro = null;
+    const toaNhaData = phongObj.toaNha as any;
+    if (toaNhaData?.chuSoHuu) {
+      const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+      const chuNha = await NguoiDungModel.findById(toaNhaData.chuSoHuu)
+        .select('ten name hoTen email soDienThoai phone avatar')
+        .lean() as any;
+      if (chuNha) {
+        chuTro = {
+          _id: chuNha._id,
+          hoTen: chuNha.ten || chuNha.name || chuNha.hoTen || 'Chủ trọ',
+          email: chuNha.email || '',
+          soDienThoai: chuNha.soDienThoai || chuNha.phone || '',
+          avatar: chuNha.avatar || ''
+        };
+      }
+    }
+
+    // 2. Lấy thông tin khách thuê đang ở (từ hợp đồng hoạt động)
+    const HopDongModel = mongoose.models.HopDong || mongoose.model('HopDong');
+    const KhachThueModel = mongoose.models.KhachThue || mongoose.model('KhachThue');
+    const NguoiDungModel2 = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+
+    const hopDongHoatDong = await HopDongModel.findOne({
+      phong: id,
+      trangThai: 'hoatDong',
+      ngayBatDau: { $lte: new Date() },
+      ngayKetThuc: { $gte: new Date() }
+    }).select('khachThueId nguoiDaiDien snapshotKhachThue ngayBatDau ngayKetThuc maHopDong').lean() as any;
+
+    let khachThueHienTai: any[] = [];
+    if (hopDongHoatDong) {
+      const ktIds = hopDongHoatDong.khachThueId || [];
+      const snapshots = hopDongHoatDong.snapshotKhachThue || [];
+
+      for (const ktId of ktIds) {
+        let ktDoc = await KhachThueModel.findById(ktId).select('hoTen soDienThoai email avatar').lean() as any;
+        if (ktDoc) {
+          khachThueHienTai.push({
+            _id: ktDoc._id,
+            hoTen: ktDoc.hoTen,
+            soDienThoai: ktDoc.soDienThoai || '',
+            email: ktDoc.email || '',
+            avatar: ktDoc.avatar || '',
+            laNguoiDaiDien: ktId.toString() === hopDongHoatDong.nguoiDaiDien?.toString()
+          });
+          continue;
+        }
+        const ndDoc = await NguoiDungModel2.findById(ktId).select('ten name soDienThoai phone email avatar').lean() as any;
+        if (ndDoc) {
+          khachThueHienTai.push({
+            _id: ndDoc._id,
+            hoTen: ndDoc.ten || ndDoc.name || '',
+            soDienThoai: ndDoc.soDienThoai || ndDoc.phone || '',
+            email: ndDoc.email || '',
+            avatar: ndDoc.avatar || '',
+            laNguoiDaiDien: ktId.toString() === hopDongHoatDong.nguoiDaiDien?.toString()
+          });
+          continue;
+        }
+        // Fallback từ snapshot
+        const snap = snapshots.find((s: any) => s.id === ktId.toString());
+        khachThueHienTai.push({
+          _id: ktId,
+          hoTen: snap?.hoTen || '(Không rõ)',
+          soDienThoai: snap?.soDienThoai || '',
+          email: '',
+          avatar: '',
+          laNguoiDaiDien: ktId.toString() === hopDongHoatDong.nguoiDaiDien?.toString()
+        });
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      data: phong,
+      data: {
+        ...phongObj,
+        chuTro,
+        khachThueHienTai,
+        hopDongHienTai: hopDongHoatDong ? {
+          _id: hopDongHoatDong._id,
+          maHopDong: hopDongHoatDong.maHopDong,
+          ngayBatDau: hopDongHoatDong.ngayBatDau,
+          ngayKetThuc: hopDongHoatDong.ngayKetThuc
+        } : null
+      },
     });
 
   } catch (error) {

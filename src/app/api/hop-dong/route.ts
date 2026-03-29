@@ -110,45 +110,41 @@ export async function GET(request: NextRequest) {
       .lean();
 
     // Thủ công populate khachThueId và nguoiDaiDien từ cả 2 collection
+    // Dùng snapshotKhachThue làm fallback khi khách thuê đã bị xóa
     const hopDongList = await Promise.all(hopDongListRaw.map(async (hd) => {
-      // 1. Populate khachThueId
       const ktIds = hd.khachThueId || [];
-      const [ktFromKT, ktFromND] = await Promise.all([
-        KhachThue.find({ _id: { $in: ktIds } }).select('hoTen soDienThoai').lean(),
-        mongoose.model('NguoiDung').find({ _id: { $in: ktIds }, role: 'khachThue' }).select('ten name soDienThoai phone').lean()
-      ]);
+      const snapshots = (hd as any).snapshotKhachThue || [];
+      const allKt: any[] = [];
       
-      const allKt: any[] = [
-        ...ktFromKT, 
-        ...(ktFromND as any[]).map(u => ({ 
-          _id: u._id,
-          hoTen: u.ten || u.name, 
-          soDienThoai: u.soDienThoai || u.phone 
-        }))
-      ];
+      for (const ktId of ktIds) {
+        let found = await KhachThue.findById(ktId).select('hoTen soDienThoai').lean();
+        if (found) { allKt.push(found); continue; }
+        const ndUser = await mongoose.model('NguoiDung').findById(ktId).select('ten name soDienThoai phone').lean() as any;
+        if (ndUser) {
+          allKt.push({ _id: ndUser._id, hoTen: ndUser.ten || ndUser.name, soDienThoai: ndUser.soDienThoai || ndUser.phone });
+          continue;
+        }
+        // Fallback: snapshot
+        const snap = snapshots.find((s: any) => s.id === ktId.toString());
+        allKt.push({ _id: ktId, hoTen: snap?.hoTen || '(Không có thông tin)', soDienThoai: snap?.soDienThoai || '' });
+      }
       
-      // 2. Populate nguoiDaiDien
       let nguoiDaiDien = null;
       if (hd.nguoiDaiDien) {
         nguoiDaiDien = await KhachThue.findById(hd.nguoiDaiDien).select('hoTen soDienThoai').lean();
         if (!nguoiDaiDien) {
-          const u = await mongoose.model('NguoiDung').findOne({ _id: hd.nguoiDaiDien, role: 'khachThue' }).select('ten name soDienThoai phone').lean();
+          const u = await mongoose.model('NguoiDung').findOne({ _id: hd.nguoiDaiDien }).select('ten name soDienThoai phone').lean();
           if (u) {
             const usr = u as any;
-            nguoiDaiDien = {
-              _id: usr._id,
-              hoTen: usr.ten || usr.name,
-              soDienThoai: usr.soDienThoai || usr.phone
-            };
+            nguoiDaiDien = { _id: usr._id, hoTen: usr.ten || usr.name, soDienThoai: usr.soDienThoai || usr.phone };
+          } else {
+            const snap = snapshots.find((s: any) => s.id === hd.nguoiDaiDien.toString());
+            nguoiDaiDien = { _id: hd.nguoiDaiDien, hoTen: snap?.hoTen || '(Không có thông tin)', soDienThoai: snap?.soDienThoai || '' };
           }
         }
       }
 
-      return {
-        ...hd,
-        khachThueId: allKt,
-        nguoiDaiDien: nguoiDaiDien
-      };
+      return { ...hd, khachThueId: allKt, nguoiDaiDien: nguoiDaiDien };
     }));
 
     const total = await HopDong.countDocuments(query);
@@ -245,11 +241,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Tạo snapshot thông tin khách thuê để lưu vĩnh viễn vào hợp đồng
+    const snapshotKhachThue = [];
+    for (const ktId of validatedData.khachThueId) {
+      let hoTen = '';
+      let soDienThoai = '';
+      const ktDoc = await KhachThue.findById(ktId).select('hoTen soDienThoai').lean() as any;
+      if (ktDoc) {
+        hoTen = ktDoc.hoTen || '';
+        soDienThoai = ktDoc.soDienThoai || '';
+      } else {
+        const ndDoc = await mongoose.model('NguoiDung').findById(ktId).select('ten name soDienThoai phone').lean() as any;
+        if (ndDoc) {
+          hoTen = ndDoc.ten || ndDoc.name || '';
+          soDienThoai = ndDoc.soDienThoai || ndDoc.phone || '';
+        }
+      }
+      snapshotKhachThue.push({
+        id: ktId,
+        hoTen: hoTen || 'Không rõ',
+        soDienThoai: soDienThoai,
+        laNoiDaiDien: ktId === validatedData.nguoiDaiDien
+      });
+    }
+
     const newHopDong = new HopDong({
       ...validatedData,
       ngayBatDau: new Date(validatedData.ngayBatDau),
       ngayKetThuc: new Date(validatedData.ngayKetThuc),
       phiDichVu: validatedData.phiDichVu || [],
+      snapshotKhachThue: snapshotKhachThue,
       trangThai: 'choDuyet', // Chờ khách thuê duyệt
     });
 
