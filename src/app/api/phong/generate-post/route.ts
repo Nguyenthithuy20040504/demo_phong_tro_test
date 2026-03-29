@@ -66,6 +66,8 @@ HƯỚNG DẪN VIẾT BÀI:
    - Bắt buộc phải để lại địa chỉ, thông tin liên hệ một cách khéo léo ở cuối bài.
    - Thêm các hashtag phổ biến (VD: #chothuephong #phongtro #timphong...).
 4. Giọng điệu (Tone): Thân thiện, đánh trúng tâm lý người đi thuê (mong muốn phòng sạch, rẻ, an ninh), thôi thúc họ inbox/gọi điện ngay kẻo lỡ.
+    
+QUAN TRỌNG: TUYỆT ĐỐI KHÔNG giải thích, KHÔNG thêm lời chào mừng (VD: 'Chào bạn...', 'Dưới đây là...'), KHÔNG thêm phần kết luận. CHỈ in ra duy nhất nguyên văn nội dung bài quảng cáo.
     `;
 
     // 3. Call Gemini API with Retry Logic

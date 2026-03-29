@@ -958,7 +958,22 @@ export default function PhongPage() {
                   
                   if (res.ok && data.success) {
                     toast.success('Đăng bài thành công!', {
-                      description: 'Bài đăng hoàn chỉnh đã có mặt trên Fanpage Piroom.'
+                      description: (
+                        <div className="flex flex-col gap-1 mt-1">
+                          <span>Bài đăng hoàn chỉnh đã có mặt trên Fanpage.</span>
+                          {data.postUrl && (
+                            <a 
+                              href={data.postUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline font-medium"
+                            >
+                              👉 Xem bài viết tại đây
+                            </a>
+                          )}
+                        </div>
+                      ),
+                      duration: 8000,
                     });
                     setIsPostDialogOpen(false);
                   } else {

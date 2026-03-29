@@ -61,9 +61,11 @@ export async function POST(request: NextRequest) {
     const feedData = await feedResponse.json();
 
     if (feedData.id) {
+      // id returned by API is in format: pageId_postId
       return NextResponse.json({
         success: true,
         postId: feedData.id,
+        postUrl: `https://facebook.com/${feedData.id}`,
         message: 'Đăng bài lên Facebook thành công!'
       });
     } else {
