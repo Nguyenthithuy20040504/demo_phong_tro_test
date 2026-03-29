@@ -3,7 +3,6 @@
 import * as React from "react"
 import {
   Edit,
-  Trash2,
   Eye,
   Mail,
   Phone,
@@ -47,17 +46,9 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -161,7 +152,7 @@ type UserTableProps = {
   currentUserId?: string
 }
 
-const createColumns = (props: UserTableProps & { setUserToDelete: (u: User) => void; setIsDeleteDialogOpen: (o: boolean) => void }): ColumnDef<User>[] => [
+const createColumns = (props: UserTableProps): ColumnDef<User>[] => [
   {
     accessorKey: "name",
     header: "Người dùng",
@@ -404,22 +395,7 @@ const createColumns = (props: UserTableProps & { setUserToDelete: (u: User) => v
               </DropdownMenuItem>
             )}
 
-            {!isCurrentUser && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  className="text-destructive"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    props.setUserToDelete(row.original);
-                    props.setIsDeleteDialogOpen(true);
-                  }}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Xóa
-                </DropdownMenuItem>
-              </>
-            )}
+
           </DropdownMenuContent>
         </DropdownMenu>
       )
@@ -451,8 +427,7 @@ type UserDataTableProps = UserTableProps & {
 export function UserDataTable(props: UserDataTableProps) {
   const { data: initialData, searchTerm, onSearchChange, ...tableProps } = props
   const [data, setData] = React.useState(() => initialData)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-  const [userToDelete, setUserToDelete] = React.useState<User | null>(null);
+
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
@@ -470,11 +445,7 @@ export function UserDataTable(props: UserDataTableProps) {
     setData(initialData)
   }, [initialData])
   
-  const columns = React.useMemo(() => createColumns({
-    ...tableProps,
-    setUserToDelete,
-    setIsDeleteDialogOpen
-  }), [tableProps])
+  const columns = React.useMemo(() => createColumns(tableProps), [tableProps])
 
   const table = useReactTable({
     data,
@@ -596,36 +567,7 @@ export function UserDataTable(props: UserDataTableProps) {
         </Table>
       </div>
 
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Xác nhận xóa</DialogTitle>
-            <DialogDescription>
-              Bạn có chắc chắn muốn xóa tài khoản <strong>{userToDelete ? getUserName(userToDelete) : ''}</strong>? Hành động này không thể hoàn tác.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => setIsDeleteDialogOpen(false)}
-            >
-              Hủy
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                if (userToDelete) {
-                  tableProps.onDelete(userToDelete._id!);
-                  setIsDeleteDialogOpen(false);
-                  setUserToDelete(null);
-                }
-              }}
-            >
-              Xác nhận xóa
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
       
       <div className="flex items-center justify-between px-4">
         <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">

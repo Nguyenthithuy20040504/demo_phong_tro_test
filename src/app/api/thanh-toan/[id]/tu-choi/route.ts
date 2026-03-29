@@ -37,12 +37,11 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       const pendingPayments = await ThanhToan.countDocuments({ hoaDon: hoaDon._id, trangThai: 'choDuyet', _id: { $ne: thanhToan._id } });
       
       if (pendingPayments === 0 && hoaDon.trangThai === 'choDuyet') {
-        if (hoaDon.daThanhToan === 0) {
-           hoaDon.trangThai = 'chuaThanhToan';
-        } else if (hoaDon.daThanhToan > 0 && hoaDon.conLai > 0) {
-           hoaDon.trangThai = 'daThanhToanMotPhan';
-        } else {
+        if (hoaDon.conLai <= 0) {
            hoaDon.trangThai = 'daThanhToan';
+        } else {
+           // Đánh dấu hóa đơn là "từ chối" để khách thuê biết cần nộp lại
+           hoaDon.trangThai = 'tuChoi';
         }
         await hoaDon.save();
       }

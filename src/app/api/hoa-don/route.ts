@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
 
       const hoaDonObj = hoaDon.toObject();
 
-      // Khôi phục thông tin Khách thuê
+      // Khôi phục thông tin Khách thuê (fallback từ snapshot hợp đồng)
       const KhachThueModel = (await import('@/models/KhachThue')).default;
       const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
       let ktInfo: any = await KhachThueModel.findById(hoaDonObj.khachThue).select('hoTen soDienThoai').lean();
@@ -74,7 +74,13 @@ export async function GET(request: NextRequest) {
           };
         }
       }
-      (hoaDonObj as any).khachThue = ktInfo || { _id: hoaDonObj.khachThue, hoTen: 'N/A' };
+      if (!ktInfo) {
+        // Fallback: tìm trong snapshot hợp đồng
+        const hdDoc = await HopDong.findById(hoaDonObj.hopDong?._id || hoaDonObj.hopDong).select('snapshotKhachThue').lean() as any;
+        const snap = hdDoc?.snapshotKhachThue?.find((s: any) => s.id === hoaDonObj.khachThue?.toString());
+        ktInfo = { _id: hoaDonObj.khachThue, hoTen: snap?.hoTen || '(Không có thông tin)', soDienThoai: snap?.soDienThoai || '' };
+      }
+      (hoaDonObj as any).khachThue = ktInfo;
 
       // Xử lý dữ liệu cũ không có chỉ số điện nước
       if (hoaDonObj.chiSoDienBanDau === undefined) {
@@ -205,7 +211,7 @@ export async function GET(request: NextRequest) {
     const processedHoaDons = await Promise.all(hoaDons.map(async (hoaDon) => {
       const hoaDonObj = hoaDon.toObject();
 
-      // Map thông tin khách thuê
+      // Map thông tin khách thuê (fallback từ snapshot hợp đồng)
       if (hoaDonObj.khachThue) {
         let ktInfo: any = await KhachThueModel.findById(hoaDonObj.khachThue).select('hoTen soDienThoai').lean();
         if (!ktInfo) {
@@ -218,7 +224,12 @@ export async function GET(request: NextRequest) {
             };
           }
         }
-        (hoaDonObj as any).khachThue = ktInfo || { _id: hoaDonObj.khachThue, hoTen: 'N/A' };
+        if (!ktInfo) {
+          const hdDoc = await HopDong.findById(hoaDonObj.hopDong?._id || hoaDonObj.hopDong).select('snapshotKhachThue').lean() as any;
+          const snap = hdDoc?.snapshotKhachThue?.find((s: any) => s.id === hoaDonObj.khachThue?.toString());
+          ktInfo = { _id: hoaDonObj.khachThue, hoTen: snap?.hoTen || '(Không có thông tin)', soDienThoai: snap?.soDienThoai || '' };
+        }
+        (hoaDonObj as any).khachThue = ktInfo;
       }
 
       // Nếu không có chỉ số điện nước, tạo giá trị mặc định
@@ -590,9 +601,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (!ktInfo) {
+      const hdDoc = await HopDong.findById(hoaDonObj.hopDong).select('snapshotKhachThue').lean() as any;
+      const snap = hdDoc?.snapshotKhachThue?.find((s: any) => s.id === hoaDonObj.khachThue?.toString());
+      ktInfo = { _id: hoaDonObj.khachThue, hoTen: snap?.hoTen || '(Không có thông tin)', soDienThoai: snap?.soDienThoai || '' };
+    }
+
     const finalHoaDon = {
       ...hoaDonObj,
-      khachThue: ktInfo || { _id: hoaDonObj.khachThue, hoTen: 'N/A' }
+      khachThue: ktInfo
     };
 
     return NextResponse.json({
@@ -781,9 +798,15 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    if (!ktInfo) {
+      const hdDoc = await HopDong.findById(hoaDonObj.hopDong).select('snapshotKhachThue').lean() as any;
+      const snap = hdDoc?.snapshotKhachThue?.find((s: any) => s.id === hoaDonObj.khachThue?.toString());
+      ktInfo = { _id: hoaDonObj.khachThue, hoTen: snap?.hoTen || '(Không có thông tin)', soDienThoai: snap?.soDienThoai || '' };
+    }
+
     const finalUpdatedHoaDon = {
       ...hoaDonObj,
-      khachThue: ktInfo || { _id: hoaDonObj.khachThue, hoTen: 'N/A' }
+      khachThue: ktInfo
     };
 
     return NextResponse.json({

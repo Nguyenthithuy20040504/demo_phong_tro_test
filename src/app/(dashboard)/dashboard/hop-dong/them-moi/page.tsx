@@ -52,6 +52,7 @@ export default function ThemMoiHopDongPage() {
     maHopDong: '',
     phong: '',
     khachThueId: [] as string[],
+    khachThueInputs: [{ hoTen: '', soDienThoai: '' }] as Array<{hoTen: string, soDienThoai: string}>,
     nguoiDaiDien: '',
     ngayBatDau: new Date().toISOString().split('T')[0],
     ngayKetThuc: '',
@@ -99,8 +100,6 @@ export default function ThemMoiHopDongPage() {
   const [newPhiDichVu, setNewPhiDichVu] = useState({ ten: '', gia: 0 });
   const [openToaNha, setOpenToaNha] = useState(false);
   const [openPhong, setOpenPhong] = useState(false);
-  const [openKhachThue, setOpenKhachThue] = useState(false);
-  const [openNguoiDaiDien, setOpenNguoiDaiDien] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -179,18 +178,53 @@ export default function ThemMoiHopDongPage() {
         phong: phongId,
         giaThue: selectedPhong.giaThue,
         tienCoc: selectedPhong.tienCoc,
+        // Reset khách thuê inputs theo số người tối đa của phòng
+        khachThueInputs: prev.khachThueInputs.length > 0 
+          ? prev.khachThueInputs.slice(0, selectedPhong.soNguoiToiDa || 2)
+          : [{ hoTen: '', soDienThoai: '' }],
+        nguoiDaiDien: '',
       }));
     }
     setOpenPhong(false);
   };
 
-  const toggleKhachThue = (khachThueId: string) => {
+  // Helper: lấy số người tối đa của phòng đã chọn
+  const getMaxTenants = () => {
+    const selectedPhong = phongList.find(p => p._id === formData.phong);
+    return selectedPhong?.soNguoiToiDa || 2;
+  };
+
+  const updateKhachThueInput = (index: number, field: 'hoTen' | 'soDienThoai', value: string) => {
+    setFormData(prev => {
+      const updated = [...prev.khachThueInputs];
+      updated[index] = { ...updated[index], [field]: value };
+      // Nếu nguoiDaiDien trỏ tới index này và tên bị thay đổi -> reset
+      const nguoiDaiDien = prev.nguoiDaiDien;
+      return { ...prev, khachThueInputs: updated };
+    });
+  };
+
+  const addKhachThueSlot = () => {
+    const max = getMaxTenants();
+    if (formData.khachThueInputs.length >= max) {
+      toast.warning(`Phòng này tối đa ${max} người!`);
+      return;
+    }
     setFormData(prev => ({
       ...prev,
-      khachThueId: prev.khachThueId.includes(khachThueId)
-        ? prev.khachThueId.filter(id => id !== khachThueId)
-        : [...prev.khachThueId, khachThueId]
+      khachThueInputs: [...prev.khachThueInputs, { hoTen: '', soDienThoai: '' }]
     }));
+  };
+
+  const removeKhachThueSlot = (index: number) => {
+    if (formData.khachThueInputs.length <= 1) return;
+    setFormData(prev => {
+      const updated = prev.khachThueInputs.filter((_, i) => i !== index);
+      // Reset nguoiDaiDien nếu người bị xóa là đại diện
+      const removedName = prev.khachThueInputs[index].hoTen;
+      const nguoiDaiDien = prev.nguoiDaiDien === removedName ? '' : prev.nguoiDaiDien;
+      return { ...prev, khachThueInputs: updated, nguoiDaiDien };
+    });
   };
 
   const addPhiDichVu = () => {
@@ -235,6 +269,46 @@ export default function ThemMoiHopDongPage() {
     setSubmitting(true);
     
     try {
+      // Build khachThueInputs array (tên + SĐT) để API lưu snapshot
+      const validKhachThue = formData.khachThueInputs.filter(kt => kt.hoTen.trim());
+      if (validKhachThue.length === 0) {
+        toast.error('Vui lòng nhập ít nhất 1 khách thuê!');
+        setSubmitting(false);
+        return;
+      }
+      if (!formData.nguoiDaiDien) {
+        toast.error('Vui lòng chọn người đại diện!');
+        setSubmitting(false);
+        return;
+      }
+
+      // Tìm trong danh sách khách thuê có sẵn theo SĐT hoặc tên
+      const khachThueIds: string[] = [];
+      const snapshotKhachThue: Array<{hoTen: string, soDienThoai: string}> = [];
+      let nguoiDaiDienId = '';
+
+      for (const kt of validKhachThue) {
+        // Thử tìm khách thuê đã tồn tại trong hệ thống
+        const existing = khachThueList.find(k => 
+          (kt.soDienThoai && k.soDienThoai === kt.soDienThoai) ||
+          (kt.hoTen && k.hoTen === kt.hoTen)
+        );
+        if (existing) {
+          khachThueIds.push(existing._id!);
+          if (kt.hoTen === formData.nguoiDaiDien) {
+            nguoiDaiDienId = existing._id!;
+          }
+        } else {
+          // Nếu không có tài khoản, vẫn thêm vào snapshot
+          snapshotKhachThue.push({ hoTen: kt.hoTen, soDienThoai: kt.soDienThoai });
+        }
+      }
+
+      // Nếu không tìm thấy ID cho người đại diện, lấy ID đầu tiên có sẵn
+      if (!nguoiDaiDienId && khachThueIds.length > 0) {
+        nguoiDaiDienId = khachThueIds[0];
+      }
+
       const response = await fetch('/api/hop-dong', {
         method: 'POST',
         headers: {
@@ -242,6 +316,9 @@ export default function ThemMoiHopDongPage() {
         },
         body: JSON.stringify({
           ...formData,
+          khachThueId: khachThueIds.length > 0 ? khachThueIds : undefined,
+          nguoiDaiDien: nguoiDaiDienId || undefined,
+          snapshotKhachThue: validKhachThue.map(kt => ({ hoTen: kt.hoTen, soDienThoai: kt.soDienThoai })),
           ngayBatDau: new Date(formData.ngayBatDau).toISOString(),
           ngayKetThuc: new Date(formData.ngayKetThuc).toISOString(),
         }),
@@ -319,76 +396,59 @@ export default function ThemMoiHopDongPage() {
                 />
               </div>
 
-              {/* Khách thuê - cạnh mã hợp đồng */}
+              {/* Khách thuê - free input, max theo số người tối đa phòng */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs md:text-sm">Khách thuê</Label>
-                  <span className="text-[10px] text-amber-600 font-medium italic">* Chỉ áp dụng với những khách thuê đã có tài khoản</span>
+                  <span className="text-[10px] text-gray-500 font-medium">
+                    {formData.khachThueInputs.filter(k => k.hoTen.trim()).length}/{getMaxTenants()} người
+                    {formData.phong && ` (Tối đa ${getMaxTenants()} người)`}
+                  </span>
                 </div>
-                <Popover open={openKhachThue} onOpenChange={setOpenKhachThue}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={openKhachThue}
-                      className="w-full justify-between min-h-10 h-auto text-sm"
-                      size="sm"
-                    >
-                      <div className="flex flex-wrap gap-1 text-xs md:text-sm">
-                        {formData.khachThueId.length === 0 ? (
-                          <span className="text-muted-foreground">Chọn khách thuê...</span>
-                        ) : (
-                          formData.khachThueId.map((id) => {
-                            const khachThue = khachThueList.find(k => k._id === id);
-                            return (
-                              <Badge key={id} variant="secondary" className="mr-1">
-                                {khachThue?.hoTen}
-                                {id === formData.nguoiDaiDien && ' ⭐'}
-                              </Badge>
-                            );
-                          })
-                        )}
+                <div className="space-y-2">
+                  {formData.khachThueInputs.map((kt, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <div className="flex items-center justify-center size-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex-shrink-0">
+                        {index + 1}
                       </div>
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      <Input
+                        placeholder={`Họ tên khách thuê ${index + 1}`}
+                        value={kt.hoTen}
+                        onChange={(e) => updateKhachThueInput(index, 'hoTen', e.target.value)}
+                        className="text-sm flex-1"
+                      />
+                      <Input
+                        placeholder="Số điện thoại"
+                        value={kt.soDienThoai}
+                        onChange={(e) => updateKhachThueInput(index, 'soDienThoai', e.target.value)}
+                        className="text-sm w-[140px] md:w-[180px]"
+                      />
+                      {formData.khachThueInputs.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 flex-shrink-0 text-gray-400 hover:text-red-500"
+                          onClick={() => removeKhachThueSlot(index)}
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  {formData.khachThueInputs.length < getMaxTenants() && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-xs border-dashed"
+                      onClick={addKhachThueSlot}
+                    >
+                      <Plus className="size-3.5 mr-1.5" />
+                      Thêm khách thuê ({formData.khachThueInputs.length}/{getMaxTenants()})
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[90vw] md:w-[400px] p-0">
-                    <Command>
-                      <CommandInput placeholder="Gõ tên, SĐT để tìm thêm khách thuê..." className="text-sm" />
-                      <CommandEmpty className="text-sm">Không tìm thấy khách thuê.</CommandEmpty>
-                      <CommandGroup className="max-h-64 overflow-auto">
-                        {khachThueList.filter(k => k.matKhau === '******').length === 0 && (
-                          <div className="p-4 text-center text-xs text-muted-foreground italic">
-                            Chưa có khách thuê nào có tài khoản lẻ. Hãy tạo tài khoản cho khách trước nhé!
-                          </div>
-                        )}
-                        {khachThueList.filter(k => k.matKhau === '******').map((khachThue) => (
-                          <CommandItem
-                            key={khachThue._id}
-                            value={`${khachThue.hoTen} ${khachThue.soDienThoai || ''} ${khachThue.email || ''}`}
-                            onSelect={() => toggleKhachThue(khachThue._id!)}
-                          >
-                            <div className="flex items-center space-x-2 w-full">
-                              <div className={cn(
-                                "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                                formData.khachThueId.includes(khachThue._id!)
-                                  ? "bg-primary text-primary-foreground"
-                                  : "opacity-50 [&_svg]:invisible"
-                              )}>
-                                <Check className="h-4 w-4" />
-                              </div>
-                              <span>{khachThue.hoTen}</span>
-                              <span className="text-xs text-muted-foreground ml-auto">
-                                {khachThue.soDienThoai}
-                              </span>
-                            </div>
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-
+                  )}
+                </div>
               </div>
             </div>
 
@@ -486,73 +546,30 @@ export default function ThemMoiHopDongPage() {
               </div>
             </div>
 
-            {/* Người đại diện - chọn trước, tự động thêm vào khách thuê */}
+            {/* Người đại diện - chọn từ danh sách khách thuê đã nhập */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs md:text-sm">Người đại diện *</Label>
-                <span className="text-[10px] text-amber-600 font-medium italic">* Chỉ áp dụng với những khách thuê đã có tài khoản</span>
-              </div>
-              <Popover open={openNguoiDaiDien} onOpenChange={setOpenNguoiDaiDien}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={openNguoiDaiDien}
-                    className="w-full justify-between text-sm"
-                    size="sm"
-                  >
-                    {formData.nguoiDaiDien
-                      ? khachThueList.find((k) => k._id === formData.nguoiDaiDien)?.hoTen
-                      : "Gõ tên hoặc SĐT để tìm..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[90vw] md:w-full p-0">
-                  <Command>
-                    <CommandInput placeholder="Gõ tên, SĐT hoặc email để tìm..." className="text-sm" />
-                    <CommandEmpty className="text-sm">Không tìm thấy khách thuê.</CommandEmpty>
-                    <CommandGroup className="max-h-64 overflow-auto">
-                      {khachThueList.filter(k => k.matKhau === '******').length === 0 && (
-                        <div className="p-4 text-center text-xs text-muted-foreground italic">
-                          Chưa có khách thuê nào có tài khoản lẻ. Hãy tạo tài khoản cho khách trước nhé!
-                        </div>
-                      )}
-                      {khachThueList.filter(k => k.matKhau === '******').map((khachThue) => (
-                        <CommandItem
-                          key={khachThue._id}
-                          value={`${khachThue.hoTen} ${khachThue.soDienThoai || ''} ${khachThue.email || ''}`}
-                          onSelect={() => {
-                            const id = khachThue._id!;
-                            // Set as representative AND auto-add to tenant list
-                            setFormData(prev => ({
-                              ...prev,
-                              nguoiDaiDien: id,
-                              khachThueId: prev.khachThueId.includes(id)
-                                ? prev.khachThueId
-                                : [...prev.khachThueId, id]
-                            }));
-                            setOpenNguoiDaiDien(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              formData.nguoiDaiDien === khachThue._id ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          <div className="flex items-center w-full">
-                            <span>{khachThue.hoTen}</span>
-                            <span className="text-xs text-muted-foreground ml-auto">
-                              {khachThue.soDienThoai}
-                            </span>
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-
+              <Label className="text-xs md:text-sm">Người đại diện *</Label>
+              <Select 
+                value={formData.nguoiDaiDien} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, nguoiDaiDien: value }))}
+              >
+                <SelectTrigger className="text-sm">
+                  <SelectValue placeholder="Chọn người đại diện từ danh sách khách thuê" />
+                </SelectTrigger>
+                <SelectContent>
+                  {formData.khachThueInputs
+                    .filter(kt => kt.hoTen.trim())
+                    .map((kt, index) => (
+                      <SelectItem key={index} value={kt.hoTen}>
+                        {kt.hoTen}{kt.soDienThoai ? ` – ${kt.soDienThoai}` : ''}
+                      </SelectItem>
+                    ))}
+                  {formData.khachThueInputs.filter(kt => kt.hoTen.trim()).length === 0 && (
+                    <div className="p-3 text-center text-xs text-muted-foreground italic">Nhập tên khách thuê trước</div>
+                  )}
+                </SelectContent>
+              </Select>
+              <span className="text-[10px] text-gray-400">Chọn 1 trong các khách thuê đã điền ở trên làm người đại diện hợp đồng</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">

@@ -220,6 +220,8 @@ export default function HoaDonPage() {
         return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">Chờ duyệt</Badge>;
       case 'quaHan':
         return <Badge variant="outline">Quá hạn</Badge>;
+      case 'tuChoi':
+        return <Badge variant="destructive" className="bg-red-600">Từ chối</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -387,7 +389,8 @@ export default function HoaDonPage() {
         <div class="footer">
           <p>Trạng thái: ${hoaDon.trangThai === 'daThanhToan' ? 'Đã thanh toán' : 
                          hoaDon.trangThai === 'daThanhToanMotPhan' ? 'Thanh toán một phần' : 
-                         hoaDon.trangThai === 'quaHan' ? 'Quá hạn' : 'Chưa thanh toán'}</p>
+                         hoaDon.trangThai === 'quaHan' ? 'Quá hạn' :
+                         hoaDon.trangThai === 'tuChoi' ? 'Từ chối' : 'Chưa thanh toán'}</p>
           ${hoaDon.ghiChu ? `<p>Ghi chú: ${hoaDon.ghiChu}</p>` : ''}
         </div>
       </body>
@@ -618,7 +621,7 @@ export default function HoaDonPage() {
             <div>
               <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Quá hạn</p>
               <p className="text-base md:text-2xl font-bold text-orange-600">
-                {hoaDonList.filter(h => new Date(h.hanThanhToan) < new Date()).length}
+                {hoaDonList.filter(h => h.trangThai !== 'daThanhToan' && new Date(h.hanThanhToan) < new Date()).length}
               </p>
             </div>
             <AlertCircle className="h-3 w-3 md:h-4 md:w-4 text-orange-600" />
@@ -714,6 +717,8 @@ export default function HoaDonPage() {
                 <SelectItem value="daThanhToan" className="text-sm">Đã thanh toán</SelectItem>
                 <SelectItem value="choDuyet" className="text-sm">Chờ duyệt</SelectItem>
                 <SelectItem value="thanhToanMotPhan" className="text-sm">Thanh toán 1 phần</SelectItem>
+                <SelectItem value="quaHan" className="text-sm">Quá hạn</SelectItem>
+                <SelectItem value="tuChoi" className="text-sm">Từ chối</SelectItem>
               </SelectContent>
             </Select>
             <Select value={monthFilter} onValueChange={setMonthFilter}>

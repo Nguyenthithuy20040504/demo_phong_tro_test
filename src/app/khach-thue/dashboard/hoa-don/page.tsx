@@ -117,6 +117,8 @@ export default function HoaDonKhachThuePage() {
         return <Badge variant="destructive" className="bg-rose-500/10 text-rose-600 border-rose-500/20">Quá hạn</Badge>;
       case 'choDuyet':
         return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">Chờ duyệt</Badge>;
+      case 'tuChoi':
+        return <Badge variant="destructive" className="bg-red-500/10 text-red-600 border-red-500/20">Từ chối</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -129,6 +131,7 @@ export default function HoaDonKhachThuePage() {
       case 'daThanhToanMotPhan': return 'Một phần';
       case 'quaHan': return 'Quá hạn';
       case 'choDuyet': return 'Chờ duyệt';
+      case 'tuChoi': return 'Từ chối';
       default: return status;
     }
   };
@@ -286,6 +289,7 @@ export default function HoaDonKhachThuePage() {
                 <SelectItem value="chuaThanhToan">Chưa thanh toán</SelectItem>
                 <SelectItem value="choDuyet">Chờ duyệt</SelectItem>
                 <SelectItem value="quaHan">Quá hạn</SelectItem>
+                <SelectItem value="tuChoi">Từ chối</SelectItem>
               </SelectContent>
             </Select>
 
@@ -552,6 +556,13 @@ export default function HoaDonKhachThuePage() {
                 <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-3 text-sm text-yellow-800 flex items-start gap-2">
                   <span className="text-yellow-600 mt-0.5 animate-pulse">⏳</span>
                   <span>Đang chờ chủ trọ xác nhận biên lai giải ngân. Hóa đơn sẽ cập nhật trạng thái sau khi được duyệt.</span>
+                </div>
+              )}
+
+              {selectedHoaDon.trangThai === 'tuChoi' && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-800 flex items-start gap-2">
+                  <span className="text-red-600 mt-0.5">❌</span>
+                  <span>Biên lai thanh toán của bạn đã bị <strong>từ chối</strong>. Vui lòng kiểm tra lại thông tin chuyển khoản và gửi lại biên lai mới, hoặc liên hệ chủ trọ để biết thêm chi tiết.</span>
                 </div>
               )}
 

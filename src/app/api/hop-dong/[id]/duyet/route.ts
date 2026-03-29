@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import HopDong from '@/models/HopDong';
+import KhachThue from '@/models/KhachThue';
 import ThongBao from '@/models/ThongBao';
 import { updatePhongStatus, updateAllKhachThueStatus } from '@/lib/status-utils';
 import mongoose from 'mongoose';
@@ -54,18 +55,34 @@ export async function PUT(
       );
     }
 
-    // Kiểm tra người duyệt phải là khách thuê trong hợp đồng
+    // Kiểm tra người duyệt phải là NGƯỜI ĐẠI DIỆN (không phải bất kỳ khách thuê nào)
+    // Xây dựng danh sách linkedIds giống /me route để xử lý trường hợp
+    // ID đăng nhập từ NguoiDung khác với ID KhachThue trong hợp đồng
     const userId = session.user.id;
-    const isKhachThue = hopDong.khachThueId.some(
-      (id: any) => id.toString() === userId
-    );
+    const linkedIds: string[] = [userId];
 
-    // Cho phép cả khách thuê và chủ nhà thao tác
-    const isOwner = session.user.role === 'chuTro' || session.user.role === 'admin';
+    // Tìm KhachThue record liên kết với user đang đăng nhập
+    let khachThueRecord = await KhachThue.findById(userId);
+    if (!khachThueRecord && (session.user as any).phone) {
+      khachThueRecord = await KhachThue.findOne({ soDienThoai: (session.user as any).phone });
+    }
+    if (!khachThueRecord && session.user.email) {
+      khachThueRecord = await KhachThue.findOne({ email: session.user.email });
+    }
+    if (khachThueRecord && khachThueRecord._id.toString() !== userId) {
+      linkedIds.push(khachThueRecord._id.toString());
+    }
 
-    if (!isKhachThue && !isOwner) {
+    // Chỉ cho phép NGƯỜI ĐẠI DIỆN duyệt (không phải tất cả khách thuê)
+    const nguoiDaiDienId = hopDong.nguoiDaiDien?.toString();
+    const isNguoiDaiDien = nguoiDaiDienId && linkedIds.includes(nguoiDaiDienId);
+
+    // Cho phép cả người đại diện và chủ nhà thao tác
+    const isOwner = session.user.role === 'chuNha' || session.user.role === 'admin';
+
+    if (!isNguoiDaiDien && !isOwner) {
       return NextResponse.json(
-        { success: false, message: 'Bạn không có quyền thao tác hợp đồng này' },
+        { success: false, message: 'Chỉ người đại diện hợp đồng mới có quyền phê duyệt' },
         { status: 403 }
       );
     }

@@ -8,6 +8,7 @@ import KhachThue from '@/models/KhachThue';
 import { updatePhongStatus, updateAllKhachThueStatus } from '@/lib/status-utils';
 import { isToaNhaAccessible } from '@/lib/auth-utils';
 import { z } from 'zod';
+import mongoose from 'mongoose';
 
 const phiDichVuSchema = z.object({
   ten: z.string().min(1, 'Tên dịch vụ là bắt buộc'),
@@ -55,12 +56,11 @@ export async function GET(
     await dbConnect();
     const { id } = await params;
 
-    const hopDong = await HopDong.findById(id)
+    const hopDongRaw = await HopDong.findById(id)
       .populate('phong', 'maPhong toaNha')
-      .populate('khachThueId', 'hoTen soDienThoai')
-      .populate('nguoiDaiDien', 'hoTen soDienThoai');
+      .lean() as any;
 
-    if (!hopDong) {
+    if (!hopDongRaw) {
       return NextResponse.json(
         { message: 'Hợp đồng không tồn tại' },
         { status: 404 }
@@ -68,7 +68,7 @@ export async function GET(
     }
 
     // Kiểm tra quyền truy cập thông qua tòa nhà của phòng
-    const toaNhaId = (hopDong.phong as any).toaNha || hopDong.phong;
+    const toaNhaId = hopDongRaw.phong?.toaNha || hopDongRaw.phong;
     const hasAccess = await isToaNhaAccessible(session.user, toaNhaId);
     if (!hasAccess) {
       return NextResponse.json(
@@ -76,6 +76,44 @@ export async function GET(
         { status: 403 }
       );
     }
+
+    // Populate khachThueId - tìm từng người, fallback sang snapshot
+    const ktIds = hopDongRaw.khachThueId || [];
+    const snapshots = hopDongRaw.snapshotKhachThue || [];
+    const allKt: any[] = [];
+    for (const ktId of ktIds) {
+      let found = await KhachThue.findById(ktId).select('hoTen soDienThoai').lean();
+      if (found) { allKt.push(found); continue; }
+      const ndUser = await mongoose.model('NguoiDung').findById(ktId).select('ten name soDienThoai phone').lean() as any;
+      if (ndUser) {
+        allKt.push({ _id: ndUser._id, hoTen: ndUser.ten || ndUser.name, soDienThoai: ndUser.soDienThoai || ndUser.phone });
+        continue;
+      }
+      // Fallback: snapshot
+      const snap = snapshots.find((s: any) => s.id === ktId.toString());
+      allKt.push({ _id: ktId, hoTen: snap?.hoTen || '(Không có thông tin)', soDienThoai: snap?.soDienThoai || '' });
+    }
+
+    // Populate nguoiDaiDien
+    let nguoiDaiDien = null;
+    if (hopDongRaw.nguoiDaiDien) {
+      nguoiDaiDien = await KhachThue.findById(hopDongRaw.nguoiDaiDien).select('hoTen soDienThoai').lean();
+      if (!nguoiDaiDien) {
+        const u = await mongoose.model('NguoiDung').findById(hopDongRaw.nguoiDaiDien).select('ten name soDienThoai phone').lean() as any;
+        if (u) {
+          nguoiDaiDien = { _id: u._id, hoTen: u.ten || u.name, soDienThoai: u.soDienThoai || u.phone };
+        } else {
+          const snap = snapshots.find((s: any) => s.id === hopDongRaw.nguoiDaiDien.toString());
+          nguoiDaiDien = { _id: hopDongRaw.nguoiDaiDien, hoTen: snap?.hoTen || '(Không có thông tin)', soDienThoai: snap?.soDienThoai || '' };
+        }
+      }
+    }
+
+    const hopDong = {
+      ...hopDongRaw,
+      khachThueId: allKt,
+      nguoiDaiDien: nguoiDaiDien
+    };
 
     return NextResponse.json({
       success: true,
@@ -117,6 +155,39 @@ export async function PUT(
       return NextResponse.json(
         { message: 'Hợp đồng không tồn tại' },
         { status: 404 }
+      );
+    }
+
+    // Không cho phép chỉnh sửa nội dung hợp đồng đã được duyệt (hoạt động)
+    // Ngoại trừ: Gia hạn (cập nhật ngayKetThuc) và Hủy hợp đồng (chuyển trangThai sang daHuy)
+    if (existingHopDong.trangThai === 'hoatDong') {
+      const allowedFields = Object.keys(validatedData);
+      const isGiaHan = allowedFields.length === 1 && allowedFields[0] === 'ngayKetThuc';
+      const isHuy = allowedFields.length === 1 && allowedFields[0] === 'trangThai' && validatedData.trangThai === 'daHuy';
+      
+      if (!isGiaHan && !isHuy) {
+        return NextResponse.json(
+          { message: 'Không thể chỉnh sửa hợp đồng đã được phê duyệt. Chỉ cho phép gia hạn hoặc hủy hợp đồng.' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Không cho phép chỉnh sửa hợp đồng đã hết hạn (trừ gia hạn) hoặc đã hủy
+    if (existingHopDong.trangThai === 'hetHan') {
+      const allowedFields = Object.keys(validatedData);
+      const isGiaHan = allowedFields.length === 1 && allowedFields[0] === 'ngayKetThuc';
+      if (!isGiaHan) {
+        return NextResponse.json(
+          { message: 'Không thể chỉnh sửa hợp đồng đã hết hạn. Chỉ cho phép gia hạn.' },
+          { status: 403 }
+        );
+      }
+    }
+    if (existingHopDong.trangThai === 'daHuy') {
+      return NextResponse.json(
+        { message: 'Không thể chỉnh sửa hợp đồng đã bị hủy.' },
+        { status: 403 }
       );
     }
 

@@ -91,6 +91,7 @@ export default function AccountManagementPage() {
   
   const [editUserData, setEditUserData] = useState({
     name: '',
+    email: '',
     phone: '',
     role: '',
     isActive: true
@@ -234,23 +235,9 @@ export default function AccountManagementPage() {
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    try {
-      const response = await fetch(`/api/admin/users/${userId}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        cache.clearCache();
-        toast.success('Tài khoản đã được xóa thành công khỏi hệ thống.');
-        fetchUsers(true);
-      } else {
-        const error = await response.json();
-        toast.error(error.message || 'Ồ, chưa xóa được tài khoản này rồi.');
-      }
-    } catch (error) {
-      toast.error('Có lỗi khi thực hiện xóa tài khoản.');
-    }
+  // Không cho phép xóa tài khoản để đảm bảo tính toàn vẹn dữ liệu
+  const handleDeleteUser = async () => {
+    toast.error('Không cho phép xóa tài khoản để đảm bảo tính toàn vẹn dữ liệu và lưu log ở các hợp đồng, hóa đơn. Vui lòng sử dụng chức năng "Khóa tài khoản".');
   };
 
   const handleToggleStatus = async (user: User) => {
@@ -287,6 +274,7 @@ export default function AccountManagementPage() {
     setSelectedUser(user);
     setEditUserData({
       name: getUserName(user),
+      email: user.email || '',
       phone: getUserPhone(user),
       role: getUserRole(user),
       isActive: getUserIsActive(user)
@@ -713,6 +701,17 @@ export default function AccountManagementPage() {
                 value={editUserData.name}
                 onChange={(e) => setEditUserData({ ...editUserData, name: e.target.value })}
                 placeholder="Nhập họ và tên"
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-email" className="text-xs md:text-sm">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editUserData.email}
+                onChange={(e) => setEditUserData({ ...editUserData, email: e.target.value })}
+                placeholder="Nhập email"
                 className="text-sm"
               />
             </div>

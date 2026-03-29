@@ -123,6 +123,13 @@ const getStatusBadge = (status: string) => {
           Quá hạn
         </Badge>
       )
+    case 'tuChoi':
+      return (
+        <Badge variant="destructive" className="gap-1 bg-red-600">
+          <AlertCircle className="h-3 w-3" />
+          Từ chối
+        </Badge>
+      )
     default:
       return <Badge variant="outline">{status}</Badge>
   }
@@ -228,7 +235,8 @@ const createColumns = (props: HoaDonTableProps & { setHoaDonToDelete: (h: HoaDon
     accessorKey: "hanThanhToan",
     header: "Hạn thanh toán",
     cell: ({ row }) => {
-      const isLate = isOverdue(row.original.hanThanhToan)
+      const isPaid = row.original.trangThai === 'daThanhToan'
+      const isLate = !isPaid && isOverdue(row.original.hanThanhToan)
       return (
         <div className="text-sm">
           <div className={isLate ? 'text-orange-600 font-medium' : ''}>
@@ -467,6 +475,7 @@ export function HoaDonDataTable(props: HoaDonDataTableProps) {
               <SelectItem value="daThanhToanMotPhan">Một phần</SelectItem>
               <SelectItem value="daThanhToan">Đã thanh toán</SelectItem>
               <SelectItem value="quaHan">Quá hạn</SelectItem>
+              <SelectItem value="tuChoi">Từ chối</SelectItem>
             </SelectContent>
           </Select>
           <Select value={monthFilter} onValueChange={onMonthChange}>

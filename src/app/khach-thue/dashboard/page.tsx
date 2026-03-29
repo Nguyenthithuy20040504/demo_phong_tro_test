@@ -119,8 +119,16 @@ export default function KhachThueDashboardPage() {
   const currentHopDong = hopDongList[selectedRoomIndex] || hopDongList[0];
   const hasMultipleRooms = hopDongList.length > 1;
 
-  // Tìm hợp đồng chờ duyệt
-  const pendingContracts = hopDongList.filter((hd: any) => hd.trangThai === 'choDuyet');
+  // Tìm hợp đồng chờ duyệt - chỉ hiển thị cho NGƯỜI ĐẠI DIỆN
+  const currentUserId = session?.user?.id;
+  const pendingContracts = hopDongList.filter((hd: any) => {
+    if (hd.trangThai !== 'choDuyet') return false;
+    // Chỉ người đại diện mới thấy nút duyệt
+    const daiDienId = typeof hd.nguoiDaiDien === 'object' 
+      ? hd.nguoiDaiDien?._id 
+      : hd.nguoiDaiDien;
+    return daiDienId === currentUserId;
+  });
 
   const handleApproval = async (hopDongId: string, action: 'duyet' | 'tuChoi') => {
     setApproving(true);

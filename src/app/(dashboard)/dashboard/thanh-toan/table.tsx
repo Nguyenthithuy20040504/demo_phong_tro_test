@@ -20,6 +20,7 @@ import {
   Search,
   Users,
   Home,
+  X,
 } from "lucide-react"
 import {
   ColumnDef,
@@ -464,7 +465,7 @@ export function ThanhToanDataTable(props: ThanhToanDataTableProps) {
                 <SelectItem value="month">Tháng này</SelectItem>
               </SelectContent>
             </Select>
-            <div className="flex items-center gap-2 border rounded-md px-2 h-10 bg-background min-w-[320px]">
+            <div className="flex items-center gap-2 border rounded-md px-2 h-10 bg-background min-w-[320px] relative group">
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="text-[10px] text-muted-foreground font-black uppercase shrink-0">Từ</span>
                 <Input 
@@ -484,6 +485,18 @@ export function ThanhToanDataTable(props: ThanhToanDataTableProps) {
                   className="h-7 text-xs border-none p-0 focus-visible:ring-0 w-28 shrink-0" 
                 />
               </div>
+              {(startDate || endDate) && (
+                <button
+                  onClick={() => {
+                    onStartDateChange?.('');
+                    onEndDateChange?.('');
+                  }}
+                  className="absolute -right-2 -top-2 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity border border-gray-200"
+                  title="Xóa lọc ngày"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
             </div>
           </div>
 
