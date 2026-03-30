@@ -31,16 +31,7 @@ function LoginFormContent() {
   const selectedPlan = searchParams.get('plan');
   const { data: session, status } = useSession();
 
-  useEffect(() => {
-    if (status === 'authenticated' && session?.user) {
-      const role = session.user.role;
-      if (role === 'khachThue') {
-        router.push('/khach-thue/dashboard');
-      } else {
-        router.push('/dashboard');
-      }
-    }
-  }, [status, session, router]);
+  // Không tự động redirect khi có session cũ — user phải đăng nhập lại
 
   const {
     register,
