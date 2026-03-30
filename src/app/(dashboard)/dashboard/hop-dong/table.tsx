@@ -297,15 +297,18 @@ const createColumns = (props: HopDongTableProps & { setHopDongToDelete: (h: HopD
                 <Calendar className="mr-2 h-4 w-4" />
                 Gia hạn
               </DropdownMenuItem>
-              {row.original.trangThai === 'hoatDong' && (
-                <DropdownMenuItem onClick={(e) => {
-                  e.stopPropagation();
-                  props.onHuy(row.original);
-                }}>
-                  <FileText className="mr-2 h-4 w-4" />
-                  Hủy hợp đồng
-                </DropdownMenuItem>
-              )}
+            </>
+          )}
+          {(row.original.trangThai === 'hoatDong' || row.original.trangThai === 'choDuyet') && (
+            <>
+              {row.original.trangThai === 'choDuyet' && <DropdownMenuSeparator />}
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation();
+                props.onHuy(row.original);
+              }}>
+                <FileText className="mr-2 h-4 w-4" />
+                Hủy hợp đồng
+              </DropdownMenuItem>
             </>
           )}
           <DropdownMenuSeparator />

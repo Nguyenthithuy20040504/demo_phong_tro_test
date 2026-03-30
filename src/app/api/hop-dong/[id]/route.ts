@@ -158,6 +158,14 @@ export async function PUT(
       );
     }
 
+    // Cho phép hủy hợp đồng chờ duyệt (chủ trọ thu hồi)
+    if (existingHopDong.trangThai === 'choDuyet') {
+      const allowedFields = Object.keys(validatedData);
+      const isHuy = allowedFields.length === 1 && allowedFields[0] === 'trangThai' && validatedData.trangThai === 'daHuy';
+      // Cho phép chỉnh sửa toàn bộ hoặc hủy khi đang chờ duyệt
+      // (không cần restrict vì HĐ chưa được duyệt)
+    }
+
     // Không cho phép chỉnh sửa nội dung hợp đồng đã được duyệt (hoạt động)
     // Ngoại trừ: Gia hạn (cập nhật ngayKetThuc) và Hủy hợp đồng (chuyển trangThai sang daHuy)
     if (existingHopDong.trangThai === 'hoatDong') {
@@ -281,10 +289,40 @@ export async function PUT(
       await updateAllKhachThueStatus(existingHopDong.khachThueId.map((id: any) => id.toString()));
     }
 
+    // Gửi thông báo hủy hợp đồng cho khách thuê (HĐ11)
+    if (validatedData.trangThai === 'daHuy') {
+      try {
+        const ThongBao = (await import('@/models/ThongBao')).default;
+        const phongInfo = await Phong.findById(hopDong.phong._id).select('maPhong');
+        const tenPhong = phongInfo?.maPhong || 'N/A';
+
+        // Gửi cho tất cả khách thuê trong hợp đồng
+        const nguoiNhanIds = existingHopDong.khachThueId
+          .map((ktId: any) => new mongoose.Types.ObjectId(ktId.toString()));
+
+        if (nguoiNhanIds.length > 0) {
+          await ThongBao.create({
+            tieuDe: `Hợp đồng đã bị hủy - Phòng ${tenPhong}`,
+            noiDung: `Hợp đồng thuê phòng ${tenPhong} (Mã: ${existingHopDong.maHopDong}) đã bị chủ trọ hủy. Vui lòng liên hệ chủ trọ để biết thêm chi tiết về tiền cọc và các nghĩa vụ còn lại.`,
+            loai: 'hopDong',
+            nguoiGui: new mongoose.Types.ObjectId(session.user.id),
+            nguoiNhan: nguoiNhanIds,
+            phong: [hopDong.phong._id],
+            ngayGui: new Date(),
+          });
+        }
+      } catch (notifError) {
+        console.error('Error sending cancellation notification:', notifError);
+        // Không fail request nếu gửi thông báo lỗi
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: hopDong,
-      message: 'Hợp đồng đã được cập nhật thành công',
+      message: validatedData.trangThai === 'daHuy' 
+        ? 'Hợp đồng đã được hủy thành công' 
+        : 'Hợp đồng đã được cập nhật thành công',
     });
 
   } catch (error) {

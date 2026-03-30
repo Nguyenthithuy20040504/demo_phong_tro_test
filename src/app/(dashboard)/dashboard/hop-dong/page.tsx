@@ -1346,15 +1346,66 @@ export default function HopDongPage() {
 
       {/* Cancellation Dialog */}
       <Dialog open={!!cancellingHopDong} onOpenChange={(open) => !open && setCancellingHopDong(null)}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="text-destructive font-bold">Xác nhận hủy hợp đồng</DialogTitle>
             <DialogDescription>
               Bạn có chắc chắn muốn hủy hợp đồng <strong>{cancellingHopDong?.maHopDong}</strong>?<br/>
-              Hành động này sẽ giải phóng phòng và chuyển trạng thái khách thuê thành "Đã trả phòng".
+              Hành động này sẽ giải phóng phòng và chuyển trạng thái khách thuê thành &quot;Đã trả phòng&quot;.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="mt-4">
+
+          {/* Thông tin chi tiết hợp đồng */}
+          {cancellingHopDong && (
+            <div className="space-y-3 rounded-lg border bg-muted/50 p-4 text-sm">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Phòng</p>
+                  <p className="font-medium">{getPhongName(cancellingHopDong.phong)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Khách thuê</p>
+                  <p className="font-medium">
+                    {cancellingHopDong.khachThueId?.length > 0
+                      ? getKhachThueName(cancellingHopDong.khachThueId[0])
+                      : 'Không xác định'}
+                    {cancellingHopDong.khachThueId?.length > 1 && (
+                      <span className="text-muted-foreground"> (+{cancellingHopDong.khachThueId.length - 1})</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Thời hạn hợp đồng</p>
+                  <p className="font-medium">
+                    {new Date(cancellingHopDong.ngayBatDau).toLocaleDateString('vi-VN')} → {new Date(cancellingHopDong.ngayKetThuc).toLocaleDateString('vi-VN')}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Giá thuê</p>
+                  <p className="font-medium">{formatCurrency(cancellingHopDong.giaThue)}/tháng</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Tiền cọc</p>
+                  <p className="font-semibold text-orange-600">{formatCurrency(cancellingHopDong.tienCoc)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Trạng thái</p>
+                  <p className="font-medium">{cancellingHopDong.trangThai === 'hoatDong' ? 'Đang hoạt động' : cancellingHopDong.trangThai === 'choDuyet' ? 'Chờ duyệt' : cancellingHopDong.trangThai}</p>
+                </div>
+              </div>
+              <div className="pt-2 border-t">
+                <p className="text-xs text-muted-foreground italic">
+                  💡 Lưu ý: Tiền cọc {formatCurrency(cancellingHopDong.tienCoc)} cần được xử lý theo điều khoản chấm dứt hợp đồng. Thông báo hủy sẽ được gửi tự động đến khách thuê.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="mt-2">
             <Button variant="outline" onClick={() => setCancellingHopDong(null)}>Quay lại</Button>
             <Button 
               variant="destructive"

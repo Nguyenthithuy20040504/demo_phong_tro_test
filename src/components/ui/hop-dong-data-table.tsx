@@ -292,8 +292,9 @@ export function HopDongDataTable({
                 <Edit className="mr-2 h-4 w-4" />
                 Chỉnh sửa
               </DropdownMenuItem>
-              {hopDong.trangThai === 'hoatDong' && (
+              {(hopDong.trangThai === 'hoatDong' || hopDong.trangThai === 'choDuyet') && (
                 <>
+                  {hopDong.trangThai === 'hoatDong' && (
                   <DropdownMenuItem 
                     onClick={() => onGiaHan(hopDong)}
                     disabled={actionLoading === `giahan-${hopDong._id}`}
@@ -310,6 +311,7 @@ export function HopDongDataTable({
                       </>
                     )}
                   </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem 
                     onClick={() => onHuy(hopDong)}
                     className="text-orange-600"
