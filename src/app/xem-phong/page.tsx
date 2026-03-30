@@ -348,8 +348,8 @@ function XemPhongContent() {
                             <div
                               key={index}
                               className={`aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${index === selectedImageIndex
-                                  ? 'border-blue-500 ring-2 ring-blue-200'
-                                  : 'border-gray-200 hover:border-gray-300'
+                                ? 'border-blue-500 ring-2 ring-blue-200'
+                                : 'border-gray-200 hover:border-gray-300'
                                 }`}
                               onClick={() => setSelectedImageIndex(index)}
                             >
@@ -640,8 +640,8 @@ function XemPhongContent() {
                           key={amenity}
                           variant={selectedAmenities.includes(amenity) ? 'default' : 'outline'}
                           className={`cursor-pointer h-10 px-5 rounded-xl text-sm font-medium transition-all duration-300 border shadow-sm flex items-center gap-2 ${selectedAmenities.includes(amenity)
-                              ? 'bg-[#14B8A6] text-white border-[#14B8A6] scale-105'
-                              : 'bg-white/50 text-gray-500 border-gray-100 hover:border-[#14B8A6] hover:text-[#14B8A6] hover:bg-[#F0FDFA]'
+                            ? 'bg-[#14B8A6] text-white border-[#14B8A6] scale-105'
+                            : 'bg-white/50 text-gray-500 border-gray-100 hover:border-[#14B8A6] hover:text-[#14B8A6] hover:bg-[#F0FDFA]'
                             }`}
                           onClick={() => {
                             setSelectedAmenities(prev =>
