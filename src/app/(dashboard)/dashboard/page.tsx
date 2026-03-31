@@ -3,13 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import Link from 'next/link';
 import {
   Building2,
   TrendingUp,
@@ -19,11 +13,10 @@ import {
   AlertCircle,
   Wrench,
   DollarSign,
-  Users,
   Home,
-  Filter,
   MessageSquare,
   Lightbulb,
+  ChevronDown,
 } from 'lucide-react';
 import { DashboardStats, ToaNha } from '@/types';
 import { toast } from 'sonner';
@@ -40,116 +33,84 @@ import {
   Pie,
   Cell,
 } from 'recharts';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
-// ===== Donut Tooltip =====
+// ─── Donut Tooltip ────────────────────────────────────────────────────────────
 function DonutTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null;
   const { name, value } = payload[0];
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-sm">
-      <span className="font-semibold text-gray-800">{name} : {value}</span>
+      <span className="font-semibold text-gray-800">{name}: {value}</span>
     </div>
   );
 }
 
-// ===== Custom label on pie segments =====
-function renderDonutLabel({ cx, cy, midAngle, innerRadius, outerRadius, name, percent }: any) {
-  const RADIAN = Math.PI / 180;
-  const radius = outerRadius + 22;
-  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-  const pct = Math.round(percent * 100);
-  if (pct === 0) return null;
-
-  return (
-    <text
-      x={x}
-      y={y}
-      fill="#6b7280"
-      fontSize={11}
-      fontWeight={500}
-      textAnchor={x > cx ? 'start' : 'end'}
-      dominantBaseline="central"
-    >
-      {name.length > 6 ? name.slice(0, 6) + '…' : name}: {pct}%
-    </text>
-  );
-}
-
-// ===== Donut Chart Component =====
+// ─── Donut Chart ──────────────────────────────────────────────────────────────
 function RoomStatusDonut({ stats }: { stats: DashboardStats }) {
   const total = stats.tongSoPhong || 1;
   const data = [
-    { name: 'Đang thuê', shortLabel: 'Thuê', value: stats.phongDangThue, color: '#34D399' },
-    { name: 'Đang trống', shortLabel: 'Trống', value: stats.phongTrong, color: '#9CA3AF' },
-    { name: 'Đang bảo trì', shortLabel: 'Bảo trì', value: stats.phongBaoTri, color: '#FB923C' },
+    { name: 'Đang thuê', value: stats.phongDangThue, color: '#10B981' },
+    { name: 'Đang trống', value: stats.phongTrong, color: '#D1D5DB' },
+    { name: 'Đang bảo trì', value: stats.phongBaoTri, color: '#FB923C' },
   ];
 
   return (
     <div className="flex flex-col items-center h-full select-none">
-      {/* Donut Chart */}
-      <div className="relative w-full h-[250px]">
+      <div className="relative w-full h-[220px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={data}
               cx="50%"
               cy="50%"
-              innerRadius={52}
-              outerRadius={80}
+              innerRadius={55}
+              outerRadius={82}
               paddingAngle={2}
               dataKey="value"
               startAngle={90}
               endAngle={-270}
               stroke="none"
-              isAnimationActive={true}
-              animationDuration={600}
-              label={({ cx, cy, midAngle, outerRadius: or, percent, shortLabel, color }: any) => {
+              isAnimationActive
+              animationDuration={700}
+              label={({ cx, cy, midAngle, outerRadius: or, percent, name, color }: any) => {
                 const pct = Math.round(percent * 100);
                 if (pct === 0) return null;
                 const RADIAN = Math.PI / 180;
-                // Line start point (on pie edge)
                 const sx = cx + or * Math.cos(-midAngle * RADIAN);
                 const sy = cy + or * Math.sin(-midAngle * RADIAN);
-                // Line end / label position
                 const labelR = or + 24;
                 const ex = cx + labelR * Math.cos(-midAngle * RADIAN);
                 const ey = cy + labelR * Math.sin(-midAngle * RADIAN);
-                // Horizontal tail
                 const isRight = ex > cx;
-                const tailX = isRight ? ex + 14 : ex - 14;
+                const tailX = isRight ? ex + 10 : ex - 10;
                 return (
                   <g>
-                    {/* Connector line */}
-                    <path
-                      d={`M${sx},${sy} L${ex},${ey} L${tailX},${ey}`}
-                      stroke={color}
-                      strokeWidth={1.5}
-                      fill="none"
-                    />
-                    {/* Label text */}
+                    <path d={`M${sx},${sy} L${ex},${ey} L${tailX},${ey}`} stroke={color} strokeWidth={1.5} fill="none" />
                     <text
                       x={tailX + (isRight ? 4 : -4)}
                       y={ey}
                       fill={color}
-                      fontSize={12}
+                      fontSize={11}
                       fontWeight={600}
                       textAnchor={isRight ? 'start' : 'end'}
                       dominantBaseline="central"
                     >
-                      {shortLabel}: {pct}%
+                      {name.split(' ').slice(-1)[0]}: {pct}%
                     </text>
                   </g>
                 );
               }}
               labelLine={false}
             >
-              {data.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={entry.color}
-                  className="cursor-pointer"
-                />
+              {data.map((entry, i) => (
+                <Cell key={i} fill={entry.color} />
               ))}
             </Pie>
             <Tooltip content={<DonutTooltip />} />
@@ -158,14 +119,14 @@ function RoomStatusDonut({ stats }: { stats: DashboardStats }) {
       </div>
 
       {/* Legend */}
-      <div className="space-y-2.5 w-full mt-2">
+      <div className="space-y-2 w-full mt-1">
         {data.map((item) => {
           const pct = total > 0 ? Math.round((item.value / total) * 100) : 0;
           return (
             <div key={item.name} className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                <span className="text-sm text-gray-700">{item.name}</span>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                <span className="text-sm text-gray-600">{item.name}</span>
               </div>
               <span className="text-sm font-bold text-gray-800">{pct}%</span>
             </div>
@@ -176,8 +137,8 @@ function RoomStatusDonut({ stats }: { stats: DashboardStats }) {
   );
 }
 
-// ===== Revenue Tooltip =====
-function CustomBarTooltip({ active, payload, label }: any) {
+// ─── Bar Chart Tooltip ────────────────────────────────────────────────────────
+function BarTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-3 text-xs">
@@ -195,27 +156,34 @@ function CustomBarTooltip({ active, payload, label }: any) {
   );
 }
 
-// ===== Format Y axis =====
 function formatYAxis(value: number) {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}tr`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
-  return `${value} ₫`;
+  return `${value}`;
 }
 
+// ─── Period options ───────────────────────────────────────────────────────────
+const PERIOD_OPTIONS = [
+  { value: '3_months', label: '3 tháng gần nhất' },
+  { value: '6_months', label: '6 tháng gần nhất' },
+  { value: '12_months', label: '12 tháng gần nhất' },
+  { value: 'from_year_start', label: 'Từ đầu năm' },
+];
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [toaNhaList, setToaNhaList] = useState<ToaNha[]>([]);
+  const [selectedToaNha, setSelectedToaNha] = useState<string>('all');
+  const [timeRange, setTimeRange] = useState<string>('6_months');
 
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
 
-  // Filters
-  const [selectedToaNha, setSelectedToaNha] = useState<string>('all');
-  const [timeRange, setTimeRange] = useState<string>('6_months');
-
-  const currentMonth = new Date().getMonth() + 1;
-  const currentYear = new Date().getFullYear();
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
@@ -223,9 +191,8 @@ export default function DashboardPage() {
       const params = new URLSearchParams();
       if (selectedToaNha !== 'all') params.append('toaNhaId', selectedToaNha);
 
-      const now = new Date();
       let start = '';
-      let end = now.toISOString().split('T')[0];
+      const end = now.toISOString().split('T')[0];
 
       if (timeRange === '3_months') {
         start = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString().split('T')[0];
@@ -238,106 +205,84 @@ export default function DashboardPage() {
       }
 
       if (start) params.append('startDate', start);
-      if (end) params.append('endDate', end);
+      params.append('endDate', end);
 
-      const response = await fetch(`/api/dashboard/stats?${params.toString()}`);
-      if (response.ok) {
-        const result = await response.json();
+      const res = await fetch(`/api/dashboard/stats?${params.toString()}`);
+      if (res.ok) {
+        const result = await res.json();
         if (result.success) setStats(result.data);
       }
-    } catch (error) {
-      console.error('Error:', error);
+    } catch {
       toast.error('Lỗi khi tải dữ liệu dashboard');
     } finally {
       setLoading(false);
     }
   }, [selectedToaNha, timeRange]);
 
-  const fetchToaNha = async () => {
-    try {
-      const response = await fetch('/api/toa-nha?limit=100');
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) setToaNhaList(result.data);
-      }
-    } catch (error) {
-      console.error('Error fetching buildings:', error);
-    }
-  };
-
   useEffect(() => {
     document.title = 'Dashboard | SmartStay';
-    fetchToaNha();
+    fetch('/api/toa-nha?limit=100')
+      .then((r) => r.json())
+      .then((r) => { if (r.success) setToaNhaList(r.data); })
+      .catch(() => {});
 
-    // Check for plan selection from registration
+    // Handle plan selection from registration
     const planKey = searchParams.get('plan');
     if (planKey && ['basic', 'professional'].includes(planKey) && status === 'authenticated') {
-      const handleSelectedPlan = async () => {
+      const handlePlan = async () => {
         try {
           const currentPlan = (session?.user as any)?.goiDichVu;
           const ngayHetHan = (session?.user as any)?.ngayHetHan;
           const isExpired = ngayHetHan ? new Date(ngayHetHan) < new Date() : true;
-
-          if (
-            (currentPlan === 'professional' && !isExpired) ||
-            (currentPlan === planKey && !isExpired)
-          ) {
-            toast.success('Chào mừng quay lại! Bạn đang sử dụng ' +
-              (currentPlan === 'professional' ? 'Gói Chuyên Nghiệp' : 'Gói Cơ Bản') + '.');
+          if ((currentPlan === 'professional' && !isExpired) || (currentPlan === planKey && !isExpired)) {
+            toast.success('Chào mừng quay lại! Bạn đang sử dụng ' + (currentPlan === 'professional' ? 'Gói Chuyên Nghiệp' : 'Gói Cơ Bản') + '.');
             return;
           }
-
           const resPlans = await fetch('/api/admin/saas/plans');
           if (!resPlans.ok) return;
           const allPlans = await resPlans.json();
-
           const targetPlan = allPlans.find((p: any) =>
             (planKey === 'basic' && (p.ten.toLowerCase().includes('cơ bản') || p.ten.toLowerCase().includes('basic'))) ||
             (planKey === 'professional' && (p.ten.toLowerCase().includes('chuyên nghiệp') || p.ten.toLowerCase().includes('professional')))
           );
-
           if (targetPlan) {
-            toast.loading('Đang khởi tạo thanh toán cho ' + targetPlan.ten + '...');
             const resPayment = await fetch('/api/user/subscription/payos/create', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ planId: targetPlan._id })
+              body: JSON.stringify({ planId: targetPlan._id }),
             });
-
             if (resPayment.ok) {
               const data = await resPayment.json();
-              if (data.checkoutUrl) {
-                window.location.href = data.checkoutUrl;
-              }
+              if (data.checkoutUrl) window.location.href = data.checkoutUrl;
             } else {
               toast.error('Không thể tạo liên kết thanh toán. Vui lòng thử lại sau.');
             }
           }
-        } catch (error) {
-          console.error('Error handling selected plan:', error);
-        }
+        } catch { }
       };
-      handleSelectedPlan();
+      handlePlan();
     }
-  }, [searchParams]);
+  }, [searchParams, status]);
 
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+  useEffect(() => { fetchStats(); }, [fetchStats]);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN').format(amount) + ' ₫';
-  };
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('vi-VN').format(amount) + ' ₫';
 
-  // Building name for display
   const buildingLabel = useMemo(() => {
     if (selectedToaNha === 'all') return 'Tất cả tòa nhà';
-    return toaNhaList.find(t => t._id === selectedToaNha)?.tenToaNha || '';
+    return toaNhaList.find((t) => t._id === selectedToaNha)?.tenToaNha || '';
   }, [selectedToaNha, toaNhaList]);
 
-  const monthNames = ['', 'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+  const periodLabel = useMemo(() => {
+    return PERIOD_OPTIONS.find((p) => p.value === timeRange)?.label ?? '6 tháng gần nhất';
+  }, [timeRange]);
 
-  // ===== LOADING STATE =====
+  const occupancyRate = stats
+    ? (stats.tongSoPhong > 0 ? Math.round((stats.phongDangThue / stats.tongSoPhong) * 100) : 0)
+    : 0;
+
+  // ─── Loading ─────────────────────────────────────────────────────────────────
   if (loading && !stats) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -350,71 +295,87 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6 pb-12 w-full">
-      {/* ===== HEADER ===== */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-          Dashboard tổng quan
-        </h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          {monthNames[currentMonth]}, {currentYear}
-        </p>
-      </div>
+    <div className="space-y-5 pb-10">
+      {/* ── Sub-header: title + selectors ───────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+            Dashboard tổng quan
+          </h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Tháng {currentMonth}, {currentYear} • {buildingLabel}
+          </p>
+        </div>
 
-      {/* ===== FILTERS BAR ===== */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-teal-100 shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
-            <Filter className="h-4 w-4 text-gray-400" />
-            <span>Bộ lọc:</span>
-          </div>
-
-          <Select value={selectedToaNha} onValueChange={setSelectedToaNha}>
-            <SelectTrigger className="w-[200px] h-9 rounded-lg border-gray-200 text-sm">
-              <Building2 className="mr-2 h-4 w-4 text-gray-400" />
-              <SelectValue placeholder="Tất cả tòa nhà" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả tòa nhà</SelectItem>
+        {/* Selectors */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Building selector */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 h-9 px-3.5 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:border-teal-300 hover:text-teal-700 transition-colors shadow-sm">
+                <Building2 className="h-4 w-4 text-gray-400" />
+                <span className="max-w-[160px] truncate">{buildingLabel}</span>
+                <ChevronDown className="h-3.5 w-3.5 text-gray-400 ml-1" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52 rounded-xl shadow-xl border border-gray-100 bg-white p-1">
+              <DropdownMenuItem
+                onClick={() => setSelectedToaNha('all')}
+                className={cn('px-3 py-2 rounded-lg text-sm cursor-pointer', selectedToaNha === 'all' ? 'bg-teal-50 text-teal-700 font-semibold' : '')}
+              >
+                Tất cả tòa nhà
+              </DropdownMenuItem>
               {toaNhaList.map((t) => (
-                <SelectItem key={t._id} value={t._id!}>{t.tenToaNha}</SelectItem>
+                <DropdownMenuItem
+                  key={t._id}
+                  onClick={() => setSelectedToaNha(t._id!)}
+                  className={cn('px-3 py-2 rounded-lg text-sm cursor-pointer', selectedToaNha === t._id ? 'bg-teal-50 text-teal-700 font-semibold' : '')}
+                >
+                  {t.tenToaNha}
+                </DropdownMenuItem>
               ))}
-            </SelectContent>
-          </Select>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-[180px] h-9 rounded-lg border-gray-200 text-sm">
-              <CalendarIcon className="mr-2 h-4 w-4 text-gray-400" />
-              <SelectValue placeholder="6 tháng gần nhất" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="3_months">3 tháng gần nhất</SelectItem>
-              <SelectItem value="6_months">6 tháng gần nhất</SelectItem>
-              <SelectItem value="12_months">12 tháng gần nhất</SelectItem>
-              <SelectItem value="from_year_start">Từ đầu năm</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Period selector */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 h-9 px-3.5 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:border-teal-300 hover:text-teal-700 transition-colors shadow-sm">
+                <CalendarIcon className="h-4 w-4 text-gray-400" />
+                <span>{periodLabel}</span>
+                <ChevronDown className="h-3.5 w-3.5 text-gray-400 ml-1" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl border border-gray-100 bg-white p-1">
+              {PERIOD_OPTIONS.map((opt) => (
+                <DropdownMenuItem
+                  key={opt.value}
+                  onClick={() => setTimeRange(opt.value)}
+                  className={cn('px-3 py-2 rounded-lg text-sm cursor-pointer', timeRange === opt.value ? 'bg-teal-50 text-teal-700 font-semibold' : '')}
+                >
+                  {opt.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
+          {/* Refresh */}
           <button
             onClick={fetchStats}
             disabled={loading}
-            className="h-9 w-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="h-9 w-9 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:border-teal-300 hover:text-teal-600 transition-colors shadow-sm disabled:opacity-50"
           >
-            <RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCcw className={cn('h-4 w-4', loading && 'animate-spin')} />
           </button>
         </div>
-
-        <p className="text-sm text-gray-500">
-          Đang xem: <span className="font-semibold text-gray-800">{buildingLabel}</span>
-        </p>
       </div>
 
       {stats && (
         <>
-          {/* ===== 4 SUMMARY CARDS ===== */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {/* Card 1: Tổng doanh thu */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 relative overflow-hidden group hover:shadow-md transition-shadow">
+          {/* ── 4 KPI Cards ────────────────────────────────────────────────── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Card 1: Doanh thu */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 relative overflow-hidden hover:shadow-md transition-shadow">
               <div className="absolute left-0 top-3 bottom-3 w-1 rounded-r-full bg-teal-500" />
               <div className="pl-4">
                 <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
@@ -444,8 +405,8 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Card 2: Tổng nợ chưa thu */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 relative overflow-hidden group hover:shadow-md transition-shadow">
+            {/* Card 2: Nợ chưa thu */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 relative overflow-hidden hover:shadow-md transition-shadow">
               <div className="absolute left-0 top-3 bottom-3 w-1 rounded-r-full bg-red-500" />
               <div className="pl-4">
                 <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
@@ -463,7 +424,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Card 3: Tỉ lệ lấp đầy */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 relative overflow-hidden group hover:shadow-md transition-shadow">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 relative overflow-hidden hover:shadow-md transition-shadow">
               <div className="absolute left-0 top-3 bottom-3 w-1 rounded-r-full bg-blue-500" />
               <div className="pl-4">
                 <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
@@ -471,17 +432,17 @@ export default function DashboardPage() {
                   <span>Tỉ lệ lấp đầy</span>
                 </div>
                 <p className="text-2xl font-bold text-gray-900 mb-2">
-                  {stats.tongSoPhong > 0 ? Math.round((stats.phongDangThue / stats.tongSoPhong) * 100) : 0}%
+                  {occupancyRate}%
                 </p>
                 <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <Users className="h-3.5 w-3.5" />
+                  <Home className="h-3.5 w-3.5" />
                   <span className="font-medium">{stats.phongDangThue}/{stats.tongSoPhong} phòng</span>
                 </div>
               </div>
             </div>
 
-            {/* Card 4: Sự cố chờ xử lý */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 relative overflow-hidden group hover:shadow-md transition-shadow">
+            {/* Card 4: Sự cố */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 relative overflow-hidden hover:shadow-md transition-shadow">
               <div className="absolute left-0 top-3 bottom-3 w-1 rounded-r-full bg-orange-500" />
               <div className="pl-4">
                 <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
@@ -499,26 +460,30 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* ===== CHARTS SECTION ===== */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            {/* Bar Chart - Revenue vs Debt (2/3 width) */}
+          {/* ── Charts ─────────────────────────────────────────────────────── */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Bar chart (2/3) */}
             <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <div className="mb-6">
-                <h2 className="text-lg font-bold text-gray-900">Doanh thu & Công nợ 6 tháng gần nhất</h2>
-                <p className="text-sm text-gray-500">Biểu đồ so sánh tiền đã thu và tiền khách còn nợ</p>
+              <div className="mb-5">
+                <h2 className="text-base font-bold text-gray-900">
+                  Doanh thu &amp; Công nợ {periodLabel.toLowerCase()}
+                </h2>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Biểu đồ so sánh tiền đã thu và tiền khách còn nợ
+                </p>
               </div>
-              <div className="h-[300px]">
+              <div className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={stats.doanhThuVaCongNo6Thang || []}
-                    margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
-                    barGap={4}
+                    margin={{ top: 4, right: 8, left: 4, bottom: 4 }}
                     barCategoryGap="25%"
+                    barGap={4}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
                     <XAxis
                       dataKey="label"
-                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      tick={{ fontSize: 12, fill: '#9ca3af' }}
                       axisLine={{ stroke: '#e5e7eb' }}
                       tickLine={false}
                     />
@@ -527,89 +492,70 @@ export default function DashboardPage() {
                       tick={{ fontSize: 11, fill: '#9ca3af' }}
                       axisLine={false}
                       tickLine={false}
-                      width={60}
+                      width={55}
                     />
-                    <Tooltip content={<CustomBarTooltip />} />
-                    <Legend
-                      iconType="square"
-                      iconSize={10}
-                      wrapperStyle={{ paddingTop: 16, fontSize: 13 }}
-                    />
-                    <Bar
-                      dataKey="daThu"
-                      name="Tiền đã thu"
-                      fill="#34D399"
-                      radius={[4, 4, 0, 0]}
-                      maxBarSize={40}
-                    />
-                    <Bar
-                      dataKey="conNo"
-                      name="Tiền còn nợ"
-                      fill="#f97316"
-                      radius={[4, 4, 0, 0]}
-                      maxBarSize={40}
-                    />
+                    <Tooltip content={<BarTooltip />} />
+                    <Legend iconType="square" iconSize={10} wrapperStyle={{ paddingTop: 14, fontSize: 13 }} />
+                    <Bar dataKey="daThu" name="Tiền đã thu" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                    <Bar dataKey="conNo" name="Tiền còn nợ" fill="#FB923C" radius={[4, 4, 0, 0]} maxBarSize={40} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
-            {/* Donut Chart - Room Status (1/3 width) */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 pb-8">
+            {/* Donut chart (1/3) */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
               <div className="mb-4">
-                <h2 className="text-lg font-bold text-gray-900">Trạng thái phòng</h2>
-                <p className="text-sm text-gray-500">Tỉ trọng phòng theo trạng thái</p>
+                <h2 className="text-base font-bold text-gray-900">Trạng thái phòng</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Tỉ trọng phòng theo trạng thái</p>
               </div>
               <RoomStatusDonut stats={stats} />
             </div>
           </div>
 
-          {/* ===== TABLES SECTION ===== */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* ── Tables ─────────────────────────────────────────────────────── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Hóa đơn quá hạn */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-gray-50">
-                <div className="flex items-center gap-2.5">
+              <div className="px-5 py-4 border-b border-gray-50">
+                <div className="flex items-center gap-2">
                   <AlertCircle className="h-5 w-5 text-red-500" />
-                  <h2 className="text-base font-bold text-red-600">Hóa đơn quá hạn</h2>
+                  <h2 className="text-sm font-bold text-red-600">Hóa đơn quá hạn</h2>
                 </div>
-                <p className="text-sm text-gray-500 mt-0.5 ml-[30px]">Top 5 khách nợ tiền lâu nhất</p>
+                <p className="text-xs text-gray-400 mt-0.5 ml-7">Top 5 khách nợ tiền lâu nhất</p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="text-left py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Khách hàng</th>
-                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Phòng</th>
-                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Số tiền</th>
-                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Quá hạn</th>
-                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Hành động</th>
+                    <tr className="border-b border-gray-50">
+                      <th className="text-left py-3 px-5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Khách hàng</th>
+                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Phòng</th>
+                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Số tiền</th>
+                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Quá hạn</th>
+                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(stats.hoaDonQuaHanList && stats.hoaDonQuaHanList.length > 0) ? (
+                    {stats.hoaDonQuaHanList?.length ? (
                       stats.hoaDonQuaHanList.map((item) => (
-                        <tr key={item._id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                          <td className="py-3.5 px-5 font-medium text-gray-800">{item.tenKhach}</td>
-                          <td className="py-3.5 px-3">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-gray-100 text-xs font-semibold text-gray-700">
+                        <tr key={item._id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                          <td className="py-3 px-5 font-medium text-gray-800">{item.tenKhach}</td>
+                          <td className="py-3 px-3">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-xs font-semibold text-gray-600">
                               {item.maPhong}
                             </span>
                           </td>
-                          <td className="py-3.5 px-3 font-semibold text-red-600">{formatCurrency(item.soTien)}</td>
-                          <td className="py-3.5 px-3 text-red-500 font-medium">{item.soNgayQuaHan} ngày</td>
-                          <td className="py-3.5 px-3">
-                            <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-all">
-                              <MessageSquare className="h-3 w-3" />
-                              Nhắc nợ Zalo
-                            </button>
+                          <td className="py-3 px-3 font-semibold text-red-600">{formatCurrency(item.soTien)}</td>
+                          <td className="py-3 px-3 text-red-500 font-medium">{item.soNgayQuaHan} ngày</td>
+                          <td className="py-3 px-3">
+                            <ZaloButton tenKhach={item.tenKhach} soTien={item.soTien} maPhong={item.maPhong} />
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="py-8 text-center text-gray-400 text-sm italic">
-                          Không có hóa đơn quá hạn 🎉
+                        <td colSpan={5} className="py-10 text-center text-gray-400 text-sm">
+                          🎉 Không có hóa đơn quá hạn
                         </td>
                       </tr>
                     )}
@@ -620,42 +566,44 @@ export default function DashboardPage() {
 
             {/* Hợp đồng sắp hết hạn */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-gray-50">
-                <div className="flex items-center gap-2.5">
+              <div className="px-5 py-4 border-b border-gray-50">
+                <div className="flex items-center gap-2">
                   <AlertCircle className="h-5 w-5 text-orange-500" />
-                  <h2 className="text-base font-bold text-orange-600">Hợp đồng sắp hết hạn</h2>
+                  <h2 className="text-sm font-bold text-orange-600">Hợp đồng sắp hết hạn</h2>
                 </div>
-                <p className="text-sm text-gray-500 mt-0.5 ml-[30px]">Trong vòng 15-30 ngày tới</p>
+                <p className="text-xs text-gray-400 mt-0.5 ml-7">Trong vòng 15-30 ngày tới</p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="text-left py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Khách hàng</th>
-                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Phòng</th>
-                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Ngày hết hạn</th>
-                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Còn lại</th>
+                    <tr className="border-b border-gray-50">
+                      <th className="text-left py-3 px-5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Khách hàng</th>
+                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Phòng</th>
+                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Ngày hết hạn</th>
+                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Còn lại</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(stats.hopDongSapHetHanList && stats.hopDongSapHetHanList.length > 0) ? (
+                    {stats.hopDongSapHetHanList?.length ? (
                       stats.hopDongSapHetHanList.map((item) => (
-                        <tr key={item._id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                          <td className="py-3.5 px-5 font-medium text-gray-800">{item.tenKhach}</td>
-                          <td className="py-3.5 px-3">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-gray-100 text-xs font-semibold text-gray-700">
+                        <tr key={item._id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                          <td className="py-3 px-5 font-medium text-gray-800">{item.tenKhach}</td>
+                          <td className="py-3 px-3">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-xs font-semibold text-gray-600">
                               {item.maPhong}
                             </span>
                           </td>
-                          <td className="py-3.5 px-3 text-gray-600">{item.ngayHetHan}</td>
-                          <td className="py-3.5 px-3">
-                            <span className="font-semibold text-orange-600">{item.soNgayConLai} ngày</span>
+                          <td className="py-3 px-3 text-gray-600">{item.ngayHetHan}</td>
+                          <td className="py-3 px-3">
+                            <span className={cn('font-semibold', item.soNgayConLai <= 15 ? 'text-red-500' : 'text-orange-500')}>
+                              {item.soNgayConLai} ngày
+                            </span>
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={4} className="py-8 text-center text-gray-400 text-sm italic">
+                        <td colSpan={4} className="py-10 text-center text-gray-400 text-sm">
                           Không có hợp đồng sắp hết hạn
                         </td>
                       </tr>
@@ -663,9 +611,9 @@ export default function DashboardPage() {
                   </tbody>
                 </table>
               </div>
-              {/* Advice note */}
-              {(stats.hopDongSapHetHanList && stats.hopDongSapHetHanList.length > 0) && (
-                <div className="mx-5 mb-5 mt-2 p-3.5 bg-amber-50 rounded-xl border border-amber-100">
+
+              {(stats.hopDongSapHetHanList?.length ?? 0) > 0 && (
+                <div className="mx-5 mb-5 mt-3 p-3.5 bg-amber-50 rounded-xl border border-amber-100">
                   <div className="flex items-start gap-2">
                     <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
                     <p className="text-xs text-amber-800 leading-relaxed">
@@ -679,5 +627,24 @@ export default function DashboardPage() {
         </>
       )}
     </div>
+  );
+}
+
+// ─── Zalo reminder button ─────────────────────────────────────────────────────
+function ZaloButton({ tenKhach, soTien, maPhong }: { tenKhach: string; soTien: number; maPhong: string }) {
+  const handleClick = () => {
+    const msg = `Xin chào ${tenKhach}, bạn đang có hóa đơn phòng ${maPhong} chưa thanh toán với số tiền ${new Intl.NumberFormat('vi-VN').format(soTien)} ₫. Vui lòng thanh toán sớm. Xin cảm ơn!`;
+    const url = `https://zalo.me/vi/?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-all"
+    >
+      <MessageSquare className="h-3 w-3" />
+      Nhắc nợ Zalo
+    </button>
   );
 }
