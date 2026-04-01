@@ -64,6 +64,7 @@ import { PhongImageUpload } from '@/components/ui/phong-image-upload';
 import { DeleteConfirmPopover } from '@/components/ui/delete-confirm-popover';
 import { toast } from 'sonner';
 import { PhongDetailDialog } from '@/components/ui/phong-detail-dialog';
+import { useBuilding } from '@/hooks/use-building-context';
 
 // =====================================================
 // ROOM MAP TYPES
@@ -310,9 +311,18 @@ export default function PhongPage() {
   const [generatingPhongImages, setGeneratingPhongImages] = useState<string[]>([]);
   const [isPostingToFacebook, setIsPostingToFacebook] = useState(false);
 
+  const { selectedBuildingId } = useBuilding();
+
   useEffect(() => {
     document.title = 'Quản lý Phòng';
   }, []);
+
+  // Sync tab with global building selector
+  useEffect(() => {
+    if (selectedBuildingId !== 'all') {
+      setSelectedToaNhaTab(selectedBuildingId);
+    }
+  }, [selectedBuildingId]);
 
   useEffect(() => {
     // Nếu cache bị xóa (do trang khác thao tác), force refresh
@@ -638,7 +648,7 @@ export default function PhongPage() {
       </div>
 
       {/* ===== BUILDING TABS ===== */}
-      {toaNhaList.length > 0 && (
+      {toaNhaList.length > 0 && selectedBuildingId === 'all' && (
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {toaNhaList.map((toaNha) => {
             const isActive = selectedToaNhaTab === toaNha._id;

@@ -50,8 +50,10 @@ import {
 import { ThongBao, ToaNha, Phong, KhachThue } from '@/types';
 import { toast } from 'sonner';
 import { useCache } from '@/hooks/use-cache';
+import { useBuilding } from '@/hooks/use-building-context';
 
 export default function ThongBaoPage() {
+  const { selectedBuildingId } = useBuilding();
   const cache = useCache<{
     thongBaoList: ThongBao[];
     toaNhaList: ToaNha[];
@@ -172,7 +174,18 @@ export default function ThongBaoPage() {
                          thongBao.noiDung.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = typeFilter === 'all' || thongBao.loai === typeFilter;
     
-    return matchesSearch && matchesType;
+    // Filter by global building selector
+    let matchesBuilding = true;
+    if (selectedBuildingId !== 'all') {
+      const tbToaNha = thongBao.toaNha;
+      if (tbToaNha) {
+        const toaNhaId = typeof tbToaNha === 'object' ? (tbToaNha as any)?._id : tbToaNha;
+        matchesBuilding = toaNhaId?.toString() === selectedBuildingId;
+      }
+      // Thông báo không có toaNha (thông báo chung) vẫn hiển thị
+    }
+    
+    return matchesSearch && matchesType && matchesBuilding;
   });
 
   // Pagination

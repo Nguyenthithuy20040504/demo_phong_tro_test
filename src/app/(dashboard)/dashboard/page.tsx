@@ -18,7 +18,7 @@ import {
   Lightbulb,
   ChevronDown,
 } from 'lucide-react';
-import { DashboardStats, ToaNha } from '@/types';
+import { DashboardStats } from '@/types';
 import { toast } from 'sonner';
 import {
   BarChart,
@@ -40,6 +40,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { useBuilding } from '@/hooks/use-building-context';
 
 // ─── Donut Tooltip ────────────────────────────────────────────────────────────
 function DonutTooltip({ active, payload }: any) {
@@ -174,9 +175,8 @@ const PERIOD_OPTIONS = [
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [toaNhaList, setToaNhaList] = useState<ToaNha[]>([]);
-  const [selectedToaNha, setSelectedToaNha] = useState<string>('all');
   const [timeRange, setTimeRange] = useState<string>('6_months');
+  const { selectedBuildingId, selectedBuildingLabel } = useBuilding();
 
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
@@ -189,7 +189,7 @@ export default function DashboardPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (selectedToaNha !== 'all') params.append('toaNhaId', selectedToaNha);
+      if (selectedBuildingId !== 'all') params.append('toaNhaId', selectedBuildingId);
 
       let start = '';
       const end = now.toISOString().split('T')[0];
@@ -217,14 +217,10 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedToaNha, timeRange]);
+  }, [selectedBuildingId, timeRange]);
 
   useEffect(() => {
     document.title = 'Dashboard | SmartStay';
-    fetch('/api/toa-nha?limit=100')
-      .then((r) => r.json())
-      .then((r) => { if (r.success) setToaNhaList(r.data); })
-      .catch(() => {});
 
     // Handle plan selection from registration
     const planKey = searchParams.get('plan');
@@ -269,10 +265,7 @@ export default function DashboardPage() {
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('vi-VN').format(amount) + ' ₫';
 
-  const buildingLabel = useMemo(() => {
-    if (selectedToaNha === 'all') return 'Tất cả tòa nhà';
-    return toaNhaList.find((t) => t._id === selectedToaNha)?.tenToaNha || '';
-  }, [selectedToaNha, toaNhaList]);
+  const buildingLabel = selectedBuildingLabel;
 
   const periodLabel = useMemo(() => {
     return PERIOD_OPTIONS.find((p) => p.value === timeRange)?.label ?? '6 tháng gần nhất';
@@ -309,34 +302,6 @@ export default function DashboardPage() {
 
         {/* Selectors */}
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Building selector */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 h-9 px-3.5 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:border-teal-300 hover:text-teal-700 transition-colors shadow-sm">
-                <Building2 className="h-4 w-4 text-gray-400" />
-                <span className="max-w-[160px] truncate">{buildingLabel}</span>
-                <ChevronDown className="h-3.5 w-3.5 text-gray-400 ml-1" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52 rounded-xl shadow-xl border border-gray-100 bg-white p-1">
-              <DropdownMenuItem
-                onClick={() => setSelectedToaNha('all')}
-                className={cn('px-3 py-2 rounded-lg text-sm cursor-pointer', selectedToaNha === 'all' ? 'bg-teal-50 text-teal-700 font-semibold' : '')}
-              >
-                Tất cả tòa nhà
-              </DropdownMenuItem>
-              {toaNhaList.map((t) => (
-                <DropdownMenuItem
-                  key={t._id}
-                  onClick={() => setSelectedToaNha(t._id!)}
-                  className={cn('px-3 py-2 rounded-lg text-sm cursor-pointer', selectedToaNha === t._id ? 'bg-teal-50 text-teal-700 font-semibold' : '')}
-                >
-                  {t.tenToaNha}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
           {/* Period selector */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

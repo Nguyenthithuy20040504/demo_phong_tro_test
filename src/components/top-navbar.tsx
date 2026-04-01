@@ -22,7 +22,9 @@ import {
   Users,
   AlertCircle,
   MessageSquare,
+  Check,
 } from 'lucide-react';
+import { useBuilding } from '@/hooks/use-building-context';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -244,6 +246,54 @@ function UserMenu({ session }: { session: any }) {
   );
 }
 
+// ─── Global Building Selector ─────────────────────────────────────────────────
+function GlobalBuildingSelector() {
+  const { selectedBuildingId, setSelectedBuildingId, buildings, selectedBuildingLabel } = useBuilding();
+
+  return (
+    <div className="hidden md:flex items-center gap-2">
+      <div className="flex items-center gap-1.5 text-white/70 text-sm shrink-0">
+        <Building2 className="h-4 w-4" />
+        <span className="hidden lg:inline">Tòa nhà:</span>
+      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="flex items-center gap-2 h-8 px-3 rounded-md bg-white text-sm font-medium text-gray-700 shadow-sm min-w-[150px] max-w-[200px] transition-colors hover:bg-gray-50 outline-none">
+            <span className="truncate flex-1 text-left">{selectedBuildingLabel}</span>
+            <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-60 rounded-xl shadow-xl border border-gray-100 bg-white p-1" sideOffset={8}>
+          <DropdownMenuItem
+            onClick={() => setSelectedBuildingId('all')}
+            className={cn(
+              'flex items-center justify-between px-3 py-2 rounded-lg text-sm cursor-pointer',
+              selectedBuildingId === 'all' ? 'bg-teal-50 text-teal-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'
+            )}
+          >
+            Tất cả tòa nhà
+            {selectedBuildingId === 'all' && <Check className="h-4 w-4 text-teal-600" />}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {buildings.map((t) => (
+            <DropdownMenuItem
+              key={t._id}
+              onClick={() => setSelectedBuildingId(t._id!)}
+              className={cn(
+                'flex items-center justify-between px-3 py-2 rounded-lg text-sm cursor-pointer',
+                selectedBuildingId === t._id ? 'bg-teal-50 text-teal-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'
+              )}
+            >
+              {t.tenToaNha}
+              {selectedBuildingId === t._id && <Check className="h-4 w-4 text-teal-600" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
 // ─── Main TopNavbar ────────────────────────────────────────────────────────────
 export function TopNavbar() {
   const pathname = usePathname();
@@ -271,6 +321,9 @@ export function TopNavbar() {
 
         {/* Spacer */}
         <div className="flex-1" />
+
+        {/* Building Selector */}
+        <GlobalBuildingSelector />
 
         {/* Right side: notification + user */}
         <div className="flex items-center gap-1">

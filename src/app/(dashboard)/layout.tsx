@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 import { TopNavbar } from '@/components/top-navbar';
 import { PageProgress } from '@/components/ui/page-progress';
 import { SubscriptionGuard } from '@/components/ui/subscription-guard';
+import { BuildingProvider } from '@/hooks/use-building-context';
 import { useRouter } from 'next/navigation';
 
 interface DashboardLayoutProps {
@@ -37,13 +38,15 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <PageProgress />
-      <TopNavbar />
-      <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 md:px-6 py-6">
-        <SubscriptionGuard>{children}</SubscriptionGuard>
-      </main>
-    </div>
+    <BuildingProvider>
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <PageProgress />
+        <TopNavbar />
+        <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 md:px-6 py-6">
+          <SubscriptionGuard>{children}</SubscriptionGuard>
+        </main>
+      </div>
+    </BuildingProvider>
   );
 }
 

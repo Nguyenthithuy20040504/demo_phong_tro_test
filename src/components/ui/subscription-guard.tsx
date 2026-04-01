@@ -1,52 +1,71 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Loader2, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { Button } from './button';
+
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const pathname = usePathname();
   const router = useRouter();
   
-  const [isChecking, setIsChecking] = useState(true);
+  const [isFirstCheck, setIsFirstCheck] = useState(true);
   const [isExpired, setIsExpired] = useState(false);
+  const lastCheckRef = useRef<number>(0);
+  const cachedResultRef = useRef<boolean | null>(null);
 
-  useEffect(() => {
-    // Avoid double check if no session or if they are on a safe page
+  const checkStatus = useCallback(async (showLoader: boolean) => {
     if (!session?.user) {
-      setIsChecking(false);
+      setIsFirstCheck(false);
       return;
     }
 
-    const checkStatus = async () => {
-      try {
-        const res = await fetch('/api/user/subscription/status?t=' + Date.now(), { cache: 'no-store' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.ngayHetHan) {
-            const expiryDate = new Date(data.ngayHetHan);
-            const now = new Date();
-            
-            // Check if expired
-            if (expiryDate < now && expiryDate.getFullYear() < 2099) {
-              setIsExpired(true);
-            } else {
-              setIsExpired(false);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Failed to verify subscription status', error);
-      } finally {
-        setIsChecking(false);
-      }
-    };
+    // Use cached result if still fresh
+    const now = Date.now();
+    if (cachedResultRef.current !== null && now - lastCheckRef.current < CACHE_DURATION) {
+      setIsExpired(cachedResultRef.current);
+      setIsFirstCheck(false);
+      return;
+    }
 
-    checkStatus();
-  }, [session, pathname]);
+    try {
+      const res = await fetch('/api/user/subscription/status?t=' + now, { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ngayHetHan) {
+          const expiryDate = new Date(data.ngayHetHan);
+          const expired = expiryDate < new Date() && expiryDate.getFullYear() < 2099;
+          cachedResultRef.current = expired;
+          lastCheckRef.current = now;
+          setIsExpired(expired);
+        } else {
+          cachedResultRef.current = false;
+          lastCheckRef.current = now;
+          setIsExpired(false);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to verify subscription status', error);
+    } finally {
+      setIsFirstCheck(false);
+    }
+  }, [session]);
+
+  // First check on mount
+  useEffect(() => {
+    checkStatus(true);
+  }, [checkStatus]);
+
+  // Background refresh on pathname change (no loader)
+  useEffect(() => {
+    if (!isFirstCheck) {
+      checkStatus(false);
+    }
+  }, [pathname]);
 
   // Bypassed paths that expired users CAN still visit
   const safePaths = [
@@ -54,7 +73,7 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
     '/dashboard/thong-tin-ca-nhan' // Maybe allow them to see their profile
   ];
 
-  if (isChecking) {
+  if (isFirstCheck) {
     return (
       <div className="min-h-[400px] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />

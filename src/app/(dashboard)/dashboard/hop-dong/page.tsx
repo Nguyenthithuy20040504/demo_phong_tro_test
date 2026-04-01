@@ -42,8 +42,8 @@ import {
 import { HopDong, Phong, KhachThue, ToaNha } from '@/types';
 import { HopDongDataTable } from './table';
 import { toast } from 'sonner';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
-import { saveAs } from 'file-saver';
+import { useBuilding } from '@/hooks/use-building-context';
+// docx and file-saver are loaded dynamically in handleDownload to reduce initial bundle size
 
 export default function HopDongPage() {
   const router = useRouter();
@@ -67,6 +67,12 @@ export default function HopDongPage() {
   const [cancellingHopDong, setCancellingHopDong] = useState<HopDong | null>(null);
   const [newEndDate, setNewEndDate] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const { selectedBuildingId } = useBuilding();
+
+  // Sync with global building selector
+  useEffect(() => {
+    setToaNhaFilter(selectedBuildingId);
+  }, [selectedBuildingId]);
 
   useEffect(() => {
     document.title = 'Quản lý Hợp đồng';
@@ -293,6 +299,10 @@ export default function HopDongPage() {
 
   const handleDownload = async (hopDong: HopDong) => {
     try {
+      // Dynamic import to reduce initial bundle size
+      const { Document, Packer, Paragraph, TextRun, AlignmentType } = await import('docx');
+      const { saveAs } = await import('file-saver');
+
       const phongInfo = getPhongInfo(hopDong.phong);
       const nguoiDaiDien = getKhachThueName(hopDong.nguoiDaiDien);
       

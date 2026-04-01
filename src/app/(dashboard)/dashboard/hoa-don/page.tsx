@@ -47,9 +47,9 @@ import {
 } from 'lucide-react';
 import { HoaDon, HopDong, Phong, KhachThue } from '@/types';
 import { toast } from 'sonner';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+// html2canvas and jsPDF are not used (handleScreenshot uses window.print instead)
 import { generateZaloDeepLink } from '@/lib/zalo-formatter';
+import { useBuilding } from '@/hooks/use-building-context';
 
 // Helper functions for form and dialogs
 const getPhongName = (phongId: string | Phong, phongList: Phong[]) => {
@@ -102,6 +102,7 @@ export default function HoaDonPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [monthFilter, setMonthFilter] = useState<string>('all');
   const [yearFilter, setYearFilter] = useState<string>('all');
+  const { selectedBuildingId } = useBuilding();
   const [isAutoCreating, setIsAutoCreating] = useState(false);
   const [viewingHoaDon, setViewingHoaDon] = useState<HoaDon | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -205,7 +206,15 @@ export default function HoaDonPage() {
     const matchesMonth = monthFilter === 'all' || hoaDon.thang.toString() === monthFilter;
     const matchesYear = yearFilter === 'all' || hoaDon.nam.toString() === yearFilter;
     
-    return matchesSearch && matchesStatus && matchesMonth && matchesYear;
+    // Filter by global building
+    let matchesBuilding = true;
+    if (selectedBuildingId !== 'all') {
+      const phongObj = typeof hoaDon.phong === 'object' ? (hoaDon.phong as any) : null;
+      const toaNhaId = phongObj ? (typeof phongObj.toaNha === 'object' ? phongObj.toaNha?._id : phongObj.toaNha) : null;
+      matchesBuilding = toaNhaId === selectedBuildingId;
+    }
+    
+    return matchesSearch && matchesStatus && matchesMonth && matchesYear && matchesBuilding;
   });
 
   const getStatusBadge = (status: string) => {

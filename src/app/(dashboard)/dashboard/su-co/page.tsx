@@ -54,6 +54,7 @@ import { SuCoImageUpload } from '@/components/ui/su-co-image-upload';
 import { DeleteConfirmPopover } from '@/components/ui/delete-confirm-popover';
 import { SuCoDataTable } from './table';
 import { SuCoDetailDialog } from '@/components/ui/su-co-detail-dialog';
+import { useBuilding } from '@/hooks/use-building-context';
 
 export default function SuCoPage() {
   const cache = useCache<{
@@ -160,6 +161,8 @@ export default function SuCoPage() {
     toast.success('Dữ liệu đã được làm mới rồi nhé!');
   };
 
+  const { selectedBuildingId } = useBuilding();
+
   const filteredSuCo = suCoList.filter(suCo => {
     const matchesSearch = suCo.tieuDe.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          suCo.moTa.toLowerCase().includes(searchTerm.toLowerCase());
@@ -167,7 +170,17 @@ export default function SuCoPage() {
     const matchesType = typeFilter === 'all' || suCo.loaiSuCo === typeFilter;
     const matchesPriority = priorityFilter === 'all' || suCo.mucDoUuTien === priorityFilter;
 
-    return matchesSearch && matchesStatus && matchesType && matchesPriority;
+    // Filter by global building
+    let matchesBuilding = true;
+    if (selectedBuildingId !== 'all') {
+      const phongObj = typeof suCo.phong === 'object' ? (suCo.phong as any) : phongList.find(p => p._id === suCo.phong);
+      if (phongObj) {
+        const toaNhaId = typeof phongObj.toaNha === 'object' ? (phongObj.toaNha as any)?._id : phongObj.toaNha;
+        matchesBuilding = toaNhaId === selectedBuildingId;
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesType && matchesPriority && matchesBuilding;
   });
 
   const getStatusBadge = (status: string) => {

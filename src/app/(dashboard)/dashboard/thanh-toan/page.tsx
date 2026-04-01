@@ -55,6 +55,7 @@ import {
 import { ThanhToan, HoaDon } from '@/types';
 import { toast } from 'sonner';
 import { ThanhToanDataTable } from './table';
+import { useBuilding } from '@/hooks/use-building-context';
 
 // Type cho ThanhToan đã được populate
 type ThanhToanPopulated = Omit<ThanhToan, 'hoaDon'> & {
@@ -76,6 +77,7 @@ export default function ThanhToanPage() {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { selectedBuildingId } = useBuilding();
   const [editingThanhToan, setEditingThanhToan] = useState<ThanhToanPopulated | null>(null);
 
   useEffect(() => {
@@ -144,6 +146,12 @@ export default function ThanhToanPage() {
     const hoaDonInfo = typeof thanhToan.hoaDon === 'object' ? (thanhToan.hoaDon as HoaDon) : null;
     const phongInfo = hoaDonInfo && typeof hoaDonInfo.phong === 'object' ? (hoaDonInfo.phong as any) : null;
     const khachThueInfo = hoaDonInfo && typeof hoaDonInfo.khachThue === 'object' ? (hoaDonInfo.khachThue as any) : null;
+    
+    // Filter by global building
+    if (selectedBuildingId !== 'all') {
+      const toaNhaId = phongInfo ? (typeof phongInfo.toaNha === 'object' ? phongInfo.toaNha?._id : phongInfo.toaNha) : null;
+      if (toaNhaId !== selectedBuildingId) return false;
+    }
     
     // Tìm kiếm trong các thông tin liên quan
     const matchesSearch = !searchTerm || 

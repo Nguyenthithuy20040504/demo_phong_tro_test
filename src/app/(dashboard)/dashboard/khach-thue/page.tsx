@@ -48,10 +48,12 @@ import { DeleteConfirmPopover } from '@/components/ui/delete-confirm-popover';
 import { KhachThueDetailDialog } from '@/components/ui/khach-thue-detail-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { useBuilding } from '@/hooks/use-building-context';
 
 export default function KhachThuePage() {
   const { data: session } = useSession();
   const isNhanVien = session?.user?.role === 'nhanVien';
+  const { selectedBuildingId } = useBuilding();
   
   const cache = useCache<{ khachThueList: KhachThue[] }>({ key: 'khach-thue-data', duration: 300000 });
   const [khachThueList, setKhachThueList] = useState<KhachThue[]>([]);
@@ -125,12 +127,30 @@ export default function KhachThuePage() {
     }
   }, [selectedTrangThai]);
 
-  const filteredKhachThue = khachThueList.filter(khachThue =>
-    khachThue.hoTen.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    khachThue.soDienThoai.includes(searchTerm) ||
-    khachThue.cccd.includes(searchTerm) ||
-    khachThue.queQuan.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredKhachThue = khachThueList.filter(khachThue => {
+    const matchesSearch = khachThue.hoTen.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      khachThue.soDienThoai?.includes(searchTerm) ||
+      khachThue.cccd?.includes(searchTerm) ||
+      khachThue.queQuan?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Filter by global building selector
+    let matchesBuilding = true;
+    if (selectedBuildingId !== 'all') {
+      const hopDong = (khachThue as any).hopDongHienTai;
+      if (hopDong) {
+        const phongObj = typeof hopDong.phong === 'object' ? hopDong.phong : null;
+        const toaNhaId = phongObj
+          ? (typeof phongObj.toaNha === 'object' ? phongObj.toaNha?._id : phongObj.toaNha)
+          : null;
+        matchesBuilding = toaNhaId?.toString() === selectedBuildingId;
+      } else {
+        // Khách chưa có hợp đồng → không thuộc tòa nhà nào → ẩn khi lọc theo tòa
+        matchesBuilding = false;
+      }
+    }
+
+    return matchesSearch && matchesBuilding;
+  });
 
   const handleEdit = (khachThue: KhachThue) => {
     setEditingKhachThue(khachThue);
