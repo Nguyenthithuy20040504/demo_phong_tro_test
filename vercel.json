@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/auto-invoice/trigger",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/auto-invoice/trigger",
+      "schedule": "15 20 * * *"
+    }
+  ]
+}
