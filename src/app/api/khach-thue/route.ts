@@ -46,10 +46,10 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const trangThai = searchParams.get('trangThai') || '';
 
-    const query: any = {};
+    const matchQuery: any = {};
     
     if (search) {
-      query.$or = [
+      matchQuery.$or = [
         { hoTen: { $regex: search, $options: 'i' } },
         { soDienThoai: { $regex: search, $options: 'i' } },
         { cccd: { $regex: search, $options: 'i' } },
@@ -60,170 +60,148 @@ export async function GET(request: NextRequest) {
     
     if (trangThai) {
       if (trangThai === 'hasAccount') {
-        query.matKhau = { $exists: true, $ne: '' };
+        matchQuery.matKhau = { $exists: true, $ne: '' };
       } else if (trangThai === 'noAccount') {
-        query.matKhau = { $exists: false };
+        matchQuery.matKhau = { $exists: false };
       } else {
-        query.trangThai = trangThai;
+        matchQuery.trangThai = trangThai;
       }
     }
 
     const accessibleKhachThueIds = await getAccessibleKhachThueIds(session.user);
     if (accessibleKhachThueIds !== null) {
-      if (accessibleKhachThueIds.length === 0) {
-        return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
-      }
-      query._id = { $in: accessibleKhachThueIds };
+      matchQuery._id = { $in: accessibleKhachThueIds.map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
 
-    // === QUERY 1: Lấy danh sách khách thuê (1 query duy nhất) ===
-    const [khachThueList, total] = await Promise.all([
-      KhachThue.find(query)
-        .select('+matKhau')
-        .sort({ hoTen: 1 })
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .lean(),
-      KhachThue.countDocuments(query)
-    ]);
-
-    // Collect IDs, phones, emails cho batch queries
-    const tenantIds = khachThueList.map(k => k._id);
-    const tenantIdStrings = tenantIds.map(id => id.toString());
-    const tenantPhones = khachThueList.map(k => k.soDienThoai).filter(Boolean);
-    const tenantEmails = khachThueList.map(k => (k as any).email?.toLowerCase()).filter(Boolean);
-
-    // === QUERY 2 & 3: Batch lấy tài khoản NguoiDung + Hợp đồng (song song) ===
-    const [userAccounts, allContracts] = await Promise.all([
-      // Batch NguoiDung query
-      mongoose.model('NguoiDung').find({
-        role: 'khachThue',
-        $or: [
-          { _id: { $in: tenantIds } },
-          { soDienThoai: { $in: tenantPhones } },
-          { phone: { $in: tenantPhones } },
-          ...(tenantEmails.length > 0 ? [{ email: { $in: tenantEmails } }] : [])
-        ]
-      }).select('+matKhau').lean(),
-      // Batch HopDong query — 1 query thay vì N queries
-      HopDong.find({
-        $or: [
-          { khachThueId: { $in: tenantIds } },
-          { nguoiDaiDien: { $in: tenantIds } }
-        ]
-      })
-      .sort({ ngayTao: -1 })
-      .populate('phong', 'maPhong toaNha')
-      .populate({
-        path: 'phong',
-        populate: { path: 'toaNha', select: 'tenToaNha diaChi' }
-      })
-      .lean()
-    ]);
-
-    // Build lookup maps cho O(1) access
-    const contractsByTenant = new Map<string, any[]>();
-    for (const contract of allContracts) {
-      // Map theo khachThueId array
-      const ktIds: any[] = contract.khachThueId || [];
-      for (const ktId of ktIds) {
-        const key = ktId.toString();
-        if (!contractsByTenant.has(key)) contractsByTenant.set(key, []);
-        contractsByTenant.get(key)!.push(contract);
-      }
-      // Map theo nguoiDaiDien
-      if (contract.nguoiDaiDien) {
-        const key = contract.nguoiDaiDien.toString();
-        if (!contractsByTenant.has(key)) contractsByTenant.set(key, []);
-        // Avoid duplicate
-        const list = contractsByTenant.get(key)!;
-        if (!list.some((c: any) => c._id.toString() === contract._id.toString())) {
-          list.push(contract);
+    // === AGGREGATION PIPELINE (Optimized) ===
+    const pipeline: any[] = [
+      { $match: matchQuery },
+      { $sort: { hoTen: 1 } },
+      { $skip: (page - 1) * limit },
+      { $limit: limit },
+      // Lookup HopDong
+      {
+        $lookup: {
+          from: 'hopdongs',
+          let: { tenantId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $in: ['$$tenantId', '$khachThueId'] },
+                    { $eq: ['$$tenantId', '$nguoiDaiDien'] }
+                  ]
+                }
+              }
+            },
+            { $sort: { ngayTao: -1 } },
+            // Populate Phong và ToaNha (mini-lookup)
+            {
+              $lookup: {
+                from: 'phongs',
+                localField: 'phong',
+                foreignField: '_id',
+                as: 'phongInfo'
+              }
+            },
+            { $unwind: { path: '$phongInfo', preserveNullAndEmptyArrays: true } }
+          ],
+          as: 'tatCaHopDong'
+        }
+      },
+      // Thêm thông tin NguoiDung (nếu có tài khoản)
+      {
+        $lookup: {
+          from: 'nguoidungs',
+          let: { phone: '$soDienThoai', email: { $toLower: '$email' } },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $eq: ['$phone', '$$phone'] },
+                    { $eq: ['$soDienThoai', '$$phone'] },
+                    { $and: [
+                      { $ne: ['$$email', null] },
+                      { $eq: [{ $toLower: '$email' }, '$$email'] }
+                    ]}
+                  ]
+                }
+              }
+            },
+            { $limit: 1 },
+            { $project: { matKhau: 1, role: 1, _id: 1 } }
+          ],
+          as: 'userAccount'
+        }
+      },
+      { $unwind: { path: '$userAccount', preserveNullAndEmptyArrays: true } },
+      // Xử lý dữ liệu cuối cùng
+      {
+        $addFields: {
+          hopDongHienTai: {
+            $slice: [
+              {
+                $filter: {
+                  input: '$tatCaHopDong',
+                  as: 'h',
+                  cond: { $eq: ['$$h.trangThai', 'hoatDong'] }
+                }
+              },
+              1
+            ]
+          }
+        }
+      },
+      {
+        $addFields: {
+          hopDongHienTai: { $arrayElemAt: ['$hopDongHienTai', 0] },
+          hasPassword: {
+            $or: [
+              { $and: [{ $ne: ['$matKhau', null] }, { $ne: ['$matKhau', ''] }] },
+              { $and: [{ $ne: ['$userAccount.matKhau', null] }, { $ne: ['$userAccount.matKhau', ''] }] }
+            ]
+          }
+        }
+      },
+      {
+        $project: {
+          hoTen: 1,
+          soDienThoai: 1,
+          email: 1,
+          cccd: 1,
+          ngaySinh: 1,
+          gioiTinh: 1,
+          queQuan: 1,
+          anhCCCD: 1,
+          ngheNghiep: 1,
+          trangThai: {
+            $cond: {
+              if: { $ne: ['$hopDongHienTai', null] },
+              then: 'dangThue',
+              else: '$trangThai'
+            }
+          },
+          ngayTao: { $ifNull: ['$ngayTao', '$createdAt'] },
+          ngayCapNhat: { $ifNull: ['$ngayCapNhat', '$updatedAt'] },
+          matKhau: { $cond: { if: '$hasPassword', then: '******', else: null } },
+          hopDongHienTai: 1,
+          tatCaHopDong: 1
         }
       }
-    }
+    ];
 
-    // Process all tenants synchronously (no more async per tenant)
-    const processedList = khachThueList.map((tenantData: any) => {
-      const tenantId = tenantData._id.toString();
-      
-      // Find matching NguoiDung account
-      const userAccount = userAccounts.find((u: any) => 
-        u._id.toString() === tenantId || 
-        u.soDienThoai === tenantData.soDienThoai ||
-        u.phone === tenantData.soDienThoai ||
-        (tenantData.email && u.email === tenantData.email.toLowerCase())
-      );
-      
-      // Get contracts from map (O(1) lookup)
-      const tatCaHopDong = contractsByTenant.get(tenantId) || [];
-      const hopDongHienTai = tatCaHopDong.find((h: any) => h.trangThai === 'hoatDong') || null;
-      
-      // Compute status inline (no DB write needed)
-      let trangThaiComputed = tenantData.trangThai || 'chuaThue';
-      if (hopDongHienTai) trangThaiComputed = 'dangThue';
-      
-      const hasPassword = !!tenantData.matKhau || (userAccount && !!(userAccount as any).matKhau);
+    const [finalData, total] = await Promise.all([
+      KhachThue.aggregate(pipeline),
+      KhachThue.countDocuments(matchQuery)
+    ]);
 
-      return {
-        ...tenantData,
-        ngayTao: tenantData.ngayTao || tenantData.createdAt || null,
-        ngayCapNhat: tenantData.ngayCapNhat || tenantData.updatedAt || null,
-        matKhau: hasPassword ? '******' : undefined,
-        hopDongHienTai,
-        tatCaHopDong,
-        trangThai: trangThaiComputed
-      };
-    });
-
-    // === QUERY 4: Bổ sung NguoiDung khách thuê chưa có trong KhachThue ===
-    const userQuery: any = { role: 'khachThue' };
-    if (accessibleKhachThueIds !== null) {
-      userQuery._id = { $in: accessibleKhachThueIds };
-    }
-    if (search) {
-      userQuery.$or = [
-        { ten: { $regex: search, $options: 'i' } },
-        { soDienThoai: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-      ];
-    }
-
-    const userTenants = await mongoose.model('NguoiDung').find(userQuery).select('+matKhau').lean().limit(limit);
-    
-    const finalData = [...processedList];
-    const existingIds = new Set(tenantIdStrings);
-    const existingPhones = new Set(tenantPhones);
-    const existingEmails = new Set(tenantEmails);
-    
-    for (const user of userTenants) {
-      const userId = (user as any)._id.toString();
-      const userPhone = (user as any).soDienThoai || (user as any).phone;
-      const userEmail = (user as any).email;
-      
-      if (existingIds.has(userId) || 
-          (userPhone && existingPhones.has(userPhone)) ||
-          (userEmail && existingEmails.has(userEmail))) {
-        continue; // Already in list
-      }
-      
-      const userContracts = contractsByTenant.get(userId) || [];
-      const activeContract = userContracts.find((h: any) => h.trangThai === 'hoatDong') || null;
-      
-      finalData.push({
-        _id: (user as any)._id,
-        hoTen: (user as any).ten || (user as any).name,
-        soDienThoai: userPhone,
-        email: userEmail,
-        matKhau: (user as any).matKhau ? '******' : undefined,
-        trangThai: activeContract ? 'dangThue' : 'chuaThue',
-        vaiTro: 'khachThue',
-        anhDaiDien: (user as any).anhDaiDien || (user as any).avatar,
-        ngayTao: (user as any).createdAt || null,
-        ngayCapNhat: (user as any).updatedAt || null,
-        hopDongHienTai: activeContract,
-        tatCaHopDong: userContracts,
-      } as any);
+    // Chạy cập nhật trạng thái trong background (không await)
+    if (finalData.length > 0) {
+      const idsToUpdate = finalData.map(f => f._id.toString());
+      // Giới hạn số lượng update background để không overload DB
+      Promise.all(idsToUpdate.slice(0, 5).map(id => updateKhachThueStatus(id))).catch(err => console.error('Background status update failed', err));
     }
 
     return NextResponse.json({
@@ -232,8 +210,8 @@ export async function GET(request: NextRequest) {
       pagination: {
         page,
         limit,
-        total: Math.max(total, finalData.length),
-        totalPages: Math.ceil(Math.max(total, finalData.length) / limit),
+        total,
+        totalPages: Math.ceil(total / limit),
       },
     });
 
@@ -295,8 +273,8 @@ export async function POST(request: NextRequest) {
 
     await newKhachThue.save();
 
-    // Cập nhật trạng thái dựa trên hợp đồng
-    await updateKhachThueStatus(newKhachThue._id.toString());
+    // Cập nhật trạng thái dựa trên hợp đồng (chạy background)
+    updateKhachThueStatus(newKhachThue._id.toString()).catch(e => console.error(e));
 
     return NextResponse.json({
       success: true,

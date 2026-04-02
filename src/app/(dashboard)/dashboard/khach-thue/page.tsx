@@ -41,6 +41,7 @@ import {
   Copy,
   UserPlus
 } from 'lucide-react';
+import useSWR, { mutate } from 'swr';
 import { KhachThue } from '@/types';
 import { KhachThueDataTable } from './table';
 import { CCCDUpload } from '@/components/ui/cccd-upload';
@@ -49,83 +50,42 @@ import { KhachThueDetailDialog } from '@/components/ui/khach-thue-detail-dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
+const fetcher = (url: string) => fetch(url).then(res => res.json()).then(data => data.success ? data : Promise.reject(data));
+
 export default function KhachThuePage() {
   const { data: session } = useSession();
   const isNhanVien = session?.user?.role === 'nhanVien';
   
-  const cache = useCache<{ khachThueList: KhachThue[] }>({ key: 'khach-thue-data', duration: 300000 });
-  const [khachThueList, setKhachThueList] = useState<KhachThue[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTrangThai, setSelectedTrangThai] = useState('');
+  const [selectedTrangThai, setSelectedTrangThai] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingKhachThue, setEditingKhachThue] = useState<KhachThue | null>(null);
   const [viewingKhachThue, setViewingKhachThue] = useState<KhachThue | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // SWR for data fetching
+  const apiUrl = `/api/khach-thue?limit=100${selectedTrangThai && selectedTrangThai !== 'all' ? `&trangThai=${selectedTrangThai}` : ''}`;
+  const { data, error, isLoading, isValidating } = useSWR(apiUrl, fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 10000, // 10s deduplication
+  });
+
+  const khachThueList = data?.data || [];
+
   useEffect(() => {
     document.title = 'Quản lý Khách thuê';
   }, []);
 
-  useEffect(() => {
-    fetchKhachThue();
-  }, []);
-
-  const fetchKhachThue = async (forceRefresh = false) => {
-    try {
-      setLoading(true);
-      
-      // Thử load từ cache trước
-      if (!forceRefresh) {
-        const cachedData = cache.getCache();
-        if (cachedData) {
-          setKhachThueList(cachedData.khachThueList || []);
-          setLoading(false);
-          return;
-        }
-      }
-      
-      const params = new URLSearchParams();
-      if (selectedTrangThai && selectedTrangThai !== 'all') params.append('trangThai', selectedTrangThai);
-      
-      const response = await fetch(`/api/khach-thue?${params.toString()}&limit=100`);
-      let khachThueData: KhachThue[] = [];
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          khachThueData = result.data;
-          setKhachThueList(khachThueData);
-        }
-      }
-      
-      // Lưu cache với data mới
-      if (khachThueData.length > 0) {
-        cache.setCache({ khachThueList: khachThueData });
-      }
-    } catch (error) {
-      console.error('Error fetching khach thue:', error);
-      toast.error('Không thể tải danh sách khách thuê. Vui lòng kiểm tra lại kết nối!');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleRefresh = async () => {
-    cache.setIsRefreshing(true);
-    await fetchKhachThue(true);
-    cache.setIsRefreshing(false);
-    toast.success('Danh sách khách thuê đã được cập nhật mới nhất!');
+    toast.promise(mutate(apiUrl), {
+      loading: 'Đang làm mới dữ liệu...',
+      success: 'Danh sách khách thuê đã được cập nhật mới nhất!',
+      error: 'Không thể làm mới dữ liệu'
+    });
   };
 
-  useEffect(() => {
-    // Khi filter thay đổi, cần force refresh để lấy data mới theo filter
-    if (selectedTrangThai) {
-      fetchKhachThue(true);
-    }
-  }, [selectedTrangThai]);
-
-  const filteredKhachThue = khachThueList.filter(khachThue =>
+  const filteredKhachThue = khachThueList.filter((khachThue: KhachThue) =>
     khachThue.hoTen.toLowerCase().includes(searchTerm.toLowerCase()) ||
     khachThue.soDienThoai.includes(searchTerm) ||
     khachThue.cccd.includes(searchTerm) ||
@@ -151,8 +111,7 @@ export default function KhachThuePage() {
       
       const result = await response.json();
       if (response.ok && result.success) {
-        cache.clearCache();
-        setKhachThueList(prev => prev.filter(khachThue => khachThue._id !== id));
+        mutate(apiUrl);
         toast.success('Đã xóa thông tin khách thuê thành công!');
       } else {
         const msg = (result.message || '').toLowerCase();
@@ -216,8 +175,7 @@ export default function KhachThuePage() {
 
       const result = await response.json();
       if (result.success) {
-        cache.clearCache();
-        await fetchKhachThue(true);
+        mutate(apiUrl);
         setIsCreateAccountOpen(false);
         setCreateAccountTarget(null);
         toast.success(`Đã tạo tài khoản cho ${createAccountTarget.hoTen}!`, { duration: 5000 });
@@ -232,7 +190,7 @@ export default function KhachThuePage() {
     }
   };
 
-  if (loading && khachThueList.length === 0) {
+  if (isLoading && khachThueList.length === 0) {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
@@ -260,11 +218,11 @@ export default function KhachThuePage() {
             variant="outline"
             size="sm"
             onClick={handleRefresh}
-            disabled={cache.isRefreshing}
+            disabled={isValidating}
             className="flex-1 sm:flex-none"
           >
-            <RefreshCw className={`h-4 w-4 sm:mr-2 ${cache.isRefreshing ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">{cache.isRefreshing ? 'Đang tải...' : 'Làm mới'}</span>
+            <RefreshCw className={`h-4 w-4 sm:mr-2 ${isValidating ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{isValidating ? 'Đang tải...' : 'Làm mới'}</span>
           </Button>
           {!isNhanVien && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -289,9 +247,8 @@ export default function KhachThuePage() {
                 khachThue={editingKhachThue}
                 onClose={() => setIsDialogOpen(false)}
                 onSuccess={(newKhachThue) => {
-                    cache.clearCache();
                     setIsDialogOpen(false);
-                    fetchKhachThue(true);
+                    mutate(apiUrl);
                     toast.success(editingKhachThue ? 'Đã lưu các thay đổi vào hồ sơ khách thuê thành công!' : 'Đã thêm khách thuê mới vào hệ thống!');
                 }}
                 />
@@ -324,7 +281,7 @@ export default function KhachThuePage() {
               <p className="text-[10px] md:text-xs font-bold text-emerald-600 uppercase tracking-widest mb-1">Đã có tài khoản</p>
               <div className="flex items-baseline gap-1">
                 <span className="text-xl md:text-3xl font-black text-emerald-700">
-                  {khachThueList.filter(k => !!(k as any).matKhau).length}
+                  {khachThueList.filter((k: KhachThue) => !!(k as any).matKhau).length}
                 </span>
                 <span className="text-[10px] text-emerald-500 font-bold">người</span>
               </div>
@@ -341,7 +298,7 @@ export default function KhachThuePage() {
               <p className="text-[10px] md:text-xs font-bold text-amber-600 uppercase tracking-widest mb-1">Chưa có tài khoản</p>
               <div className="flex items-baseline gap-1">
                 <span className="text-xl md:text-3xl font-black text-amber-700">
-                  {khachThueList.filter(k => !(k as any).matKhau).length}
+                  {khachThueList.filter((k: KhachThue) => !(k as any).matKhau).length}
                 </span>
                 <span className="text-[10px] text-amber-500 font-bold">người</span>
               </div>
@@ -354,7 +311,7 @@ export default function KhachThuePage() {
       </div>
 
       {/* Desktop Table */}
-      <Card className={`hidden md:block transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+      <Card className={`hidden md:block transition-opacity duration-300 ${isLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
         <CardHeader className="relative">
           <div className="flex justify-between items-center">
             <div>
@@ -363,7 +320,7 @@ export default function KhachThuePage() {
                 Tìm thấy {filteredKhachThue.length} khách thuê trong hệ thống
               </CardDescription>
             </div>
-            {loading && (
+            {isValidating && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse">
                 <RefreshCw className="h-3 w-3 animate-spin" />
                 Đang cập nhật...
@@ -399,7 +356,7 @@ export default function KhachThuePage() {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Danh sách khách thuê</h2>
           <div className="flex items-center gap-2">
-            {loading && <RefreshCw className="h-3 w-3 animate-spin text-primary" />}
+            {isValidating && <RefreshCw className="h-3 w-3 animate-spin text-primary" />}
             <span className="text-sm text-gray-500">{filteredKhachThue.length} khách thuê</span>
           </div>
         </div>
@@ -429,7 +386,7 @@ export default function KhachThuePage() {
 
         {/* Mobile Card List */}
         <div className="space-y-3">
-          {filteredKhachThue.map((khachThue) => (
+          {filteredKhachThue.map((khachThue: KhachThue) => (
             <Card key={khachThue._id} className="p-4">
               <div className="space-y-3">
                 {/* Header with name and status */}

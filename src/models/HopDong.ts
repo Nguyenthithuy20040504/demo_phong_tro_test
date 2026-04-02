@@ -153,6 +153,8 @@ HopDongSchema.index({ ngayKetThuc: 1 });
 HopDongSchema.index({ nguoiDaiDien: 1 });
 HopDongSchema.index({ khachThueId: 1 });
 HopDongSchema.index({ khachThueId: 1, trangThai: 1 });
+HopDongSchema.index({ nguoiDaiDien: 1, trangThai: 1 });
+HopDongSchema.index({ khachThueId: 1, ngayBatDau: -1 });
 
 // Validation: ngày kết thúc phải sau ngày bắt đầu
 HopDongSchema.pre('save', function(next) {
