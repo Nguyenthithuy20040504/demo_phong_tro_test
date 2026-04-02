@@ -43,7 +43,6 @@ import {
   Edit,
   Trash2,
   MessageCircle,
-  Smartphone,
   Calendar
 } from 'lucide-react';
 import { HoaDon, HopDong, Phong, KhachThue } from '@/types';
@@ -340,50 +339,8 @@ export default function HoaDonPage() {
     }
   };
 
-  const handleSendSms = async (hoaDon: HoaDon) => {
-    try {
-      const toastId = toast.loading('Đang gửi SMS nhắc nợ...');
-      const response = await fetch('/api/hoa-don/gui-sms', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ hoaDonIds: [hoaDon._id] })
-      });
-      const data = await response.json();
-      if (response.ok) {
-        toast.success(data.message || 'Đã gửi SMS thành công!', { id: toastId });
-        fetchData(true);
-      } else {
-        toast.error((data.errors && data.errors[0]) || data.message || 'Gửi SMS thất bại', { id: toastId });
-      }
-    } catch (error) {
-      toast.error('Lỗi kết nối khi gửi SMS.');
-    }
-  };
 
-  const handleSendSmsMultiple = async (ids: string[]) => {
-    if (ids.length === 0) return;
-    try {
-      const toastId = toast.loading(`Đang gửi ${ids.length} SMS nhắc nợ...`);
-      const response = await fetch('/api/hoa-don/gui-sms', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ hoaDonIds: ids })
-      });
-      const data = await response.json();
-      if (response.ok) {
-        toast.success(data.message || 'Đã gửi SMS hàng loạt thành công!', { id: toastId });
-        fetchData(true);
-      } else {
-        toast.error(data.message || 'Gửi SMS hàng loạt gặp sự cố', { id: toastId });
-      }
-    } catch (error) {
-      toast.error('Lỗi kết nối khi gửi SMS hàng loạt.');
-    }
-  };
+
 
   const handleView = (hoaDon: HoaDon) => {
     setViewingHoaDon(hoaDon);
@@ -774,8 +731,6 @@ export default function HoaDonPage() {
             onDeleteMultiple={handleDeleteMultiple}
             onSendEmail={handleSendEmail}
             onSendEmailMultiple={handleSendEmailMultiple}
-            onSendSMS={handleSendSms}
-            onSendSMSMultiple={handleSendSmsMultiple}
             onPayment={handlePayment}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}

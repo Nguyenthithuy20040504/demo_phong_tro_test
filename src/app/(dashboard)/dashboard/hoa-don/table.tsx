@@ -21,8 +21,7 @@ import {
   Search,
   MessageCircle,
   AlertCircle,
-  Mail,
-  Smartphone
+  Mail
 } from "lucide-react"
 import {
   ColumnDef,
@@ -155,8 +154,7 @@ type HoaDonTableProps = {
   onDeleteMultiple?: (ids: string[]) => void
   onSendEmail?: (hoaDon: HoaDon) => void
   onSendEmailMultiple?: (ids: string[]) => void
-  onSendSMS?: (hoaDon: HoaDon) => void
-  onSendSMSMultiple?: (ids: string[]) => void
+
   canEdit?: boolean
   canDelete?: boolean
 }
@@ -357,13 +355,7 @@ const createColumns = (props: HoaDonTableProps & { setHoaDonToDelete: (h: HoaDon
             <Mail className="mr-2 h-4 w-4" />
             Gửi Email Nhắc Nợ
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={(e) => {
-            e.stopPropagation();
-            props.onSendSMS?.(row.original);
-          }}>
-            <Smartphone className="mr-2 h-4 w-4" />
-            Gửi SMS Nhắc Nợ
-          </DropdownMenuItem>
+
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={(e) => {
             e.stopPropagation();
@@ -508,13 +500,6 @@ export function HoaDonDataTable(props: HoaDonDataTableProps) {
     }
   };
 
-  const handleBulkSendSMS = () => {
-    const selectedIds = table.getFilteredSelectedRowModel().rows.map(row => row.original._id!);
-    if (selectedIds.length > 0 && props.onSendSMSMultiple) {
-      props.onSendSMSMultiple(selectedIds);
-      setRowSelection({});
-    }
-  };
 
   return (
     <div className="w-full space-y-4">
@@ -587,16 +572,7 @@ export function HoaDonDataTable(props: HoaDonDataTableProps) {
                   Gửi {selectedCount} Email
                 </Button>
               )}
-              {props.onSendSMSMultiple && (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleBulkSendSMS}
-                >
-                  <Smartphone className="mr-2 h-4 w-4" />
-                  Gửi {selectedCount} SMS
-                </Button>
-              )}
+
               <Button 
                 variant="destructive" 
                 size="sm"
