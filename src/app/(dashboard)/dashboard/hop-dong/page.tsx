@@ -93,40 +93,53 @@ export default function HopDongPage() {
         }
       }
       
-      // Fetch hop dong data
-      const hopDongResponse = await fetch('/api/hop-dong?limit=100');
-      const hopDongData = hopDongResponse.ok ? await hopDongResponse.json() : { data: [] };
+      // Fetch tất cả dữ liệu song song
+      const [hopDongRes, phongRes, khachThueRes, toaNhaRes] = await Promise.all([
+        fetch('/api/hop-dong?limit=500'),
+        fetch('/api/phong?limit=500'),
+        fetch('/api/khach-thue?limit=500'),
+        fetch('/api/toa-nha?limit=100'),
+      ]);
+
+      // Kiểm tra nếu bất kỳ API quan trọng nào lỗi thì không ghi đè cache
+      if (!hopDongRes.ok || !phongRes.ok) {
+        console.error('Core APIs failed:', { hopDong: hopDongRes.status, phong: phongRes.status });
+        toast.error('Máy chủ đang phản hồi chậm hoặc có lỗi. Vui lòng thử lại sau.');
+        setLoading(false);
+        return;
+      }
+
+      const [hopDongData, phongData, khachThueData, toaNhaData] = await Promise.all([
+        hopDongRes.json(),
+        phongRes.json(),
+        khachThueRes.json(),
+        toaNhaRes.json(),
+      ]);
+
       const hopDongs = hopDongData.data || [];
-      setHopDongList(hopDongs);
-
-      // Fetch phong data
-      const phongResponse = await fetch('/api/phong?limit=100');
-      const phongData = phongResponse.ok ? await phongResponse.json() : { data: [] };
       const phongs = phongData.data || [];
-      setPhongList(phongs);
-
-      // Fetch khach thue data
-      const khachThueResponse = await fetch('/api/khach-thue?limit=100');
-      const khachThueData = khachThueResponse.ok ? await khachThueResponse.json() : { data: [] };
       const khachThues = khachThueData.data || [];
-      setKhachThueList(khachThues);
-
-      // Fetch toa nha data
-      const toaNhaResponse = await fetch('/api/toa-nha?limit=100');
-      const toaNhaData = toaNhaResponse.ok ? await toaNhaResponse.json() : { data: [] };
       const toaNhas = toaNhaData.data || [];
+
+      // Cập nhật state
+      setHopDongList(hopDongs);
+      setPhongList(phongs);
+      setKhachThueList(khachThues);
       setToaNhaList(toaNhas);
 
-      // Lưu vào cache
-      cache.setCache({
-        hopDongList: hopDongs,
-        phongList: phongs,
-        khachThueList: khachThues,
-        toaNhaList: toaNhas,
-      });
+      // Chỉ lưu vào cache nếu có dữ liệu hoặc là mảng rỗng hợp lệ (không phải do lỗi)
+      if (hopDongData.success && phongData.success) {
+        cache.setCache({
+          hopDongList: hopDongs,
+          phongList: phongs,
+          khachThueList: khachThues,
+          toaNhaList: toaNhas,
+        });
+      }
 
     } catch (error) {
       console.error('Error fetching data:', error);
+      toast.error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra đường truyền.');
     } finally {
       setLoading(false);
     }

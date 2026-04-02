@@ -8,6 +8,7 @@ import HopDong from '@/models/HopDong';
 import KhachThue from '@/models/KhachThue';
 import HoaDon from '@/models/HoaDon';
 import SuCo from '@/models/SuCo';
+import NguoiDung from '@/models/NguoiDung';
 import { updatePhongStatus } from '@/lib/status-utils';
 import { getAccessibleToaNhaIds, isToaNhaAccessible } from '@/lib/auth-utils';
 import { z } from 'zod';
@@ -167,7 +168,7 @@ export async function GET(request: NextRequest) {
           const ktIds = hopDongRaw.khachThueId || [];
           const [ktFromKT, ktFromND] = await Promise.all([
             KhachThue.find({ _id: { $in: ktIds } }).select('hoTen soDienThoai').lean(),
-            mongoose.model('NguoiDung').find({ _id: { $in: ktIds }, role: 'khachThue' }).select('ten name soDienThoai phone').lean()
+            NguoiDung.find({ _id: { $in: ktIds }, role: 'khachThue' }).select('ten name soDienThoai phone').lean()
           ]);
           
           const allKt: any[] = [
@@ -183,7 +184,7 @@ export async function GET(request: NextRequest) {
           if (hopDongRaw.nguoiDaiDien) {
             nguoiDaiDien = await KhachThue.findById(hopDongRaw.nguoiDaiDien).select('hoTen soDienThoai').lean();
             if (!nguoiDaiDien) {
-              const u: any = await mongoose.model('NguoiDung').findOne({ _id: hopDongRaw.nguoiDaiDien, role: 'khachThue' }).select('ten name soDienThoai phone').lean();
+              const u: any = await NguoiDung.findOne({ _id: hopDongRaw.nguoiDaiDien, role: 'khachThue' }).select('ten name soDienThoai phone').lean();
               if (u && !Array.isArray(u)) {
                 nguoiDaiDien = {
                   _id: u._id,

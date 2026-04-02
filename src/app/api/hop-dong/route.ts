@@ -5,6 +5,8 @@ import dbConnect from '@/lib/mongodb';
 import HopDong from '@/models/HopDong';
 import Phong from '@/models/Phong';
 import KhachThue from '@/models/KhachThue';
+import ToaNha from '@/models/ToaNha';
+import NguoiDung from '@/models/NguoiDung';
 import { updatePhongStatus, updateAllKhachThueStatus } from '@/lib/status-utils';
 import { getAccessibleToaNhaIds } from '@/lib/auth-utils';
 import { z } from 'zod';
@@ -72,12 +74,12 @@ export async function GET(request: NextRequest) {
     }
 
     const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
+    console.log(`[GET /api/hop-dong] Accessible ToaNha IDs:`, accessibleToaNhaIds?.length || 0);
     
     if (session.user.role === 'khachThue') {
       // Khách thuê chỉ xem hợp đồng của mình
       const userId = session.user.id;
-      const KhachThueModel = (await import('@/models/KhachThue')).default;
-      let ktRecord = await KhachThueModel.findOne({
+      let ktRecord = await KhachThue.findOne({
         $or: [
           { _id: userId },
           { soDienThoai: session.user.phone }
@@ -85,14 +87,18 @@ export async function GET(request: NextRequest) {
       }).select('_id');
       const ktId = ktRecord ? ktRecord._id : new mongoose.Types.ObjectId(userId);
       query.khachThueId = { $in: [new mongoose.Types.ObjectId(userId), ktId] };
+      console.log(`[GET /api/hop-dong] Tenant query:`, JSON.stringify(query));
     } else if (accessibleToaNhaIds !== null) {
       if (accessibleToaNhaIds.length === 0) {
+         console.warn(`[GET /api/hop-dong] User has no accessible buildings.`);
          return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
       }
       const accessiblePhongs = await Phong.find({ toaNha: { $in: accessibleToaNhaIds } }).select('_id');
       const phongIds = accessiblePhongs.map(p => p._id);
+      console.log(`[GET /api/hop-dong] Accessible Phongs:`, phongIds.length);
       
       if (phongIds.length === 0) {
+         console.warn(`[GET /api/hop-dong] User has no rooms in their buildings.`);
          return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
       }
       
@@ -115,6 +121,7 @@ export async function GET(request: NextRequest) {
         .lean(),
       HopDong.countDocuments(query)
     ]);
+    console.log(`[GET /api/hop-dong] Raw HopDongs count:`, total);
 
     // Thủ công populate khachThueId và nguoiDaiDien từ cả 2 collection
     // Dùng snapshotKhachThue làm fallback khi khách thuê đã bị xóa
@@ -127,7 +134,7 @@ export async function GET(request: NextRequest) {
       for (const ktId of ktIds) {
         let found = await KhachThue.findById(ktId).select('hoTen soDienThoai').lean();
         if (found) { allKt.push(found); continue; }
-        const ndUser = await mongoose.model('NguoiDung').findById(ktId).select('ten name soDienThoai phone').lean() as any;
+        const ndUser = await NguoiDung.findById(ktId).select('ten name soDienThoai phone').lean() as any;
         if (ndUser) {
           allKt.push({ _id: ndUser._id, hoTen: ndUser.ten || ndUser.name, soDienThoai: ndUser.soDienThoai || ndUser.phone });
           continue;
@@ -152,7 +159,7 @@ export async function GET(request: NextRequest) {
       if (hd.nguoiDaiDien) {
         nguoiDaiDien = await KhachThue.findById(hd.nguoiDaiDien).select('hoTen soDienThoai').lean();
         if (!nguoiDaiDien) {
-          const u = await mongoose.model('NguoiDung').findOne({ _id: hd.nguoiDaiDien }).select('ten name soDienThoai phone').lean();
+          const u = await NguoiDung.findOne({ _id: hd.nguoiDaiDien }).select('ten name soDienThoai phone').lean();
           if (u) {
             const usr = u as any;
             nguoiDaiDien = { _id: usr._id, hoTen: usr.ten || usr.name, soDienThoai: usr.soDienThoai || usr.phone };

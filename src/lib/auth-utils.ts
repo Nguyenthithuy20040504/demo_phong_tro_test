@@ -1,6 +1,8 @@
 import ToaNha from '@/models/ToaNha';
 import Phong from '@/models/Phong';
 import HopDong from '@/models/HopDong';
+import NguoiDung from '@/models/NguoiDung';
+import KhachThue from '@/models/KhachThue';
 import mongoose from 'mongoose';
 
 /**
@@ -36,10 +38,11 @@ export async function getAccessibleToaNhaIds(user: any): Promise<mongoose.Types.
         { nguoiQuanLy: userId }
       ]
     }).select('_id');
+    console.log(`[auth-utils] Found ${toaNhas.length} buildings for userId: ${userId}`);
     
     // Nếu là nhân viên, có thể được xem thêm các tòa nhà thuộc về Chủ Nhà của họ
     if (user.role === 'nhanVien') {
-      const nhanVien = await mongoose.model('NguoiDung').findById(userId).select('nguoiQuanLy');
+      const nhanVien = await NguoiDung.findById(userId).select('nguoiQuanLy');
       if (nhanVien && nhanVien.nguoiQuanLy) {
         const ownersBuildings = await ToaNha.find({ chuSoHuu: nhanVien.nguoiQuanLy }).select('_id');
         toaNhas = [...toaNhas, ...ownersBuildings];
@@ -96,7 +99,7 @@ export async function getAccessibleKhachThueIds(user: any): Promise<mongoose.Typ
     let chuNhaId = user.id;
     if (user.role === 'nhanVien') {
       // Tìm Chủ Nhà của nhân viên này
-      const nhanVien = await mongoose.model('NguoiDung').findById(user.id).select('nguoiQuanLy');
+      const nhanVien = await NguoiDung.findById(user.id).select('nguoiQuanLy');
       if (nhanVien && nhanVien.nguoiQuanLy) {
          chuNhaId = nhanVien.nguoiQuanLy.toString();
       }
@@ -104,8 +107,8 @@ export async function getAccessibleKhachThueIds(user: any): Promise<mongoose.Typ
     
     // Tìm trong cả KhachThue model và NguoiDung model (role khachThue)
     const [managedKhachThues, managedUserTenants] = await Promise.all([
-      mongoose.model('KhachThue').find({ nguoiQuanLy: chuNhaId }).select('_id'),
-      mongoose.model('NguoiDung').find({ nguoiQuanLy: chuNhaId, role: 'khachThue' }).select('_id')
+      KhachThue.find({ nguoiQuanLy: chuNhaId }).select('_id'),
+      NguoiDung.find({ nguoiQuanLy: chuNhaId, role: 'khachThue' }).select('_id')
     ]);
 
     const managedKhachThueIds = managedKhachThues.map(k => k._id);

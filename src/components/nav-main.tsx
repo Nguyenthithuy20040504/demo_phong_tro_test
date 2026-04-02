@@ -4,8 +4,8 @@ import * as React from "react"
 import { ChevronRight, type LucideIcon } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useSession } from "next-auth/react"
 
-import { mutate } from "swr"
 import {
   Collapsible,
   CollapsibleContent,
@@ -46,25 +46,71 @@ export function NavMain({
   }[]
 }) {
   const pathname = usePathname()
+  const { data: session } = useSession()
   const { isMobile, state } = useSidebar()
   const [openDropdown, setOpenDropdown] = React.useState<string | null>(null)
 
-  // Hàm prefetch dữ liệu cho SWR
-  const prefetchData = (url: string) => {
+  // Hàm prefetch dữ liệu khi Hover
+  const prefetchData = async (url: string) => {
     if (!url || url === '#' || url.startsWith('http')) return;
     
-    // Chỉ prefetch các trang có dữ liệu nặng
-    const dataRoutes: Record<string, string> = {
-      '/dashboard/khach-thue': '/api/khach-thue?limit=100',
-      '/dashboard/hop-dong': '/api/hop-dong?limit=100',
-      '/dashboard/phong': '/api/phong?limit=100',
-      '/dashboard/toa-nha': '/api/toa-nha?limit=100',
+    // Ánh xạ URL sang API và Cache Key (giống useCache)
+    const dataRoutes: Record<string, { api: string, cacheKey: string, limit?: string }> = {
+      '/dashboard/khach-thue': { api: '/api/khach-thue?limit=500', cacheKey: 'khach-thue-data' },
+      '/dashboard/hop-dong': { api: '/api/hop-dong?limit=500', cacheKey: 'hop-dong-data' },
+      '/dashboard/phong': { api: '/api/phong?limit=500', cacheKey: 'phong-data' },
+      '/dashboard/toa-nha': { api: '/api/toa-nha', cacheKey: 'toa-nha-data' },
+      '/dashboard/hoa-don': { api: '/api/hoa-don?limit=1000', cacheKey: 'hoa-don-data' },
+      '/dashboard/su-co': { api: '/api/su-co?limit=500', cacheKey: 'su-co-data' },
+      '/dashboard/thanh-toan': { api: '/api/thanh-toan?limit=1000', cacheKey: 'thanh-toan-data' }
     };
 
-    const apiUrl = dataRoutes[url];
-    if (apiUrl) {
-      // Gọi mutate để fetch và lưu vào cache SWR toàn cục
-      mutate(apiUrl, fetch(apiUrl).then(res => res.json()), { revalidate: false });
+    const routeInfo = dataRoutes[url];
+    if (routeInfo) {
+      const userId = session?.user?.id;
+      const storageKey = userId ? `${userId}_${routeInfo.cacheKey}` : routeInfo.cacheKey;
+      
+      // Nếu đã có cache thì dĩ nhiên không tải lại, tiết kiệm băng thông
+      if (sessionStorage.getItem(storageKey)) return;
+
+      try {
+        const [phongRes, toaNhaRes, khachThueRes, hopDongRes, hoaDonRes] = await Promise.all([
+          fetch('/api/phong?limit=500'),
+          fetch('/api/toa-nha'),
+          fetch('/api/khach-thue?limit=500'),
+          fetch('/api/hop-dong?limit=500'),
+          fetch('/api/hoa-don?limit=1000'),
+        ]);
+
+        const phongData = phongRes.ok ? (await phongRes.json()).data : [];
+        const toaNhaData = toaNhaRes.ok ? (await toaNhaRes.json()).data : [];
+        const khachThueData = khachThueRes.ok ? (await khachThueRes.json()).data : [];
+        const hopDongData = hopDongRes.ok ? (await hopDongRes.json()).data : [];
+        const hoaDonData = hoaDonRes.ok ? (await hoaDonRes.json()).data : [];
+        
+        const timestamp = Date.now();
+        
+        // Tạo hàm helper để lưu cache
+        const setCache = (key: string, dataObj: any) => {
+          const cacheStorageKey = userId ? `${userId}_${key}` : key;
+          if (!sessionStorage.getItem(cacheStorageKey)) {
+            sessionStorage.setItem(cacheStorageKey, JSON.stringify({ timestamp, data: dataObj, userId }));
+            console.log(`[Hover Prefetch] Cache populated for ${key}`);
+          }
+        };
+
+        // Ghi cache cho Phòng
+        setCache('phong-data', { phongList: phongData, toaNhaList: toaNhaData });
+        // Ghi cache cho Khách Thuê
+        setCache('khach-thue-data', { khachThueList: khachThueData, toaNhaList: toaNhaData, phongList: phongData, hopDongList: hopDongData });
+        // Ghi cache cho Hợp Đồng
+        setCache('hop-dong-data', { hopDongList: hopDongData, phongList: phongData, khachThueList: khachThueData, toaNhaList: toaNhaData });
+        // Ghi cache cho Hóa Đơn
+        setCache('hoa-don-data', { hoaDonList: hoaDonData, toaNhaList: toaNhaData, phongList: phongData, khachThueList: khachThueData });
+
+      } catch (e) {
+        // Tắt log đỏ, im lặng bỏ qua nếu hover nhanh quá
+      }
     }
   }
 

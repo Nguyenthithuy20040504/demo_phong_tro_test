@@ -13,6 +13,7 @@ import { DynamicBreadcrumb } from '@/components/ui/dynamic-breadcrumb';
 import { PageProgress } from '@/components/ui/page-progress';
 import { SubscriptionGuard } from '@/components/ui/subscription-guard';
 import { NotificationBell } from '@/components/ui/notification-bell';
+import { GlobalPrefetcher } from '@/components/ui/global-prefetcher';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -60,6 +61,7 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
         </header>
         <main className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6">
           <SubscriptionGuard>{children}</SubscriptionGuard>
+          <GlobalPrefetcher />
         </main>
       </SidebarInset>
     </SidebarProvider>
