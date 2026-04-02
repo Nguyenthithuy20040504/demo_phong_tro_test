@@ -14,6 +14,11 @@ export const userProfileSchema = z.object({
     soTaiKhoan: z.string().optional().or(z.literal('')),
     chuTaiKhoan: z.string().optional().or(z.literal('')),
   }).optional(),
+  caiDatThongBao: z.object({
+    tuDongNhacNo: z.boolean().default(false).optional(),
+    thoiGianNhacNoEmail: z.number().optional().or(z.string().regex(/^\d+$/).transform(Number)),
+    ngayGuiThongBaoCuoi: z.preprocess((val) => val === "" ? null : val, z.any().optional().nullable())
+  }).optional(),
 });
 
 export const loginSchema = z.object({

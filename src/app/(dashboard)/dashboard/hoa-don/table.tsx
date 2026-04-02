@@ -20,7 +20,9 @@ import {
   Copy,
   Search,
   MessageCircle,
-  AlertCircle
+  AlertCircle,
+  Mail,
+  Smartphone
 } from "lucide-react"
 import {
   ColumnDef,
@@ -152,6 +154,10 @@ type HoaDonTableProps = {
   onShare: (hoaDon: HoaDon) => void
   onPayment: (hoaDon: HoaDon) => void
   onDeleteMultiple?: (ids: string[]) => void
+  onSendEmail?: (hoaDon: HoaDon) => void
+  onSendEmailMultiple?: (ids: string[]) => void
+  onSendSMS?: (hoaDon: HoaDon) => void
+  onSendSMSMultiple?: (ids: string[]) => void
 }
 
 const getPhongName = (phong: string | { maPhong: string }, phongList: Phong[]) => {
@@ -250,6 +256,24 @@ const createColumns = (props: HoaDonTableProps & { setHoaDonToDelete: (h: HoaDon
     },
   },
   {
+    accessorKey: "ngayGuiEmailNhacNoCuoi",
+    header: "Lần nhắc cuối",
+    cell: ({ row }) => {
+      if (!row.original.ngayGuiEmailNhacNoCuoi) {
+        return <div className="text-xs text-muted-foreground italic">Chưa gửi</div>;
+      }
+      return (
+        <div className="text-sm">
+          <div>{new Date(row.original.ngayGuiEmailNhacNoCuoi).toLocaleDateString('vi-VN')}</div>
+          <div className="text-xs text-muted-foreground">
+            {new Date(row.original.ngayGuiEmailNhacNoCuoi).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} 
+            ({row.original.lanGuiEmailNhacNo || 0} lần)
+          </div>
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: "trangThai",
     header: "Trạng thái",
     cell: ({ row }) => getStatusBadge(row.original.trangThai),
@@ -316,6 +340,20 @@ const createColumns = (props: HoaDonTableProps & { setHoaDonToDelete: (h: HoaDon
           >
             <MessageCircle className="mr-2 h-4 w-4" />
             Nhắn qua Zalo
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={(e) => {
+            e.stopPropagation();
+            props.onSendEmail?.(row.original);
+          }}>
+            <Mail className="mr-2 h-4 w-4" />
+            Gửi Email Nhắc Nợ
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={(e) => {
+            e.stopPropagation();
+            props.onSendSMS?.(row.original);
+          }}>
+            <Smartphone className="mr-2 h-4 w-4" />
+            Gửi SMS Nhắc Nợ
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={(e) => {
@@ -449,6 +487,22 @@ export function HoaDonDataTable(props: HoaDonDataTableProps) {
     }
   };
 
+  const handleBulkSendEmail = () => {
+    const selectedIds = table.getFilteredSelectedRowModel().rows.map(row => row.original._id!);
+    if (selectedIds.length > 0 && props.onSendEmailMultiple) {
+      props.onSendEmailMultiple(selectedIds);
+      setRowSelection({});
+    }
+  };
+
+  const handleBulkSendSMS = () => {
+    const selectedIds = table.getFilteredSelectedRowModel().rows.map(row => row.original._id!);
+    if (selectedIds.length > 0 && props.onSendSMSMultiple) {
+      props.onSendSMSMultiple(selectedIds);
+      setRowSelection({});
+    }
+  };
+
   return (
     <div className="w-full space-y-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
@@ -509,14 +563,36 @@ export function HoaDonDataTable(props: HoaDonDataTableProps) {
         {/* Tùy chỉnh cột bên phải */}
         <div className="flex items-center gap-2">
           {selectedCount > 0 && (
-            <Button 
-              variant="destructive" 
-              size="sm"
-              onClick={handleBulkDelete}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Xóa {selectedCount}
-            </Button>
+            <>
+              {props.onSendEmailMultiple && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleBulkSendEmail}
+                >
+                  <Mail className="mr-2 h-4 w-4" />
+                  Gửi {selectedCount} Email
+                </Button>
+              )}
+              {props.onSendSMSMultiple && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleBulkSendSMS}
+                >
+                  <Smartphone className="mr-2 h-4 w-4" />
+                  Gửi {selectedCount} SMS
+                </Button>
+              )}
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={handleBulkDelete}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Xóa {selectedCount}
+              </Button>
+            </>
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
