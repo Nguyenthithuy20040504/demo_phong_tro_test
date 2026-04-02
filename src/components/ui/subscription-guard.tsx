@@ -3,24 +3,52 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Loader2, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, ShieldAlert } from 'lucide-react';
 import { Button } from './button';
+
+const CACHE_KEY = 'subscription_status';
+const CACHE_DURATION = 5 * 60 * 1000; // 5 phút
+
+function getCachedStatus(): { isExpired: boolean; timestamp: number } | null {
+  try {
+    const cached = sessionStorage.getItem(CACHE_KEY);
+    if (!cached) return null;
+    const data = JSON.parse(cached);
+    if (Date.now() - data.timestamp > CACHE_DURATION) {
+      sessionStorage.removeItem(CACHE_KEY);
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedStatus(isExpired: boolean) {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ isExpired, timestamp: Date.now() }));
+  } catch {}
+}
 
 export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const pathname = usePathname();
   const router = useRouter();
   
-  const [isChecking, setIsChecking] = useState(true);
+  // Render content immediately — check happens in background
   const [isExpired, setIsExpired] = useState(false);
 
   useEffect(() => {
-    // Avoid double check if no session or if they are on a safe page
-    if (!session?.user) {
-      setIsChecking(false);
+    if (!session?.user) return;
+
+    // Check cache first
+    const cached = getCachedStatus();
+    if (cached !== null) {
+      setIsExpired(cached.isExpired);
       return;
     }
 
+    // Check in background — doesn't block rendering
     const checkStatus = async () => {
       try {
         const res = await fetch('/api/user/subscription/status?t=' + Date.now(), { cache: 'no-store' });
@@ -29,38 +57,26 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
           if (data.ngayHetHan) {
             const expiryDate = new Date(data.ngayHetHan);
             const now = new Date();
-            
-            // Check if expired
-            if (expiryDate < now && expiryDate.getFullYear() < 2099) {
-              setIsExpired(true);
-            } else {
-              setIsExpired(false);
-            }
+            const expired = expiryDate < now && expiryDate.getFullYear() < 2099;
+            setIsExpired(expired);
+            setCachedStatus(expired);
+          } else {
+            setCachedStatus(false);
           }
         }
       } catch (error) {
         console.error('Failed to verify subscription status', error);
-      } finally {
-        setIsChecking(false);
       }
     };
 
     checkStatus();
-  }, [session, pathname]);
+  }, [session]);
 
   // Bypassed paths that expired users CAN still visit
   const safePaths = [
     '/dashboard/gia-han-goi',
-    '/dashboard/thong-tin-ca-nhan' // Maybe allow them to see their profile
+    '/dashboard/thong-tin-ca-nhan'
   ];
-
-  if (isChecking) {
-    return (
-      <div className="min-h-[400px] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
 
   // If expired and not on a safe page, block access!
   const isBlockablePath = !safePaths.some(p => pathname.startsWith(p));

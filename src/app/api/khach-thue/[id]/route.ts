@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import KhachThue from '@/models/KhachThue';
 import HopDong from '@/models/HopDong';
+import PhongModel from '@/models/Phong';
+import NguoiDungModel from '@/models/NguoiDung';
 import { z } from 'zod';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
@@ -72,7 +74,7 @@ export async function GET(
     const hopDongHienTai = tatCaHopDong.find(h => h.trangThai === 'hoatDong');
 
     // Kiểm tra tài khoản ở NguoiDung
-    const userAccount = await mongoose.model('NguoiDung').findById(id).select('+matKhau');
+    const userAccount = await NguoiDungModel.findById(id).select('+matKhau');
     const hasPassword = !!khachThueObj.matKhau || (userAccount && !!userAccount.matKhau);
 
     return NextResponse.json({
@@ -140,7 +142,7 @@ export async function PUT(
     };
 
     // 1. Update NguoiDung (Account) info
-    const NguoiDung = mongoose.model('NguoiDung');
+    const NguoiDung = NguoiDungModel;
     await NguoiDung.findByIdAndUpdate(id, {
         ten: validatedData.hoTen,
         soDienThoai: validatedData.soDienThoai,
@@ -197,7 +199,7 @@ export async function PUT(
     const hopDongHienTai = tatCaHopDong.find(h => h.trangThai === 'hoatDong');
 
     // Kiểm tra tài khoản ở NguoiDung
-    const userAccount = await mongoose.model('NguoiDung').findById(id).select('+matKhau');
+    const userAccount = await NguoiDungModel.findById(id).select('+matKhau');
     const hasPassword = !!khachThueObj.matKhau || (userAccount && !!userAccount.matKhau);
 
     return NextResponse.json({
@@ -245,14 +247,24 @@ export async function DELETE(
 
     await dbConnect();
     const { id } = await params;
-    const NguoiDung = mongoose.model('NguoiDung');
-    const Phong = mongoose.model('Phong');
+    const NguoiDung = NguoiDungModel;
+    const Phong = PhongModel;
 
-    // Tìm khách thuê trong KhachThue hoặc NguoiDung
+    // Tìm khách thuê trong KhachThue hoặc NguoiDung (check cả vaiTro và role)
     const khachThue = await KhachThue.findById(id);
-    const nguoiDungKT = await NguoiDung.findOne({ _id: id, vaiTro: 'khachThue' });
+    const nguoiDungKT = await NguoiDung.findOne({
+      _id: id,
+      $or: [{ vaiTro: 'khachThue' }, { role: 'khachThue' }]
+    });
     
+    // Nếu KhachThue không có, thử tìm NguoiDung theo SĐT/email (trường hợp orphaned)
+    let nguoiDungByPhone = null;
     if (!khachThue && !nguoiDungKT) {
+      // Thử tìm bằng ID đơn giản (không filter role) — có thể là orphaned record
+      nguoiDungByPhone = await NguoiDung.findById(id);
+    }
+    
+    if (!khachThue && !nguoiDungKT && !nguoiDungByPhone) {
       return NextResponse.json(
         { message: 'Khách thuê không tồn tại' },
         { status: 404 }
@@ -260,9 +272,10 @@ export async function DELETE(
     }
 
     // Lấy thông tin để tìm liên kết
-    const tenantPhone = khachThue?.soDienThoai || nguoiDungKT?.soDienThoai || nguoiDungKT?.phone;
-    const tenantEmail = khachThue?.email || nguoiDungKT?.email;
-    const tenantName = khachThue?.hoTen || nguoiDungKT?.ten || nguoiDungKT?.name;
+    const source = khachThue || nguoiDungKT || nguoiDungByPhone;
+    const tenantPhone = khachThue?.soDienThoai || nguoiDungKT?.soDienThoai || nguoiDungKT?.phone || nguoiDungByPhone?.soDienThoai || nguoiDungByPhone?.phone;
+    const tenantEmail = khachThue?.email || nguoiDungKT?.email || nguoiDungByPhone?.email;
+    const tenantName = khachThue?.hoTen || nguoiDungKT?.ten || nguoiDungKT?.name || nguoiDungByPhone?.ten || nguoiDungByPhone?.name;
 
     // 1. Tìm tất cả hợp đồng hoạt động/chờ duyệt của khách thuê
     const activeContracts = await HopDong.find({
@@ -287,16 +300,21 @@ export async function DELETE(
       }
     }
 
-    // 3. Xóa tài khoản NguoiDung liên kết
+    // 3. Xóa tài khoản NguoiDung liên kết (match cả vaiTro và role)
     const deleteOrConditions: any[] = [{ _id: id }];
     if (tenantPhone) {
       deleteOrConditions.push(
         { vaiTro: 'khachThue', soDienThoai: tenantPhone },
-        { vaiTro: 'khachThue', phone: tenantPhone }
+        { vaiTro: 'khachThue', phone: tenantPhone },
+        { role: 'khachThue', soDienThoai: tenantPhone },
+        { role: 'khachThue', phone: tenantPhone }
       );
     }
     if (tenantEmail) {
-      deleteOrConditions.push({ vaiTro: 'khachThue', email: tenantEmail.toLowerCase() });
+      deleteOrConditions.push(
+        { vaiTro: 'khachThue', email: tenantEmail.toLowerCase() },
+        { role: 'khachThue', email: tenantEmail.toLowerCase() }
+      );
     }
     await NguoiDung.deleteMany({ $or: deleteOrConditions });
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,7 +21,10 @@ import {
   X,
   Plus,
   Check,
-  ChevronsUpDown
+  ChevronsUpDown,
+  UserCheck,
+  Search,
+  AlertCircle
 } from 'lucide-react';
 import { HopDong, Phong, KhachThue, ToaNha } from '@/types';
 import { toast } from 'sonner';
@@ -39,10 +42,144 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
+// ---- Tenant Autocomplete Component ----
+interface TenantAutocompleteProps {
+  index: number;
+  value: { hoTen: string; soDienThoai: string; khachThueId?: string };
+  suggestions: KhachThue[];
+  onSelect: (index: number, tenant: KhachThue) => void;
+  onRemove: (index: number) => void;
+  canRemove: boolean;
+}
+
+function TenantAutocomplete({ index, value, suggestions, onSelect, onRemove, canRemove }: TenantAutocompleteProps) {
+  const [query, setQuery] = useState(value.hoTen);
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const filtered = query.trim().length >= 1
+    ? suggestions.filter(k =>
+        k.hoTen.toLowerCase().includes(query.toLowerCase()) ||
+        k.soDienThoai.includes(query)
+      ).slice(0, 8)
+    : suggestions.slice(0, 8);
+
+  const isConfirmed = !!value.khachThueId;
+
+  useEffect(() => {
+    setQuery(value.hoTen);
+  }, [value.hoTen]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="flex items-center gap-2" ref={wrapperRef}>
+      <div className="flex items-center justify-center size-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex-shrink-0">
+        {index + 1}
+      </div>
+      <div className="relative flex-1">
+        <div className={cn(
+          "flex items-center gap-1.5 w-full rounded-md border text-sm transition-colors",
+          isConfirmed
+            ? "border-emerald-400 bg-emerald-50 pr-2"
+            : "border-input bg-background"
+        )}>
+          {isConfirmed && (
+            <span className="pl-2.5 text-emerald-600">
+              <UserCheck className="size-3.5" />
+            </span>
+          )}
+          <input
+            className={cn(
+              "flex-1 py-1.5 bg-transparent outline-none placeholder:text-muted-foreground text-sm",
+              isConfirmed ? "pl-0.5" : "pl-2.5"
+            )}
+            placeholder={`Tìm theo tên hoặc SĐT...`}
+            value={isConfirmed ? `${value.hoTen} – ${value.soDienThoai}` : query}
+            onChange={e => {
+              setQuery(e.target.value);
+              setOpen(true);
+              // If user edits after confirming, clear the selection
+              if (isConfirmed) {
+                onSelect(index, { _id: undefined, hoTen: '', soDienThoai: '' } as unknown as KhachThue);
+                setQuery(e.target.value);
+              }
+            }}
+            onFocus={() => setOpen(true)}
+          />
+          {isConfirmed && (
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-700 border-emerald-300 shrink-0">
+              Đã xác nhận
+            </Badge>
+          )}
+        </div>
+
+        {open && filtered.length > 0 && !isConfirmed && (
+          <div className="absolute z-50 mt-1 w-full rounded-md border bg-white shadow-lg overflow-hidden">
+            <ul className="max-h-52 overflow-auto divide-y">
+              {filtered.map(k => (
+                <li
+                  key={k._id}
+                  className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-blue-50 transition-colors"
+                  onMouseDown={e => { e.preventDefault(); onSelect(index, k); setOpen(false); }}
+                >
+                  <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-bold text-primary">{k.hoTen.charAt(0).toUpperCase()}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-gray-800 truncate">{k.hoTen}</div>
+                    <div className="text-xs text-muted-foreground">{k.soDienThoai}</div>
+                  </div>
+                  <Badge variant="secondary" className="text-[10px] px-1.5 shrink-0 bg-emerald-100 text-emerald-700">
+                    <UserCheck className="size-2.5 mr-0.5" />Có tài khoản
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {open && filtered.length === 0 && query.trim().length >= 1 && !isConfirmed && (
+          <div className="absolute z-50 mt-1 w-full rounded-md border bg-white shadow-lg p-3">
+            <div className="flex items-center gap-2 text-amber-600">
+              <AlertCircle className="size-4 shrink-0" />
+              <div>
+                <p className="text-xs font-medium">Không tìm thấy khách thuê có tài khoản</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Chỉ khách thuê đã tạo tài khoản mới có thể thêm vào hợp đồng</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      {canRemove && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-8 flex-shrink-0 text-gray-400 hover:text-red-500"
+          onClick={() => onRemove(index)}
+        >
+          <X className="size-4" />
+        </Button>
+      )}
+    </div>
+  );
+}
+// ---- End TenantAutocomplete ----
+
 export default function ThemMoiHopDongPage() {
   const router = useRouter();
   const [toaNhaList, setToaNhaList] = useState<ToaNha[]>([]);
   const [phongList, setPhongList] = useState<Phong[]>([]);
+  // Only tenants with accounts (matKhau set)
   const [khachThueList, setKhachThueList] = useState<KhachThue[]>([]);
   const [selectedToaNha, setSelectedToaNha] = useState('');
   const [loading, setLoading] = useState(true);
@@ -52,7 +189,8 @@ export default function ThemMoiHopDongPage() {
     maHopDong: '',
     phong: '',
     khachThueId: [] as string[],
-    khachThueInputs: [{ hoTen: '', soDienThoai: '' }] as Array<{hoTen: string, soDienThoai: string}>,
+    // Extended: each slot now includes khachThueId for confirmed-account tenants
+    khachThueInputs: [{ hoTen: '', soDienThoai: '', khachThueId: '' }] as Array<{hoTen: string, soDienThoai: string, khachThueId: string}>,
     nguoiDaiDien: '',
     ngayBatDau: new Date().toISOString().split('T')[0],
     ngayKetThuc: '',
@@ -129,11 +267,13 @@ export default function ThemMoiHopDongPage() {
         setToaNhaList(toaNhaData.data || []);
       }
 
-      // Fetch khach thue data
-      const khachThueResponse = await fetch('/api/khach-thue?limit=100');
+      // Fetch khach thue data - only those with accounts (trangThai=hasAccount)
+      const khachThueResponse = await fetch('/api/khach-thue?limit=200&trangThai=hasAccount');
       if (khachThueResponse.ok) {
         const khachThueData = await khachThueResponse.json();
-        setKhachThueList(khachThueData.data || []);
+        // Extra client-side filter: ensure matKhau is present
+        const withAccount = (khachThueData.data || []).filter((k: KhachThue) => !!k.matKhau);
+        setKhachThueList(withAccount);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -181,7 +321,7 @@ export default function ThemMoiHopDongPage() {
         // Reset khách thuê inputs theo số người tối đa của phòng
         khachThueInputs: prev.khachThueInputs.length > 0 
           ? prev.khachThueInputs.slice(0, selectedPhong.soNguoiToiDa || 2)
-          : [{ hoTen: '', soDienThoai: '' }],
+          : [{ hoTen: '', soDienThoai: '', khachThueId: '' }],
         nguoiDaiDien: '',
       }));
     }
@@ -194,13 +334,19 @@ export default function ThemMoiHopDongPage() {
     return selectedPhong?.soNguoiToiDa || 2;
   };
 
-  const updateKhachThueInput = (index: number, field: 'hoTen' | 'soDienThoai', value: string) => {
+  // Select a tenant from autocomplete suggestions
+  const handleTenantSelect = (index: number, tenant: KhachThue) => {
     setFormData(prev => {
       const updated = [...prev.khachThueInputs];
-      updated[index] = { ...updated[index], [field]: value };
-      // Nếu nguoiDaiDien trỏ tới index này và tên bị thay đổi -> reset
-      const nguoiDaiDien = prev.nguoiDaiDien;
-      return { ...prev, khachThueInputs: updated };
+      updated[index] = {
+        hoTen: tenant.hoTen || '',
+        soDienThoai: tenant.soDienThoai || '',
+        khachThueId: tenant._id || '',
+      };
+      // Auto set nguoiDaiDien to first confirmed tenant
+      const firstConfirmed = updated.find(k => k.khachThueId);
+      const nguoiDaiDien = firstConfirmed ? firstConfirmed.hoTen : prev.nguoiDaiDien;
+      return { ...prev, khachThueInputs: updated, nguoiDaiDien };
     });
   };
 
@@ -212,7 +358,7 @@ export default function ThemMoiHopDongPage() {
     }
     setFormData(prev => ({
       ...prev,
-      khachThueInputs: [...prev.khachThueInputs, { hoTen: '', soDienThoai: '' }]
+      khachThueInputs: [...prev.khachThueInputs, { hoTen: '', soDienThoai: '', khachThueId: '' }]
     }));
   };
 
@@ -269,38 +415,35 @@ export default function ThemMoiHopDongPage() {
     setSubmitting(true);
     
     try {
-      // Build khachThueInputs array (tên + SĐT) để API lưu snapshot
-      const validKhachThue = formData.khachThueInputs.filter(kt => kt.hoTen.trim());
+      // Only allow confirmed tenants (those selected from autocomplete with khachThueId)
+      const validKhachThue = formData.khachThueInputs.filter(kt => kt.hoTen.trim() && kt.khachThueId);
       if (validKhachThue.length === 0) {
-        toast.error('Vui lòng nhập ít nhất 1 khách thuê!');
+        toast.error('Vui lòng chọn ít nhất 1 khách thuê đã có tài khoản!');
         setSubmitting(false);
         return;
       }
+
+      // Check if any slot has a name but no account (user typed but didn't select from dropdown)
+      const unconfirmedWithName = formData.khachThueInputs.filter(kt => kt.hoTen.trim() && !kt.khachThueId);
+      if (unconfirmedWithName.length > 0) {
+        toast.error(`"${unconfirmedWithName[0].hoTen}" chưa được xác nhận – vui lòng chọn từ danh sách gợi ý!`);
+        setSubmitting(false);
+        return;
+      }
+
       if (!formData.nguoiDaiDien) {
         toast.error('Vui lòng chọn người đại diện!');
         setSubmitting(false);
         return;
       }
 
-      // Tìm trong danh sách khách thuê có sẵn theo SĐT hoặc tên
-      const khachThueIds: string[] = [];
-      const snapshotKhachThue: Array<{hoTen: string, soDienThoai: string}> = [];
+      // Build IDs directly from confirmed selections
+      const khachThueIds: string[] = validKhachThue.map(kt => kt.khachThueId);
       let nguoiDaiDienId = '';
 
       for (const kt of validKhachThue) {
-        // Thử tìm khách thuê đã tồn tại trong hệ thống
-        const existing = khachThueList.find(k => 
-          (kt.soDienThoai && k.soDienThoai === kt.soDienThoai) ||
-          (kt.hoTen && k.hoTen === kt.hoTen)
-        );
-        if (existing) {
-          khachThueIds.push(existing._id!);
-          if (kt.hoTen === formData.nguoiDaiDien) {
-            nguoiDaiDienId = existing._id!;
-          }
-        } else {
-          // Nếu không có tài khoản, vẫn thêm vào snapshot
-          snapshotKhachThue.push({ hoTen: kt.hoTen, soDienThoai: kt.soDienThoai });
+        if (kt.hoTen === formData.nguoiDaiDien) {
+          nguoiDaiDienId = kt.khachThueId;
         }
       }
 
@@ -396,45 +539,32 @@ export default function ThemMoiHopDongPage() {
                 />
               </div>
 
-              {/* Khách thuê - free input, max theo số người tối đa phòng */}
+              {/* Khách thuê - chỉ cho phép chọn từ danh sách có tài khoản */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs md:text-sm">Khách thuê</Label>
-                  <span className="text-[10px] text-gray-500 font-medium">
-                    {formData.khachThueInputs.filter(k => k.hoTen.trim()).length}/{getMaxTenants()} người
-                    {formData.phong && ` (Tối đa ${getMaxTenants()} người)`}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <UserCheck className="size-2.5 mr-1" />
+                      {khachThueList.length} người có tài khoản
+                    </Badge>
+                    <span className="text-[10px] text-gray-500 font-medium">
+                      {formData.khachThueInputs.filter(k => k.khachThueId).length}/{getMaxTenants()} đã chọn
+                    </span>
+                  </div>
                 </div>
+
                 <div className="space-y-2">
                   {formData.khachThueInputs.map((kt, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <div className="flex items-center justify-center size-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex-shrink-0">
-                        {index + 1}
-                      </div>
-                      <Input
-                        placeholder={`Họ tên khách thuê ${index + 1}`}
-                        value={kt.hoTen}
-                        onChange={(e) => updateKhachThueInput(index, 'hoTen', e.target.value)}
-                        className="text-sm flex-1"
-                      />
-                      <Input
-                        placeholder="Số điện thoại"
-                        value={kt.soDienThoai}
-                        onChange={(e) => updateKhachThueInput(index, 'soDienThoai', e.target.value)}
-                        className="text-sm w-[140px] md:w-[180px]"
-                      />
-                      {formData.khachThueInputs.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="size-8 flex-shrink-0 text-gray-400 hover:text-red-500"
-                          onClick={() => removeKhachThueSlot(index)}
-                        >
-                          <X className="size-4" />
-                        </Button>
-                      )}
-                    </div>
+                    <TenantAutocomplete
+                      key={index}
+                      index={index}
+                      value={kt}
+                      suggestions={khachThueList}
+                      onSelect={handleTenantSelect}
+                      onRemove={removeKhachThueSlot}
+                      canRemove={formData.khachThueInputs.length > 1}
+                    />
                   ))}
                   {formData.khachThueInputs.length < getMaxTenants() && (
                     <Button
@@ -546,7 +676,7 @@ export default function ThemMoiHopDongPage() {
               </div>
             </div>
 
-            {/* Người đại diện - chọn từ danh sách khách thuê đã nhập */}
+            {/* Người đại diện - chọn từ danh sách khách thuê đã xác nhận */}
             <div className="space-y-2">
               <Label className="text-xs md:text-sm">Người đại diện *</Label>
               <Select 
@@ -558,18 +688,21 @@ export default function ThemMoiHopDongPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {formData.khachThueInputs
-                    .filter(kt => kt.hoTen.trim())
+                    .filter(kt => kt.hoTen.trim() && kt.khachThueId)
                     .map((kt, index) => (
                       <SelectItem key={index} value={kt.hoTen}>
-                        {kt.hoTen}{kt.soDienThoai ? ` – ${kt.soDienThoai}` : ''}
+                        <div className="flex items-center gap-2">
+                          <UserCheck className="size-3.5 text-emerald-600" />
+                          {kt.hoTen}{kt.soDienThoai ? ` – ${kt.soDienThoai}` : ''}
+                        </div>
                       </SelectItem>
                     ))}
-                  {formData.khachThueInputs.filter(kt => kt.hoTen.trim()).length === 0 && (
-                    <div className="p-3 text-center text-xs text-muted-foreground italic">Nhập tên khách thuê trước</div>
+                  {formData.khachThueInputs.filter(kt => kt.hoTen.trim() && kt.khachThueId).length === 0 && (
+                    <div className="p-3 text-center text-xs text-muted-foreground italic">Chọn khách thuê từ gợi ý trước</div>
                   )}
                 </SelectContent>
               </Select>
-              <span className="text-[10px] text-gray-400">Chọn 1 trong các khách thuê đã điền ở trên làm người đại diện hợp đồng</span>
+              <span className="text-[10px] text-gray-400">Chọn 1 trong các khách thuê đã xác nhận ở trên làm người đại diện hợp đồng</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
