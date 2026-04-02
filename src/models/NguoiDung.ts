@@ -253,6 +253,12 @@ NguoiDungSchema.methods.comparePassword = async function(candidatePassword: stri
   return bcrypt.compare(candidatePassword, passwordToCheck);
 };
 
-// Email đã có unique: true nên không cần index thủ công
+// Các index quan trọng để tối ưu $lookup và query
+NguoiDungSchema.index({ soDienThoai: 1 });
+NguoiDungSchema.index({ phone: 1 });
+NguoiDungSchema.index({ vaiTro: 1 });
+NguoiDungSchema.index({ role: 1 });
+NguoiDungSchema.index({ nguoiQuanLy: 1 });
+NguoiDungSchema.index({ role: 1, soDienThoai: 1 });
 
 export default mongoose.models.NguoiDung || mongoose.model<INguoiDung>('NguoiDung', NguoiDungSchema);

@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
 
     const accessibleKhachThueIds = await getAccessibleKhachThueIds(session.user);
     if (accessibleKhachThueIds !== null) {
-      matchQuery._id = { $in: accessibleKhachThueIds.map((id: string) => new mongoose.Types.ObjectId(id)) };
+      matchQuery._id = { $in: (accessibleKhachThueIds as any[]).map((id: any) => new mongoose.Types.ObjectId(id.toString())) };
     }
 
     // === AGGREGATION PIPELINE (Optimized) ===
@@ -96,12 +96,26 @@ export async function GET(request: NextRequest) {
               }
             },
             { $sort: { ngayTao: -1 } },
+            // Chỉ lấy các trường cần thiết từ Hợp đồng để giảm tải filter
+            {
+              $project: {
+                _id: 1,
+                maHopDong: 1,
+                phong: 1,
+                trangThai: 1,
+                ngayBatDau: 1,
+                ngayKetThuc: 1,
+                giaThue: 1,
+                ngayTao: 1
+              }
+            },
             // Populate Phong và ToaNha (mini-lookup)
             {
               $lookup: {
                 from: 'phongs',
                 localField: 'phong',
                 foreignField: '_id',
+                pipeline: [{ $project: { _id: 1, maPhong: 1, toaNha: 1 } }],
                 as: 'phongInfo'
               }
             },
@@ -131,7 +145,7 @@ export async function GET(request: NextRequest) {
               }
             },
             { $limit: 1 },
-            { $project: { matKhau: 1, role: 1, _id: 1 } }
+            { $project: { _id: 1, matKhau: { $cond: { if: { $gt: [{ $strLenCP: { $ifNull: ["$matKhau", "$password", ""] } }, 0] }, then: 1, else: 0 } } } }
           ],
           as: 'userAccount'
         }
@@ -160,7 +174,7 @@ export async function GET(request: NextRequest) {
           hasPassword: {
             $or: [
               { $and: [{ $ne: ['$matKhau', null] }, { $ne: ['$matKhau', ''] }] },
-              { $and: [{ $ne: ['$userAccount.matKhau', null] }, { $ne: ['$userAccount.matKhau', ''] }] }
+              { $eq: ['$userAccount.matKhau', 1] }
             ]
           }
         }

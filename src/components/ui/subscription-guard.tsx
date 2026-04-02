@@ -1,76 +1,36 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React from 'react';
+import useSWR from 'swr';
 import { useSession } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
 import { AlertTriangle, ShieldAlert } from 'lucide-react';
 import { Button } from './button';
 
-const CACHE_KEY = 'subscription_status';
-const CACHE_DURATION = 5 * 60 * 1000; // 5 phút
-
-function getCachedStatus(): { isExpired: boolean; timestamp: number } | null {
-  try {
-    const cached = sessionStorage.getItem(CACHE_KEY);
-    if (!cached) return null;
-    const data = JSON.parse(cached);
-    if (Date.now() - data.timestamp > CACHE_DURATION) {
-      sessionStorage.removeItem(CACHE_KEY);
-      return null;
-    }
-    return data;
-  } catch {
-    return null;
-  }
-}
-
-function setCachedStatus(isExpired: boolean) {
-  try {
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ isExpired, timestamp: Date.now() }));
-  } catch {}
-}
+const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const pathname = usePathname();
   const router = useRouter();
   
-  // Render content immediately — check happens in background
-  const [isExpired, setIsExpired] = useState(false);
-
-  useEffect(() => {
-    if (!session?.user) return;
-
-    // Check cache first
-    const cached = getCachedStatus();
-    if (cached !== null) {
-      setIsExpired(cached.isExpired);
-      return;
+  // Sử dụng SWR để lấy trạng thái gói cước (Key cố định cho mỗi user)
+  const { data } = useSWR(
+    session?.user ? `/api/user/subscription/status` : null, 
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 300000, // 5 phút không gọi lại API
     }
+  );
 
-    // Check in background — doesn't block rendering
-    const checkStatus = async () => {
-      try {
-        const res = await fetch('/api/user/subscription/status?t=' + Date.now(), { cache: 'no-store' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.ngayHetHan) {
-            const expiryDate = new Date(data.ngayHetHan);
-            const now = new Date();
-            const expired = expiryDate < now && expiryDate.getFullYear() < 2099;
-            setIsExpired(expired);
-            setCachedStatus(expired);
-          } else {
-            setCachedStatus(false);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to verify subscription status', error);
-      }
-    };
-
-    checkStatus();
-  }, [session]);
+  // Tính toán trạng thái hết hạn nhanh chóng
+  const isExpired = React.useMemo(() => {
+    if (!data || !data.ngayHetHan) return false;
+    const expiryDate = new Date(data.ngayHetHan);
+    const now = new Date();
+    return expiryDate < now && expiryDate.getFullYear() < 2099;
+  }, [data]);
 
   // Bypassed paths that expired users CAN still visit
   const safePaths = [
