@@ -107,10 +107,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           url: "/dashboard/hoa-don",
         },
         {
-          title: "Chốt số điện nước",
-          url: "/dashboard/hoa-don/chot-so",
-        },
-        {
           title: "Thanh toán",
           url: "/dashboard/thanh-toan",
         },

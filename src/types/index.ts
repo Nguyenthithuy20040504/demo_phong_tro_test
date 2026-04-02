@@ -192,7 +192,6 @@ export interface HoaDon {
   ghiChu?: string;
   checkoutUrl?: string;
   paymentOrderId?: string;
-  loaiHoaDon?: 'thuCong' | 'tuDong';
   ngayTao: Date;
   ngayCapNhat: Date;
 }

@@ -28,7 +28,6 @@ export interface IHoaDon extends Document {
   ghiChu?: string;
   checkoutUrl?: string;
   paymentOrderId?: string;
-  loaiHoaDon: 'thuCong' | 'tuDong';
   ngayTao: Date;
   ngayCapNhat: Date;
 }
@@ -163,11 +162,6 @@ const HoaDonSchema = new Schema<IHoaDon>({
   paymentOrderId: {
     type: String,
     trim: true
-  },
-  loaiHoaDon: {
-    type: String,
-    enum: ['thuCong', 'tuDong'],
-    default: 'thuCong'
   }
 }, {
   timestamps: { createdAt: 'ngayTao', updatedAt: 'ngayCapNhat' }
