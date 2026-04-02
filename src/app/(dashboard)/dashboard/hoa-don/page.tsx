@@ -140,35 +140,34 @@ export default function HoaDonPage() {
         }
       }
       
-      // Fetch hóa đơn từ API
-      const hoaDonResponse = await fetch('/api/hoa-don');
-      const hoaDonData = hoaDonResponse.ok ? await hoaDonResponse.json() : { data: [] };
-      const hoaDons = hoaDonData.data || [];
-      setHoaDonList(hoaDons);
+      // Fetch both hoa-don and form-data in parallel
+      const [hoaDonResponse, formDataResponse] = await Promise.all([
+        fetch('/api/hoa-don'),
+        fetch('/api/hoa-don/form-data')
+      ]);
 
-      // Fetch form data (hop dong, phong, khach thue) từ API
-      const formDataResponse = await fetch('/api/hoa-don/form-data');
-      if (formDataResponse.ok) {
-        const formData = await formDataResponse.json();
-        console.log('Form data loaded:', formData.data);
-        const hopDongs = formData.data.hopDongList || [];
-        const phongs = formData.data.phongList || [];
-        const khachThues = formData.data.khachThueList || [];
-        
-        setHopDongList(hopDongs);
-        setPhongList(phongs);
-        setKhachThueList(khachThues);
-        
-        // Lưu vào cache
-        cache.setCache({
-          hoaDonList: hoaDons,
-          hopDongList: hopDongs,
-          phongList: phongs,
-          khachThueList: khachThues,
-        });
-      } else {
-        console.error('Failed to load form data:', formDataResponse.status);
-      }
+      const [hoaDonData, formDataResult] = await Promise.all([
+        hoaDonResponse.ok ? hoaDonResponse.json() : { data: [] },
+        formDataResponse.ok ? formDataResponse.json() : { data: { hopDongList: [], phongList: [], khachThueList: [] } }
+      ]);
+
+      const hoaDons = hoaDonData.data || [];
+      const hopDongs = formDataResult.data?.hopDongList || [];
+      const phongs = formDataResult.data?.phongList || [];
+      const khachThues = formDataResult.data?.khachThueList || [];
+
+      setHoaDonList(hoaDons);
+      setHopDongList(hopDongs);
+      setPhongList(phongs);
+      setKhachThueList(khachThues);
+      
+      // Save to cache
+      cache.setCache({
+        hoaDonList: hoaDons,
+        hopDongList: hopDongs,
+        phongList: phongs,
+        khachThueList: khachThues,
+      });
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {

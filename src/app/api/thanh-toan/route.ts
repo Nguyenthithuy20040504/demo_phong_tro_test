@@ -231,16 +231,18 @@ export async function POST(request: NextRequest) {
       const KhachThueModel = (await import('@/models/KhachThue')).default;
       const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
       
-      let ktInfo: any = await KhachThueModel.findById(hoaDonObj.khachThue).select('hoTen soDienThoai').lean();
-      if (!ktInfo) {
-        const ndInfo: any = await NguoiDungModel.findById(hoaDonObj.khachThue).select('ten name soDienThoai phone').lean();
-        if (ndInfo) {
-          ktInfo = {
-            _id: ndInfo._id,
-            hoTen: ndInfo.ten || ndInfo.name || 'Khách thuê',
-            soDienThoai: ndInfo.soDienThoai || ndInfo.phone
-          };
-        }
+      const [ktInfoRaw, ndInfoRaw] = (await Promise.all([
+        KhachThueModel.findById(hoaDonObj.khachThue).select('hoTen soDienThoai').lean(),
+        NguoiDungModel.findById(hoaDonObj.khachThue).select('ten name soDienThoai phone').lean()
+      ])) as [any, any];
+      
+      let ktInfo: any = ktInfoRaw;
+      if (!ktInfo && ndInfoRaw) {
+        ktInfo = {
+          _id: ndInfoRaw._id,
+          hoTen: ndInfoRaw.ten || ndInfoRaw.name || 'Khách thuê',
+          soDienThoai: ndInfoRaw.soDienThoai || ndInfoRaw.phone
+        };
       }
       updatedHoaDon = {
         ...hoaDonObj,

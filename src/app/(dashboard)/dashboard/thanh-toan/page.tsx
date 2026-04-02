@@ -100,16 +100,21 @@ export default function ThanhToanPage() {
         }
       }
       
-      // Fetch thanh toan từ API - tăng limit để lấy đầy đủ dữ liệu cho client-side filtering
-      const thanhToanResponse = await fetch('/api/thanh-toan?limit=1000');
-      const thanhToanData = thanhToanResponse.ok ? await thanhToanResponse.json() : { data: [] };
-      const thanhToans = thanhToanData.data || [];
-      setThanhToanList(thanhToans);
+      // Fetch both thanh toan and hoa don in parallel
+      const [thanhToanResponse, hoaDonResponse] = await Promise.all([
+        fetch('/api/thanh-toan?limit=1000'),
+        fetch('/api/hoa-don?limit=1000')
+      ]);
 
-      // Fetch hoa don từ API để hiển thị thông tin - lấy tất cả để có thể xem/sửa các giao dịch cũ
-      const hoaDonResponse = await fetch('/api/hoa-don?limit=1000');
-      const hoaDonData = hoaDonResponse.ok ? await hoaDonResponse.json() : { data: [] };
+      const [thanhToanData, hoaDonData] = await Promise.all([
+        thanhToanResponse.ok ? thanhToanResponse.json() : { data: [] },
+        hoaDonResponse.ok ? hoaDonResponse.json() : { data: [] }
+      ]);
+      
+      const thanhToans = thanhToanData.data || [];
       const hoaDons = hoaDonData.data || [];
+
+      setThanhToanList(thanhToans);
       setHoaDonList(hoaDons);
       
       cache.setCache({

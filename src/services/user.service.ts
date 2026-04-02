@@ -84,24 +84,38 @@ export class UserService {
     
     let result = null;
 
-    // 1. Cập nhật NguoiDung
-    const updatedUser = await NguoiDung.findOneAndUpdate(
-      { email: email.toLowerCase() },
-      { 
-        // Sync both English and Vietnamese fields
-        ten: data.name,
-        name: data.name,
-        soDienThoai: data.phone,
-        phone: data.phone,
-        address: data.address,
-        anhDaiDien: data.avatar,
-        avatar: data.avatar,
-        thongTinThanhToan: data.thongTinThanhToan,
-        updatedAt: new Date(),
-        ngayCapNhat: new Date()
-      },
-      { new: true }
-    );
+    // 1 & 2. Cập nhật NguoiDung và KhachThue song song
+    const [updatedUser, updatedClient] = await Promise.all([
+      NguoiDung.findOneAndUpdate(
+        { email: email.toLowerCase() },
+        { 
+          ten: data.name,
+          name: data.name,
+          soDienThoai: data.phone,
+          phone: data.phone,
+          address: data.address,
+          anhDaiDien: data.avatar,
+          avatar: data.avatar,
+          thongTinThanhToan: data.thongTinThanhToan,
+          updatedAt: new Date(),
+          ngayCapNhat: new Date()
+        },
+        { new: true }
+      ),
+      KhachThue.findOneAndUpdate(
+        { email: email.toLowerCase() },
+        {
+          hoTen: data.name,
+          soDienThoai: data.phone,
+          anhDaiDien: data.avatar,
+          avatar: data.avatar,
+          anhCCCD: data.anhCCCD,
+          updatedAt: new Date(),
+          ngayCapNhat: new Date()
+        },
+        { new: true }
+      )
+    ]);
 
     if (updatedUser) {
       result = {
@@ -117,21 +131,6 @@ export class UserService {
         thongTinThanhToan: updatedUser.thongTinThanhToan
       };
     }
-
-    // 2. Cập nhật KhachThue (luôn thử cập nhật nếu email tồn tại trong KhachThue)
-    const updatedClient = await KhachThue.findOneAndUpdate(
-      { email: email.toLowerCase() },
-      {
-        hoTen: data.name,
-        soDienThoai: data.phone,
-        anhDaiDien: data.avatar,
-        avatar: data.avatar,
-        anhCCCD: data.anhCCCD,
-        updatedAt: new Date(),
-        ngayCapNhat: new Date()
-      },
-      { new: true }
-    );
 
     if (updatedClient && !result) {
       // Nếu chưa có kết quả từ NguoiDung (user không phải admin/chuNha), dùng kết quả từ KhachThue

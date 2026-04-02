@@ -69,41 +69,65 @@ export async function GET(request: NextRequest) {
 
     console.log('GET /api/toa-nha: Found', toaNhaList.length, 'buildings for query:', JSON.stringify(query));
 
-    // Tính tổng số phòng và thống kê trạng thái cho mỗi tòa nhà
-    const toaNhaWithStats = await Promise.all(
-      toaNhaList.map(async (toaNha) => {
-        const roomIdsList = await Phong.find({ toaNha: toaNha._id }).distinct('_id');
-
-        const [
-          tongSoPhong,
-          phongTrong,
-          phongDangThue,
-          phongDaDat,
-          phongBaoTri,
-          suCoCount
-        ] = await Promise.all([
-          Phong.countDocuments({ toaNha: toaNha._id }),
-          Phong.countDocuments({ toaNha: toaNha._id, trangThai: 'trong' }),
-          Phong.countDocuments({ toaNha: toaNha._id, trangThai: 'dangThue' }),
-          Phong.countDocuments({ toaNha: toaNha._id, trangThai: 'daDat' }),
-          Phong.countDocuments({ toaNha: toaNha._id, trangThai: 'baoTri' }),
-          SuCo.countDocuments({
-            phong: { $in: roomIdsList },
+    // Optimized: Use aggregation to fetch all stats for all buildings in one go
+    const toaNhaIds = toaNhaList.map(t => t._id);
+    
+    const [roomStats, suCoStats] = await Promise.all([
+      Phong.aggregate([
+        { $match: { toaNha: { $in: toaNhaIds } } },
+        {
+          $group: {
+            _id: '$toaNha',
+            tongSoPhong: { $sum: 1 },
+            phongTrong: { $sum: { $cond: [{ $eq: ['$trangThai', 'trong'] }, 1, 0] } },
+            phongDangThue: { $sum: { $cond: [{ $eq: ['$trangThai', 'dangThue'] }, 1, 0] } },
+            phongDaDat: { $sum: { $cond: [{ $eq: ['$trangThai', 'daDat'] }, 1, 0] } },
+            phongBaoTri: { $sum: { $cond: [{ $eq: ['$trangThai', 'baoTri'] }, 1, 0] } }
+          }
+        }
+      ]),
+      SuCo.aggregate([
+        {
+          $lookup: {
+            from: 'phongs',
+            localField: 'phong',
+            foreignField: '_id',
+            as: 'phongInfo'
+          }
+        },
+        { $unwind: '$phongInfo' },
+        { 
+          $match: { 
+            'phongInfo.toaNha': { $in: toaNhaIds },
             trangThai: { $in: ['moi', 'dangXuLy'] }
-          })
-        ]);
-        
-        return {
-          ...toaNha.toObject(),
-          tongSoPhong,
-          phongTrong,
-          phongDangThue,
-          phongDaDat,
-          phongBaoTri,
-          suCoCount
-        };
-      })
-    );
+          } 
+        },
+        {
+          $group: {
+            _id: '$phongInfo.toaNha',
+            suCoCount: { $sum: 1 }
+          }
+        }
+      ])
+    ]);
+
+    const roomStatsMap = new Map(roomStats.map((s: any) => [s._id.toString(), s]));
+    const suCoStatsMap = new Map(suCoStats.map((s: any) => [s._id.toString(), s.suCoCount]));
+
+    const toaNhaWithStats = toaNhaList.map((toaNha) => {
+      const stats = roomStatsMap.get(toaNha._id.toString()) || {};
+      const suCoCount = suCoStatsMap.get(toaNha._id.toString()) || 0;
+      
+      return {
+        ...toaNha.toObject(),
+        tongSoPhong: stats.tongSoPhong || 0,
+        phongTrong: stats.phongTrong || 0,
+        phongDangThue: stats.phongDangThue || 0,
+        phongDaDat: stats.phongDaDat || 0,
+        phongBaoTri: stats.phongBaoTri || 0,
+        suCoCount
+      };
+    });
 
 
     return NextResponse.json({

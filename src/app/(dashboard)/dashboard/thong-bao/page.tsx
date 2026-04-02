@@ -98,28 +98,29 @@ export default function ThongBaoPage() {
         }
       }
       
-      // Fetch thông báo từ API
-      const thongBaoResponse = await fetch('/api/thong-bao');
-      const thongBaoData = thongBaoResponse.ok ? await thongBaoResponse.json() : { data: [] };
+      // Fetch all data in parallel
+      const [thongBaoResponse, toaNhaResponse, phongResponse, khachThueResponse] = await Promise.all([
+        fetch('/api/thong-bao'),
+        fetch('/api/toa-nha'),
+        fetch('/api/phong'),
+        fetch('/api/khach-thue')
+      ]);
+
+      const [thongBaoData, toaNhaData, phongData, khachThueData] = await Promise.all([
+        thongBaoResponse.ok ? thongBaoResponse.json() : { data: [] },
+        toaNhaResponse.ok ? toaNhaResponse.json() : { data: [] },
+        phongResponse.ok ? phongResponse.json() : { data: [] },
+        khachThueResponse.ok ? khachThueResponse.json() : { data: [] }
+      ]);
+
       const thongBaos = thongBaoData.success ? thongBaoData.data : [];
-      setThongBaoList(thongBaos);
-
-      // Fetch tòa nhà từ API
-      const toaNhaResponse = await fetch('/api/toa-nha');
-      const toaNhaData = toaNhaResponse.ok ? await toaNhaResponse.json() : { data: [] };
       const toaNhas = toaNhaData.success ? toaNhaData.data : [];
-      setToaNhaList(toaNhas);
-
-      // Fetch phòng từ API
-      const phongResponse = await fetch('/api/phong');
-      const phongData = phongResponse.ok ? await phongResponse.json() : { data: [] };
       const phongs = phongData.success ? phongData.data : [];
-      setPhongList(phongs);
-
-      // Fetch khách thuê từ API
-      const khachThueResponse = await fetch('/api/khach-thue');
-      const khachThueData = khachThueResponse.ok ? await khachThueResponse.json() : { data: [] };
       const khachThues = khachThueData.success ? khachThueData.data : [];
+
+      setThongBaoList(thongBaos);
+      setToaNhaList(toaNhas);
+      setPhongList(phongs);
       setKhachThueList(khachThues);
       
       cache.setCache({

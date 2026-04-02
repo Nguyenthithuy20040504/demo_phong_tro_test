@@ -123,26 +123,49 @@ export async function GET(request: NextRequest) {
     ]);
     console.log(`[GET /api/hop-dong] Raw HopDongs count:`, total);
 
-    // Thủ công populate khachThueId và nguoiDaiDien từ cả 2 collection
-    // Dùng snapshotKhachThue làm fallback khi khách thuê đã bị xóa
-    const hopDongList = await Promise.all(hopDongListRaw.map(async (hd) => {
+    // Optimize: Bulk fetch all tenants and users to avoid N+1 queries
+    const allInvolvedIds = new Set<string>();
+    hopDongListRaw.forEach(hd => {
+      if (hd.khachThueId) hd.khachThueId.forEach((id: any) => allInvolvedIds.add(id.toString()));
+      if (hd.nguoiDaiDien) allInvolvedIds.add(hd.nguoiDaiDien.toString());
+    });
+
+    const uniqueIds = Array.from(allInvolvedIds);
+    const [allKhachThues, allNguoiDungs] = await Promise.all([
+      KhachThue.find({ _id: { $in: uniqueIds } }).select('hoTen soDienThoai').lean(),
+      NguoiDung.find({ _id: { $in: uniqueIds } }).select('ten name soDienThoai phone').lean()
+    ]);
+
+    const userMap = new Map<string, any>();
+    allKhachThues.forEach((kt: any) => userMap.set(kt._id.toString(), kt));
+    allNguoiDungs.forEach((nd: any) => {
+      const id = nd._id.toString();
+      if (!userMap.has(id)) {
+        userMap.set(id, { 
+          _id: nd._id, 
+          hoTen: nd.ten || nd.name, 
+          soDienThoai: nd.soDienThoai || nd.phone 
+        });
+      }
+    });
+
+    const hopDongList = hopDongListRaw.map((hd) => {
       const ktIds = hd.khachThueId || [];
       const snapshots = (hd as any).snapshotKhachThue || [];
       const allKt: any[] = [];
       
-      // 1) Populate từ khachThueId (có ID trong DB)
-      for (const ktId of ktIds) {
-        let found = await KhachThue.findById(ktId).select('hoTen soDienThoai').lean();
-        if (found) { allKt.push(found); continue; }
-        const ndUser = await NguoiDung.findById(ktId).select('ten name soDienThoai phone').lean() as any;
-        if (ndUser) {
-          allKt.push({ _id: ndUser._id, hoTen: ndUser.ten || ndUser.name, soDienThoai: ndUser.soDienThoai || ndUser.phone });
-          continue;
+      // 1) Populate from khachThueId
+      ktIds.forEach((ktId: any) => {
+        const idStr = ktId.toString();
+        const found = userMap.get(idStr);
+        if (found) {
+          allKt.push(found);
+        } else {
+          // Fallback: snapshot
+          const snap = snapshots.find((s: any) => s.id === idStr);
+          allKt.push({ _id: ktId, hoTen: snap?.hoTen || '(Không có thông tin)', soDienThoai: snap?.soDienThoai || '' });
         }
-        // Fallback: snapshot
-        const snap = snapshots.find((s: any) => s.id === ktId.toString());
-        allKt.push({ _id: ktId, hoTen: snap?.hoTen || '(Không có thông tin)', soDienThoai: snap?.soDienThoai || '' });
-      }
+      });
       
       // 2) Append snapshot-only tenants (không có ID trong DB)
       for (const snap of snapshots) {
@@ -157,16 +180,11 @@ export async function GET(request: NextRequest) {
       
       let nguoiDaiDien = null;
       if (hd.nguoiDaiDien) {
-        nguoiDaiDien = await KhachThue.findById(hd.nguoiDaiDien).select('hoTen soDienThoai').lean();
+        const idStr = hd.nguoiDaiDien.toString();
+        nguoiDaiDien = userMap.get(idStr);
         if (!nguoiDaiDien) {
-          const u = await NguoiDung.findOne({ _id: hd.nguoiDaiDien }).select('ten name soDienThoai phone').lean();
-          if (u) {
-            const usr = u as any;
-            nguoiDaiDien = { _id: usr._id, hoTen: usr.ten || usr.name, soDienThoai: usr.soDienThoai || usr.phone };
-          } else {
-            const snap = snapshots.find((s: any) => s.id === hd.nguoiDaiDien.toString());
-            nguoiDaiDien = { _id: hd.nguoiDaiDien, hoTen: snap?.hoTen || '(Không có thông tin)', soDienThoai: snap?.soDienThoai || '' };
-          }
+          const snap = snapshots.find((s: any) => s.id === idStr);
+          nguoiDaiDien = { _id: hd.nguoiDaiDien, hoTen: snap?.hoTen || '(Không có thông tin)', soDienThoai: snap?.soDienThoai || '' };
         }
       }
       
@@ -181,7 +199,7 @@ export async function GET(request: NextRequest) {
       }
 
       return { ...hd, khachThueId: allKt, nguoiDaiDien: nguoiDaiDien, snapshotKhachThue: snapshots };
-    }));
+    });
 
 
 

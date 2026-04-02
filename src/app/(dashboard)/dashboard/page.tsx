@@ -217,8 +217,8 @@ export default function DashboardPage() {
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
 
-  const fetchStats = useCallback(async () => {
-    setLoading(true);
+  const fetchStats = useCallback(async (isInitial = false) => {
+    if (!isInitial) setLoading(true);
     try {
       const params = new URLSearchParams();
       if (selectedToaNha !== 'all') params.append('toaNhaId', selectedToaNha);
@@ -243,7 +243,14 @@ export default function DashboardPage() {
       const response = await fetch(`/api/dashboard/stats?${params.toString()}`);
       if (response.ok) {
         const result = await response.json();
-        if (result.success) setStats(result.data);
+        if (result.success) {
+          setStats(result.data);
+          // Save to persistent cache for instant next load
+          localStorage.setItem('dashboard_stats_cache', JSON.stringify({
+            data: result.data,
+            timestamp: Date.now()
+          }));
+        }
       }
     } catch (error) {
       console.error('Error:', error);
@@ -253,7 +260,7 @@ export default function DashboardPage() {
     }
   }, [selectedToaNha, timeRange]);
 
-  const fetchToaNha = async () => {
+  const fetchToaNha = useCallback(async () => {
     try {
       const response = await fetch('/api/toa-nha?limit=100');
       if (response.ok) {
@@ -263,13 +270,43 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Error fetching buildings:', error);
     }
-  };
+  }, []);
+
+  const fetchInitialData = useCallback(async () => {
+    // 0. Load from local cache for instant paint
+    const cached = typeof window !== 'undefined' ? localStorage.getItem('dashboard_stats_cache') : null;
+    if (cached) {
+      try {
+        const { data } = JSON.parse(cached);
+        setStats(data);
+        setLoading(false); // Can show UI immediately
+      } catch (e) {
+        setLoading(true);
+      }
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      // 1. Fetch buildings and basic stats in parallel
+      await Promise.all([
+        fetchToaNha(),
+        fetchStats(true)
+      ]);
+    } catch (error) {
+      console.error('Error fetching initial dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchStats, fetchToaNha]);
 
   useEffect(() => {
     document.title = 'Dashboard | SmartStay';
-    fetchToaNha();
+    fetchInitialData();
+  }, [fetchInitialData]);
 
-    // Check for plan selection from registration
+  // Restore Plan Selection Logic
+  useEffect(() => {
     const planKey = searchParams.get('plan');
     if (planKey && ['basic', 'professional'].includes(planKey) && status === 'authenticated') {
       const handleSelectedPlan = async () => {
@@ -319,11 +356,14 @@ export default function DashboardPage() {
       };
       handleSelectedPlan();
     }
-  }, [searchParams]);
+  }, [searchParams, status, session]);
 
   useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+    // Re-fetch stats khi bộ lọc thay đổi
+    if (!loading && (selectedToaNha !== 'all' || timeRange !== '6_months')) {
+      fetchStats();
+    }
+  }, [selectedToaNha, timeRange]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN').format(amount) + ' ₫';
@@ -396,7 +436,7 @@ export default function DashboardPage() {
           </Select>
 
           <button
-            onClick={fetchStats}
+            onClick={() => fetchStats()}
             disabled={loading}
             className="h-9 w-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
