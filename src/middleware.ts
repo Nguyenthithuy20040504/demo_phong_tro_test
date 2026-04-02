@@ -14,8 +14,9 @@ export default withAuth(
         // Luôn cho phép các route của NextAuth (bao gồm callback)
         if (pathname.startsWith('/api/auth')) return true;
         
-        // Bảo vệ dashboard và các api khác (trừ các route public kết thúc bằng -public)
-        if (pathname.startsWith('/dashboard') || (pathname.startsWith('/api') && !pathname.includes('-public'))) {
+        // Bảo vệ dashboard và các api khác (trừ các route public kết thúc bằng -public hoặc cron)
+        if (pathname.startsWith('/dashboard') || 
+           (pathname.startsWith('/api') && !pathname.includes('-public') && !pathname.startsWith('/api/cron/'))) {
           return !!token;
         }
         return true;

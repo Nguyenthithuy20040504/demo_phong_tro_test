@@ -28,6 +28,12 @@ export interface IHoaDon extends Document {
   ghiChu?: string;
   checkoutUrl?: string;
   paymentOrderId?: string;
+  lanGuiEmailNhacNo?: number;
+  soLanGuiEmailNhacNoThatBai?: number;
+  ngayGuiEmailNhacNoCuoi?: Date;
+  lanGuiSmsNhacNo?: number;
+  soLanGuiSmsNhacNoThatBai?: number;
+  ngayGuiSmsNhacNoCuoi?: Date;
   ngayTao: Date;
   ngayCapNhat: Date;
 }
@@ -162,6 +168,30 @@ const HoaDonSchema = new Schema<IHoaDon>({
   paymentOrderId: {
     type: String,
     trim: true
+  },
+  lanGuiEmailNhacNo: {
+    type: Number,
+    default: 0
+  },
+  soLanGuiEmailNhacNoThatBai: {
+    type: Number,
+    default: 0
+  },
+  ngayGuiEmailNhacNoCuoi: {
+    type: Date,
+    default: null
+  },
+  lanGuiSmsNhacNo: {
+    type: Number,
+    default: 0
+  },
+  soLanGuiSmsNhacNoThatBai: {
+    type: Number,
+    default: 0
+  },
+  ngayGuiSmsNhacNoCuoi: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: { createdAt: 'ngayTao', updatedAt: 'ngayCapNhat' }

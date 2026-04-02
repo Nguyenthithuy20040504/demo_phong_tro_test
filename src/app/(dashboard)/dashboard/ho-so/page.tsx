@@ -11,9 +11,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { 
   User, 
@@ -66,6 +68,11 @@ interface UserProfile {
     soTaiKhoan: string;
     chuTaiKhoan: string;
   };
+  caiDatThongBao?: {
+    tuDongNhacNo?: boolean;
+    thoiGianNhacNoEmail?: number;
+    ngayGuiThongBaoCuoi?: string;
+  };
 }
 
 export default function ProfilePage() {
@@ -88,6 +95,11 @@ export default function ProfilePage() {
       nganHang: '',
       soTaiKhoan: '',
       chuTaiKhoan: ''
+    },
+    caiDatThongBao: {
+      tuDongNhacNo: false,
+      thoiGianNhacNoEmail: 1440,
+      ngayGuiThongBaoCuoi: null as string | null
     }
   });
 
@@ -182,7 +194,12 @@ export default function ProfilePage() {
           address: data.address || '',
           avatar: data.avatar || '',
           anhCCCD: data.anhCCCD || { matTruoc: '', matSau: '' },
-          thongTinThanhToan: data.thongTinThanhToan || { nganHang: '', soTaiKhoan: '', chuTaiKhoan: '' }
+          thongTinThanhToan: data.thongTinThanhToan || { nganHang: '', soTaiKhoan: '', chuTaiKhoan: '' },
+          caiDatThongBao: { 
+            tuDongNhacNo: data.caiDatThongBao?.tuDongNhacNo ?? false,
+            thoiGianNhacNoEmail: data.caiDatThongBao?.thoiGianNhacNoEmail ?? 1440,
+            ngayGuiThongBaoCuoi: data.caiDatThongBao?.ngayGuiThongBaoCuoi || null
+          }
         });
       }
     } catch (error) {
@@ -235,7 +252,12 @@ export default function ProfilePage() {
       address: profile?.address || '',
       avatar: profile?.avatar || '',
       anhCCCD: profile?.anhCCCD || { matTruoc: '', matSau: '' },
-      thongTinThanhToan: profile?.thongTinThanhToan || { nganHang: '', soTaiKhoan: '', chuTaiKhoan: '' }
+      thongTinThanhToan: profile?.thongTinThanhToan || { nganHang: '', soTaiKhoan: '', chuTaiKhoan: '' },
+      caiDatThongBao: { 
+        tuDongNhacNo: profile?.caiDatThongBao?.tuDongNhacNo ?? false,
+        thoiGianNhacNoEmail: profile?.caiDatThongBao?.thoiGianNhacNoEmail ?? 1440,
+        ngayGuiThongBaoCuoi: profile?.caiDatThongBao?.ngayGuiThongBaoCuoi || null
+      }
     });
     setIsEditing(false);
   };
@@ -783,24 +805,135 @@ export default function ProfilePage() {
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-4 md:space-y-6">
-          <Card>
-            <CardHeader className="p-4 md:p-6">
-              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                <Bell className="h-4 w-4 md:h-5 md:w-5" />
-                Cài đặt thông báo
-              </CardTitle>
-              <CardDescription className="text-xs md:text-sm">
-                Quản lý các thông báo và email
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 md:space-y-4 p-4 md:p-6">
-              <div className="p-3 md:p-4 border rounded-lg bg-blue-50 border-blue-200">
-                <p className="text-xs md:text-sm text-blue-800">
-                  Tính năng cài đặt thông báo sẽ được cập nhật trong phiên bản tiếp theo.
-                </p>
+          <Card className="border-none shadow-md bg-gradient-to-br from-white to-gray-50/50">
+            <CardHeader className="p-4 md:p-6 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Bell className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg md:text-xl font-bold text-gray-900">🔔 Cài đặt thông báo tự động</CardTitle>
+                  <CardDescription className="text-xs md:text-sm text-gray-500">
+                    Tự động nhắc nợ khách thuê chuyên nghiệp và hiệu quả
+                  </CardDescription>
+                </div>
               </div>
+            </CardHeader>
+            <CardContent className="p-4 md:p-6 space-y-8">
+              
+              {/* Main Toggle Section */}
+              <div className={cn(
+                "flex items-center justify-between p-4 rounded-xl border transition-all duration-200",
+                formData.caiDatThongBao.tuDongNhacNo 
+                  ? "bg-blue-50/50 border-blue-200 shadow-sm" 
+                  : "bg-gray-50 border-gray-200"
+              )}>
+                <div className="space-y-1">
+                  <Label className="text-base font-bold text-gray-900 flex items-center gap-2">
+                    Trạng thái: {formData.caiDatThongBao.tuDongNhacNo ? 'Đang hoạt động' : 'Đang tắt'}
+                    {formData.caiDatThongBao.tuDongNhacNo && <Badge className="bg-green-500 text-white border-none py-0 h-5">Live</Badge>}
+                  </Label>
+                  <p className="text-xs text-gray-500 max-w-[280px] md:max-w-md">
+                    Hệ thống sẽ tự động gửi email đính kèm mã QR thanh toán cho khách thuê khi đến hạn hoặc quá hạn.
+                  </p>
+                </div>
+                {isEditing ? (
+                  <Switch
+                    checked={formData.caiDatThongBao.tuDongNhacNo}
+                    onCheckedChange={(checked) => setFormData({
+                      ...formData,
+                      caiDatThongBao: { ...formData.caiDatThongBao, tuDongNhacNo: checked }
+                    })}
+                    className="data-[state=checked]:bg-blue-600"
+                  />
+                ) : (
+                  <div className={cn(
+                    "w-12 h-6 rounded-full relative transition-colors duration-200",
+                    formData.caiDatThongBao.tuDongNhacNo ? "bg-blue-600" : "bg-gray-300"
+                  )}>
+                    <div className={cn(
+                      "absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform duration-200",
+                      formData.caiDatThongBao.tuDongNhacNo ? "translate-x-6" : "translate-x-0"
+                    )} />
+                  </div>
+                )}
+              </div>
+
+              {/* Settings Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3 p-4 rounded-xl border border-gray-100 bg-white shadow-sm">
+                  <div className="flex items-center gap-2 text-blue-700 font-semibold mb-1">
+                    <Calendar className="h-4 w-4" />
+                    <span className="text-sm">Tần suất nhắc nợ</span>
+                  </div>
+                  <Label className="text-xs text-gray-500">Khoảng cách giữa các lần gửi email (phút)</Label>
+                  {isEditing ? (
+                    <div className="flex items-center gap-2 group">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={formData.caiDatThongBao.thoiGianNhacNoEmail}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          caiDatThongBao: { ...formData.caiDatThongBao, thoiGianNhacNoEmail: Number(e.target.value) }
+                        })}
+                        className="max-w-[120px] h-10 border-gray-200 focus:ring-blue-500 transition-all"
+                      />
+                      <span className="text-sm font-medium text-gray-600">phút</span>
+                    </div>
+                  ) : (
+                    <div className="text-lg font-bold text-gray-800">
+                      {formData.caiDatThongBao.thoiGianNhacNoEmail} <span className="text-sm font-normal text-gray-500">phút</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3 p-4 rounded-xl border border-gray-100 bg-white shadow-sm">
+                  <div className="flex items-center gap-2 text-green-700 font-semibold mb-1">
+                    <Check className="h-4 w-4" />
+                    <span className="text-sm">Lần gửi cuối cùng</span>
+                  </div>
+                  <Label className="text-xs text-gray-500">Thời điểm hệ thống vừa xử lý xong</Label>
+                  <div className="flex items-center gap-2">
+                    {formData.caiDatThongBao.ngayGuiThongBaoCuoi ? (
+                      <span className="text-base font-bold text-gray-800">
+                        {new Date(formData.caiDatThongBao.ngayGuiThongBaoCuoi).toLocaleString('vi-VN', {
+                          hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'
+                        })}
+                      </span>
+                    ) : (
+                      <span className="text-sm italic text-gray-400">Chưa có dữ liệu</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Section */}
+              {isEditing && (
+                <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-gray-100">
+                  <Button size="lg" onClick={handleSave} disabled={saving} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                    {saving ? (
+                      <><Loader2 className="animate-spin h-5 w-5 mr-2" /> Đang lưu...</>
+                    ) : (
+                      <><Save className="h-5 w-5 mr-2" /> Lưu cài đặt</>
+                    )}
+                  </Button>
+                  <Button variant="outline" size="lg" onClick={handleCancel} className="w-full sm:w-auto border-gray-200 hover:bg-gray-50 transition-all">
+                    <X className="h-5 w-5 mr-2" /> Hủy bỏ
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {/* Quick Tip */}
+          <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl flex gap-3">
+            <Shield className="h-5 w-5 text-amber-600 shrink-0" />
+            <p className="text-xs text-amber-800 leading-relaxed">
+              <strong>Mẹo nhỏ:</strong> Nên để tần suất ít nhất 1440 phút (1 ngày) để tránh làm phiền khách thuê. 
+              Đừng quên kiểm tra thông tin ngân hàng ở tab Thông tin để đảm bảo mã QR VietQR được tạo đúng nhé!
+            </p>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
