@@ -73,15 +73,16 @@ export async function GET(request: NextRequest) {
       query.loai = loai;
     }
 
-    const thongBaoList = await ThongBao.find(query)
-      .populate('nguoiGui', 'ten email')
-      .populate('phong', 'maPhong')
-      .populate('toaNha', 'tenToaNha')
-      .sort({ ngayGui: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit);
-
-    const total = await ThongBao.countDocuments(query);
+    const [thongBaoList, total] = await Promise.all([
+      ThongBao.find(query)
+        .populate('nguoiGui', 'ten email')
+        .populate('phong', 'maPhong')
+        .populate('toaNha', 'tenToaNha')
+        .sort({ ngayGui: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      ThongBao.countDocuments(query)
+    ]);
 
     return NextResponse.json({
       success: true,

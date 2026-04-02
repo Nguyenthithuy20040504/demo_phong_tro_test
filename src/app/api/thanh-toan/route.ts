@@ -71,21 +71,22 @@ export async function GET(request: NextRequest) {
 
     const skip = (page - 1) * limit;
 
-    const thanhToans = await ThanhToan.find(query)
-      .populate({
-        path: 'hoaDon',
-        select: 'maHoaDon thang nam tongTien phong khachThue',
-        populate: [
-          { path: 'phong', select: 'maPhong' },
-          { path: 'khachThue', select: 'hoTen' }
-        ]
-      })
-      .populate('nguoiNhan', 'hoTen email')   
-      .sort({ ngayThanhToan: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    const total = await ThanhToan.countDocuments(query);
+    const [thanhToans, total] = await Promise.all([
+      ThanhToan.find(query)
+        .populate({
+          path: 'hoaDon',
+          select: 'maHoaDon thang nam tongTien phong khachThue',
+          populate: [
+            { path: 'phong', select: 'maPhong' },
+            { path: 'khachThue', select: 'hoTen' }
+          ]
+        })
+        .populate('nguoiNhan', 'hoTen email')   
+        .sort({ ngayThanhToan: -1 })
+        .skip(skip)
+        .limit(limit),
+      ThanhToan.countDocuments(query)
+    ]);
 
     return NextResponse.json({
       success: true,

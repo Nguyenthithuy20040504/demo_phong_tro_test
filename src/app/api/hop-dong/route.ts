@@ -99,19 +99,22 @@ export async function GET(request: NextRequest) {
       query.phong = { $in: phongIds };
     }
 
-    const hopDongListRaw = await HopDong.find(query)
-      .populate({
-        path: 'phong',
-        select: 'maPhong toaNha',
-        populate: {
-          path: 'toaNha',
-          select: 'tenToaNha'
-        }
-      })
-      .sort({ ngayTao: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean();
+    const [hopDongListRaw, total] = await Promise.all([
+      HopDong.find(query)
+        .populate({
+          path: 'phong',
+          select: 'maPhong toaNha',
+          populate: {
+            path: 'toaNha',
+            select: 'tenToaNha'
+          }
+        })
+        .sort({ ngayTao: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      HopDong.countDocuments(query)
+    ]);
 
     // Thủ công populate khachThueId và nguoiDaiDien từ cả 2 collection
     // Dùng snapshotKhachThue làm fallback khi khách thuê đã bị xóa
@@ -173,7 +176,7 @@ export async function GET(request: NextRequest) {
       return { ...hd, khachThueId: allKt, nguoiDaiDien: nguoiDaiDien, snapshotKhachThue: snapshots };
     }));
 
-    const total = await HopDong.countDocuments(query);
+
 
     return NextResponse.json({
       success: true,

@@ -87,11 +87,13 @@ export async function GET(request: NextRequest) {
     let filterEndDate = endDateParam ? new Date(endDateParam) : null;
     if (filterEndDate) filterEndDate.setHours(23, 59, 59, 999);
 
-    // Get room stats
-    const totalPhong = await Phong.countDocuments(phongQuery);
-    const phongTrong = await Phong.countDocuments({ ...phongQuery, trangThai: 'trong' });
-    const phongDangThue = await Phong.countDocuments({ ...phongQuery, trangThai: 'dangThue' });
-    const phongBaoTri = await Phong.countDocuments({ ...phongQuery, trangThai: 'baoTri' });
+    // Get room stats in parallel
+    const [totalPhong, phongTrong, phongDangThue, phongBaoTri] = await Promise.all([
+      Phong.countDocuments(phongQuery),
+      Phong.countDocuments({ ...phongQuery, trangThai: 'trong' }),
+      Phong.countDocuments({ ...phongQuery, trangThai: 'dangThue' }),
+      Phong.countDocuments({ ...phongQuery, trangThai: 'baoTri' })
+    ]);
 
     // Revenue aggregation helper
     const getRevenue = async (start: Date, end: Date) => {
@@ -112,8 +114,10 @@ export async function GET(request: NextRequest) {
       return result[0]?.total || 0;
     };
 
-    const doanhThuThang = await getRevenue(startOfCurrentMonth, endOfCurrentMonth);
-    const doanhThuNam = await getRevenue(startOfCurrentYear, endOfCurrentYear);
+    const [doanhThuThang, doanhThuNam] = await Promise.all([
+      getRevenue(startOfCurrentMonth, endOfCurrentMonth),
+      getRevenue(startOfCurrentYear, endOfCurrentYear)
+    ]);
     
     // If filter dates provided, calculate custom revenue
     let filteredRevenue = null;
@@ -125,92 +129,97 @@ export async function GET(request: NextRequest) {
     const nextWeek = new Date();
     nextWeek.setDate(nextWeek.getDate() + 7);
     
-    const hoaDonSapDenHan = await HoaDon.countDocuments({
-      ...hoaDonSuCoQuery,
-      hanThanhToan: { $lte: nextWeek },
-      trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan'] }
+    // Count overdue invoices
+    const soHoaDonQuaHanPromise = HoaDon.countDocuments({
+      hopDong: { $in: hopDongIds },
+      trangThai: 'quaHan',
     });
 
-    // Get pending issues
-    const suCoCanXuLy = await SuCo.countDocuments({
-      ...hoaDonSuCoQuery,
-      trangThai: { $in: ['moi', 'dangXuLy'] }
-    });
+    // ===== NEW: Revenue change percentage (vs last month) =====
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+    const doanhThuThangTruocPromise = getRevenue(lastMonthStart, lastMonthEnd);
 
-    // Get contracts expiring in next 30 days
+    // ===== NEW: Top 5 overdue invoices with details =====
+    const KhachThue = (await import('@/models/KhachThue')).default;
+    const hoaDonQuaHanRawPromise = HoaDon.find({
+      hopDong: { $in: hopDongIds },
+      trangThai: { $in: ['quaHan', 'chuaThanhToan'] },
+      hanThanhToan: { $lt: now },
+    })
+      .sort({ hanThanhToan: 1 })
+      .limit(5)
+      .populate({ path: 'khachThue', select: 'hoTen' })
+      .populate({ path: 'phong', select: 'maPhong' })
+      .lean();
+      
+    // Variables for dates needed in concurrent queries
     const nextMonth = new Date();
     nextMonth.setDate(nextMonth.getDate() + 30);
     
-    const hopDongSapHetHan = await HopDong.countDocuments({
-      ...hoaDonSuCoQuery,
-      ngayKetThuc: { $lte: nextMonth },
-      trangThai: 'hoatDong'
-    });
-
-    // Monthly revenue breakdown for current year
     const startOfCurrentYearFull = new Date(now.getFullYear(), 0, 1);
     const endOfCurrentYearFull = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
 
-    const monthlyRevenueRaw = await ThanhToan.aggregate([
-      {
-        $match: {
-          ...thanhToanQuery,
-          ngayThanhToan: { $gte: startOfCurrentYearFull, $lte: endOfCurrentYearFull }
-        }
-      },
-      {
-        $group: {
-          _id: { $month: '$ngayThanhToan' },
-          total: { $sum: '$soTien' }
-        }
-      },
-      { $sort: { '_id': 1 } }
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const endOfThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    
+    // Combine complex queries in parallel
+    const [
+      hoaDonSapDenHan,
+      suCoCanXuLy,
+      hopDongSapHetHan,
+      monthlyRevenueRaw,
+      revenueByMonth,
+      debtByMonth,
+      totalDebtResult,
+      soHoaDonQuaHan,
+      doanhThuThangTruoc,
+      hoaDonQuaHanRaw
+    ] = await Promise.all([
+      HoaDon.countDocuments({
+        ...hoaDonSuCoQuery,
+        hanThanhToan: { $lte: nextWeek },
+        trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan'] }
+      }),
+      SuCo.countDocuments({
+        ...hoaDonSuCoQuery,
+        trangThai: { $in: ['moi', 'dangXuLy'] }
+      }),
+      HopDong.countDocuments({
+        ...hoaDonSuCoQuery,
+        ngayKetThuc: { $lte: nextMonth },
+        trangThai: 'hoatDong'
+      }),
+      ThanhToan.aggregate([
+        { $match: { ...thanhToanQuery, ngayThanhToan: { $gte: startOfCurrentYearFull, $lte: endOfCurrentYearFull } } },
+        { $group: { _id: { $month: '$ngayThanhToan' }, total: { $sum: '$soTien' } } },
+        { $sort: { '_id': 1 } }
+      ]),
+      ThanhToan.aggregate([
+        { $match: { ...thanhToanQuery, ngayThanhToan: { $gte: sixMonthsAgo, $lte: endOfThisMonth } } },
+        { $group: { _id: { month: { $month: '$ngayThanhToan' }, year: { $year: '$ngayThanhToan' } }, total: { $sum: '$soTien' } } }
+      ]),
+      HoaDon.aggregate([
+        { $match: { hopDong: { $in: hopDongIds }, trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan', 'quaHan'] } } },
+        { $group: { _id: { month: { $month: '$hanThanhToan' }, year: { $year: '$hanThanhToan' } }, total: { $sum: '$conLai' } } }
+      ]),
+      HoaDon.aggregate([
+        { $match: { hopDong: { $in: hopDongIds }, trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan', 'quaHan'] } } },
+        { $group: { _id: null, total: { $sum: '$conLai' } } }
+      ]),
+      soHoaDonQuaHanPromise,
+      doanhThuThangTruocPromise,
+      hoaDonQuaHanRawPromise
     ]);
 
     // Fill in missing months with 0
     const doanhThuTheoThang = Array.from({ length: 12 }, (_, i) => {
-      const monthData = monthlyRevenueRaw.find(m => m._id === i + 1);
+      const monthData = monthlyRevenueRaw.find((m: any) => m._id === i + 1);
       return {
         thang: i + 1,
         total: monthData ? monthData.total : 0
       };
     });
-
-    // ===== NEW: 6-month revenue vs debt comparison =====
-    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-    const endOfThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-
-    // Revenue per month (last 6 months)
-    const revenueByMonth = await ThanhToan.aggregate([
-      {
-        $match: {
-          ...thanhToanQuery,
-          ngayThanhToan: { $gte: sixMonthsAgo, $lte: endOfThisMonth }
-        }
-      },
-      {
-        $group: {
-          _id: { month: { $month: '$ngayThanhToan' }, year: { $year: '$ngayThanhToan' } },
-          total: { $sum: '$soTien' }
-        }
-      }
-    ]);
-
-    // Debt per month (last 6 months) - based on invoices
-    const debtByMonth = await HoaDon.aggregate([
-      {
-        $match: {
-          hopDong: { $in: hopDongIds },
-          trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan', 'quaHan'] },
-        }
-      },
-      {
-        $group: {
-          _id: { month: { $month: '$hanThanhToan' }, year: { $year: '$hanThanhToan' } },
-          total: { $sum: '$conLai' }
-        }
-      }
-    ]);
 
     const doanhThuVaCongNo6Thang = [];
     for (let i = 5; i >= 0; i--) {
@@ -228,44 +237,11 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // ===== NEW: Total unpaid debt =====
-    const totalDebtResult = await HoaDon.aggregate([
-      {
-        $match: {
-          hopDong: { $in: hopDongIds },
-          trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan', 'quaHan'] },
-        }
-      },
-      { $group: { _id: null, total: { $sum: '$conLai' } } }
-    ]);
     const tongNoKhongThu = totalDebtResult[0]?.total || 0;
-
-    // Count overdue invoices
-    const soHoaDonQuaHan = await HoaDon.countDocuments({
-      hopDong: { $in: hopDongIds },
-      trangThai: 'quaHan',
-    });
-
-    // ===== NEW: Revenue change percentage (vs last month) =====
-    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-    const doanhThuThangTruoc = await getRevenue(lastMonthStart, lastMonthEnd);
+    
     const tyLeThayDoiDoanhThu = doanhThuThangTruoc > 0
       ? Number((((doanhThuThang - doanhThuThangTruoc) / doanhThuThangTruoc) * 100).toFixed(1))
       : 0;
-
-    // ===== NEW: Top 5 overdue invoices with details =====
-    const KhachThue = (await import('@/models/KhachThue')).default;
-    const hoaDonQuaHanRaw = await HoaDon.find({
-      hopDong: { $in: hopDongIds },
-      trangThai: { $in: ['quaHan', 'chuaThanhToan'] },
-      hanThanhToan: { $lt: now },
-    })
-      .sort({ hanThanhToan: 1 })
-      .limit(5)
-      .populate({ path: 'khachThue', select: 'hoTen' })
-      .populate({ path: 'phong', select: 'maPhong' })
-      .lean();
 
     const hoaDonQuaHanList = hoaDonQuaHanRaw.map((hd: any) => ({
       _id: hd._id.toString(),

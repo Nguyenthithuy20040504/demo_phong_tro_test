@@ -76,14 +76,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const chiSoList = await ChiSoDienNuoc.find(query)
-      .populate('phong', 'maPhong toaNha')
-      .populate('nguoiGhi', 'ten email')
-      .sort({ nam: -1, thang: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit);
-
-    const total = await ChiSoDienNuoc.countDocuments(query);
+    const [chiSoList, total] = await Promise.all([
+      ChiSoDienNuoc.find(query)
+        .populate('phong', 'maPhong toaNha')
+        .populate('nguoiGhi', 'ten email')
+        .sort({ nam: -1, thang: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      ChiSoDienNuoc.countDocuments(query)
+    ]);
 
     return NextResponse.json({
       success: true,

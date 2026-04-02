@@ -54,7 +54,7 @@ export function Navbar() {
 
         {/* Actions */}
         <div className="flex items-center gap-3 sm:gap-6">
-          <Link href="/dang-nhap" className="hidden md:block text-gray-500 hover:text-primary font-bold text-xs uppercase tracking-widest transition-colors font-heading">
+          <Link href="/dang-nhap" prefetch={true} className="hidden md:block text-gray-500 hover:text-primary font-bold text-xs uppercase tracking-widest transition-colors font-heading">
             Đăng nhập
           </Link>
           <a 
@@ -98,12 +98,13 @@ export function Navbar() {
               <div className="pt-4 border-t border-gray-100 flex flex-col gap-4">
                 <Link 
                   href="/dang-nhap" 
+                  prefetch={true}
                   className="text-lg font-bold text-gray-500"
                   onClick={() => setIsOpen(false)}
                 >
                   Đăng nhập
                 </Link>
-                <Link href="/dang-ky" onClick={() => setIsOpen(false)}>
+                <Link href="/dang-ky" prefetch={true} onClick={() => setIsOpen(false)}>
                   <Button className="w-full bg-primary h-12 rounded-xl font-bold text-lg">
                     Đăng ký ngay
                   </Button>

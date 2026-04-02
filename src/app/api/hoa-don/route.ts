@@ -196,12 +196,15 @@ export async function GET(request: NextRequest) {
 
     const skip = (page - 1) * limit;
 
-    const hoaDons = await HoaDon.find(query)
-      .populate('hopDong', 'maHopDong')
-      .populate('phong', 'maPhong')
-      .sort({ nam: -1, thang: -1 })
-      .skip(skip)
-      .limit(limit);
+    const [hoaDons, total] = await Promise.all([
+      HoaDon.find(query)
+        .populate('hopDong', 'maHopDong')
+        .populate('phong', 'maPhong')
+        .sort({ nam: -1, thang: -1 })
+        .skip(skip)
+        .limit(limit),
+      HoaDon.countDocuments(query)
+    ]);
 
     // Chuẩn bị models cho KhachThue
     const KhachThueModel = (await import('@/models/KhachThue')).default;
@@ -313,7 +316,6 @@ export async function GET(request: NextRequest) {
       return hoaDonObj;
     }));
 
-    const total = await HoaDon.countDocuments(query);
 
     return NextResponse.json({
       success: true,

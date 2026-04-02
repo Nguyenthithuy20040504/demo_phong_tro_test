@@ -58,52 +58,40 @@ export async function GET(request: NextRequest) {
       query._id = { $in: accessibleToaNhaIds };
     }
 
-    const toaNhaList = await ToaNha.find(query)
-      .populate('chuSoHuu', 'ten email soDienThoai')
-      .sort({ ngayTao: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit);
+    const [toaNhaList, total] = await Promise.all([
+      ToaNha.find(query)
+        .populate('chuSoHuu', 'ten email soDienThoai')
+        .sort({ ngayTao: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      ToaNha.countDocuments(query)
+    ]);
 
     console.log('GET /api/toa-nha: Found', toaNhaList.length, 'buildings for query:', JSON.stringify(query));
 
     // Tính tổng số phòng và thống kê trạng thái cho mỗi tòa nhà
     const toaNhaWithStats = await Promise.all(
       toaNhaList.map(async (toaNha) => {
-        // Đếm tổng số phòng
-        const tongSoPhong = await Phong.countDocuments({ toaNha: toaNha._id });
-        
-        // Đếm số phòng trống
-        const phongTrong = await Phong.countDocuments({ 
-          toaNha: toaNha._id, 
-          trangThai: 'trong' 
-        });
-        
-        // Đếm số phòng đang thuê
-        const phongDangThue = await Phong.countDocuments({ 
-          toaNha: toaNha._id, 
-          trangThai: 'dangThue' 
-        });
-        
-        // Đếm số phòng đã đặt
-        const phongDaDat = await Phong.countDocuments({ 
-          toaNha: toaNha._id, 
-          trangThai: 'daDat' 
-        });
-        
-        // Đếm số phòng bảo trì
-        const phongBaoTri = await Phong.countDocuments({ 
-          toaNha: toaNha._id, 
-          trangThai: 'baoTri' 
-        });
+        const roomIdsList = await Phong.find({ toaNha: toaNha._id }).distinct('_id');
 
-        // Tìm các phòng thuộc tòa nhà này
-        const roomIds = await Phong.find({ toaNha: toaNha._id }).distinct('_id');
-        
-        // Đếm số sự cố đang hoạt động (moi, dangXuLy) của tất cả các phòng trong tòa nhà
-        const suCoCount = await SuCo.countDocuments({
-          phong: { $in: roomIds },
-          trangThai: { $in: ['moi', 'dangXuLy'] }
-        });
+        const [
+          tongSoPhong,
+          phongTrong,
+          phongDangThue,
+          phongDaDat,
+          phongBaoTri,
+          suCoCount
+        ] = await Promise.all([
+          Phong.countDocuments({ toaNha: toaNha._id }),
+          Phong.countDocuments({ toaNha: toaNha._id, trangThai: 'trong' }),
+          Phong.countDocuments({ toaNha: toaNha._id, trangThai: 'dangThue' }),
+          Phong.countDocuments({ toaNha: toaNha._id, trangThai: 'daDat' }),
+          Phong.countDocuments({ toaNha: toaNha._id, trangThai: 'baoTri' }),
+          SuCo.countDocuments({
+            phong: { $in: roomIdsList },
+            trangThai: { $in: ['moi', 'dangXuLy'] }
+          })
+        ]);
         
         return {
           ...toaNha.toObject(),
@@ -117,7 +105,6 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    const total = await ToaNha.countDocuments(query);
 
     return NextResponse.json({
       success: true,

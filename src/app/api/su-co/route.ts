@@ -97,20 +97,23 @@ export async function GET(request: NextRequest) {
       query.phong = { $in: phongIds };
     }
 
-    const suCoListRaw = await SuCo.find(query)
-      .populate({
-        path: 'phong',
-        select: 'maPhong toaNha',
-        populate: {
-          path: 'toaNha',
-          select: 'tenToaNha'
-        }
-      })
-      .populate('nguoiXuLy', 'ten email')
-      .sort({ ngayBaoCao: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean();
+    const [suCoListRaw, total] = await Promise.all([
+      SuCo.find(query)
+        .populate({
+          path: 'phong',
+          select: 'maPhong toaNha',
+          populate: {
+            path: 'toaNha',
+            select: 'tenToaNha'
+          }
+        })
+        .populate('nguoiXuLy', 'ten email')
+        .sort({ ngayBaoCao: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      SuCo.countDocuments(query)
+    ]);
 
     // Thủ công populate khachThue từ cả 2 collection và toaNha
     const ToaNhaModel = mongoose.models.ToaNha || mongoose.model('ToaNha');
@@ -134,7 +137,7 @@ export async function GET(request: NextRequest) {
       return { ...sc, khachThue };
     }));
 
-    const total = await SuCo.countDocuments(query);
+
 
     return NextResponse.json({
       success: true,

@@ -26,37 +26,34 @@ export async function GET(request: NextRequest) {
       query._id = { $in: accessibleToaNhaIds };
     }
 
-    // Lấy danh sách tòa nhà
-    console.log('Fetching toaNhaList...');
-    const toaNhaListRaw = await ToaNha.find(query)
-      .select('tenToaNha')
-      .sort({ tenToaNha: 1 })
-      .lean();
-    const toaNhaList = (toaNhaListRaw as any[]).map(t => ({ ...t, _id: t._id.toString() }));
-    console.log('Fetched toaNhaList:', toaNhaList.length);
-
-    // Get rooms filtered by building
-    console.log('Fetching phongList...');
+    // Parallelize independent queries
+    console.log('Fetching ToaNha, Phong, KhachThue, NguoiDung in parallel...');
+    
     const phongQuery: any = {};
     if (accessibleToaNhaIds !== null) {
       phongQuery.toaNha = { $in: accessibleToaNhaIds };
     }
-    const phongListRaw = await Phong.find(phongQuery)
-      .select('maPhong toaNha tang giaThue')
-      .sort({ maPhong: 1 })
-      .lean();
+
+    const [toaNhaListRaw, phongListRaw, khachThueListRaw, nguoiDungListRaw] = await Promise.all([
+      ToaNha.find(query).select('tenToaNha').sort({ tenToaNha: 1 }).lean(),
+      Phong.find(phongQuery).select('maPhong toaNha tang giaThue').sort({ maPhong: 1 }).lean(),
+      KhachThue.find().select('hoTen soDienThoai email').sort({ hoTen: 1 }).lean(),
+      mongoose.model('NguoiDung').find({ role: 'khachThue' }).select('ten name soDienThoai phone email').lean()
+    ]);
+
+    const toaNhaList = (toaNhaListRaw as any[]).map(t => ({ ...t, _id: t._id.toString() }));
     const phongList = (phongListRaw as any[]).map(p => ({ 
       ...p, 
       _id: p._id.toString(),
       toaNha: p.toaNha.toString()
     }));
-    console.log('Fetched phongList:', phongList.length);
+    
+    console.log('Fetched independent data. Resolving HopDong...');
 
     // Get active contracts filtered by building
-    console.log('Fetching hopDongList...');
     const hopDongQuery: any = { trangThai: 'hoatDong' };
     if (accessibleToaNhaIds !== null) {
-      const pIds = phongListRaw.map(p => p._id);
+      const pIds = (phongListRaw as any[]).map(p => p._id);
       hopDongQuery.phong = { $in: pIds };
     }
     const hopDongListRaw = await HopDong.find(hopDongQuery)
@@ -64,23 +61,14 @@ export async function GET(request: NextRequest) {
       .sort({ maHopDong: 1 })
       .lean();
     
-    // Đảm bảo phong ID trong hopDongList là string để so sánh ở frontend
+    // Formatting data
     const hopDongList = (hopDongListRaw as any[]).map(hd => ({
       ...hd,
       _id: hd._id.toString(),
       phong: hd.phong.toString(),
       nguoiDaiDien: hd.nguoiDaiDien.toString()
     }));
-    console.log('Fetched hopDongList:', hopDongList.length);
 
-    // Get all tenants for reference (from both KhachThue and NguoiDung)
-    console.log('Fetching khachThueList from both collections...');
-    
-    const [khachThueListRaw, nguoiDungListRaw] = await Promise.all([
-      KhachThue.find().select('hoTen soDienThoai email').sort({ hoTen: 1 }).lean(),
-      mongoose.model('NguoiDung').find({ role: 'khachThue' }).select('ten name soDienThoai phone email').lean()
-    ]);
-    
     const khachThueList = [
       ...(khachThueListRaw as any[]).map(kt => ({ 
         ...kt, 
@@ -93,8 +81,7 @@ export async function GET(request: NextRequest) {
         email: nd.email || ''
       }))
     ];
-    
-    console.log('Fetched khachThueList:', khachThueList.length);
+
 
     return NextResponse.json({
       success: true,

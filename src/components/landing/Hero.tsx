@@ -43,7 +43,7 @@ export function Hero() {
             </p>
 
             <div className="flex flex-col sm:flex-row pt-4 md:pt-8 gap-4">
-              <Link href="/dang-ky?vaiTro=chuNha" className="w-full sm:w-auto overflow-visible">
+              <Link href="/dang-ky?vaiTro=chuNha" prefetch={true} className="w-full sm:w-auto overflow-visible">
                 <Button className="w-full sm:w-auto h-auto py-4 sm:py-5 md:py-6 px-8 sm:px-10 md:px-12 bg-white text-primary hover:bg-gray-50 font-black rounded-2xl md:rounded-3xl text-lg sm:text-xl md:text-2xl shadow-xl hover:shadow-2xl transition-all hover:scale-[1.03] active:scale-[0.97] uppercase tracking-wider group relative overflow-hidden">
                   <span className="relative z-10">Trải nghiệm ngay</span>
                   <ChevronRight className="relative z-10 ml-2 h-6 w-6 transition-transform group-hover:translate-x-1" />

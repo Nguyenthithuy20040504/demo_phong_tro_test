@@ -16,46 +16,53 @@ export async function GET() {
 
     await dbConnect();
 
-    // 1. Tổng quát
-    const totalLandlords = await NguoiDung.countDocuments({ role: 'chuNha' });
-    const activeLandlords = await NguoiDung.countDocuments({ role: 'chuNha', isActive: true });
-    
-    // 2. Doanh thu tổng
-    const allPayments = await SaaSPayment.find({ trangThai: 'daThanhToan' });
-    const totalRevenue = allPayments.reduce((acc, p) => acc + p.soTien, 0);
-
-    // 3. Doanh thu theo tháng (12 tháng gần nhất)
-    const now = new Date();
-    const months = [];
-    for (let i = 11; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const nextD = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-        
-        const monthlyPayments = await SaaSPayment.find({
-            trangThai: 'daThanhToan',
-            ngayThanhToan: { $gte: d, $lt: nextD }
-        });
-        
-        months.push({
-            name: d.toLocaleDateString('vi-VN', { month: 'short', year: '2-digit' }),
-            revenue: monthlyPayments.reduce((acc, p) => acc + p.soTien, 0)
-        });
-    }
-
     // 4. Tài khoản sắp hết hạn (trong vòng 7 ngày)
     const sevenDaysFromNow = new Date();
     sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-    
-    const expiringSoon = await NguoiDung.find({
-        role: 'chuNha',
-        ngayHetHan: { $gt: now, $lte: sevenDaysFromNow }
-    }).select('name email phone ngayHetHan goiDichVu').limit(5);
 
-    // 5. Giao dịch gần đây
-    const recentPayments = await SaaSPayment.find({})
-        .sort({ createdAt: -1 })
-        .limit(5)
-        .populate('chuNha', 'name email');
+    // Chuẩn bị query mảng tháng cho Promise.all
+    const now = new Date();
+    const monthQueries = [];
+    for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const nextD = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+        monthQueries.push({ d, nextD });
+    }
+
+    // Thực thi toàn bộ truy vấn song song
+    const [
+      totalLandlords,
+      activeLandlords,
+      allPayments,
+      expiringSoon,
+      recentPayments,
+      ...monthlyPaymentsResults
+    ] = await Promise.all([
+      NguoiDung.countDocuments({ role: 'chuNha' }),
+      NguoiDung.countDocuments({ role: 'chuNha', isActive: true }),
+      SaaSPayment.find({ trangThai: 'daThanhToan' }),
+      NguoiDung.find({
+          role: 'chuNha',
+          ngayHetHan: { $gt: now, $lte: sevenDaysFromNow }
+      }).select('name email phone ngayHetHan goiDichVu').limit(5),
+      SaaSPayment.find({})
+          .sort({ createdAt: -1 })
+          .limit(5)
+          .populate('chuNha', 'name email'),
+      ...monthQueries.map(q => 
+        SaaSPayment.find({
+            trangThai: 'daThanhToan',
+            ngayThanhToan: { $gte: q.d, $lt: q.nextD }
+        })
+      )
+    ]);
+
+    const totalRevenue = allPayments.reduce((acc: number, p: any) => acc + p.soTien, 0);
+
+    const months = monthQueries.map((q, index) => ({
+      name: q.d.toLocaleDateString('vi-VN', { month: 'short', year: '2-digit' }),
+      revenue: monthlyPaymentsResults[index].reduce((acc: number, p: any) => acc + p.soTien, 0)
+    }));
 
     return NextResponse.json({
         totalLandlords,

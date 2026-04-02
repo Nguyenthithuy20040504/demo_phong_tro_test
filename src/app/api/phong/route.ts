@@ -96,18 +96,21 @@ export async function GET(request: NextRequest) {
     );
 
     // Lấy lại dữ liệu với trạng thái đã cập nhật và thông tin hợp đồng
-    const updatedPhongList = await Phong.find(query)
-      .populate({
-        path: 'toaNha',
-        select: 'tenToaNha diaChi chuSoHuu',
-        populate: {
-          path: 'chuSoHuu',
-          select: 'ten email soDienThoai'
-        }
-      })
-      .sort({ tang: 1, maPhong: 1 })
-      .skip((page - 1) * limit)
-      .limit(limit);
+    const [updatedPhongList, total] = await Promise.all([
+      Phong.find(query)
+        .populate({
+          path: 'toaNha',
+          select: 'tenToaNha diaChi chuSoHuu',
+          populate: {
+            path: 'chuSoHuu',
+            select: 'ten email soDienThoai'
+          }
+        })
+        .sort({ tang: 1, maPhong: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Phong.countDocuments(query)
+    ]);
 
     // Thêm thông tin hợp đồng, khách thuê, hóa đơn, sự cố cho mỗi phòng
     const phongListWithContracts = await Promise.all(
@@ -214,7 +217,6 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    const total = await Phong.countDocuments(query);
 
     return NextResponse.json({
       success: true,
