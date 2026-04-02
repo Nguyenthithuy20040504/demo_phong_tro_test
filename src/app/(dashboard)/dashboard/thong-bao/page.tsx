@@ -31,6 +31,12 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { 
   Plus, 
   Search, 
@@ -278,9 +284,27 @@ export default function ThongBaoPage() {
     }
   };
 
-  const handleSend = (thongBao: ThongBao) => {
-    // Implement send logic
-    console.log('Sending notification:', thongBao._id);
+  const handleSend = async (thongBao: ThongBao) => {
+    try {
+      const toastId = toast.loading('Đang gửi lại thông báo đến email người nhận...');
+      
+      const response = await fetch('/api/thong-bao/gui-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ thongBaoId: thongBao._id })
+      });
+
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        toast.success(result.message || 'Đã gửi lại thông báo thành công!', { id: toastId });
+      } else {
+        toast.error(result.message || 'Lỗi khi gửi lại thông báo', { id: toastId });
+      }
+    } catch (error) {
+      console.error('Error resending notification:', error);
+      toast.error('Lỗi kết nối khi gửi email.');
+    }
   };
 
   if (loading) {
@@ -296,7 +320,8 @@ export default function ThongBaoPage() {
   }
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <TooltipProvider>
+      <div className="space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
@@ -324,38 +349,11 @@ export default function ThongBaoPage() {
             <Zap className={`h-4 w-4 sm:mr-2 ${isAutoGenerating ? 'animate-pulse' : ''}`} />
             <span className="hidden sm:inline">{isAutoGenerating ? 'Đang tạo...' : 'Tự động'}</span>
           </Button>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" onClick={() => setEditingThongBao(null)} className="flex-1 sm:flex-none">
-                <Plus className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Tạo thông báo</span>
-                <span className="sm:hidden">Tạo</span>
-              </Button>
-            </DialogTrigger>
-          <DialogContent className="w-[95vw] md:w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingThongBao ? 'Chỉnh sửa thông báo' : 'Tạo thông báo mới'}
-              </DialogTitle>
-              <DialogDescription>
-                {editingThongBao ? 'Cập nhật thông tin thông báo' : 'Nhập thông tin thông báo mới'}
-              </DialogDescription>
-            </DialogHeader>
-            
-            <ThongBaoForm 
-              thongBao={editingThongBao}
-              toaNhaList={toaNhaList}
-              phongList={phongList}
-              khachThueList={khachThueList}
-              onClose={() => setIsDialogOpen(false)}
-              onSuccess={() => {
-                cache.clearCache();
-                setIsDialogOpen(false);
-                fetchData(true);
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+          <Button size="sm" onClick={() => { setEditingThongBao(null); setIsDialogOpen(true); }} className="flex-1 sm:flex-none">
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Tạo thông báo</span>
+            <span className="sm:hidden">Tạo</span>
+          </Button>
         </div>
       </div>
 
@@ -510,35 +508,69 @@ export default function ThongBaoPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleView(thongBao)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleSend(thongBao)}
-                        >
-                          <Send className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleEdit(thongBao)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleDelete(thongBao._id!)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleView(thongBao)}
+                              className="hover:bg-teal-50 hover:text-teal-600 border-teal-100"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="bg-teal-900/95 text-white border-none shadow-md py-1.5 px-3 text-[11px]">
+                            <p>Xem chi tiết</p>
+                          </TooltipContent>
+                        </Tooltip>
+
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleSend(thongBao)}
+                              className="hover:bg-blue-50 hover:text-blue-600 border-blue-100"
+                            >
+                              <Send className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="bg-teal-900/95 text-white border-none shadow-md py-1.5 px-3 text-[11px]">
+                            <p>Gửi lại qua Email</p>
+                          </TooltipContent>
+                        </Tooltip>
+
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleEdit(thongBao)}
+                              className="hover:bg-amber-50 hover:text-amber-600 border-amber-100"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="bg-teal-900/95 text-white border-none shadow-md py-1.5 px-3 text-[11px]">
+                            <p>Chỉnh sửa</p>
+                          </TooltipContent>
+                        </Tooltip>
+
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleDelete(thongBao._id!)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-100"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="bg-teal-900/95 text-white border-none shadow-md py-1.5 px-3 text-[11px]">
+                            <p>Xóa thông báo</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -827,7 +859,61 @@ export default function ThongBaoPage() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+
+      <ThongBaoFormDialog
+        thongBao={editingThongBao}
+        toaNhaList={toaNhaList}
+        phongList={phongList}
+        khachThueList={khachThueList}
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        onSuccess={() => {
+          setIsDialogOpen(false);
+          fetchData(true);
+        }}
+      />
+      </div>
+    </TooltipProvider>
+  );
+}
+
+// Dialog wrapper for the form
+function ThongBaoFormDialog({ 
+  thongBao, 
+  toaNhaList, 
+  phongList, 
+  khachThueList, 
+  isOpen, 
+  onClose, 
+  onSuccess 
+}: { 
+  thongBao: ThongBao | null;
+  toaNhaList: ToaNha[];
+  phongList: Phong[];
+  khachThueList: KhachThue[];
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="w-[95vw] md:w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{thongBao ? 'Chỉnh sửa thông báo' : 'Tạo thông báo mới'}</DialogTitle>
+          <DialogDescription>
+            {thongBao ? 'Cập nhật lại thông tin thông báo đã gửi' : 'Tạo và gửi thông báo mới đến khách thuê hoặc nhân viên'}
+          </DialogDescription>
+        </DialogHeader>
+        <ThongBaoForm
+          thongBao={thongBao}
+          toaNhaList={toaNhaList}
+          phongList={phongList}
+          khachThueList={khachThueList}
+          onClose={onClose}
+          onSuccess={onSuccess}
+        />
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -9,6 +9,7 @@ import {
   Settings,
   User,
   Shield,
+  Crown,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -27,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useSession } from "next-auth/react"
 
 export function NavUser({
   user,
@@ -39,7 +41,9 @@ export function NavUser({
   }
   hideText?: boolean
 }) {
+  const { data: session } = useSession()
   const isMobile = useIsMobile()
+  const isNhanVien = (session?.user as any)?.role === 'nhanVien';
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/' })
@@ -106,12 +110,22 @@ export function NavUser({
                 <span>Thiết lập tài khoản</span>
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
-              <Link href="/dashboard/quan-ly-tai-khoan" className="flex items-center w-full px-2 py-2">
-                <Shield className="mr-2 size-4 opacity-70" />
-                <span>Quản lý tài khoản</span>
-              </Link>
-            </DropdownMenuItem>
+            {!isNhanVien && (
+              <>
+                <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
+                  <Link href="/dashboard/gia-han-goi" className="flex items-center w-full px-2 py-2">
+                    <Crown className="mr-2 size-4 opacity-70" />
+                    <span>Dịch vụ SaaS</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
+                  <Link href="/dashboard/quan-ly-tai-khoan" className="flex items-center w-full px-2 py-2">
+                    <Shield className="mr-2 size-4 opacity-70" />
+                    <span>Quản lý tài khoản</span>
+                  </Link>
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuGroup>
           
           <DropdownMenuSeparator className="my-1" />

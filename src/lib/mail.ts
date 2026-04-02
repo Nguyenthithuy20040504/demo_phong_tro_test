@@ -134,3 +134,58 @@ export const sendDebtNotificationEmail = async ({
     return false;
   }
 };
+
+export const sendGeneralNotificationEmail = async ({
+  email,
+  khachThueName,
+  tieuDe,
+  noiDung,
+}: {
+  email: string;
+  khachThueName: string;
+  tieuDe: string;
+  noiDung: string;
+}) => {
+  if (!email || !process.env.SMTP_USER) {
+    console.warn('Bỏ qua gửi email: cấu hình SMTP hoặc email khách hàng không tồn tại.');
+    return false;
+  }
+
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6; border: 1px solid #eaeaea; border-radius: 8px; overflow: hidden;">
+      <div style="background-color: #0d9488; padding: 20px; text-align: center;">
+        <h2 style="color: white; margin: 0; font-size: 20px;">Thông Báo Hệ Thống</h2>
+      </div>
+      
+      <div style="padding: 24px;">
+        <p>Xin chào <strong>${khachThueName}</strong>,</p>
+        <p>Hệ thống Quản lý nhà trọ xin thông báo:</p>
+        
+        <div style="background-color: #f0fdfa; border-left: 4px solid #0d9488; padding: 15px; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #134e4a; font-size: 16px;">${tieuDe}</h3>
+          <p style="margin-bottom: 0; white-space: pre-wrap; color: #374151;">${noiDung}</p>
+        </div>
+
+        <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+          <p>Hệ thống Quản lý nhà trọ chuyên nghiệp - Thuận tiện - Minh bạch</p>
+          <p><em>Đây là email tự động, vui lòng không phản hồi lại địa chỉ này.</em></p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  try {
+    const transport = getMailTransport();
+    const info = await transport.sendMail({
+      from: `"Quản Lý Nhà Trọ" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: `[Thông báo] ${tieuDe}`,
+      html: htmlContent,
+    });
+    console.log(`[Email Success] Đã gửi thông báo tới ${email}. MessageId: ${info.messageId}`);
+    return true;
+  } catch (error: any) {
+    console.error(`[Email Error] Lỗi nghiêm trọng khi gửi mail tới ${email}:`, error);
+    return false;
+  }
+};

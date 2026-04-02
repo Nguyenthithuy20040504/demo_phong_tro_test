@@ -29,6 +29,7 @@ const routeNameMap: Record<string, string> = {
   "cai-dat": "Cài đặt",
   "quan-ly-tai-khoan": "Quản lý tài khoản",
   "them-moi": "Thêm mới",
+  "gia-han-goi": "Gia hạn gói",
 }
 
 export function DynamicBreadcrumb() {

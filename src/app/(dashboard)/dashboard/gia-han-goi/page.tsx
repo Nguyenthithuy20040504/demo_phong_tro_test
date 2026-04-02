@@ -139,7 +139,7 @@ export default function SubscriptionPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
       </div>
     );
   }
@@ -161,7 +161,7 @@ export default function SubscriptionPage() {
       </div>
 
       {/* Current Subscription Status */}
-      <Card className="premium-card border-none shadow-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white overflow-hidden relative">
+      <Card className="premium-card border-none shadow-xl bg-teal-600 text-white overflow-hidden relative">
         <div className="absolute top-0 right-0 p-8 opacity-10">
           <Crown size={120} />
         </div>
@@ -174,9 +174,9 @@ export default function SubscriptionPage() {
            <CardTitle className="text-3xl font-bold flex items-center gap-2">
               {userGoiDichVu === 'chuyenNghiep' ? 'Chuyên nghiệp' : 
                userGoiDichVu === 'coBan' ? 'Cơ bản' : 'Miễn phí'}
-              <ShieldCheck className="text-blue-200" />
+              <ShieldCheck className="text-teal-200" />
            </CardTitle>
-           <CardDescription className="text-blue-100/80 text-lg">
+           <CardDescription className="text-teal-100/80 text-lg">
               {currentSubs === null ? (
                 <span className="flex items-center gap-2 font-medium">
                   <RefreshCw className="h-4 w-4 animate-spin" /> Đang đồng bộ ngày tháng...
@@ -197,7 +197,7 @@ export default function SubscriptionPage() {
                     <Building2 className="h-5 w-5" />
                  </div>
                  <div>
-                    <p className="text-xs text-blue-100 font-medium">Giới hạn phòng</p>
+                    <p className="text-xs text-teal-100 font-medium">Giới hạn phòng</p>
                     <p className="font-bold">
                       {userGoiDichVu === 'chuyenNghiep' ? 'Không giới hạn' : 
                        userGoiDichVu === 'coBan' ? 'Tối đa 20 phòng' : 'Tối đa 10 phòng'}
@@ -210,7 +210,7 @@ export default function SubscriptionPage() {
                     <Users className="h-5 w-5" />
                  </div>
                  <div>
-                    <p className="text-xs text-blue-100 font-medium">Hỗ trợ</p>
+                    <p className="text-xs text-teal-100 font-medium">Hỗ trợ</p>
                     <p className="font-bold">24/7 Premium</p>
                  </div>
               </div>
@@ -219,7 +219,7 @@ export default function SubscriptionPage() {
                     <Zap className="h-5 w-5" />
                  </div>
                  <div>
-                    <p className="text-xs text-blue-100 font-medium">Tính năng</p>
+                    <p className="text-xs text-teal-100 font-medium">Tính năng</p>
                     <p className="font-bold">Nhắc nợ tự động</p>
                  </div>
               </div>
@@ -232,12 +232,12 @@ export default function SubscriptionPage() {
           <Card 
             key={plan._id} 
             className={`flex flex-col border-2 relative transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 ${
-              plan.isPopular ? 'border-blue-500 shadow-blue-100' : 'border-border'
+              plan.isPopular ? 'border-teal-500 shadow-teal-100' : 'border-border'
             }`}
           >
             {plan.isPopular && (
               <div className="absolute top-0 right-0">
-                <Badge className="bg-blue-600 text-white rounded-tr-sm rounded-bl-lg px-4 py-1.5 font-bold uppercase tracking-wider text-[10px]">
+                <Badge className="bg-teal-600 text-white rounded-tr-sm rounded-bl-lg px-4 py-1.5 font-bold uppercase tracking-wider text-[10px]">
                   Phổ biến nhất
                 </Badge>
               </div>
@@ -247,7 +247,7 @@ export default function SubscriptionPage() {
               <div className="mb-2">
                   <div className={`p-3 w-fit rounded-2xl mb-4 ${
                     plan.ten.includes('Chuyên nghiệp') ? 'bg-orange-100 text-orange-600' : 
-                    plan.ten.includes('Cơ bản') ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600'
+                    plan.ten.includes('Cơ bản') ? 'bg-teal-100 text-teal-600' : 'bg-slate-100 text-slate-600'
                   }`}>
                     {plan.ten.includes('Chuyên nghiệp') ? <Rocket size={28} /> : 
                      plan.ten.includes('Cơ bản') ? <Zap size={28} /> : <Users size={28} />}
@@ -267,8 +267,8 @@ export default function SubscriptionPage() {
               <ul className="space-y-4">
                 {plan.features.map((feature, idx) => (
                   <li key={idx} className="flex items-start gap-3">
-                    <div className="mt-0.5 bg-blue-50 rounded-full p-0.5">
-                      <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                    <div className="mt-0.5 bg-teal-50 rounded-full p-0.5">
+                      <CheckCircle2 className="h-4 w-4 text-teal-600" />
                     </div>
                     <span className="text-sm text-gray-600 leading-tight">{feature}</span>
                   </li>
@@ -282,15 +282,11 @@ export default function SubscriptionPage() {
                     disabled 
                     className="w-full group h-12 text-[11px] sm:text-sm font-bold uppercase tracking-wider bg-gray-200 text-gray-500 cursor-not-allowed cursor-not-allowed"
                   >
-                     Đã sử dụng (1 lần duy nhất)
+                     Đã sử dụng
                   </Button>
               ) : (
                 <Button 
-                  className={`w-full group h-12 text-sm font-bold uppercase tracking-wider transition-all duration-300 ${
-                    plan.isPopular 
-                      ? 'bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200' 
-                      : 'bg-slate-900 hover:bg-slate-800 shadow-md shadow-slate-100'
-                  }`}
+                  className={`w-full group h-12 text-sm font-bold uppercase tracking-wider transition-all duration-300 bg-teal-600 hover:bg-teal-700 shadow-lg shadow-teal-100 text-white`}
                   onClick={() => handleExtend(plan)}
                   disabled={extending === plan._id}
                 >
@@ -316,7 +312,7 @@ export default function SubscriptionPage() {
           Thanh toán an toàn 100%
         </div>
         <div className="flex items-center gap-2 text-sm font-medium">
-          <Calendar className="text-blue-600 h-5 w-5" />
+          <Calendar className="text-teal-600 h-5 w-5" />
           Gia hạn tự động
         </div>
       </div>
