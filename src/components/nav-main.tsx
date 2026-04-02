@@ -5,6 +5,7 @@ import { ChevronRight, type LucideIcon } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
+import { mutate } from "swr"
 import {
   Collapsible,
   CollapsibleContent,
@@ -47,6 +48,25 @@ export function NavMain({
   const pathname = usePathname()
   const { isMobile, state } = useSidebar()
   const [openDropdown, setOpenDropdown] = React.useState<string | null>(null)
+
+  // Hàm prefetch dữ liệu cho SWR
+  const prefetchData = (url: string) => {
+    if (!url || url === '#' || url.startsWith('http')) return;
+    
+    // Chỉ prefetch các trang có dữ liệu nặng
+    const dataRoutes: Record<string, string> = {
+      '/dashboard/khach-thue': '/api/khach-thue?limit=100',
+      '/dashboard/hop-dong': '/api/hop-dong?limit=100',
+      '/dashboard/phong': '/api/phong?limit=100',
+      '/dashboard/toa-nha': '/api/toa-nha?limit=100',
+    };
+
+    const apiUrl = dataRoutes[url];
+    if (apiUrl) {
+      // Gọi mutate để fetch và lưu vào cache SWR toàn cục
+      mutate(apiUrl, fetch(apiUrl).then(res => res.json()), { revalidate: false });
+    }
+  }
 
   return (
     <SidebarGroup>
@@ -96,6 +116,7 @@ export function NavMain({
                           <Link 
                             href={subItem.url}
                             className={isActive ? "bg-sidebar-accent" : ""}
+                            onMouseEnter={() => prefetchData(subItem.url)}
                           >
                             {subItem.title}
                           </Link>
@@ -131,7 +152,10 @@ export function NavMain({
                       return (
                         <SidebarMenuSubItem key={subItem.title}>
                           <SidebarMenuSubButton asChild isActive={isActive}>
-                            <Link href={subItem.url}>
+                            <Link 
+                              href={subItem.url}
+                              onMouseEnter={() => prefetchData(subItem.url)}
+                            >
                               <span>{subItem.title}</span>
                             </Link>
                           </SidebarMenuSubButton>

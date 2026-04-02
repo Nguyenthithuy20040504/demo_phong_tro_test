@@ -3,6 +3,7 @@
 import { SessionProvider } from 'next-auth/react';
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
+import { SWRConfig } from 'swr';
 
 export function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
@@ -53,5 +54,28 @@ export function Providers({ children }: { children: ReactNode }) {
     } catch(e) { console.error("Error applying settings", e) }
   }, []);
 
-  return <SessionProvider>{children}</SessionProvider>;
+  return (
+    <SWRConfig 
+      value={{
+        fetcher: (url: string) => fetch(url).then(res => res.json()),
+        revalidateOnFocus: false,
+        revalidateIfStale: true,
+        dedupingInterval: 60000, // 1 phút deduplicate
+        provider: () => {
+          // Chỉ chạy ở client-side
+          if (typeof window !== 'undefined') {
+            const map = new Map(JSON.parse(localStorage.getItem('app-cache') || '[]'));
+            window.addEventListener('beforeunload', () => {
+              const appCache = JSON.stringify(Array.from(map.entries()));
+              localStorage.setItem('app-cache', appCache);
+            });
+            return map as any;
+          }
+          return new Map() as any;
+        }
+      }}
+    >
+      <SessionProvider>{children}</SessionProvider>
+    </SWRConfig>
+  );
 }
