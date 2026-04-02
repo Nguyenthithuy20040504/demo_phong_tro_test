@@ -54,7 +54,7 @@ const fetcher = (url: string) => fetch(url).then(res => res.json()).then(data =>
 
 export default function KhachThuePage() {
   const { data: session } = useSession();
-  const isNhanVien = session?.user?.role === 'nhanVien';
+  const isNhanVien = (session?.user as any)?.role === 'nhanVien';
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTrangThai, setSelectedTrangThai] = useState('all');
@@ -63,15 +63,29 @@ export default function KhachThuePage() {
   const [viewingKhachThue, setViewingKhachThue] = useState<KhachThue | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-
+  const [selectedBuilding, setSelectedBuilding] = useState<string>(() => 
+    typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all'
+  );
+  
   // SWR for data fetching
-  const apiUrl = `/api/khach-thue?limit=100${selectedTrangThai && selectedTrangThai !== 'all' ? `&trangThai=${selectedTrangThai}` : ''}`;
+  const apiUrl = `/api/khach-thue?limit=100${selectedTrangThai && selectedTrangThai !== 'all' ? `&trangThai=${selectedTrangThai}` : ''}${selectedBuilding !== 'all' ? `&toaNhaId=${selectedBuilding}` : ''}`;
   const { data, error, isLoading, isValidating } = useSWR(apiUrl, fetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 10000, // 10s deduplication
   });
 
   const khachThueList = data?.data || [];
+
+  // Global Building Sync (listen to TopNavbar)
+  useEffect(() => {
+    const handleSyncBuilding = () => {
+      const id = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      setSelectedBuilding(id);
+      mutate(apiUrl);
+    };
+    window.addEventListener('buildingChange', handleSyncBuilding);
+    return () => window.removeEventListener('buildingChange', handleSyncBuilding);
+  }, [apiUrl]);
 
   useEffect(() => {
     document.title = 'Quản lý Khách thuê';
@@ -341,6 +355,7 @@ export default function KhachThuePage() {
             selectedTrangThai={selectedTrangThai}
             onTrangThaiChange={setSelectedTrangThai}
             canEdit={!isNhanVien}
+            canDelete={!isNhanVien}
           />
         </CardContent>
       </Card>

@@ -32,8 +32,13 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search') || '';
     const loai = searchParams.get('loai') || '';
+    const toaNhaId = searchParams.get('toaNhaId');
 
     const query: any = {};
+
+    if (toaNhaId && toaNhaId !== 'all') {
+      query.toaNha = toaNhaId;
+    }
 
     // Phân quyền: ai thấy thông báo nào
     const userRole = session.user.role;

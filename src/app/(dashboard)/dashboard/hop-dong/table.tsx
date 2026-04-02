@@ -137,6 +137,8 @@ type HopDongTableProps = {
   onGiaHan: (hopDong: HopDong) => void
   onHuy: (hopDong: HopDong) => void
   actionLoading: string | null
+  canEdit?: boolean
+  canDelete?: boolean
 }
 
 const getPhongName = (phong: string | { maPhong: string }, phongList: Phong[]) => {
@@ -266,7 +268,7 @@ const createColumns = (props: HopDongTableProps & { setHopDongToDelete: (h: HopD
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          {row.original.trangThai === 'choDuyet' ? (
+          {props.canEdit !== false && (row.original.trangThai === 'choDuyet') ? (
             <DropdownMenuItem onClick={(e) => {
               e.stopPropagation();
               props.onEdit(row.original);
@@ -277,7 +279,7 @@ const createColumns = (props: HopDongTableProps & { setHopDongToDelete: (h: HopD
           ) : (
             <DropdownMenuItem disabled className="text-muted-foreground opacity-60">
               <Edit className="mr-2 h-4 w-4" />
-              Không thể sửa (đã duyệt)
+              {props.canEdit === false ? 'Không có quyền sửa' : 'Không thể sửa (đã duyệt)'}
             </DropdownMenuItem>
           )}
           <DropdownMenuItem onClick={(e) => {
@@ -311,18 +313,22 @@ const createColumns = (props: HopDongTableProps & { setHopDongToDelete: (h: HopD
               </DropdownMenuItem>
             </>
           )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem 
-            className="text-destructive"
-            onClick={(e) => {
-              e.stopPropagation();
-              props.setHopDongToDelete(row.original);
-              props.setIsDeleteDialogOpen(true);
-            }}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Xóa
-          </DropdownMenuItem>
+          {props.canDelete !== false && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                className="text-destructive"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  props.setHopDongToDelete(row.original);
+                  props.setIsDeleteDialogOpen(true);
+                }}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Xóa vĩnh viễn
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     ),
@@ -355,6 +361,7 @@ type HopDongDataTableProps = HopDongTableProps & {
   toaNhaFilter?: string
   onToaNhaChange?: (value: string) => void
   allToaNhaList?: ToaNha[]
+  globalBuildingId?: string
 }
 
 export function HopDongDataTable(props: HopDongDataTableProps) {
@@ -431,26 +438,29 @@ export function HopDongDataTable(props: HopDongDataTableProps) {
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="all">Tất cả trạng thái</SelectItem>
               <SelectItem value="choDuyet">Chờ duyệt</SelectItem>
               <SelectItem value="hoatDong">Hoạt động</SelectItem>
               <SelectItem value="hetHan">Hết hạn</SelectItem>
               <SelectItem value="daHuy">Đã hủy</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={toaNhaFilter} onValueChange={onToaNhaChange}>
-            <SelectTrigger className="w-full sm:w-[140px]">
-              <SelectValue placeholder="Tòa nhà" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả</SelectItem>
-              {allToaNhaList?.map((toaNha) => (
-                <SelectItem key={toaNha._id} value={toaNha._id!}>
-                  {toaNha.tenToaNha}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+          {(!props.globalBuildingId || props.globalBuildingId === 'all') && allToaNhaList && (
+            <Select value={toaNhaFilter} onValueChange={onToaNhaChange}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Tất cả tòa nhà" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả tòa nhà</SelectItem>
+                {allToaNhaList.map((t) => (
+                  <SelectItem key={t._id} value={t._id!}>
+                    {t.tenToaNha}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         {/* Tùy chỉnh cột bên phải */}

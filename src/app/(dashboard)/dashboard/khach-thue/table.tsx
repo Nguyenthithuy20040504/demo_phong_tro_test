@@ -105,6 +105,7 @@ type KhachThueTableProps = {
   onCreateAccount?: (khachThue: KhachThue) => void;
   actionLoading: string | null;
   canEdit?: boolean;
+  canDelete?: boolean;
 };
 
 const createColumns = (props: KhachThueTableProps & { setKhachThueToDelete: (k: KhachThue) => void; setIsDeleteDialogOpen: (o: boolean) => void }): ColumnDef<KhachThue>[] => [
@@ -301,20 +302,22 @@ const createColumns = (props: KhachThueTableProps & { setKhachThueToDelete: (k: 
               Chỉnh sửa
             </DropdownMenuItem>
           )}
-          <DropdownMenuSeparator />
-          {props.canEdit !== false && (
-            <DropdownMenuItem 
-              className="text-destructive"
-              onClick={(e) => {
-                e.stopPropagation();
-                props.setKhachThueToDelete(row.original);
-                props.setIsDeleteDialogOpen(true);
-              }}
-              disabled={props.actionLoading === `delete-${row.original._id}`}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              {props.actionLoading === `delete-${row.original._id}` ? 'Đang xóa...' : 'Xóa'}
-            </DropdownMenuItem>
+          {props.canDelete !== false && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                className="text-destructive"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  props.setKhachThueToDelete(row.original);
+                  props.setIsDeleteDialogOpen(true);
+                }}
+                disabled={props.actionLoading === `delete-${row.original._id}`}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {props.actionLoading === `delete-${row.original._id}` ? 'Đang xóa...' : 'Xóa hồ sơ'}
+              </DropdownMenuItem>
+            </>
           )}
           {props.onCreateAccount && !(row.original as any).matKhau && (
             <>

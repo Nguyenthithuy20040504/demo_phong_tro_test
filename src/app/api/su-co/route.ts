@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
     const loaiSuCo = searchParams.get('loaiSuCo') || '';
     const mucDoUuTien = searchParams.get('mucDoUuTien') || '';
     const trangThai = searchParams.get('trangThai') || '';
+    const toaNhaId = searchParams.get('toaNhaId');
 
     const query: any = {};
     
@@ -66,6 +67,18 @@ export async function GET(request: NextRequest) {
     }
 
     const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
+    let targetToaNhaIds = accessibleToaNhaIds;
+
+    if (toaNhaId && toaNhaId !== 'all') {
+      if (accessibleToaNhaIds === null) {
+        // Admin
+        targetToaNhaIds = [new mongoose.Types.ObjectId(toaNhaId)];
+      } else {
+        // Check access
+        const isAccessible = accessibleToaNhaIds.some(id => id.toString() === toaNhaId);
+        targetToaNhaIds = isAccessible ? [new mongoose.Types.ObjectId(toaNhaId)] : [];
+      }
+    }
     
     if (session.user.role === 'khachThue') {
       const userId = session.user.id;
@@ -83,11 +96,11 @@ export async function GET(request: NextRequest) {
       }
       
       query.khachThue = { $in: linkedIds };
-    } else if (accessibleToaNhaIds !== null) {
-      if (accessibleToaNhaIds.length === 0) {
+    } else if (targetToaNhaIds !== null) {
+      if (targetToaNhaIds.length === 0) {
          return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
       }
-      const accessiblePhongs = await Phong.find({ toaNha: { $in: accessibleToaNhaIds } }).select('_id');
+      const accessiblePhongs = await Phong.find({ toaNha: { $in: targetToaNhaIds } }).select('_id');
       const phongIds = accessiblePhongs.map(p => p._id);
       
       if (phongIds.length === 0) {

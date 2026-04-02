@@ -27,23 +27,50 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const hopDongId = searchParams.get('hopDongId');
     const hoaDonId = searchParams.get('hoaDonId');
+    const toaNhaId = searchParams.get('toaNhaId');
+    console.log(`[API /api/thanh-toan] Request Params - toaNhaId: ${toaNhaId}, hoaDonId: ${hoaDonId}`);
 
     const query: any = {};
     
-    // Phân quyền: Lọc theo vai trò của người dùng
+    // Phân quyền & Lọc theo tòa nhà
+    const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
+    console.log(`[API /api/thanh-toan] User ${session.user.id} accessibleToaNhaIds:`, accessibleToaNhaIds === null ? 'All' : accessibleToaNhaIds.length);
+    let targetToaNhaIds = accessibleToaNhaIds;
+
+    // Nếu có toaNhaId trong query, lọc theo tòa nhà đó nhưng phải check quyền
+    if (toaNhaId && toaNhaId !== 'all') {
+      if (accessibleToaNhaIds === null) {
+        // Admin: Cho phép xem bất kỳ tòa nhà nào
+        if (mongoose.isValidObjectId(toaNhaId)) {
+          targetToaNhaIds = [new mongoose.Types.ObjectId(toaNhaId)];
+        }
+      } else {
+        // Chủ nhà/Nhân viên: Kiểm tra tòa nhà yêu cầu có nằm trong danh sách được phép không
+        const isAccessible = accessibleToaNhaIds.some(id => id.toString() === toaNhaId);
+        if (isAccessible) {
+          targetToaNhaIds = [new mongoose.Types.ObjectId(toaNhaId)];
+        } else {
+          // Không có quyền xem tòa nhà này
+          console.warn(`[API /api/thanh-toan] Forbidden building ${toaNhaId} requested by user ${session.user.id}`);
+          return NextResponse.json({ success: true, data: [], pagination: { page, limit, total: 0, pages: 0 } });
+        }
+      }
+    }
+
     if (session.user.role === 'khachThue') {
       // Khách thuê chỉ xem biên lai của chính mình
       const hoaDons = await HoaDon.find({ khachThue: session.user.id }).select('_id');
+      console.log(`[API /api/thanh-toan] Tenant filter: found ${hoaDons.length} invoices`);
       query.hoaDon = { $in: hoaDons.map(hd => hd._id) };
-    } else if (session.user.role !== 'admin') {
-      // Chủ nhà hoặc Nhân viên: Lọc theo các tòa nhà được phép quản lý
-      const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
-      if (accessibleToaNhaIds !== null) {
-        const phongs = await Phong.find({ toaNha: { $in: accessibleToaNhaIds } }).select('_id');
-        const phongIds = phongs.map(p => p._id);
-        const hoaDons = await HoaDon.find({ phong: { $in: phongIds } }).select('_id');
-        query.hoaDon = { $in: hoaDons.map(hd => hd._id) };
-      }
+    } else if (targetToaNhaIds !== null) {
+      // Lọc theo các tòa nhà mục tiêu
+      const phongs = await Phong.find({ toaNha: { $in: targetToaNhaIds } }).select('_id');
+      const phongIds = phongs.map(p => p._id);
+      const hoaDons = await HoaDon.find({ phong: { $in: phongIds } }).select('_id');
+      console.log(`[API /api/thanh-toan] Building filter: ${targetToaNhaIds.length} buildings -> ${phongIds.length} rooms -> ${hoaDons.length} invoices`);
+      query.hoaDon = { $in: hoaDons.map(hd => hd._id) };
+    } else {
+      console.log(`[API /api/thanh-toan] No building filter applied (Admin view All)`);
     }
 
     // Áp dụng thêm các bộ lọc từ query params nếu có
@@ -52,10 +79,12 @@ export async function GET(request: NextRequest) {
       if (query.hoaDon) hdQuery._id = query.hoaDon;
       
       const hoaDons = await HoaDon.find(hdQuery).select('_id');
+      console.log(`[API /api/thanh-toan] HopDong filter applied, count: ${hoaDons.length}`);
       query.hoaDon = { $in: hoaDons.map(hd => hd._id) };
     }
     
     if (hoaDonId) {
+      console.log(`[API /api/thanh-toan] Direct HoaDonId filter requested: ${hoaDonId}`);
       if (query.hoaDon) {
         const allowedIds = query.hoaDon.$in.map((id: any) => id.toString());
         if (!allowedIds.includes(hoaDonId)) {

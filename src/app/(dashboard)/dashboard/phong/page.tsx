@@ -145,11 +145,13 @@ function RoomCard({
   onClick,
   onEdit,
   onGeneratePost,
+  isNhanVien,
 }: { 
   phong: EnrichedPhong;
   onClick: () => void;
   onEdit: (e: React.MouseEvent, phong: EnrichedPhong) => void;
   onGeneratePost: (e: React.MouseEvent, phong: EnrichedPhong) => void;
+  isNhanVien?: boolean;
 }) {
   const status = getStatusConfig(phong.trangThaiTongHop || 'trong');
   const StatusIcon = status.icon;
@@ -169,27 +171,29 @@ function RoomCard({
       `}
     >
       {/* Action buttons */}
-      <div className="absolute -top-1.5 -left-1.5 flex gap-1.5 z-10 opacity-0 group-hover:opacity-100 transition-all duration-300">
-        {/* Edit button */}
-        <div 
-          onClick={(e) => onEdit(e, phong)}
-          className="h-8 w-8 bg-indigo-500 rounded-lg shadow-lg flex items-center justify-center text-white hover:scale-110 hover:bg-indigo-600 transition-all duration-300"
-          title="Chỉnh sửa thông tin phòng"
-        >
-          <Edit className="h-4 w-4" />
-        </div>
-        
-        {/* Sell/Rent out button (only for empty rooms) */}
-        {(phong.trangThaiTongHop || 'trong') === 'trong' && (
+      {!isNhanVien && (
+        <div className="absolute -top-1.5 -left-1.5 flex gap-1.5 z-10 opacity-0 group-hover:opacity-100 transition-all duration-300">
+          {/* Edit button */}
           <div 
-            onClick={(e) => onGeneratePost(e, phong)}
-            className="h-8 w-8 bg-emerald-500 rounded-lg shadow-lg flex items-center justify-center text-white hover:scale-110 hover:bg-emerald-600 transition-all duration-300"
-            title="Tạo bài đăng cho thuê phòng"
+            onClick={(e) => onEdit(e, phong)}
+            className="h-8 w-8 bg-indigo-500 rounded-lg shadow-lg flex items-center justify-center text-white hover:scale-110 hover:bg-indigo-600 transition-all duration-300"
+            title="Chỉnh sửa thông tin phòng"
           >
-            <Newspaper className="h-4 w-4" />
+            <Edit className="h-4 w-4" />
           </div>
-        )}
-      </div>
+          
+          {/* Sell/Rent out button (only for empty rooms) */}
+          {(phong.trangThaiTongHop || 'trong') === 'trong' && (
+            <div 
+              onClick={(e) => onGeneratePost(e, phong)}
+              className="h-8 w-8 bg-emerald-500 rounded-lg shadow-lg flex items-center justify-center text-white hover:scale-110 hover:bg-emerald-600 transition-all duration-300"
+              title="Tạo bài đăng cho thuê phòng"
+            >
+              <Newspaper className="h-4 w-4" />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Sự cố badge */}
       {(phong.suCoMoi ?? 0) > 0 && phong.trangThaiTongHop !== 'suCo' && (
@@ -231,21 +235,20 @@ function RoomCard({
 }
 
 
-// =====================================================
-// FLOOR SECTION
-// =====================================================
 function FloorSection({
   tang,
   rooms,
   onRoomClick,
   onEditClick,
   onGeneratePostClick,
+  isNhanVien,
 }: {
   tang: number;
   rooms: EnrichedPhong[];
   onRoomClick: (phong: EnrichedPhong) => void;
   onEditClick: (e: React.MouseEvent, phong: EnrichedPhong) => void;
   onGeneratePostClick: (e: React.MouseEvent, phong: EnrichedPhong) => void;
+  isNhanVien?: boolean;
 }) {
   return (
     <div className="space-y-3">
@@ -267,6 +270,7 @@ function FloorSection({
               onClick={() => onRoomClick(phong)}
               onEdit={onEditClick}
               onGeneratePost={onGeneratePostClick}
+              isNhanVien={isNhanVien}
             />
           ))}
       </div>
@@ -279,7 +283,8 @@ function FloorSection({
 // =====================================================
 export default function PhongPage() {
   const { data: session } = useSession();
-  const isNhanVien = session?.user?.role === 'nhanVien';
+  const userId = (session?.user as any)?.id;
+  const isNhanVien = (session?.user as any)?.role === 'nhanVien';
   
   const cache = useCache<{
     phongList: EnrichedPhong[];
@@ -290,7 +295,16 @@ export default function PhongPage() {
   const [toaNhaList, setToaNhaList] = useState<ToaNha[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedToaNhaTab, setSelectedToaNhaTab] = useState<string>('');
+  
+  // Initialize from global building selector
+  const [selectedToaNhaTab, setSelectedToaNhaTab] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const globalId = localStorage.getItem('selected_building_id');
+      return globalId && globalId !== 'all' ? globalId : '';
+    }
+    return '';
+  });
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPhong, setEditingPhong] = useState<Phong | null>(null);
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
@@ -318,6 +332,19 @@ export default function PhongPage() {
     // Nếu cache bị xóa (do trang khác thao tác), force refresh
     const cachedData = cache.getCache();
     fetchPhong(!cachedData);
+  }, []);
+
+  // Global Building Sync (listen to TopNavbar)
+  useEffect(() => {
+    const handleSyncBuilding = () => {
+      const globalId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') : null;
+      if (globalId && globalId !== 'all') {
+        setSelectedToaNhaTab(globalId);
+      }
+      fetchPhong(true);
+    };
+    window.addEventListener('buildingChange', handleSyncBuilding);
+    return () => window.removeEventListener('buildingChange', handleSyncBuilding);
   }, []);
 
   // Tự động refetch khi chuyển trang hoặc quay lại tab
@@ -352,8 +379,11 @@ export default function PhongPage() {
         }
       }
       
+      const buildingId = typeof window !== 'undefined' ? (localStorage.getItem('selected_building_id') || 'all') : 'all';
+      const buildingParam = buildingId !== 'all' ? `&toaNhaId=${buildingId}` : '';
+      
       const [phongRes, toaNhaRes] = await Promise.all([
-        fetch(`/api/phong?limit=500`),
+        fetch(`/api/phong?limit=1000${buildingParam}`),
         fetch('/api/toa-nha')
       ]);
 
@@ -373,7 +403,11 @@ export default function PhongPage() {
       setPhongList(phongData);
       setToaNhaList(toaNhaData);
       
-      if (!selectedToaNhaTab && toaNhaData.length > 0) {
+      // Nếu có chọn tòa nhà global, ưu tiên chọn tab đó luôn
+      const globalId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') : null;
+      if (globalId && globalId !== 'all') {
+         setSelectedToaNhaTab(globalId);
+      } else if (!selectedToaNhaTab && toaNhaData.length > 0) {
         setSelectedToaNhaTab(toaNhaData[0]._id!);
       }
       
@@ -638,7 +672,7 @@ export default function PhongPage() {
       </div>
 
       {/* ===== BUILDING TABS ===== */}
-      {toaNhaList.length > 0 && (
+      {toaNhaList.length > 0 && (typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') : null) === 'all' && (
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {toaNhaList.map((toaNha) => {
             const isActive = selectedToaNhaTab === toaNha._id;
@@ -769,6 +803,7 @@ export default function PhongPage() {
                 e.stopPropagation();
                 handleGeneratePost(p);
               }}
+              isNhanVien={isNhanVien}
             />
           ))
         )}

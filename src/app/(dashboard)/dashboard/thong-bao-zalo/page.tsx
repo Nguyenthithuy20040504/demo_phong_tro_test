@@ -41,7 +41,7 @@ export default function ZaloNotificationPage() {
     toast.info('Giao diện đang trong chế độ thử nghiệm (Sandbox) thôi nhé. Bạn cần cấu hình Token để gọi API thực tế.');
   };
 
-  if (session?.user?.role !== 'admin' && session?.user?.role !== 'chuNha') {
+  if (((session?.user as any)?.role) !== 'admin' && ((session?.user as any)?.role) !== 'chuNha') {
     return <div className="p-6">Bạn không có quyền truy cập trang này.</div>;
   }
 

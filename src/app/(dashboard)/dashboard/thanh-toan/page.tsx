@@ -77,14 +77,28 @@ export default function ThanhToanPage() {
   const [endDate, setEndDate] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingThanhToan, setEditingThanhToan] = useState<ThanhToanPopulated | null>(null);
+  const [globalBuildingId, setGlobalBuildingId] = useState<string>('all');
 
   useEffect(() => {
     document.title = 'Quản lý Thanh toán';
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+    setGlobalBuildingId(saved);
+  }, []);
+
+  // Global Building Sync (listen to TopNavbar)
+  useEffect(() => {
+    const handleSyncBuilding = () => {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      setGlobalBuildingId(saved);
+      fetchData(true);
+    };
+    window.addEventListener('buildingChange', handleSyncBuilding);
+    return () => window.removeEventListener('buildingChange', handleSyncBuilding);
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData(true);
+  }, [globalBuildingId]);
 
   const fetchData = async (forceRefresh = false) => {
     try {
@@ -100,10 +114,15 @@ export default function ThanhToanPage() {
         }
       }
       
+      const buildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      const buildingParam = buildingId !== 'all' ? `&toaNhaId=${buildingId}` : '';
+      const limitParam = '?limit=1000';
+      const query = `${limitParam}${buildingParam}`;
+
       // Fetch both thanh toan and hoa don in parallel
       const [thanhToanResponse, hoaDonResponse] = await Promise.all([
-        fetch('/api/thanh-toan?limit=1000'),
-        fetch('/api/hoa-don?limit=1000')
+        fetch(`/api/thanh-toan${query}`),
+        fetch(`/api/hoa-don${query}`)
       ]);
 
       const [thanhToanData, hoaDonData] = await Promise.all([
@@ -457,6 +476,7 @@ export default function ThanhToanPage() {
             endDate={endDate}
             onEndDateChange={setEndDate}
             onUpdateStatus={handleUpdateStatus}
+            globalBuildingId={globalBuildingId}
           />
         </CardContent>
       </Card>

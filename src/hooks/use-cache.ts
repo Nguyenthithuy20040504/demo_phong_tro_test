@@ -14,10 +14,14 @@ interface CachedData<T> {
 
 export function useCache<T>(config: CacheConfig) {
   const { data: session } = useSession();
-  const userId = session?.user?.id;
+  const userId = (session?.user as any)?.id;
   
   const { key, duration = 300000 } = config; // 5 phút mặc định
-  const storageKey = userId ? `${userId}_${key}` : key;
+  
+  // Lấy building ID từ localStorage để phân tách cache theo tòa nhà
+  const buildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+  
+  const storageKey = userId ? `${userId}_${buildingId}_${key}` : `${buildingId}_${key}`;
   
   const [isRefreshing, setIsRefreshing] = useState(false);
 

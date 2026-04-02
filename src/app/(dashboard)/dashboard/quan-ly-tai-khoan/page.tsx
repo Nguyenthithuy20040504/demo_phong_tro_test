@@ -102,12 +102,12 @@ export default function AccountManagementPage() {
   }, []);
 
   useEffect(() => {
-    if ((session?.user?.role === 'admin' || session?.user?.role === 'chuNha') && !hasFetchedRef.current) {
+    if (((session?.user as any)?.role === 'admin' || (session?.user as any)?.role === 'chuNha') && !hasFetchedRef.current) {
       hasFetchedRef.current = true;
       fetchUsers(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.role]);
+  }, [session?.user]);
 
   const fetchUsers = async (forceRefresh = false) => {
     try {
@@ -169,7 +169,7 @@ export default function AccountManagementPage() {
           email: '',
           password: '',
           phone: '',
-          role: session?.user?.role === 'admin' ? 'chuNha' : 'nhanVien'
+          role: ((session?.user as any)?.role) === 'admin' ? 'chuNha' : 'nhanVien'
         });
         cache.clearCache();
         fetchUsers(true);
@@ -321,7 +321,7 @@ export default function AccountManagementPage() {
     (user.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (session?.user?.role !== 'admin' && session?.user?.role !== 'chuNha') {
+  if (((session?.user as any)?.role) !== 'admin' && ((session?.user as any)?.role) !== 'chuNha') {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
@@ -368,7 +368,7 @@ export default function AccountManagementPage() {
               email: '',
               password: '',
               phone: '',
-              role: session?.user?.role === 'admin' ? 'chuNha' : 'nhanVien'
+              role: ((session?.user as any)?.role) === 'admin' ? 'chuNha' : 'nhanVien'
             });
             setIsCreateDialogOpen(true);
           }} className="flex-1 sm:flex-none">
@@ -441,7 +441,7 @@ export default function AccountManagementPage() {
                     <SelectValue placeholder="Chọn vai trò" />
                   </SelectTrigger>
                   <SelectContent>
-                    {session?.user?.role === 'admin' ? (
+                    {((session?.user as any)?.role) === 'admin' ? (
                       <>
                         <SelectItem value="chuNha" className="text-sm">Chủ nhà</SelectItem>
                         <SelectItem value="admin" className="text-sm">Quản trị viên</SelectItem>
@@ -560,7 +560,7 @@ export default function AccountManagementPage() {
             onDelete={handleDeleteUser}
             onToggleStatus={handleToggleStatus}
             onResetPassword={openResetPasswordDialog}
-            currentUserId={session?.user?.id}
+            currentUserId={((session?.user as any)?.id)}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
           />
@@ -590,7 +590,7 @@ export default function AccountManagementPage() {
         {/* Mobile Card List */}
         <div className="space-y-3">
           {filteredUsers.map((user) => {
-            const isCurrentUser = session?.user?.id === user._id;
+            const isCurrentUser = ((session?.user as any)?.id) === user._id;
             
             return (
               <Card key={user._id} className="p-4 premium-card border-none shadow-md">
@@ -732,7 +732,7 @@ export default function AccountManagementPage() {
                   <SelectValue placeholder="Chọn vai trò" />
                 </SelectTrigger>
                 <SelectContent>
-                  {session?.user?.role === 'admin' ? (
+                  {((session?.user as any)?.role) === 'admin' ? (
                     <>
                       <SelectItem value="chuNha" className="text-sm">Chủ nhà</SelectItem>
                       <SelectItem value="admin" className="text-sm">Quản trị viên</SelectItem>

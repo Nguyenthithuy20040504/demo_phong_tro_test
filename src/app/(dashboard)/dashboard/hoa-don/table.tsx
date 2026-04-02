@@ -76,7 +76,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import type { HoaDon, Phong, KhachThue } from '@/types'
-import { generateZaloDeepLink } from '@/lib/zalo-formatter'
 
 // Helper functions
 const formatCurrency = (amount: number) => {
@@ -152,6 +151,8 @@ type HoaDonTableProps = {
   onShare: (hoaDon: HoaDon) => void
   onPayment: (hoaDon: HoaDon) => void
   onDeleteMultiple?: (ids: string[]) => void
+  canEdit?: boolean
+  canDelete?: boolean
 }
 
 const getPhongName = (phong: string | { maPhong: string }, phongList: Phong[]) => {
@@ -307,16 +308,6 @@ const createColumns = (props: HoaDonTableProps & { setHoaDonToDelete: (h: HoaDon
               Thanh toán
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem 
-            onClick={(e) => {
-              e.stopPropagation();
-              window.open(generateZaloDeepLink(row.original), '_blank');
-            }}
-            className="text-[#0068FF] font-medium"
-          >
-            <MessageCircle className="mr-2 h-4 w-4" />
-            Nhắn qua Zalo
-          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={(e) => {
             e.stopPropagation();
@@ -339,18 +330,22 @@ const createColumns = (props: HoaDonTableProps & { setHoaDonToDelete: (h: HoaDon
             <Download className="mr-2 h-4 w-4" />
             Tải HTML
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem 
-            className="text-destructive"
-            onClick={(e) => {
-              e.stopPropagation();
-              props.setHoaDonToDelete(row.original);
-              props.setIsDeleteDialogOpen(true);
-            }}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Xóa
-          </DropdownMenuItem>
+          {props.canDelete !== false && (
+            <DropdownMenuSeparator />
+          )}
+          {props.canDelete !== false && (
+            <DropdownMenuItem 
+              className="text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                props.setHoaDonToDelete(row.original);
+                props.setIsDeleteDialogOpen(true);
+              }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Xóa
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     ),

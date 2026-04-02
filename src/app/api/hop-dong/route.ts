@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search') || '';
     const trangThai = searchParams.get('trangThai') || '';
+    const toaNhaId = searchParams.get('toaNhaId');
 
     const query: any = {};
     
@@ -73,8 +74,31 @@ export async function GET(request: NextRequest) {
       query.trangThai = trangThai;
     }
 
+    console.log(`[GET /api/hop-dong] Params - toaNhaId: ${toaNhaId}, search: ${search}, trangThai: ${trangThai}`);
+
     const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
-    console.log(`[GET /api/hop-dong] Accessible ToaNha IDs:`, accessibleToaNhaIds?.length || 0);
+    
+    // Filter by specific building if requested
+    let targetToaNhaIds = accessibleToaNhaIds;
+    if (toaNhaId && toaNhaId !== 'all' && mongoose.isValidObjectId(toaNhaId)) {
+      const requestedId = new mongoose.Types.ObjectId(toaNhaId);
+      if (accessibleToaNhaIds !== null) {
+        // If user has restricted access, check if requested toaNhaId is in their list
+        const isAccessible = accessibleToaNhaIds.some(id => id.toString() === toaNhaId);
+        if (isAccessible) {
+          targetToaNhaIds = [requestedId];
+        } else {
+          // Requested building not accessible
+          console.warn(`[GET /api/hop-dong] Requested building ${toaNhaId} is not accessible for user ${session.user.id}`);
+          return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
+        }
+      } else {
+        // Super admin or unrestricted access
+        targetToaNhaIds = [requestedId];
+      }
+    }
+
+    console.log(`[GET /api/hop-dong] Final Target ToaNha IDs:`, targetToaNhaIds === null ? 'All' : targetToaNhaIds.map(id => id.toString()));
     
     if (session.user.role === 'khachThue') {
       // Khách thuê chỉ xem hợp đồng của mình
@@ -87,23 +111,29 @@ export async function GET(request: NextRequest) {
       }).select('_id');
       const ktId = ktRecord ? ktRecord._id : new mongoose.Types.ObjectId(userId);
       query.khachThueId = { $in: [new mongoose.Types.ObjectId(userId), ktId] };
-      console.log(`[GET /api/hop-dong] Tenant query:`, JSON.stringify(query));
-    } else if (accessibleToaNhaIds !== null) {
-      if (accessibleToaNhaIds.length === 0) {
+      
+      // If toaNhaId is provided for tenant, we should also filter by it
+      if (targetToaNhaIds !== null) {
+        const phongsInBuilding = await Phong.find({ toaNha: { $in: targetToaNhaIds } }).select('_id');
+        query.phong = { $in: phongsInBuilding.map(p => p._id) };
+      }
+    } else if (targetToaNhaIds !== null) {
+      if (targetToaNhaIds.length === 0) {
          console.warn(`[GET /api/hop-dong] User has no accessible buildings.`);
          return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
       }
-      const accessiblePhongs = await Phong.find({ toaNha: { $in: accessibleToaNhaIds } }).select('_id');
+      const accessiblePhongs = await Phong.find({ toaNha: { $in: targetToaNhaIds } }).select('_id');
       const phongIds = accessiblePhongs.map(p => p._id);
-      console.log(`[GET /api/hop-dong] Accessible Phongs:`, phongIds.length);
+      console.log(`[GET /api/hop-dong] Filtered query by ${phongIds.length} phongs in targeted buildings`);
       
       if (phongIds.length === 0) {
-         console.warn(`[GET /api/hop-dong] User has no rooms in their buildings.`);
-         return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
+        return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
       }
-      
       query.phong = { $in: phongIds };
+    } else {
+      console.log(`[GET /api/hop-dong] Unrestricted query (no building filter applied)`);
     }
+
 
     const [hopDongListRaw, total] = await Promise.all([
       HopDong.find(query)

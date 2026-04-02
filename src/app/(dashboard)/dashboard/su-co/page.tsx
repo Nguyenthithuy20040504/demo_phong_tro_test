@@ -78,14 +78,28 @@ export default function SuCoPage() {
   const [selectedSuCo, setSelectedSuCo] = useState<SuCo | null>(null);
   const [viewingDetailSuCo, setViewingDetailSuCo] = useState<SuCo | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [selectedBuildingId, setSelectedBuildingId] = useState<string>('all');
 
   useEffect(() => {
     document.title = 'Quản lý Sự cố';
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+    setSelectedBuildingId(saved);
+  }, []);
+
+  // Global Building Sync (listen to TopNavbar)
+  useEffect(() => {
+    const handleSyncBuilding = () => {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      setSelectedBuildingId(saved);
+      fetchData(true);
+    };
+    window.addEventListener('buildingChange', handleSyncBuilding);
+    return () => window.removeEventListener('buildingChange', handleSyncBuilding);
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData(true);
+  }, [selectedBuildingId]);
 
   const fetchData = async (forceRefresh = false) => {
     try {
@@ -104,34 +118,39 @@ export default function SuCoPage() {
         }
       }
 
+      const buildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      const buildingParam = buildingId !== 'all' ? `&toaNhaId=${buildingId}` : '';
+      const limitParam = '?limit=1000';
+      const query = `${limitParam}${buildingParam}`;
+
       // Fetch sự cố từ API
-      const suCoResponse = await fetch('/api/su-co');
+      const suCoResponse = await fetch(`/api/su-co${query}`);
       const suCoData = await suCoResponse.json();
-      const suCos = suCoData.success ? suCoData.data : [];
+      const suCos = (suCoData.success ? suCoData.data : []) || [];
       setSuCoList(suCos);
 
       // Fetch phòng từ API
-      const phongResponse = await fetch('/api/phong?limit=1000');
+      const phongResponse = await fetch(`/api/phong${query}`);
       const phongData = await phongResponse.json();
-      const phongs = phongData.success ? phongData.data : [];
+      const phongs = (phongData.success ? phongData.data : []) || [];
       setPhongList(phongs);
 
       // Fetch khách thuê từ API
-      const khachThueResponse = await fetch('/api/khach-thue?limit=1000');
+      const khachThueResponse = await fetch(`/api/khach-thue${query}`);
       const khachThueData = await khachThueResponse.json();
-      const khachThues = khachThueData.success ? khachThueData.data : [];
+      const khachThues = (khachThueData.success ? khachThueData.data : []) || [];
       setKhachThueList(khachThues);
 
       // Fetch hợp đồng từ API
-      const hopDongResponse = await fetch('/api/hop-dong?limit=1000');
+      const hopDongResponse = await fetch(`/api/hop-dong${query}`);
       const hopDongData = await hopDongResponse.json();
-      const hopDongs = hopDongData.success ? hopDongData.data : [];
+      const hopDongs = (hopDongData.success ? hopDongData.data : []) || [];
       setHopDongList(hopDongs);
 
       // Fetch tòa nhà từ API
-      const toaNhaResponse = await fetch('/api/toa-nha?limit=100');
+      const toaNhaResponse = await fetch('/api/toa-nha');
       const toaNhaData = await toaNhaResponse.json();
-      const toaNhas = toaNhaData.success ? toaNhaData.data : [];
+      const toaNhas = (toaNhaData.success ? toaNhaData.data : []) || [];
       setToaNhaList(toaNhas);
 
       cache.setCache({

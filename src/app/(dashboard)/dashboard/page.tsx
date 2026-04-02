@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 import {
   Select,
   SelectContent,
@@ -17,6 +18,7 @@ import {
   Calendar as CalendarIcon,
   RefreshCcw,
   AlertCircle,
+  TriangleAlert,
   Wrench,
   DollarSign,
   Users,
@@ -24,6 +26,7 @@ import {
   Filter,
   MessageSquare,
   Lightbulb,
+  Zap,
 } from 'lucide-react';
 import { DashboardStats, ToaNha } from '@/types';
 import { toast } from 'sonner';
@@ -211,7 +214,12 @@ export default function DashboardPage() {
   const { data: session, status } = useSession();
 
   // Filters
-  const [selectedToaNha, setSelectedToaNha] = useState<string>('all');
+  const [selectedToaNha, setSelectedToaNha] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('selected_building_id') || 'all';
+    }
+    return 'all';
+  });
   const [timeRange, setTimeRange] = useState<string>('6_months');
 
   const currentMonth = new Date().getMonth() + 1;
@@ -279,31 +287,53 @@ export default function DashboardPage() {
       try {
         const { data } = JSON.parse(cached);
         setStats(data);
-        setLoading(false); // Can show UI immediately
       } catch (e) {
-        setLoading(true);
+        // ignore
       }
-    } else {
-      setLoading(true);
     }
 
     try {
-      // 1. Fetch buildings and basic stats in parallel
-      await Promise.all([
-        fetchToaNha(),
-        fetchStats(true)
-      ]);
+      // 1. Fetch buildings (Required for building filter labels)
+      await fetchToaNha();
     } catch (error) {
       console.error('Error fetching initial dashboard data:', error);
     } finally {
-      setLoading(false);
+      // stats are handled by useEffect[selectedToaNha]
     }
-  }, [fetchStats, fetchToaNha]);
+  }, [fetchToaNha]);
 
   useEffect(() => {
     document.title = 'Dashboard | SmartStay';
     fetchInitialData();
   }, [fetchInitialData]);
+
+  // Global Building Sync (listen to TopNavbar)
+  useEffect(() => {
+    const handleSyncBuilding = () => {
+      const globalId = localStorage.getItem('selected_building_id') || 'all';
+      if (globalId !== selectedToaNha) {
+        setSelectedToaNha(globalId);
+        // fetchStats is called by useEffect [selectedToaNha] dependency indirectly if we use one
+      }
+    };
+    window.addEventListener('buildingChange', handleSyncBuilding);
+    return () => window.removeEventListener('buildingChange', handleSyncBuilding);
+  }, [selectedToaNha]);
+
+  // When local filter changes, sync to global
+  const handleLocalBuildingChange = (val: string) => {
+    setSelectedToaNha(val);
+    localStorage.setItem('selected_building_id', val);
+    // Dispatch event so TopNavbar can sync if it doesn't reload
+    window.dispatchEvent(new Event('buildingChange'));
+  };
+
+  // Trigger refetch when selectedToaNha or timeRange changes
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchStats();
+    }
+  }, [selectedToaNha, timeRange, status, fetchStats]);
 
   // Restore Plan Selection Logic
   useEffect(() => {
@@ -359,11 +389,29 @@ export default function DashboardPage() {
   }, [searchParams, status, session]);
 
   useEffect(() => {
-    // Re-fetch stats khi bộ lọc thay đổi
-    if (!loading && (selectedToaNha !== 'all' || timeRange !== '6_months')) {
+    // Initial sync with TopNavbar choice
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+    setSelectedToaNha(saved);
+    fetchStats();
+  }, []);
+
+  // Global Building Sync
+  useEffect(() => {
+    const handleSyncBuilding = () => {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      setSelectedToaNha(saved);
+      fetchStats();
+    };
+    window.addEventListener('buildingChange', handleSyncBuilding);
+    return () => window.removeEventListener('buildingChange', handleSyncBuilding);
+  }, []);
+
+  useEffect(() => {
+    // Re-fetch stats khi bộ lọc THỜI GIAN thay đổi (selectedToaNha đã handle ở sync effect)
+    if (!loading && timeRange !== '6_months') {
       fetchStats();
     }
-  }, [selectedToaNha, timeRange]);
+  }, [timeRange]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN').format(amount) + ' ₫';
@@ -391,149 +439,159 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 pb-12 w-full">
-      {/* ===== HEADER ===== */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-          Dashboard tổng quan
-        </h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          {monthNames[currentMonth]}, {currentYear}
-        </p>
+      {/* ===== HEADER SECTION ===== */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Dashboard tổng quan</h1>
+          <p className="text-sm font-medium text-gray-500 mt-1 flex items-center gap-2">
+            <CalendarIcon className="h-4 w-4 opacity-70" />
+            Báo cáo vận hành tháng {currentMonth}, {currentYear}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs font-bold text-teal-600 bg-teal-50 px-3 py-1.5 rounded-full border border-teal-100 uppercase tracking-wider">
+           <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+           Dữ liệu thời gian thực
+        </div>
       </div>
 
       {/* ===== FILTERS BAR ===== */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-teal-100 shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
-            <Filter className="h-4 w-4 text-gray-400" />
-            <span>Bộ lọc:</span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-1.5 rounded-2xl border border-gray-100 shadow-sm mb-8">
+        <div className="flex flex-wrap items-center gap-2 p-1.5">
+          <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-r border-gray-100 mr-2">
+            <Filter className="h-3.5 w-3.5" />
+            <span>Bộ lọc</span>
           </div>
 
-          <Select value={selectedToaNha} onValueChange={setSelectedToaNha}>
-            <SelectTrigger className="w-[200px] h-9 rounded-lg border-gray-200 text-sm">
-              <Building2 className="mr-2 h-4 w-4 text-gray-400" />
-              <SelectValue placeholder="Tất cả tòa nhà" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả tòa nhà</SelectItem>
-              {toaNhaList.map((t) => (
-                <SelectItem key={t._id} value={t._id!}>{t.tenToaNha}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-[180px] h-9 rounded-lg border-gray-200 text-sm">
-              <CalendarIcon className="mr-2 h-4 w-4 text-gray-400" />
-              <SelectValue placeholder="6 tháng gần nhất" />
+            <SelectTrigger className="w-[160px] h-10 rounded-xl border-none bg-gray-50 hover:bg-gray-100 transition-colors text-sm font-semibold shadow-none focus:ring-0">
+              <div className="flex items-center gap-2 text-gray-700">
+                <CalendarIcon className="h-4 w-4 text-teal-600" />
+                <SelectValue placeholder="Khoảng thời gian" />
+              </div>
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="3_months">3 tháng gần nhất</SelectItem>
-              <SelectItem value="6_months">6 tháng gần nhất</SelectItem>
-              <SelectItem value="12_months">12 tháng gần nhất</SelectItem>
-              <SelectItem value="from_year_start">Từ đầu năm</SelectItem>
+            <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+              <SelectItem value="3_months" className="text-xs font-semibold py-2.5">3 tháng gần nhất</SelectItem>
+              <SelectItem value="6_months" className="text-xs font-semibold py-2.5">6 tháng gần nhất</SelectItem>
+              <SelectItem value="12_months" className="text-xs font-semibold py-2.5">12 tháng gần nhất</SelectItem>
+              <SelectItem value="from_year_start" className="text-xs font-semibold py-2.5">Từ đầu năm</SelectItem>
             </SelectContent>
           </Select>
 
           <button
             onClick={() => fetchStats()}
             disabled={loading}
-            className="h-9 w-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="h-10 w-10 flex items-center justify-center rounded-xl bg-gray-50 border border-transparent hover:border-teal-200 hover:bg-teal-50 text-gray-500 hover:text-teal-600 transition-all disabled:opacity-50 active:scale-95 shadow-none"
+            title="Làm mới dữ liệu"
           >
             <RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
-        <p className="text-sm text-gray-500">
-          Đang xem: <span className="font-semibold text-gray-800">{buildingLabel}</span>
-        </p>
+        <div className="px-5 py-2 sm:py-0 border-t sm:border-t-0 sm:border-l border-gray-50 flex items-center">
+          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mr-3">Đang xem:</p>
+          <div className="px-3 py-1 bg-teal-600 text-white text-[11px] font-bold rounded-lg shadow-sm">
+            {buildingLabel}
+          </div>
+        </div>
       </div>
 
       {stats && (
         <>
           {/* ===== 4 SUMMARY CARDS ===== */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Card 1: Tổng doanh thu */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 relative overflow-hidden group hover:shadow-md transition-shadow">
-              <div className="absolute left-0 top-3 bottom-3 w-1 rounded-r-full bg-teal-500" />
-              <div className="pl-4">
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                  <DollarSign className="h-4 w-4 text-teal-500" />
-                  <span>Tổng doanh thu tháng {currentMonth}</span>
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300">
+              <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#14b8a6]" />
+              <div className="p-6">
+                <div className="flex items-center gap-3 text-sm font-medium text-gray-500 mb-4">
+                  <div className="p-2 bg-teal-50 rounded-lg text-teal-600 group-hover:scale-110 transition-transform">
+                    <DollarSign className="h-4 w-4" />
+                  </div>
+                  <span>Tổng doanh thu {monthNames[currentMonth]}</span>
                 </div>
-                <p className="text-2xl font-bold text-gray-900 mb-2">
-                  {formatCurrency(stats.doanhThuThang)}
-                </p>
-                <div className="flex items-center gap-1.5 text-xs">
-                  {(stats.tyLeThayDoiDoanhThu ?? 0) >= 0 ? (
-                    <>
-                      <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
-                      <span className="text-emerald-600 font-medium">
-                        Tăng {stats.tyLeThayDoiDoanhThu}% so với tháng trước
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <TrendingDown className="h-3.5 w-3.5 text-red-500" />
-                      <span className="text-red-600 font-medium">
-                        Giảm {Math.abs(stats.tyLeThayDoiDoanhThu ?? 0)}% so với tháng trước
-                      </span>
-                    </>
-                  )}
+                <div className="flex flex-col gap-1">
+                  <p className="text-3xl font-bold text-gray-900 tracking-tight leading-none mb-2">
+                    {formatCurrency(stats.doanhThuThang)}
+                  </p>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    {(stats.tyLeThayDoiDoanhThu ?? 0) >= 0 ? (
+                      <div className="flex items-center px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 font-bold border border-emerald-100">
+                        <TrendingUp className="h-3 w-3 mr-1" />
+                        <span>Tăng {stats.tyLeThayDoiDoanhThu}% so với tháng trước</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 font-bold border border-red-100">
+                        <TrendingDown className="h-3 w-3 mr-1" />
+                        <span>Giảm {Math.abs(stats.tyLeThayDoiDoanhThu ?? 0)}% so với tháng trước</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Card 2: Tổng nợ chưa thu */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 relative overflow-hidden group hover:shadow-md transition-shadow">
-              <div className="absolute left-0 top-3 bottom-3 w-1 rounded-r-full bg-red-500" />
-              <div className="pl-4">
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                  <AlertCircle className="h-4 w-4 text-red-500" />
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300">
+              <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#ef4444]" />
+              <div className="p-6">
+                <div className="flex items-center gap-3 text-sm font-medium text-gray-500 mb-4">
+                  <div className="p-2 bg-red-50 rounded-lg text-red-600 group-hover:scale-110 transition-transform">
+                    <AlertCircle className="h-4 w-4" />
+                  </div>
                   <span>Tổng nợ chưa thu</span>
                 </div>
-                <p className="text-2xl font-bold text-red-600 mb-2">
-                  {formatCurrency(stats.tongNoKhongThu ?? 0)}
-                </p>
-                <div className="flex items-center gap-1.5 text-xs text-orange-600">
-                  <AlertCircle className="h-3.5 w-3.5" />
-                  <span className="font-medium">{stats.soHoaDonQuaHan ?? 0} hóa đơn quá hạn</span>
+                <div className="flex flex-col gap-1">
+                  <p className="text-3xl font-bold text-red-600 tracking-tight leading-none mb-2">
+                    {formatCurrency(stats.tongNoKhongThu ?? 0)}
+                  </p>
+                  <div className="flex items-center gap-1.5 text-xs px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 font-bold border border-orange-100 w-fit">
+                    <TriangleAlert className="h-3 w-3 mr-1" />
+                    <span>{stats.soHoaDonQuaHan ?? 0} hóa đơn quá hạn</span>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Card 3: Tỉ lệ lấp đầy */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 relative overflow-hidden group hover:shadow-md transition-shadow">
-              <div className="absolute left-0 top-3 bottom-3 w-1 rounded-r-full bg-blue-500" />
-              <div className="pl-4">
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                  <Home className="h-4 w-4 text-blue-500" />
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300">
+              <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#3b82f6]" />
+              <div className="p-6">
+                <div className="flex items-center gap-3 text-sm font-medium text-gray-500 mb-4">
+                  <div className="p-2 bg-blue-50 rounded-lg text-blue-600 group-hover:scale-110 transition-transform">
+                    <Home className="h-4 w-4" />
+                  </div>
                   <span>Tỉ lệ lấp đầy</span>
                 </div>
-                <p className="text-2xl font-bold text-gray-900 mb-2">
-                  {stats.tongSoPhong > 0 ? Math.round((stats.phongDangThue / stats.tongSoPhong) * 100) : 0}%
-                </p>
-                <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <Users className="h-3.5 w-3.5" />
-                  <span className="font-medium">{stats.phongDangThue}/{stats.tongSoPhong} phòng</span>
+                <div className="flex flex-col gap-1">
+                  <p className="text-3xl font-bold text-gray-900 tracking-tight leading-none mb-2">
+                    {stats.tongSoPhong > 0 ? Math.round((stats.phongDangThue / stats.tongSoPhong) * 100) : 0}%
+                  </p>
+                  <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
+                    <Users className="h-3.5 w-3.5" />
+                    <span>{stats.phongDangThue}/{stats.tongSoPhong} phòng</span>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Card 4: Sự cố chờ xử lý */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 relative overflow-hidden group hover:shadow-md transition-shadow">
-              <div className="absolute left-0 top-3 bottom-3 w-1 rounded-r-full bg-orange-500" />
-              <div className="pl-4">
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                  <Wrench className="h-4 w-4 text-orange-500" />
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300">
+              <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#fb923c]" />
+              <div className="p-6">
+                <div className="flex items-center gap-3 text-sm font-medium text-gray-500 mb-4">
+                  <div className="p-2 bg-orange-50 rounded-lg text-orange-600 group-hover:scale-110 transition-transform">
+                    <Wrench className="h-4 w-4" />
+                  </div>
                   <span>Sự cố chờ xử lý</span>
                 </div>
-                <p className="text-2xl font-bold text-orange-600 mb-2">
-                  {stats.suCoCanXuLy}
-                </p>
-                <div className="flex items-center gap-1.5 text-xs text-orange-600">
-                  <AlertCircle className="h-3.5 w-3.5" />
-                  <span className="font-medium">Sự cố mới</span>
+                <div className="flex flex-col gap-1">
+                  <p className="text-3xl font-bold text-orange-600 tracking-tight leading-none mb-2">
+                    {stats.suCoCanXuLy}
+                  </p>
+                  <div className="flex items-center gap-1.5 text-xs text-rose-600 px-1.5 py-0.5 rounded-full bg-rose-50 font-bold border border-rose-100 w-fit">
+                    <Zap className="h-3 w-3 mr-1" />
+                    <span>Sự cố mới</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -578,14 +636,14 @@ export default function DashboardPage() {
                     <Bar
                       dataKey="daThu"
                       name="Tiền đã thu"
-                      fill="#34D399"
+                      fill="#0d9488"
                       radius={[4, 4, 0, 0]}
                       maxBarSize={40}
                     />
                     <Bar
                       dataKey="conNo"
                       name="Tiền còn nợ"
-                      fill="#f97316"
+                      fill="#ef4444"
                       radius={[4, 4, 0, 0]}
                       maxBarSize={40}
                     />
@@ -605,51 +663,69 @@ export default function DashboardPage() {
           </div>
 
           {/* ===== TABLES SECTION ===== */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-8">
             {/* Hóa đơn quá hạn */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-gray-50">
-                <div className="flex items-center gap-2.5">
-                  <AlertCircle className="h-5 w-5 text-red-500" />
-                  <h2 className="text-base font-bold text-red-600">Hóa đơn quá hạn</h2>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+              <div className="p-6 border-b border-gray-50 bg-gray-50/30">
+                <div className="flex items-center justify-between font-bold">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-red-50 rounded-lg text-red-600">
+                      <AlertCircle className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-base text-gray-900 leading-tight">Hóa đơn quá hạn</h2>
+                      <p className="text-xs text-gray-500 font-normal mt-0.5">Top 10 khách nợ tiền lâu nhất</p>
+                    </div>
+                  </div>
+                  <Link href="/dashboard/hoa-don" className="text-xs text-teal-600 hover:text-teal-700 font-semibold p-1 hover:bg-teal-50 rounded transition-colors">
+                    Xem tất cả
+                  </Link>
                 </div>
-                <p className="text-sm text-gray-500 mt-0.5 ml-[30px]">Top 5 khách nợ tiền lâu nhất</p>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto flex-1">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="text-left py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Khách hàng</th>
-                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Phòng</th>
-                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Số tiền</th>
-                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Quá hạn</th>
-                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Hành động</th>
+                    <tr className="bg-gray-50/50 text-gray-500 border-b border-gray-100">
+                      <th className="text-left py-3 px-6 text-[11px] font-bold uppercase tracking-widest">Khách hàng</th>
+                      <th className="text-left py-3 px-3 text-[11px] font-bold uppercase tracking-widest">Phòng</th>
+                      <th className="text-left py-3 px-3 text-[11px] font-bold uppercase tracking-widest">Số tiền</th>
+                      <th className="text-left py-3 px-3 text-[11px] font-bold uppercase tracking-widest">Quá hạn</th>
+                      <th className="text-right py-3 px-6 text-[11px] font-bold uppercase tracking-widest">Thao tác</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-gray-50">
                     {(stats.hoaDonQuaHanList && stats.hoaDonQuaHanList.length > 0) ? (
                       stats.hoaDonQuaHanList.map((item) => (
-                        <tr key={item._id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                          <td className="py-3.5 px-5 font-medium text-gray-800">{item.tenKhach}</td>
-                          <td className="py-3.5 px-3">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-gray-100 text-xs font-semibold text-gray-700">
+                        <tr key={item._id} className="hover:bg-teal-50/20 transition-colors group">
+                          <td className="py-4 px-6">
+                            <span className="font-semibold text-gray-800">{item.tenKhach}</span>
+                          </td>
+                          <td className="py-4 px-3">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-gray-100 text-[11px] font-bold text-gray-600 uppercase border border-gray-200">
                               {item.maPhong}
                             </span>
                           </td>
-                          <td className="py-3.5 px-3 font-semibold text-red-600">{formatCurrency(item.soTien)}</td>
-                          <td className="py-3.5 px-3 text-red-500 font-medium">{item.soNgayQuaHan} ngày</td>
-                          <td className="py-3.5 px-3">
-                            <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-all">
+                          <td className="py-4 px-3 font-bold text-red-600 font-mono tracking-tight">{formatCurrency(item.soTien)}</td>
+                          <td className="py-4 px-3">
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-rose-50 text-red-600 font-bold border border-rose-100">
+                              {item.soNgayQuaHan} ngày
+                            </span>
+                          </td>
+                          <td className="py-4 px-6 text-right">
+                            <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-[11px] font-bold text-gray-700 hover:bg-teal-50 hover:border-teal-200 hover:text-teal-700 transition-all shadow-sm active:scale-95">
                               <MessageSquare className="h-3 w-3" />
-                              Nhắc nợ Zalo
+                              Nhắc nợ
                             </button>
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="py-8 text-center text-gray-400 text-sm italic">
-                          Không có hóa đơn quá hạn 🎉
+                        <td colSpan={5} className="py-12 text-center text-gray-400 text-sm italic">
+                          <div className="flex flex-col items-center gap-2">
+                             <span className="text-2xl">🎉</span>
+                             <span>Tuyệt vời! Không có hóa đơn quá hạn</span>
+                          </div>
                         </td>
                       </tr>
                     )}
@@ -659,44 +735,60 @@ export default function DashboardPage() {
             </div>
 
             {/* Hợp đồng sắp hết hạn */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-gray-50">
-                <div className="flex items-center gap-2.5">
-                  <AlertCircle className="h-5 w-5 text-orange-500" />
-                  <h2 className="text-base font-bold text-orange-600">Hợp đồng sắp hết hạn</h2>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+              <div className="p-6 border-b border-gray-50 bg-gray-50/30">
+                <div className="flex items-center justify-between font-bold">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-orange-50 rounded-lg text-orange-600">
+                      <TriangleAlert className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-base text-gray-900 leading-tight">Hợp đồng sắp hết hạn</h2>
+                      <p className="text-xs text-gray-500 font-normal mt-0.5">Trong vòng 30 ngày tới</p>
+                    </div>
+                  </div>
+                  <Link href="/dashboard/hop-dong" className="text-xs text-teal-600 hover:text-teal-700 font-semibold p-1 hover:bg-teal-50 rounded transition-colors">
+                    Xem tất cả
+                  </Link>
                 </div>
-                <p className="text-sm text-gray-500 mt-0.5 ml-[30px]">Trong vòng 15-30 ngày tới</p>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto flex-1">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="text-left py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Khách hàng</th>
-                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Phòng</th>
-                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Ngày hết hạn</th>
-                      <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Còn lại</th>
+                    <tr className="bg-gray-50/50 text-gray-500 border-b border-gray-100">
+                      <th className="text-left py-3 px-6 text-[11px] font-bold uppercase tracking-widest">Khách hàng</th>
+                      <th className="text-left py-3 px-3 text-[11px] font-bold uppercase tracking-widest">Phòng</th>
+                      <th className="text-left py-3 px-3 text-[11px] font-bold uppercase tracking-widest">Ngày hết hạn</th>
+                      <th className="text-right py-3 px-6 text-[11px] font-bold uppercase tracking-widest">Thời gian còn lại</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-gray-50">
                     {(stats.hopDongSapHetHanList && stats.hopDongSapHetHanList.length > 0) ? (
                       stats.hopDongSapHetHanList.map((item) => (
-                        <tr key={item._id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                          <td className="py-3.5 px-5 font-medium text-gray-800">{item.tenKhach}</td>
-                          <td className="py-3.5 px-3">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-gray-100 text-xs font-semibold text-gray-700">
+                        <tr key={item._id} className="hover:bg-teal-50/20 transition-colors group">
+                          <td className="py-4 px-6">
+                            <span className="font-semibold text-gray-800">{item.tenKhach}</span>
+                          </td>
+                          <td className="py-4 px-3">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-gray-100 text-[11px] font-bold text-gray-600 uppercase border border-gray-200">
                               {item.maPhong}
                             </span>
                           </td>
-                          <td className="py-3.5 px-3 text-gray-600">{item.ngayHetHan}</td>
-                          <td className="py-3.5 px-3">
-                            <span className="font-semibold text-orange-600">{item.soNgayConLai} ngày</span>
+                          <td className="py-4 px-3 text-gray-600 font-medium">{item.ngayHetHan}</td>
+                          <td className="py-4 px-6 text-right">
+                             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 rounded-full border border-amber-100 text-amber-700 text-xs font-bold">
+                                {item.soNgayConLai} ngày
+                             </div>
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={4} className="py-8 text-center text-gray-400 text-sm italic">
-                          Không có hợp đồng sắp hết hạn
+                        <td colSpan={4} className="py-12 text-center text-gray-400 text-sm italic">
+                           <div className="flex flex-col items-center gap-2">
+                             <span className="text-2xl">📋</span>
+                             <span>Hiện không có hợp đồng sắp hết hạn</span>
+                          </div>
                         </td>
                       </tr>
                     )}
@@ -705,12 +797,20 @@ export default function DashboardPage() {
               </div>
               {/* Advice note */}
               {(stats.hopDongSapHetHanList && stats.hopDongSapHetHanList.length > 0) && (
-                <div className="mx-5 mb-5 mt-2 p-3.5 bg-amber-50 rounded-xl border border-amber-100">
-                  <div className="flex items-start gap-2">
-                    <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-                    <p className="text-xs text-amber-800 leading-relaxed">
-                      <span className="font-semibold">Lời khuyên:</span> Liên hệ khách hàng trước 15 ngày để gia hạn hoặc tìm khách mới, tránh phòng bị bỏ trống.
-                    </p>
+                <div className="p-5 mt-auto">
+                  <div className="p-4 bg-teal-900 text-white rounded-xl shadow-lg relative overflow-hidden group">
+                    <div className="absolute -right-4 -bottom-4 bg-white/10 rounded-full h-24 w-24 translate-x-4 translate-y-4 group-hover:scale-110 transition-transform duration-500" />
+                    <div className="flex items-start gap-3 relative z-10">
+                      <div className="bg-primary/20 p-2 rounded-lg">
+                        <Lightbulb className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider mb-1 opacity-70">Gợi ý vận hành</p>
+                        <p className="text-xs leading-relaxed opacity-90">
+                          Liên hệ khách hàng trước 15 ngày để gia hạn hoặc tìm khách mới, tránh phòng bị bỏ trống gây thất thoát doanh thu.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

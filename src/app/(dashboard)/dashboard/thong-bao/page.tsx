@@ -73,14 +73,28 @@ export default function ThongBaoPage() {
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [selectedBuildingId, setSelectedBuildingId] = useState<string>('all');
 
   useEffect(() => {
     document.title = 'Quản lý Thông báo';
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+    setSelectedBuildingId(saved);
+  }, []);
+
+  // Global Building Sync (listen to TopNavbar)
+  useEffect(() => {
+    const handleSyncBuilding = () => {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      setSelectedBuildingId(saved);
+      fetchData(true);
+    };
+    window.addEventListener('buildingChange', handleSyncBuilding);
+    return () => window.removeEventListener('buildingChange', handleSyncBuilding);
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData(true);
+  }, [selectedBuildingId]);
 
   const fetchData = async (forceRefresh = false) => {
     try {

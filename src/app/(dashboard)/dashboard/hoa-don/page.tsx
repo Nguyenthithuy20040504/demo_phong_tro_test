@@ -49,7 +49,8 @@ import { HoaDon, HopDong, Phong, KhachThue } from '@/types';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { generateZaloDeepLink } from '@/lib/zalo-formatter';
+
+import { useSession } from 'next-auth/react';
 
 // Helper functions for form and dialogs
 const getPhongName = (phongId: string | Phong, phongList: Phong[]) => {
@@ -85,6 +86,8 @@ const formatCurrency = (amount: number | undefined | null) => {
 };
 
 export default function HoaDonPage() {
+  const { data: session } = useSession();
+  const isNhanVien = (session?.user as any)?.role === 'nhanVien';
   const router = useRouter();
   const cache = useCache<{
     hoaDonList: HoaDon[];
@@ -117,6 +120,12 @@ export default function HoaDonPage() {
     fetchData();
   }, []);
 
+  // Global Building Sync (listen to TopNavbar)
+  useEffect(() => {
+    const handleSyncBuilding = () => fetchData(true);
+    window.addEventListener('buildingChange', handleSyncBuilding);
+    return () => window.removeEventListener('buildingChange', handleSyncBuilding);
+  }, []);
 
   // Debug hopDongList state
   useEffect(() => {
@@ -126,6 +135,9 @@ export default function HoaDonPage() {
   const fetchData = async (forceRefresh = false) => {
     try {
       setLoading(true);
+      
+      const buildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') : 'all';
+      const buildingParam = (buildingId && buildingId !== 'all') ? `toaNhaId=${buildingId}` : '';
       
       // Thử load từ cache trước (nếu không force refresh)
       if (!forceRefresh) {
@@ -140,10 +152,10 @@ export default function HoaDonPage() {
         }
       }
       
-      // Fetch both hoa-don and form-data in parallel
+      // Fetch both hoa-don and form-data in parallel with building filter
       const [hoaDonResponse, formDataResponse] = await Promise.all([
-        fetch('/api/hoa-don'),
-        fetch('/api/hoa-don/form-data')
+        fetch(`/api/hoa-don?${buildingParam}`),
+        fetch(`/api/hoa-don/form-data?${buildingParam}`)
       ]);
 
       const [hoaDonData, formDataResult] = await Promise.all([
@@ -680,6 +692,8 @@ export default function HoaDonPage() {
             onYearChange={setYearFilter}
             getMonthOptions={getMonthOptions}
             getYearOptions={getYearOptions}
+            canEdit={!isNhanVien}
+            canDelete={!isNhanVien}
           />
         </CardContent>
       </Card>
@@ -839,21 +853,7 @@ export default function HoaDonPage() {
                       <Copy className="h-3.5 w-3.5 mr-1" />
                       Link
                     </Button>
-                    <a 
-                      href={generateZaloDeepLink(hoaDon)} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="flex-1"
-                    >
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="w-full bg-[#0068FF] hover:bg-[#0052CC] text-white"
-                      >
-                        <MessageCircle className="h-3.5 w-3.5 mr-1" />
-                        Zalo
-                      </Button>
-                    </a>
+
                   </div>
                 </div>
               </Card>

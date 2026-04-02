@@ -45,7 +45,11 @@ import { toast } from 'sonner';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
 
+import { useSession } from 'next-auth/react';
+
 export default function HopDongPage() {
+  const { data: session } = useSession();
+  const isNhanVien = (session?.user as any)?.role === 'nhanVien';
   const router = useRouter();
   const cache = useCache<{
     hopDongList: HopDong[];
@@ -67,13 +71,26 @@ export default function HopDongPage() {
   const [cancellingHopDong, setCancellingHopDong] = useState<HopDong | null>(null);
   const [newEndDate, setNewEndDate] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [globalBuildingId, setGlobalBuildingId] = useState<string>('all');
+
 
   useEffect(() => {
     document.title = 'Quản lý Hợp đồng';
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+    setGlobalBuildingId(saved);
+    console.log('[HopDongPage] Init Building Context:', saved);
+    fetchData(true);
   }, []);
 
+  // Global Building Sync (listen to TopNavbar)
   useEffect(() => {
-    fetchData();
+    const handleSyncBuilding = () => {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      setGlobalBuildingId(saved);
+      fetchData(true);
+    };
+    window.addEventListener('buildingChange', handleSyncBuilding);
+    return () => window.removeEventListener('buildingChange', handleSyncBuilding);
   }, []);
 
   const fetchData = async (forceRefresh = false) => {
@@ -92,20 +109,24 @@ export default function HopDongPage() {
           return;
         }
       }
-      
+
+      const buildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      const buildingParam = buildingId !== 'all' ? `toaNhaId=${buildingId}` : '';
+      const limitParam = 'limit=1000';
+      const query = [limitParam, buildingParam].filter(Boolean).join('&');
+
       // Fetch tất cả dữ liệu song song
       const [hopDongRes, phongRes, khachThueRes, toaNhaRes] = await Promise.all([
-        fetch('/api/hop-dong?limit=500'),
-        fetch('/api/phong?limit=500'),
-        fetch('/api/khach-thue?limit=500'),
-        fetch('/api/toa-nha?limit=100'),
+        fetch(`/api/hop-dong?${query}`),
+        fetch(`/api/phong?${query}`),
+        fetch(`/api/khach-thue?${query}`),
+        fetch('/api/toa-nha'),
       ]);
 
       // Kiểm tra nếu bất kỳ API quan trọng nào lỗi thì không ghi đè cache
       if (!hopDongRes.ok || !phongRes.ok) {
         console.error('Core APIs failed:', { hopDong: hopDongRes.status, phong: phongRes.status });
         toast.error('Máy chủ đang phản hồi chậm hoặc có lỗi. Vui lòng thử lại sau.');
-        setLoading(false);
         return;
       }
 
@@ -1529,6 +1550,9 @@ export default function HopDongPage() {
             toaNhaFilter={toaNhaFilter}
             onToaNhaChange={setToaNhaFilter}
             allToaNhaList={toaNhaList}
+            globalBuildingId={globalBuildingId}
+            canEdit={!isNhanVien}
+            canDelete={!isNhanVien}
           />
         </CardContent>
       </Card>
@@ -1554,31 +1578,34 @@ export default function HopDongPage() {
               className="pl-10 text-sm"
             />
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="text-sm">
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" className="text-sm">Tất cả</SelectItem>
+                <SelectItem value="all" className="text-sm">Tất cả trạng thái</SelectItem>
                 <SelectItem value="hoatDong" className="text-sm">Hoạt động</SelectItem>
                 <SelectItem value="hetHan" className="text-sm">Hết hạn</SelectItem>
                 <SelectItem value="daHuy" className="text-sm">Đã hủy</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={toaNhaFilter} onValueChange={setToaNhaFilter}>
-              <SelectTrigger className="text-sm">
-                <SelectValue placeholder="Tòa nhà" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-sm">Tất cả</SelectItem>
-                {toaNhaList.map((toaNha) => (
-                  <SelectItem key={toaNha._id} value={toaNha._id!} className="text-sm">
-                    {toaNha.tenToaNha}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+            {(globalBuildingId === 'all' || !globalBuildingId) && (
+              <Select value={toaNhaFilter} onValueChange={setToaNhaFilter}>
+                <SelectTrigger className="text-sm">
+                  <SelectValue placeholder="Tòa nhà" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="text-sm">Tất cả tòa nhà</SelectItem>
+                  {toaNhaList.map((t) => (
+                    <SelectItem key={t._id} value={t._id!} className="text-sm">
+                      {t.tenToaNha}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
 

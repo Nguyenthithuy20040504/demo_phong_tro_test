@@ -2,17 +2,9 @@
 
 import { SessionProvider, useSession } from 'next-auth/react';
 import { Loader2 } from 'lucide-react';
-import { AppSidebar } from '@/components/app-sidebar';
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from '@/components/ui/sidebar';
-import { Separator } from '@/components/ui/separator';
+import { TopNavbar } from '@/components/top-navbar';
 import { DynamicBreadcrumb } from '@/components/ui/dynamic-breadcrumb';
-import { PageProgress } from '@/components/ui/page-progress';
 import { SubscriptionGuard } from '@/components/ui/subscription-guard';
-import { NotificationBell } from '@/components/ui/notification-bell';
 import { GlobalPrefetcher } from '@/components/ui/global-prefetcher';
 
 interface DashboardLayoutProps {
@@ -41,30 +33,24 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
   }
 
   // Redirect tenants to their dashboard if they land here
-  if (session.user.role === 'khachThue') {
+  if ((session.user as any)?.role === 'khachThue') {
     router.replace('/khach-thue/dashboard');
     return null;
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset className="min-w-0 overflow-x-hidden">
-        <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b bg-background/80 backdrop-blur-md px-4 transition-all duration-300">
-          <PageProgress />
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="h-6" />
-          <DynamicBreadcrumb />
-          <div className="ml-auto flex items-center gap-1.5 md:gap-3">
-            <NotificationBell />
+    <div className="min-h-screen flex flex-col bg-gray-50/50">
+      <TopNavbar />
+      <main className="flex-1 min-h-0 overflow-y-auto px-4 md:px-8 py-6">
+        <div className="max-w-[1600px] mx-auto space-y-4">
+          <div className="mb-4">
+             <DynamicBreadcrumb />
           </div>
-        </header>
-        <main className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6">
           <SubscriptionGuard>{children}</SubscriptionGuard>
-          <GlobalPrefetcher />
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+        </div>
+        <GlobalPrefetcher />
+      </main>
+    </div>
   );
 }
 

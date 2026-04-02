@@ -31,7 +31,7 @@ import { ToaNhaDataTable } from './table';
 
 export default function ToaNhaPage() {
   const { data: session } = useSession();
-  const isNhanVien = session?.user?.role === 'nhanVien';
+  const isNhanVien = (session?.user as any)?.role === 'nhanVien';
   const cache = useCache<{ toaNhaList: ToaNha[] }>({ key: 'toa-nha-data', duration: 300000 });
   const [toaNhaList, setToaNhaList] = useState<ToaNha[]>([]);
   const [loading, setLoading] = useState(true);

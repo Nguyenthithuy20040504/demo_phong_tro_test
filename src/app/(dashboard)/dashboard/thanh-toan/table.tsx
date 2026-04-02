@@ -357,6 +357,7 @@ type ThanhToanDataTableProps = ThanhToanTableProps & {
   onStartDateChange?: (value: string) => void
   endDate?: string
   onEndDateChange?: (value: string) => void
+  globalBuildingId?: string
 }
 
 export function ThanhToanDataTable(props: ThanhToanDataTableProps) {

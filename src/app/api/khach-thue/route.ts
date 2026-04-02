@@ -46,6 +46,8 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const trangThai = searchParams.get('trangThai') || '';
 
+    const toaNhaId = searchParams.get('toaNhaId');
+
     const matchQuery: any = {};
     
     if (search) {
@@ -69,8 +71,37 @@ export async function GET(request: NextRequest) {
     }
 
     const accessibleKhachThueIds = await getAccessibleKhachThueIds(session.user);
-    if (accessibleKhachThueIds !== null) {
-      matchQuery._id = { $in: (accessibleKhachThueIds as any[]).map((id: any) => new mongoose.Types.ObjectId(id.toString())) };
+    let targetKhachThueIds = accessibleKhachThueIds;
+
+    // Filter by building if requested
+    if (toaNhaId && toaNhaId !== 'all') {
+      // Logic: Khách thuê thuộc tòa nhà nếu họ có hợp đồng trong tòa nhà đó
+      const phongs = await Phong.find({ toaNha: toaNhaId }).select('_id');
+      const phongIds = phongs.map(p => p._id);
+      
+      const hopDongs = await HopDong.find({ phong: { $in: phongIds } }).select('khachThueId nguoiDaiDien');
+      
+      const tenantIdsInBuilding = new Set<string>();
+      hopDongs.forEach(hd => {
+        if (hd.khachThueId) hd.khachThueId.forEach((id: any) => tenantIdsInBuilding.add(id.toString()));
+        if (hd.nguoiDaiDien) tenantIdsInBuilding.add(hd.nguoiDaiDien.toString());
+      });
+
+      const buildingTenantIds = Array.from(tenantIdsInBuilding);
+      
+      if (accessibleKhachThueIds !== null) {
+        // Intersect building tenants with accessible tenants
+        const accessibleStrIds = accessibleKhachThueIds.map(id => id.toString());
+        const filteredIds = buildingTenantIds.filter(id => accessibleStrIds.includes(id));
+        targetKhachThueIds = filteredIds.map(id => new mongoose.Types.ObjectId(id));
+      } else {
+        // Admin
+        targetKhachThueIds = buildingTenantIds.map(id => new mongoose.Types.ObjectId(id));
+      }
+    }
+
+    if (targetKhachThueIds !== null) {
+      matchQuery._id = { $in: targetKhachThueIds };
     }
 
     // === AGGREGATION PIPELINE (Optimized) ===

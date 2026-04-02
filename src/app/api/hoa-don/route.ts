@@ -161,7 +161,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const toaNhaId = searchParams.get('toaNhaId');
+
     const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
+    let targetToaNhaIds = accessibleToaNhaIds;
+
+    if (toaNhaId && toaNhaId !== 'all') {
+      if (accessibleToaNhaIds !== null) {
+        const isAccessible = accessibleToaNhaIds.some(id => id.toString() === toaNhaId);
+        targetToaNhaIds = isAccessible ? [new mongoose.Types.ObjectId(toaNhaId)] : [];
+      } else {
+        targetToaNhaIds = [new mongoose.Types.ObjectId(toaNhaId)];
+      }
+    }
 
     if (session.user.role === 'khachThue') {
       // Logic dành cho khách thuê: Chỉ lấy hóa đơn của chính họ
@@ -182,9 +194,9 @@ export async function GET(request: NextRequest) {
       }
 
       query.khachThue = { $in: linkedIds };
-    } else if (accessibleToaNhaIds !== null) {
+    } else if (targetToaNhaIds !== null) {
       // Logic dành cho Admin/Chủ nhà/Nhân viên
-      const phongs = await connectToDatabase().then((db) => db.model('Phong').find({ toaNha: { $in: accessibleToaNhaIds } }).select('_id'));
+      const phongs = await (await connectToDatabase()).model('Phong').find({ toaNha: { $in: targetToaNhaIds } }).select('_id');
       const phongIds = phongs.map((p: any) => p._id);
 
       if (phongIds.length === 0) {
