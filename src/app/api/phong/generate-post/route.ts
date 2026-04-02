@@ -52,23 +52,32 @@ export async function POST(request: NextRequest) {
     // 2. Prepare System Prompt
     const systemPrompt = `
 Bạn là một chuyên gia Content Marketing và Môi giới Bất động sản chuyên nghiệp, năng động và sáng tạo.
-Nhiệm vụ của bạn là viết MỘT bài đăng (post) rao vặt cho thuê phòng trọ thật hấp dẫn dể thu hút người xem trên Facebook, Zalo hoặc các hội nhóm.
+Nhiệm vụ của bạn là viết một bài đăng (post) rao vặt cho thuê phòng trọ thật hấp dẫn, chi tiết và đầy đủ thông tin để thu hút người xem trên Facebook, Zalo.
 
 Thông tin chi tiết của phòng trọ:
 ${JSON.stringify(roomInfo, null, 2)}
 
-HƯỚNG DẪN VIẾT BÀI:
-0.Với các bài moTaChiTiet ít hãy viết một chút về môi trường sống ở diaChi đó - với lời văn tích cực  
-1. Tiêu đề: Viết IN HOA, giật tít thu hút (Nhấn mạnh vị trí, giá ưu đãi hoặc phòng đẹp). Sử dụng các icon bắt mắt (như 💥, 🏠, 🔥, 🌈...).
-2. Bố cục rõ ràng: Chia làm các phần bằng gạch đầu dòng hoặc dấu tick xanh (vị trí, tiện ích, chi phí, liên hệ).
-3. Nội dung:
-   - Làm nổi bật các điểm mạnh dựa vào "Thông tin chi tiết" ở trên (VD: giá siêu lướt, full tiện nghi, rộng rãi...).
-   - Format giá thuê thành số có chấm (VD: 3.500.000 VNĐ/tháng) để dễ đọc. Miêu tả rõ ràng tiền cọc.
-   - Bắt buộc phải để lại địa chỉ, thông tin liên hệ một cách khéo léo ở cuối bài.
-   - Thêm các hashtag phổ biến (VD: #chothuephong #phongtro #timphong...).
-4. Giọng điệu (Tone): Thân thiện, đánh trúng tâm lý người đi thuê (mong muốn phòng sạch, rẻ, an ninh), thôi thúc họ inbox/gọi điện ngay kẻo lỡ.
-   
-QUAN TRỌNG: TUYỆT ĐỐI KHÔNG giải thích, KHÔNG thêm lời chào mừng (VD: 'Chào bạn...', 'Dưới đây là...'), KHÔNG thêm phần kết luận. CHỈ in ra duy nhất nguyên văn nội dung bài quảng cáo.
+YÊU CẦU VỀ CẤU TRÚC BÀI VIẾT (BẮT BUỘC ĐỦ 5 PHẦN):
+1. TIÊU ĐỀ: Viết IN HOA, giật tít thu hút. Sử dụng icon bắt mắt (💥, 🏠, 🔥...).
+2. MÔ TẢ KHÔNG GIAN & MÔI TRƯỜNG: 
+   - Dựa vào địa chỉ "${roomInfo.diaChi}", hãy viết 2-3 câu văn tích cực về khu vực này (Vd: khu dân trí cao, an ninh, gần các tiện ích, giao thông thuận tiện...).
+   - Nếu phần "moTaChiTiet" ít thông tin, hãy dùng lời văn khéo léo để "vẽ" ra một không gian sống lý tưởng (Vd: phòng được thiết kế tối ưu, ánh sáng tự nhiên, sạch sẽ, mang lại cảm giác thoải mái...).
+3. THÔNG TIN CHI TIẾT (Dùng các dấu tick xanh ✅ hoặc gạch đầu dòng):
+   - Diện tích: ${roomInfo.dienTich}m2.
+   - Tiện nghi: ${roomInfo.tienNghi}.
+   - Số người ở: Tối đa ${roomInfo.soNguoiToiDa} người.
+   - Các điểm nổi bật khác (nếu có).
+4. CHI PHÍ & LIÊN HỆ:
+   - Giá thuê: ${roomInfo.giaThue.toLocaleString('vi-VN')} VNĐ/tháng.
+   - Tiền cọc: ${roomInfo.tienCoc.toLocaleString('vi-VN')} VNĐ.
+   - Hotline liên hệ: ${roomInfo.lienHe}.
+5. HASHTAG: Thêm các hashtag liên quan như #chothuephong #phongtro #quanhaichau #timphong...
+
+QUY TẮC QUAN TRỌNG:
+- TUYỆT ĐỐI KHÔNG giải thích, KHÔNG nói 'Đây là bài đăng...', KHÔNG thêm phần kết luận của AI. 
+- CHỈ in ra duy nhất nội dung bài quảng cáo từ đầu đến cuối.
+- Sử dụng ngôn từ trẻ trung, lôi cuốn nhưng vẫn chuyên nghiệp.
+- Bài viết phải dài ít nhất 150-200 từ để cung cấp đủ thông tin cho người đọc.
     `;
 
     // 3. Call Gemini API with Retry Logic
@@ -79,20 +88,19 @@ QUAN TRỌNG: TUYỆT ĐỐI KHÔNG giải thích, KHÔNG thêm lời chào mừ
 
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
     const requestBody = JSON.stringify({
-      system_instruction: {
-        parts: [{ text: systemPrompt }]
-      },
       contents: [
         {
           role: 'user',
-          parts: [{ text: 'Viết cho tôi một bài đăng cho thuê phòng trọ hoàn chỉnh dựa vào thông tin của JSON đính kèm.' }]
+          parts: [{ 
+            text: `${systemPrompt}\n\nLưu ý: Hãy viết một bài đăng thật truyền cảm hứng, chi tiết từng phần như hướng dẫn ở trên. Đảm bảo độ dài cân đối và hấp dẫn.` 
+          }]
         }
       ],
       generationConfig: {
-        temperature: 0.7, // Mức độ sáng tạo
+        temperature: 1.0, // Tăng mức độ sáng tạo để bài viết bay bổng hơn
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 1024,
+        maxOutputTokens: 2048, // Tăng giới hạn token
       }
     });
 
@@ -130,7 +138,12 @@ QUAN TRỌNG: TUYỆT ĐỐI KHÔNG giải thích, KHÔNG thêm lời chào mừ
       }
     }
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const text = data.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join('') || '';
+    
+    // Log bài viết AI trả về để debug
+    console.log(`--- AI GENERATED POST FOR ROOM ${phong.maPhong} ---`);
+    console.log(text);
+    console.log('--------------------------------------------------');
 
     if (!text) {
       throw new Error('Dữ liệu trả về từ AI bị trống');
