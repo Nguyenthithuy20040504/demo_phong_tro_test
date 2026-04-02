@@ -104,6 +104,14 @@ export async function GET(request: NextRequest) {
       matchQuery._id = { $in: targetKhachThueIds };
     }
 
+    let chuNhaId = session.user.id;
+    if (session.user.role === 'nhanVien') {
+      const dbUser = await mongoose.model('NguoiDung').findById(session.user.id).select('nguoiQuanLy');
+      if (dbUser && dbUser.nguoiQuanLy) {
+        chuNhaId = dbUser.nguoiQuanLy.toString();
+      }
+    }
+
     // === AGGREGATION PIPELINE (Optimized) ===
     const pipeline: any[] = [
       { $match: matchQuery },
@@ -159,18 +167,23 @@ export async function GET(request: NextRequest) {
       {
         $lookup: {
           from: 'nguoidungs',
-          let: { phone: '$soDienThoai', email: { $toLower: '$email' } },
+          let: { phone: '$soDienThoai', email: { $toLower: '$email' }, landlordId: new mongoose.Types.ObjectId(chuNhaId) },
           pipeline: [
             {
               $match: {
                 $expr: {
-                  $or: [
-                    { $eq: ['$phone', '$$phone'] },
-                    { $eq: ['$soDienThoai', '$$phone'] },
-                    { $and: [
-                      { $ne: ['$$email', null] },
-                      { $eq: [{ $toLower: '$email' }, '$$email'] }
-                    ]}
+                  $and: [
+                    { $eq: ['$nguoiQuanLy', '$$landlordId'] },
+                    {
+                      $or: [
+                        { $eq: ['$phone', '$$phone'] },
+                        { $eq: ['$soDienThoai', '$$phone'] },
+                        { $and: [
+                          { $ne: ['$$email', null] },
+                          { $eq: [{ $toLower: '$email' }, '$$email'] }
+                        ]}
+                      ]
+                    }
                   ]
                 }
               }
@@ -203,10 +216,7 @@ export async function GET(request: NextRequest) {
         $addFields: {
           hopDongHienTai: { $arrayElemAt: ['$hopDongHienTai', 0] },
           hasPassword: {
-            $or: [
-              { $and: [{ $ne: ['$matKhau', null] }, { $ne: ['$matKhau', ''] }] },
-              { $eq: ['$userAccount.matKhau', 1] }
-            ]
+            $eq: ['$userAccount.matKhau', 1]
           }
         }
       },
@@ -285,8 +295,17 @@ export async function POST(request: NextRequest) {
 
     await dbConnect();
 
-    // Check if phone or CCCD already exists
+    let nguoiQuanLyId = session.user.id;
+    if (session.user.role === 'nhanVien') {
+      const nhanVien = await mongoose.model('NguoiDung').findById(session.user.id).select('nguoiQuanLy');
+      if (nhanVien && nhanVien.nguoiQuanLy) {
+        nguoiQuanLyId = nhanVien.nguoiQuanLy.toString();
+      }
+    }
+
+    // Check if phone or CCCD already exists for THIS landlord
     const existingKhachThue = await KhachThue.findOne({
+      nguoiQuanLy: new mongoose.Types.ObjectId(nguoiQuanLyId),
       $or: [
         { soDienThoai: validatedData.soDienThoai },
         { cccd: validatedData.cccd }
@@ -295,17 +314,9 @@ export async function POST(request: NextRequest) {
 
     if (existingKhachThue) {
       return NextResponse.json(
-        { message: 'Số điện thoại hoặc CCCD đã được sử dụng' },
+        { message: 'Số điện thoại hoặc CCCD đã được bạn sử dụng cho khách thuê khác trong hệ thống của mình.' },
         { status: 400 }
       );
-    }
-
-    let nguoiQuanLyId = session.user.id;
-    if (session.user.role === 'nhanVien') {
-      const nhanVien = await mongoose.model('NguoiDung').findById(session.user.id).select('nguoiQuanLy');
-      if (nhanVien && nhanVien.nguoiQuanLy) {
-        nguoiQuanLyId = nhanVien.nguoiQuanLy.toString();
-      }
     }
 
     const newKhachThue = new KhachThue({

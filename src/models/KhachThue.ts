@@ -50,7 +50,6 @@ const KhachThueSchema = new Schema<IKhachThue>({
   soDienThoai: {
     type: String,
     required: [true, 'Số điện thoại là bắt buộc'],
-    unique: true,
     match: [/^[0-9]{10,11}$/, 'Số điện thoại không hợp lệ']
   },
   email: {
@@ -62,7 +61,6 @@ const KhachThueSchema = new Schema<IKhachThue>({
   cccd: {
     type: String,
     required: [true, 'CCCD là bắt buộc'],
-    unique: true,
     match: [/^[0-9]{12}$/, 'CCCD phải có 12 chữ số']
   },
   ngaySinh: {
@@ -152,7 +150,11 @@ KhachThueSchema.methods.comparePassword = async function(candidatePassword: stri
 
 // Index cho tìm kiếm
 KhachThueSchema.index({ hoTen: 'text', queQuan: 'text', ngheNghiep: 'text' });
-// soDienThoai và cccd đã có unique: true nên không cần index thủ công
+
+// Chỉ mục duy nhất kết hợp: SĐT và CCCD chỉ duy nhất trong phạm vi từng Chủ nhà (nguoiQuanLy)
+KhachThueSchema.index({ soDienThoai: 1, nguoiQuanLy: 1 }, { unique: true });
+KhachThueSchema.index({ cccd: 1, nguoiQuanLy: 1 }, { unique: true });
+
 KhachThueSchema.index({ trangThai: 1 });
 
 export default mongoose.models.KhachThue || mongoose.model<IKhachThue>('KhachThue', KhachThueSchema);

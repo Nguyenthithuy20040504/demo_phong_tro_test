@@ -73,9 +73,21 @@ export async function GET(
     const khachThueObj = khachThue.toObject();
     const hopDongHienTai = tatCaHopDong.find(h => h.trangThai === 'hoatDong');
 
-    // Kiểm tra tài khoản ở NguoiDung
-    const userAccount = await NguoiDungModel.findById(id).select('+matKhau');
-    const hasPassword = !!khachThueObj.matKhau || (userAccount && !!userAccount.matKhau);
+    let chuNhaId = session.user.id;
+    if (session.user.role === 'nhanVien') {
+      const dbUser = await NguoiDungModel.findById(session.user.id).select('nguoiQuanLy');
+      if (dbUser && dbUser.nguoiQuanLy) {
+        chuNhaId = dbUser.nguoiQuanLy.toString();
+      }
+    }
+
+    // Kiểm tra tài khoản ở NguoiDung (chỉ tính nếu do chủ nhà này quản lý)
+    const userAccount = await NguoiDungModel.findOne({
+      _id: id,
+      nguoiQuanLy: new mongoose.Types.ObjectId(chuNhaId)
+    }).select('+matKhau');
+    
+    const hasPassword = userAccount && (!!userAccount.matKhau || !!(userAccount as any).password);
 
     return NextResponse.json({
       success: true,
@@ -118,9 +130,29 @@ export async function PUT(
     await dbConnect();
     const { id } = await params;
 
-    // Check if phone or CCCD already exists (excluding current record)
+    // 1. Check and Update/Create KhachThue (Profile) to get nguoiQuanLy
+    let khachThue = await KhachThue.findById(id);
+    let nguoiQuanLyId = session.user.id;
+
+    if (khachThue) {
+      nguoiQuanLyId = khachThue.nguoiQuanLy.toString();
+    } else {
+      const user = await NguoiDungModel.findById(id);
+      if (user?.nguoiQuanLy) {
+        nguoiQuanLyId = user.nguoiQuanLy.toString();
+      } else if (session.user.role === 'nhanVien') {
+        // Find staff's manager
+        const nhanVien = await NguoiDungModel.findById(session.user.id).select('nguoiQuanLy');
+        if (nhanVien?.nguoiQuanLy) {
+          nguoiQuanLyId = nhanVien.nguoiQuanLy.toString();
+        }
+      }
+    }
+
+    // Check if phone or CCCD already exists (excluding current record) FOR THIS LANDLORD
     const existingKhachThue = await KhachThue.findOne({
       _id: { $ne: id },
+      nguoiQuanLy: new mongoose.Types.ObjectId(nguoiQuanLyId),
       $or: [
         { soDienThoai: validatedData.soDienThoai },
         { cccd: validatedData.cccd }
@@ -129,7 +161,7 @@ export async function PUT(
 
     if (existingKhachThue) {
       return NextResponse.json(
-        { message: 'Số điện thoại hoặc CCCD đã được sử dụng' },
+        { message: 'Số điện thoại hoặc CCCD này đã được bạn sử dụng cho một khách thuê khác.' },
         { status: 400 }
       );
     }
@@ -150,8 +182,7 @@ export async function PUT(
         // matKhau will be handled below if provided
     });
 
-    // 2. Check and Update/Create KhachThue (Profile)
-    let khachThue = await KhachThue.findById(id);
+    // 2. Already fetched khachThue above
     
     if (!khachThue) {
       // IF NOT FOUND in KhachThue, create one using same ID
@@ -198,9 +229,13 @@ export async function PUT(
     const khachThueObj = khachThue.toObject();
     const hopDongHienTai = tatCaHopDong.find(h => h.trangThai === 'hoatDong');
 
-    // Kiểm tra tài khoản ở NguoiDung
-    const userAccount = await NguoiDungModel.findById(id).select('+matKhau');
-    const hasPassword = !!khachThueObj.matKhau || (userAccount && !!userAccount.matKhau);
+    // Kiểm tra tài khoản ở NguoiDung (chỉ tính nếu do chủ nhà này quản lý)
+    const userAccount = await NguoiDungModel.findOne({
+      _id: id,
+      nguoiQuanLy: new mongoose.Types.ObjectId(nguoiQuanLyId)
+    }).select('+matKhau');
+    
+    const hasPassword = userAccount && (!!userAccount.matKhau || !!(userAccount as any).password);
 
     return NextResponse.json({
       success: true,
