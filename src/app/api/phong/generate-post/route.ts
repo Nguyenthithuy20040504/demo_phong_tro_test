@@ -30,10 +30,10 @@ export async function POST(request: NextRequest) {
 
     const toaNha = phong.toaNha as any;
     const chuSoHuu = toaNha?.chuSoHuu as any;
-    const diaChiToaNha = toaNha?.diaChi 
+    const diaChiToaNha = toaNha?.diaChi
       ? [toaNha.diaChi.soNha, toaNha.diaChi.duong, toaNha.diaChi.phuong, toaNha.diaChi.quan, toaNha.diaChi.thanhPho]
-          .filter(Boolean)
-          .join(', ') 
+        .filter(Boolean)
+        .join(', ')
       : 'Không xác định';
 
     const roomInfo = {
@@ -58,6 +58,7 @@ Thông tin chi tiết của phòng trọ:
 ${JSON.stringify(roomInfo, null, 2)}
 
 HƯỚNG DẪN VIẾT BÀI:
+0.Với các bài moTaChiTiet ít hãy viết một chút về môi trường sống ở diaChi đó - với lời văn tích cực  
 1. Tiêu đề: Viết IN HOA, giật tít thu hút (Nhấn mạnh vị trí, giá ưu đãi hoặc phòng đẹp). Sử dụng các icon bắt mắt (như 💥, 🏠, 🔥, 🌈...).
 2. Bố cục rõ ràng: Chia làm các phần bằng gạch đầu dòng hoặc dấu tick xanh (vị trí, tiện ích, chi phí, liên hệ).
 3. Nội dung:
@@ -66,7 +67,7 @@ HƯỚNG DẪN VIẾT BÀI:
    - Bắt buộc phải để lại địa chỉ, thông tin liên hệ một cách khéo léo ở cuối bài.
    - Thêm các hashtag phổ biến (VD: #chothuephong #phongtro #timphong...).
 4. Giọng điệu (Tone): Thân thiện, đánh trúng tâm lý người đi thuê (mong muốn phòng sạch, rẻ, an ninh), thôi thúc họ inbox/gọi điện ngay kẻo lỡ.
-    
+   
 QUAN TRỌNG: TUYỆT ĐỐI KHÔNG giải thích, KHÔNG thêm lời chào mừng (VD: 'Chào bạn...', 'Dưới đây là...'), KHÔNG thêm phần kết luận. CHỈ in ra duy nhất nguyên văn nội dung bài quảng cáo.
     `;
 
@@ -114,7 +115,7 @@ QUAN TRỌNG: TUYỆT ĐỐI KHÔNG giải thích, KHÔNG thêm lời chào mừ
       } else {
         attempts++;
         const isOverloaded = data.error?.code === 503 || data.error?.code === 429 || data.error?.message?.toLowerCase().includes('high demand');
-        
+
         if (isOverloaded && attempts < MAX_RETRIES) {
           console.warn(`Gemini API overloaded. Retrying... (${attempts}/${MAX_RETRIES})`);
           // Wait 2 seconds before retrying
@@ -132,7 +133,7 @@ QUAN TRỌNG: TUYỆT ĐỐI KHÔNG giải thích, KHÔNG thêm lời chào mừ
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!text) {
-        throw new Error('Dữ liệu trả về từ AI bị trống');
+      throw new Error('Dữ liệu trả về từ AI bị trống');
     }
 
     return NextResponse.json({
