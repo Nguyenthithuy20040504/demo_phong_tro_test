@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 interface Notification {
   _id: string;
@@ -16,8 +17,8 @@ interface Notification {
   isRead: boolean;
   nguoiGui?: { ten?: string; name?: string; email?: string };
 }
-
 export default function KhachThueThongBaoPage() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -34,7 +35,18 @@ export default function KhachThueThongBaoPage() {
       if (res.ok) {
         const data = await res.json();
         setNotifications(data.data || []);
-        setUnreadCount(data.unreadCount || 0);
+        
+        const unread = data.unreadCount || 0;
+        if (unread > 0) {
+          fetch('/api/thong-bao/mark-read', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ markAll: true })
+          }).catch(() => {});
+          setUnreadCount(0);
+        } else {
+          setUnreadCount(0);
+        }
       }
     } catch {
       toast.error('Không tải được thông báo');
@@ -43,25 +55,15 @@ export default function KhachThueThongBaoPage() {
     }
   };
 
-  const markAsRead = async (id: string) => {
-    await fetch('/api/thong-bao/mark-read', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id })
-    });
-    setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
-    setUnreadCount(prev => Math.max(0, prev - 1));
-  };
-
-  const markAllRead = async () => {
-    await fetch('/api/thong-bao/mark-read', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ markAll: true })
-    });
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-    setUnreadCount(0);
-    toast.success('Đã đọc tất cả thông báo');
+  const handleNotificationClick = (notif: Notification) => {
+    let targetUrl = '';
+    switch (notif.loai) {
+      case 'hoaDon': targetUrl = '/khach-thue/dashboard/hoa-don'; break;
+      case 'suCo': targetUrl = '/khach-thue/dashboard/su-co'; break;
+      case 'hopDong': targetUrl = '/khach-thue/dashboard'; break;
+      default: return; // Không có trang cụ thể
+    }
+    router.push(targetUrl);
   };
 
   const getTypeIcon = (type: string) => {
@@ -113,16 +115,8 @@ export default function KhachThueThongBaoPage() {
             <Bell className="h-5 w-5" />
             Thông báo của tôi
           </h1>
-          {unreadCount > 0 && (
-            <p className="text-sm text-gray-500 mt-0.5">Bạn có <span className="font-semibold text-blue-600">{unreadCount}</span> thông báo chưa đọc</p>
-          )}
+          {/* Unread count no longer needs to be shown since it automatically reads on entering page */}
         </div>
-        {unreadCount > 0 && (
-          <Button variant="outline" size="sm" onClick={markAllRead}>
-            <CheckCheck className="h-4 w-4 mr-1" />
-            Đọc tất cả
-          </Button>
-        )}
       </div>
 
       {/* Notification list */}
@@ -137,7 +131,7 @@ export default function KhachThueThongBaoPage() {
           {notifications.map(notif => (
             <Card
               key={notif._id}
-              onClick={() => { if (!notif.isRead) markAsRead(notif._id); }}
+              onClick={() => handleNotificationClick(notif)}
               className={`p-4 cursor-pointer transition-all hover:shadow-md ${!notif.isRead ? 'border-blue-200 bg-blue-50/40 shadow-sm' : 'border-gray-100'}`}
             >
               <div className="flex gap-3">

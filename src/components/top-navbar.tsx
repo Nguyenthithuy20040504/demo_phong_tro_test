@@ -14,7 +14,23 @@ import {
   Building,
   ChevronDown,
   Bell,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,13 +40,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/ui/notification-bell";
 import { NavUser } from "@/components/nav-user";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
 import {
   Tooltip,
   TooltipContent,
@@ -44,6 +53,8 @@ export function TopNavbar() {
   const pathname = usePathname();
   const [toaNhaList, setToaNhaList] = useState<any[]>([]);
   const [selectedToaNha, setSelectedToaNha] = useState<string>('all');
+  const [openBox, setOpenBox] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const isAdmin = (session?.user as any)?.role === 'admin';
   const isChuNha = (session?.user as any)?.role === 'chuNha';
@@ -86,6 +97,7 @@ export function TopNavbar() {
       title: "Quản lý cơ bản",
       icon: Building,
       items: [
+        { title: "Tòa nhà", url: "/dashboard/toa-nha" },
         { title: "Phòng", url: "/dashboard/phong" },
         ...(!isAdmin ? [{ title: "Khách thuê", url: "/dashboard/khach-thue" }] : []),
       ],
@@ -134,13 +146,16 @@ export function TopNavbar() {
           </div>
 
           <div className="flex items-center gap-4 md:gap-6 lg:gap-8">
-            {/* Building Selector - Clean white version */}
-            <div className="flex items-center gap-3">
+            {/* Building Selector */}
+            <div className="flex items-center gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Link href="/dashboard/toa-nha" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                    <Building className="h-5 w-5 text-gray-300" />
-                    <span className="hidden md:block text-sm font-medium text-white/90">Tòa nhà:</span>
+                  <Link 
+                    href="/dashboard/toa-nha" 
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-md transition-all text-white shadow-sm"
+                  >
+                    <Building className="h-4 w-4" />
+                    <span className="hidden md:block text-sm font-medium">Tòa nhà:</span>
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent 
@@ -151,18 +166,81 @@ export function TopNavbar() {
                   <p className="text-xs font-bold whitespace-nowrap">Quản lý tòa nhà</p>
                 </TooltipContent>
               </Tooltip>
-              <Select value={selectedToaNha} onValueChange={handleBuildingChange}>
-              <SelectTrigger className="h-9 min-w-[200px] bg-white border-none text-gray-900 focus:ring-0 text-sm font-medium rounded-md px-3 shadow-sm hover:bg-white/95 transition-colors">
-                <SelectValue placeholder="Tất cả tòa nhà" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-gray-100 shadow-2xl">
-                <SelectItem value="all">Tất cả tòa nhà</SelectItem>
-                {toaNhaList.map((t) => (
-                  <SelectItem key={t._id} value={t._id!}>{t.tenToaNha}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+
+              <Popover open={openBox} onOpenChange={(open) => {
+                setOpenBox(open);
+                if (!open) setSearchQuery("");
+              }}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openBox}
+                    className="h-9 min-w-[200px] justify-between bg-white border-none text-gray-900 focus:ring-0 text-sm font-medium rounded-md px-3 shadow-sm hover:bg-white/95 transition-colors"
+                  >
+                    <span className="truncate max-w-[150px]">
+                      {selectedToaNha === "all" 
+                        ? "Tất cả tòa nhà" 
+                        : toaNhaList.find((t) => t._id === selectedToaNha)?.tenToaNha || "Chọn tòa nhà..."}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[240px] p-0 rounded-xl" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput 
+                      placeholder="Tìm tòa nhà..." 
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
+                    />
+                    <CommandList>
+                      <CommandEmpty>Không tìm thấy tòa nhà.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="all"
+                          onSelect={() => {
+                            handleBuildingChange("all");
+                            setOpenBox(false);
+                            setSearchQuery("");
+                          }}
+                          className="font-medium cursor-pointer"
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedToaNha === "all" ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          Tất cả tòa nhà
+                        </CommandItem>
+                        {toaNhaList
+                          .filter((t) => t.tenToaNha.toLowerCase().startsWith(searchQuery.toLowerCase()))
+                          .map((t) => (
+                          <CommandItem
+                            key={t._id}
+                            value={t._id!}
+                            onSelect={() => {
+                              handleBuildingChange(t._id!);
+                              setOpenBox(false);
+                              setSearchQuery("");
+                            }}
+                            className="font-medium cursor-pointer"
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedToaNha === t._id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {t.tenToaNha}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
 
           <div className="flex items-center gap-3 md:gap-5">
             <NotificationBell />

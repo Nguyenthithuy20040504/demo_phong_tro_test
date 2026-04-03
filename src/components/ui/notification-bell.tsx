@@ -5,7 +5,7 @@ import { Bell, BellRing, CheckCheck, X, Receipt, FileText, AlertTriangle, Info }
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface Notification {
   _id: string;
@@ -19,6 +19,7 @@ interface Notification {
 
 export function NotificationBell() {
   const router = useRouter();
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -57,14 +58,16 @@ export function NotificationBell() {
     } catch {}
   };
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (isMarkingRead = false) => {
     setLoading(true);
     try {
-      const res = await fetch('/api/thong-bao/my-notifications?limit=10', { cache: 'no-store' });
+      const res = await fetch('/api/thong-bao/my-notifications?limit=30', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         setNotifications(data.data || []);
-        setUnreadCount(data.unreadCount || 0);
+        if (!isMarkingRead) {
+          setUnreadCount(data.unreadCount || 0);
+        }
       }
     } catch {
       toast.error('Không tải được thông báo');
@@ -75,9 +78,25 @@ export function NotificationBell() {
 
   const handleToggle = () => {
     if (!isOpen) {
-      fetchNotifications();
+      setIsOpen(true);
+      const hadUnread = unreadCount > 0;
+      
+      fetchNotifications(hadUnread);
+      
+      if (hadUnread) {
+        // Tự động đánh dấu tất cả đã đọc ngầm trên server
+        fetch('/api/thong-bao/mark-read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ markAll: true })
+        }).catch(() => {});
+        
+        // Reset ngay badge về 0
+        setUnreadCount(0);
+      }
+    } else {
+      setIsOpen(false);
     }
-    setIsOpen(prev => !prev);
   };
 
   const markAsRead = async (id: string) => {
@@ -108,6 +127,34 @@ export function NotificationBell() {
       case 'suCo': return <AlertTriangle className="h-4 w-4 text-red-500" />;
       default: return <Info className="h-4 w-4 text-gray-400" />;
     }
+  };
+
+  const handleNotificationClick = (notif: Notification) => {
+    // 1. Phân tách logic đường dẫn tùy theo role (dựa trên URL hiện tại)
+    const isTenant = pathname?.startsWith('/khach-thue');
+    let targetUrl = '';
+
+    if (isTenant) {
+      switch (notif.loai) {
+        case 'hoaDon': targetUrl = '/khach-thue/dashboard/hoa-don'; break;
+        case 'suCo': targetUrl = '/khach-thue/dashboard/su-co'; break;
+        case 'hopDong': targetUrl = '/khach-thue/dashboard'; break; // Tenant ko có trang hop-dong rời, nó ở trang chính
+        default: targetUrl = '/khach-thue/dashboard/thong-bao'; break;
+      }
+    } else {
+      switch (notif.loai) {
+        case 'hoaDon': targetUrl = '/dashboard/hoa-don'; break;
+        case 'suCo': targetUrl = '/dashboard/su-co'; break;
+        case 'hopDong': targetUrl = '/dashboard/hop-dong'; break;
+        default: targetUrl = '/dashboard/thong-bao'; break;
+      }
+    }
+
+    // 2. Đóng menu dropdown
+    setIsOpen(false);
+
+    // 3. Chuyển hướng
+    router.push(targetUrl);
   };
 
   const timeAgo = (dateStr: string) => {
@@ -158,17 +205,7 @@ export function NotificationBell() {
               )}
             </div>
             <div className="flex items-center gap-1">
-              {unreadCount > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs text-white hover:bg-white/20"
-                  onClick={markAllRead}
-                >
-                  <CheckCheck className="h-3 w-3 mr-1" />
-                  Đọc tất cả
-                </Button>
-              )}
+              {/* Nút Đọc tất cả đã được gỡ bỏ vì giờ nó tự động đánh dấu đã đọc khi mở */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -196,9 +233,7 @@ export function NotificationBell() {
             {!loading && notifications.map(notif => (
               <div
                 key={notif._id}
-                onClick={() => {
-                  if (!notif.isRead) markAsRead(notif._id);
-                }}
+                onClick={() => handleNotificationClick(notif)}
                 className={`flex gap-3 px-4 py-3 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors ${!notif.isRead ? 'bg-blue-50/60' : ''}`}
               >
                 <div className={`mt-0.5 flex-shrink-0 p-1.5 rounded-full ${!notif.isRead ? 'bg-blue-100' : 'bg-gray-100'}`}>

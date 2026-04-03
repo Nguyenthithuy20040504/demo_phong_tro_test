@@ -121,13 +121,17 @@ export default function KhachThueDashboardPage() {
 
   // Tìm hợp đồng chờ duyệt - chỉ hiển thị cho NGƯỜI ĐẠI DIỆN
   const currentUserId = session?.user?.id;
+  const khachThueId = khachThue?._id;
+  
   const pendingContracts = hopDongList.filter((hd: any) => {
     if (hd.trangThai !== 'choDuyet') return false;
     // Chỉ người đại diện mới thấy nút duyệt
     const daiDienId = typeof hd.nguoiDaiDien === 'object' 
-      ? hd.nguoiDaiDien?._id 
-      : hd.nguoiDaiDien;
-    return daiDienId === currentUserId;
+      ? hd.nguoiDaiDien?._id?.toString() 
+      : hd.nguoiDaiDien?.toString();
+      
+    // Khớp ID của NguoiDung hoặc ID của record KhachThue
+    return daiDienId === currentUserId || daiDienId === khachThueId?.toString();
   });
 
   const handleApproval = async (hopDongId: string, action: 'duyet' | 'tuChoi') => {
