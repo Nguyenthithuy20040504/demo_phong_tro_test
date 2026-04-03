@@ -193,6 +193,12 @@ export function PhongDetailDialog({ phong, isOpen, onClose, toaNhaList, onEdit }
             Bảo trì
           </Badge>
         );
+      case 'choDuyet':
+        return (
+          <Badge variant="secondary" className="bg-blue-500 hover:bg-blue-600 text-white shadow-sm border-0 whitespace-nowrap px-4 py-1.5 font-bold rounded-full transition-colors leading-none">
+            Đang chờ duyệt
+          </Badge>
+        );
       default:
         return <Badge variant="outline" className="whitespace-nowrap px-4 py-1.5 font-bold rounded-full uppercase tracking-widest leading-none">{status}</Badge>;
     }
@@ -255,7 +261,9 @@ export function PhongDetailDialog({ phong, isOpen, onClose, toaNhaList, onEdit }
               <DialogTitle className="text-3xl font-black text-slate-800">
                 Phòng {phong.maPhong}
               </DialogTitle>
-              {phong.trangThai === 'dangThue' ? (
+              {((phong as any).trangThaiTongHop === 'choDuyet' || (phong as any).hopDongHienTai?.trangThai === 'choDuyet') ? (
+                getTrangThaiBadge('choDuyet')
+              ) : (phong as any).trangThai === 'dangThue' ? (
                 <Badge className="bg-amber-100 text-amber-600 hover:bg-amber-100 border-0 rounded-full px-4 py-1.5 text-[11px] font-black">
                   Trễ tiền
                 </Badge>
@@ -447,28 +455,57 @@ export function PhongDetailDialog({ phong, isOpen, onClose, toaNhaList, onEdit }
                   <Users className="h-4 w-4" />
                   Khách thuê hiện tại
                 </h3>
-                {(phong as any).khachThueHienTai && (phong as any).khachThueHienTai.length > 0 ? (
+                {((phong as any).khachThueHienTai && (phong as any).khachThueHienTai.length > 0) || (phong as any).hopDongHienTai ? (
                   <div className="space-y-3">
                     {(phong as any).hopDongHienTai && (
-                      <div className="bg-indigo-50/50 px-4 py-2.5 rounded-xl border border-indigo-100 flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wide">Hợp đồng: {(phong as any).hopDongHienTai.maHopDong}</span>
-                        <span className="text-[10px] font-semibold text-indigo-400">
+                      <div className={cn(
+                        "px-4 py-2.5 rounded-xl border flex items-center justify-between",
+                        (phong as any).hopDongHienTai.trangThai === 'choDuyet' 
+                          ? "bg-blue-50/50 border-blue-100" 
+                          : "bg-indigo-50/50 border-indigo-100"
+                      )}>
+                        <div className="flex flex-col">
+                          <span className={cn(
+                            "text-[10px] font-bold uppercase tracking-wide",
+                            (phong as any).hopDongHienTai.trangThai === 'choDuyet' ? "text-blue-500" : "text-indigo-500"
+                          )}>
+                            Hợp đồng: {(phong as any).hopDongHienTai.maHopDong}
+                            {(phong as any).hopDongHienTai.trangThai === 'choDuyet' && " (Đang chờ duyệt)"}
+                          </span>
+                        </div>
+                        <span className={cn(
+                          "text-[10px] font-semibold",
+                          (phong as any).hopDongHienTai.trangThai === 'choDuyet' ? "text-blue-400" : "text-indigo-400"
+                        )}>
                           {new Date((phong as any).hopDongHienTai.ngayBatDau).toLocaleDateString('vi-VN')} — {new Date((phong as any).hopDongHienTai.ngayKetThuc).toLocaleDateString('vi-VN')}
                         </span>
                       </div>
                     )}
-                    {(phong as any).khachThueHienTai.map((kt: any, idx: number) => (
+                    {((phong as any).khachThueHienTai || (phong as any).hopDongHienTai?.khachThueId || []).map((kt: any, idx: number) => (
                       <div key={kt._id || idx} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-sm shadow-md shrink-0">
+                          <div className={cn(
+                            "w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md shrink-0",
+                            (phong as any).hopDongHienTai?.trangThai === 'choDuyet' 
+                              ? "bg-gradient-to-br from-blue-400 to-indigo-500"
+                              : "bg-gradient-to-br from-blue-400 to-indigo-500"
+                          )}>
                             {(kt.hoTen || 'K')[0].toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className="text-sm font-bold text-slate-800 truncate">{kt.hoTen}</p>
-                              {kt.laNguoiDaiDien && (
-                                <Badge variant="outline" className="text-[9px] px-2 py-0.5 rounded-full border-indigo-200 text-indigo-500 font-bold">
-                                  Người đại diện
+                              <p className="text-sm font-bold text-slate-800 truncate">
+                                {(phong as any).hopDongHienTai?.trangThai === 'choDuyet' && "⏳ "}
+                                {kt.hoTen}
+                              </p>
+                              {((phong as any).hopDongHienTai?.trangThai === 'choDuyet' || kt.laNguoiDaiDien) && (
+                                <Badge variant="outline" className={cn(
+                                  "text-[9px] px-2 py-0.5 rounded-full font-bold",
+                                  (phong as any).hopDongHienTai?.trangThai === 'choDuyet'
+                                    ? "border-blue-200 text-blue-500"
+                                    : "border-indigo-200 text-indigo-500"
+                                )}>
+                                  {(phong as any).hopDongHienTai?.trangThai === 'choDuyet' ? "Đang chờ duyệt" : "Người đại diện"}
                                 </Badge>
                               )}
                             </div>

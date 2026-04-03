@@ -82,59 +82,90 @@ export async function GET(
       }
     }
 
-    // 2. Lấy thông tin khách thuê đang ở (từ hợp đồng hoạt động)
+    // 2. Lấy thông tin khách thuê hiện tại hoặc đang chờ (từ hợp đồng hoạt động hoặc chờ duyệt)
     const HopDongModel = mongoose.models.HopDong || mongoose.model('HopDong');
     const KhachThueModel = mongoose.models.KhachThue || mongoose.model('KhachThue');
     const NguoiDungModel2 = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+    const HoaDonModel = mongoose.models.HoaDon || mongoose.model('HoaDon');
+    const SuCoModel = mongoose.models.SuCo || mongoose.model('SuCo');
 
-    const hopDongHoatDong = await HopDongModel.findOne({
+    const hopDongHienTaiRaw = await HopDongModel.findOne({
       phong: id,
-      trangThai: 'hoatDong',
-      ngayBatDau: { $lte: new Date() },
-      ngayKetThuc: { $gte: new Date() }
-    }).select('khachThueId nguoiDaiDien snapshotKhachThue ngayBatDau ngayKetThuc maHopDong').lean() as any;
+      trangThai: { $in: ['hoatDong', 'choDuyet'] },
+      $or: [
+        { ngayBatDau: { $lte: new Date() }, ngayKetThuc: { $gte: new Date() } },
+        { ngayBatDau: { $gt: new Date() } }
+      ]
+    }).select('_id id maHopDong ngayBatDau ngayKetThuc trangThai khachThueId nguoiDaiDien snapshotKhachThue').lean() as any;
+
+    const [hoaDonMoiNhat, suCoCount] = await Promise.all([
+      HoaDonModel.findOne({ phong: id }).sort({ nam: -1, thang: -1 }).lean(),
+      SuCoModel.countDocuments({ phong: id, trangThai: { $in: ['moi', 'dangXuLy'] } })
+    ]);
+
+    // Tính trạng thái tổng hợp đồng bộ với API danh sách
+    let trangThaiTongHop = 'trong';
+    if (phongObj.trangThai === 'baoTri' || suCoCount > 0) {
+      trangThaiTongHop = 'suCo';
+    } else if (hopDongHienTaiRaw && hopDongHienTaiRaw.trangThai === 'choDuyet') {
+      trangThaiTongHop = 'choDuyet';
+    } else if (phongObj.trangThai === 'dangThue' || phongObj.trangThai === 'daDat') {
+      if (hoaDonMoiNhat && ['quaHan', 'chuaThanhToan', 'daThanhToanMotPhan'].includes((hoaDonMoiNhat as any).trangThai)) {
+        trangThaiTongHop = 'treTien';
+      } else {
+        trangThaiTongHop = 'daThanhToan';
+      }
+    }
 
     let khachThueHienTai: any[] = [];
-    if (hopDongHoatDong) {
-      const ktIds = hopDongHoatDong.khachThueId || [];
-      const snapshots = hopDongHoatDong.snapshotKhachThue || [];
+    if (hopDongHienTaiRaw) {
+      const ktIds = (hopDongHienTaiRaw.khachThueId || []) as any[];
+      const snapshots = (hopDongHienTaiRaw.snapshotKhachThue || []) as any[];
 
-      for (const ktId of ktIds) {
-        let ktDoc = await KhachThueModel.findById(ktId).select('hoTen soDienThoai email avatar').lean() as any;
-        if (ktDoc) {
-          khachThueHienTai.push({
-            _id: ktDoc._id,
-            hoTen: ktDoc.hoTen,
-            soDienThoai: ktDoc.soDienThoai || '',
-            email: ktDoc.email || '',
-            avatar: ktDoc.avatar || '',
-            laNguoiDaiDien: ktId.toString() === hopDongHoatDong.nguoiDaiDien?.toString()
-          });
-          continue;
+      const [ktFromKT, ktFromND] = await Promise.all([
+        KhachThueModel.find({ _id: { $in: ktIds } }).select('hoTen soDienThoai email avatar').lean(),
+        NguoiDungModel2.find({ _id: { $in: ktIds }, role: 'khachThue' }).select('ten name soDienThoai phone email avatar').lean()
+      ]);
+
+      const userMap = new Map();
+      ktFromKT.forEach((kt: any) => userMap.set(kt._id.toString(), kt));
+      ktFromND.forEach((nd: any) => userMap.set(nd._id.toString(), { 
+        _id: nd._id,
+        hoTen: nd.ten || nd.name, 
+        soDienThoai: nd.soDienThoai || nd.phone,
+        email: nd.email || '',
+        avatar: nd.avatar || ''
+      }));
+
+      khachThueHienTai = ktIds.map((id: any) => {
+        const idStr = id.toString();
+        const found = userMap.get(idStr);
+        if (found) {
+          return { ...found, laNguoiDaiDien: idStr === hopDongHienTaiRaw.nguoiDaiDien?.toString() };
         }
-        const ndDoc = await NguoiDungModel2.findById(ktId).select('ten name soDienThoai phone email avatar').lean() as any;
-        if (ndDoc) {
-          khachThueHienTai.push({
-            _id: ndDoc._id,
-            hoTen: ndDoc.ten || ndDoc.name || '',
-            soDienThoai: ndDoc.soDienThoai || ndDoc.phone || '',
-            email: ndDoc.email || '',
-            avatar: ndDoc.avatar || '',
-            laNguoiDaiDien: ktId.toString() === hopDongHoatDong.nguoiDaiDien?.toString()
-          });
-          continue;
-        }
-        // Fallback từ snapshot
-        const snap = snapshots.find((s: any) => s.id === ktId.toString());
-        khachThueHienTai.push({
-          _id: ktId,
+        const snap = snapshots.find((s: any) => s.id === idStr);
+        return {
+          _id: id,
           hoTen: snap?.hoTen || '(Không rõ)',
           soDienThoai: snap?.soDienThoai || '',
           email: '',
           avatar: '',
-          laNguoiDaiDien: ktId.toString() === hopDongHoatDong.nguoiDaiDien?.toString()
-        });
-      }
+          laNguoiDaiDien: idStr === hopDongHienTaiRaw.nguoiDaiDien?.toString()
+        };
+      });
+
+      // Bổ sung các khách thuê chỉ có trong snapshot (vãng lai)
+      snapshots.forEach((snap: any) => {
+        if (!snap.id && snap.hoTen && !khachThueHienTai.some(k => k.hoTen === snap.hoTen)) {
+          khachThueHienTai.push({
+            hoTen: snap.hoTen,
+            soDienThoai: snap.soDienThoai || '',
+            email: '',
+            avatar: '',
+            laNguoiDaiDien: !!snap.laNoiDaiDien
+          });
+        }
+      });
     }
 
     return NextResponse.json({
@@ -143,11 +174,14 @@ export async function GET(
         ...phongObj,
         chuTro,
         khachThueHienTai,
-        hopDongHienTai: hopDongHoatDong ? {
-          _id: hopDongHoatDong._id,
-          maHopDong: hopDongHoatDong.maHopDong,
-          ngayBatDau: hopDongHoatDong.ngayBatDau,
-          ngayKetThuc: hopDongHoatDong.ngayKetThuc
+        trangThaiTongHop,
+        hopDongHienTai: hopDongHienTaiRaw ? {
+          _id: hopDongHienTaiRaw._id,
+          maHopDong: hopDongHienTaiRaw.maHopDong,
+          ngayBatDau: hopDongHienTaiRaw.ngayBatDau,
+          ngayKetThuc: hopDongHienTaiRaw.ngayKetThuc,
+          trangThai: hopDongHienTaiRaw.trangThai,
+          khachThueId: khachThueHienTai
         } : null
       },
     });

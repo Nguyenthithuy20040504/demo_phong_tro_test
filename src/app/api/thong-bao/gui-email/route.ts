@@ -5,6 +5,8 @@ import dbConnect from '@/lib/mongodb';
 import ThongBao from '@/models/ThongBao';
 import KhachThue from '@/models/KhachThue';
 import { sendGeneralNotificationEmail } from '@/lib/mail';
+import { getVietQrUrl } from '@/lib/payment-utils';
+import HoaDon from '@/models/HoaDon';
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,22 +39,62 @@ export async function POST(request: NextRequest) {
     tenants.forEach(t => { if (t.email) recipientsMap.set(t.email.toLowerCase(), t.hoTen); });
     staff.forEach(s => { if (s.email) recipientsMap.set(s.email.toLowerCase(), s.hoTen || s.name); });
 
-    const recipients = Array.from(recipientsMap.entries()).map(([email, name]) => ({ email, name }));
+    const recipients = Array.from(recipientsMap.entries()).map(([email, name]) => {
+      // Tìm ID tương ứng với email để sau này tra cứu hóa đơn
+      const tenantMatch = tenants.find(t => t.email?.toLowerCase() === email);
+      const staffMatch = staff.find(s => s.email?.toLowerCase() === email);
+      return { 
+        email, 
+        name, 
+        id: tenantMatch?._id || staffMatch?._id 
+      };
+    });
 
     if (recipients.length === 0) {
       return NextResponse.json({ message: 'Không có người nhận hợp lệ có email' }, { status: 400 });
     }
 
-    // 3. Gửi email cho từng người
+    // 3. Lấy thông tin người gửi (Chủ nhà) để lấy QR
+    const sender = await NguoiDung.findById(session.user.id);
+    const ownerPaymentInfo = sender?.thongTinThanhToan;
+
+    // 4. Gửi email cho từng người
     let successCount = 0;
     let failCount = 0;
 
     for (const recipient of recipients) {
+      let qrUrl = '';
+      let additionalContent = '';
+
+      // Nếu là thông báo hóa đơn, tìm hóa đơn nợ gần nhất của người này
+      if (thongBao.loai === 'hoaDon') {
+        const latestInvoice = await HoaDon.findOne({
+          khachThue: { $in: [
+            // Tìm theo ID người dùng hoặc ID khách thuê liên kết
+            new (require('mongoose').Types.ObjectId)(recipient.id),
+            ...(tenants.filter(t => t.email?.toLowerCase() === recipient.email).map(t => t._id))
+          ] },
+          trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan'] }
+        }).sort({ ngayTao: -1 });
+
+        if (latestInvoice && ownerPaymentInfo) {
+          qrUrl = await getVietQrUrl(latestInvoice.conLai, latestInvoice.maHoaDon, ownerPaymentInfo);
+          additionalContent = `\n(Thông tin hóa đơn: ${latestInvoice.maHoaDon}, Số dư nợ: ${latestInvoice.conLai.toLocaleString('vi-VN')}đ)`;
+        } else if (ownerPaymentInfo) {
+          // Nếu không tìm thấy hóa đơn cụ thể, vẫn hiện QR của chủ nhà với số tiền 0 (tùy nhập)
+          qrUrl = await getVietQrUrl(0, 'THANH TOAN', ownerPaymentInfo);
+        }
+      } else if (ownerPaymentInfo) {
+        // Thông báo chung cũng có thể hiện QR nếu chủ nhà muốn
+        qrUrl = await getVietQrUrl(0, 'THANH TOAN', ownerPaymentInfo);
+      }
+
       const success = await sendGeneralNotificationEmail({
         email: recipient.email!,
         khachThueName: recipient.name,
         tieuDe: thongBao.tieuDe,
-        noiDung: thongBao.noiDung
+        noiDung: thongBao.noiDung + additionalContent,
+        qrUrl
       });
       if (success) successCount++;
       else failCount++;

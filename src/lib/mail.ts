@@ -140,11 +140,13 @@ export const sendGeneralNotificationEmail = async ({
   khachThueName,
   tieuDe,
   noiDung,
+  qrUrl,
 }: {
   email: string;
   khachThueName: string;
   tieuDe: string;
   noiDung: string;
+  qrUrl?: string;
 }) => {
   if (!email || !process.env.SMTP_USER) {
     console.warn('Bỏ qua gửi email: cấu hình SMTP hoặc email khách hàng không tồn tại.');
@@ -152,23 +154,32 @@ export const sendGeneralNotificationEmail = async ({
   }
 
   const htmlContent = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6; border: 1px solid #eaeaea; border-radius: 8px; overflow: hidden;">
-      <div style="background-color: #0d9488; padding: 20px; text-align: center;">
-        <h2 style="color: white; margin: 0; font-size: 20px;">Thông Báo Hệ Thống</h2>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6; border: 1px solid #eaeaea; border-radius: 8px; overflow: hidden; background-color: #ffffff;">
+      <div style="background-color: #2563eb; padding: 25px 20px; text-align: center;">
+        <h2 style="color: white; margin: 0; font-size: 20px; font-weight: bold; letter-spacing: 0.5px;">Thông Báo Hệ Thống</h2>
+        <p style="color: #e0e7ff; margin: 5px 0 0 0; font-size: 13px;">Hệ Thống Quản Lý Phòng Trọ</p>
       </div>
       
-      <div style="padding: 24px;">
-        <p>Xin chào <strong>${khachThueName}</strong>,</p>
-        <p>Hệ thống Quản lý nhà trọ xin thông báo:</p>
+      <div style="padding: 30px 24px;">
+        <p style="margin-top: 0;">Xin chào <strong>${khachThueName}</strong>,</p>
+        <p style="color: #4b5563;">Chúng tôi xin gửi tới bạn thông báo mới từ hệ thống quản lý:</p>
         
-        <div style="background-color: #f0fdfa; border-left: 4px solid #0d9488; padding: 15px; margin: 20px 0;">
-          <h3 style="margin-top: 0; color: #134e4a; font-size: 16px;">${tieuDe}</h3>
-          <p style="margin-bottom: 0; white-space: pre-wrap; color: #374151;">${noiDung}</p>
+        <div style="background-color: #f8fafc; border: 4px solid #f1f5f9; padding: 20px; border-radius: 8px; margin: 25px 0;">
+          <h3 style="margin-top: 0; color: #1d4ed8; font-size: 16px; font-weight: bold; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 15px;">${tieuDe}</h3>
+          <p style="margin-bottom: 0; white-space: pre-wrap; color: #334155; text-align: left; font-size: 14px;">${noiDung}</p>
         </div>
 
+        ${qrUrl ? `
+        <div style="background-color: #f8fafc; border: 1px dashed #cbd5e1; padding: 20px; text-align: center; border-radius: 8px; margin: 25px 0;">
+          <h3 style="margin-top: 0; color: #334155; font-size: 16px;">Mã QR Thanh Toán (VietQR)</h3>
+          <p style="color: #64748b; font-size: 13px; margin-bottom: 15px;">Mở ứng dụng ngân hàng và quét mã để thanh toán</p>
+          <img src="${qrUrl}" alt="VietQR" style="max-width: 100%; height: auto; max-height: 250px;" />
+        </div>
+        ` : ''}
+
         <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px;">
-          <p>Hệ thống Quản lý nhà trọ chuyên nghiệp - Thuận tiện - Minh bạch</p>
-          <p><em>Đây là email tự động, vui lòng không phản hồi lại địa chỉ này.</em></p>
+          <p style="margin-bottom: 4px;">Cảm ơn sự hợp tác của bạn!</p>
+          <p style="margin: 0;"><em>Đây là email tự động, vui lòng không phản hồi lại địa chỉ này.</em></p>
         </div>
       </div>
     </div>
@@ -177,7 +188,7 @@ export const sendGeneralNotificationEmail = async ({
   try {
     const transport = getMailTransport();
     const info = await transport.sendMail({
-      from: `"Quản Lý Nhà Trọ" <${process.env.SMTP_USER}>`,
+      from: `"Quản Lý Phòng Trọ" <${process.env.SMTP_USER}>`,
       to: email,
       subject: `[Thông báo] ${tieuDe}`,
       html: htmlContent,

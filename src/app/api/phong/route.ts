@@ -30,14 +30,7 @@ const phongSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
-    if (!session) {
-      return NextResponse.json(
-        { message: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
+    if (!session) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     await dbConnect();
 
     const { searchParams } = new URL(request.url);
@@ -48,299 +41,103 @@ export async function GET(request: NextRequest) {
     const trangThai = searchParams.get('trangThai') || '';
 
     const query: any = {};
+    if (search) query.$or = [{ maPhong: { $regex: search, $options: 'i' } }, { moTa: { $regex: search, $options: 'i' } }];
+    if (toaNha) query.toaNha = toaNha;
     
-    if (search) {
-      query.$or = [
-        { maPhong: { $regex: search, $options: 'i' } },
-        { moTa: { $regex: search, $options: 'i' } },
-      ];
-    }
-    
-    if (toaNha) {
-      query.toaNha = toaNha;
-    }
-    
-    // Auth role check
     const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
     if (accessibleToaNhaIds !== null) {
       if (query.toaNha) {
-        // If query has a specific toaNha, ensure user is authorized to see it
-        const isAuthorized = accessibleToaNhaIds.some(id => id.toString() === query.toaNha);
-        if (!isAuthorized) {
-          return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
+        if (!accessibleToaNhaIds.some(id => id.toString() === query.toaNha)) {
+           return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
         }
       } else {
         query.toaNha = { $in: accessibleToaNhaIds };
       }
     }
-    
-    if (trangThai) {
-      query.trangThai = trangThai;
-    }
+    if (trangThai) query.trangThai = trangThai;
 
-    const phongList = await Phong.find(query)
-      .populate({
-        path: 'toaNha',
-        select: 'tenToaNha diaChi chuSoHuu',
-        populate: {
-          path: 'chuSoHuu',
-          select: 'ten email soDienThoai'
-        }
-      })
-      .sort({ tang: 1, maPhong: 1 })
-      .skip((page - 1) * limit)
-      .limit(limit);
+    const phongList = await Phong.find(query).populate('toaNha').sort({ tang: 1, maPhong: 1 }).skip((page-1)*limit).limit(limit);
+    await Promise.all(phongList.map(phong => updatePhongStatus(phong._id.toString())));
 
-    // Cập nhật trạng thái phòng dựa trên hợp đồng
-    await Promise.all(
-      phongList.map(phong => updatePhongStatus(phong._id.toString()))
-    );
-
-    // Lấy lại dữ liệu với trạng thái đã cập nhật và thông tin hợp đồng
     const [updatedPhongList, total] = await Promise.all([
-      Phong.find(query)
-        .populate({
-          path: 'toaNha',
-          select: 'tenToaNha diaChi chuSoHuu',
-          populate: {
-            path: 'chuSoHuu',
-            select: 'ten email soDienThoai'
-          }
-        })
-        .sort({ tang: 1, maPhong: 1 })
-        .skip((page - 1) * limit)
-        .limit(limit),
+      Phong.find(query).populate('toaNha').sort({ tang: 1, maPhong: 1 }).skip((page-1)*limit).limit(limit),
       Phong.countDocuments(query)
     ]);
 
-    // Thêm thông tin hợp đồng, khách thuê, hóa đơn, sự cố cho mỗi phòng
     const phongListWithContracts = await Promise.all(
       updatedPhongList.map(async (phongDoc) => {
         const phong: any = phongDoc.toObject();
         const hopDongRaw: any = await HopDong.findOne({
           phong: phong._id,
-          trangThai: 'hoatDong',
-          $or: [
-            {
-              ngayBatDau: { $lte: new Date() },
-              ngayKetThuc: { $gte: new Date() }
-            },
-            {
-              ngayBatDau: { $gt: new Date() } // Cho phép cả hợp đồng đã đặt nhưng chưa đến ngày
-            }
-          ]
+          trangThai: { $in: ['hoatDong', 'choDuyet'] },
+          $or: [{ ngayBatDau: { $lte: new Date() }, ngayKetThuc: { $gte: new Date() } }, { ngayBatDau: { $gt: new Date() } }]
         }).lean();
- 
-        // === ENRICHED DATA: Hóa đơn mới nhất + Sự cố chưa xử lý ===
+
         const [hoaDonMoiNhat, suCoCount] = await Promise.all([
-          HoaDon.findOne({ phong: phong._id })
-            .sort({ nam: -1, thang: -1 })
-            .select('trangThai thang nam tongTien conLai hanThanhToan')
-            .lean(),
-          SuCo.countDocuments({
-            phong: phong._id,
-            trangThai: { $in: ['moi', 'dangXuLy'] }
-          })
+          HoaDon.findOne({ phong: phong._id }).sort({ nam: -1, thang: -1 }).lean(),
+          SuCo.countDocuments({ phong: phong._id, trangThai: { $in: ['moi', 'dangXuLy'] } })
         ]);
  
-        // Tính trạng thái tổng hợp (ưu tiên: suCo > treTien > daThanhToan > trong)
         let trangThaiTongHop: string = 'trong';
         if (phong.trangThai === 'baoTri' || suCoCount > 0) {
           trangThaiTongHop = 'suCo';
+        } else if (hopDongRaw && hopDongRaw.trangThai === 'choDuyet') {
+          trangThaiTongHop = 'choDuyet';
         } else if (phong.trangThai === 'dangThue' || phong.trangThai === 'daDat') {
-          if (hoaDonMoiNhat) {
-            const hdStatus = hoaDonMoiNhat.trangThai;
-            if (hdStatus === 'quaHan' || hdStatus === 'chuaThanhToan' || hdStatus === 'daThanhToanMotPhan') {
-              trangThaiTongHop = 'treTien';
-            } else if (hdStatus === 'daThanhToan') {
-              trangThaiTongHop = 'daThanhToan';
-            } else {
-              trangThaiTongHop = 'daThanhToan'; // choDuyet cũng coi như đã nộp
-            }
+          if (hoaDonMoiNhat && ['quaHan', 'chuaThanhToan', 'daThanhToanMotPhan'].includes((hoaDonMoiNhat as any).trangThai)) {
+            trangThaiTongHop = 'treTien';
           } else {
-            trangThaiTongHop = 'daThanhToan'; // Có hợp đồng nhưng chưa có hóa đơn
+            trangThaiTongHop = 'daThanhToan';
           }
         }
-        // === END ENRICHED DATA ===
 
         if (hopDongRaw) {
-          // Thủ công populate khachThueId và nguoiDaiDien
-          const ktIds = hopDongRaw.khachThueId || [];
+          const ktIds = (hopDongRaw.khachThueId || []) as any[];
+          const snapshots = (hopDongRaw.snapshotKhachThue || []) as any[];
           const [ktFromKT, ktFromND] = await Promise.all([
             KhachThue.find({ _id: { $in: ktIds } }).select('hoTen soDienThoai').lean(),
             NguoiDung.find({ _id: { $in: ktIds }, role: 'khachThue' }).select('ten name soDienThoai phone').lean()
           ]);
-          
-          const allKt: any[] = [
-            ...ktFromKT, 
-            ...(ktFromND as any[]).map(u => ({ 
-              _id: u._id,
-              hoTen: u.ten || u.name, 
-              soDienThoai: u.soDienThoai || u.phone 
-            }))
-          ];
-          
-          let nguoiDaiDien = null;
-          if (hopDongRaw.nguoiDaiDien) {
-            nguoiDaiDien = await KhachThue.findById(hopDongRaw.nguoiDaiDien).select('hoTen soDienThoai').lean();
-            if (!nguoiDaiDien) {
-              const u: any = await NguoiDung.findOne({ _id: hopDongRaw.nguoiDaiDien, role: 'khachThue' }).select('ten name soDienThoai phone').lean();
-              if (u && !Array.isArray(u)) {
-                nguoiDaiDien = {
-                  _id: u._id,
-                  hoTen: u.ten || u.name,
-                  soDienThoai: u.soDienThoai || u.phone
-                };
-              }
-            }
-          }
+          const userMap = new Map();
+          ktFromKT.forEach((kt: any) => userMap.set(kt._id.toString(), kt));
+          ktFromND.forEach((nd: any) => userMap.set(nd._id.toString(), { hoTen: nd.ten || nd.name, soDienThoai: nd.soDienThoai || nd.phone }));
+          const allKt = ktIds.map((id: any) => {
+            const idStr = id.toString();
+            const found = userMap.get(idStr);
+            if (found) return found;
+            const snap = snapshots.find((s: any) => s.id === idStr);
+            return { hoTen: snap?.hoTen || '(Không có thông tin)', soDienThoai: snap?.soDienThoai || '' };
+          });
+          snapshots.forEach((snap: any) => { if (!snap.id && snap.hoTen && !allKt.some((k: any) => k.hoTen === snap.hoTen)) allKt.push({ hoTen: snap.hoTen, soDienThoai: snap.soDienThoai || '' }); });
+          let nguoiDaiDien = hopDongRaw.nguoiDaiDien ? (userMap.get(hopDongRaw.nguoiDaiDien.toString()) || allKt[0]) : allKt[0];
 
-          return {
-            ...phong,
-            hopDongHienTai: {
-              ...hopDongRaw,
-              khachThueId: allKt,
-              nguoiDaiDien: nguoiDaiDien
-            },
-            hoaDonMoiNhat: hoaDonMoiNhat || null,
-            suCoMoi: suCoCount,
-            trangThaiTongHop
-          };
+          return { ...phong, hopDongHienTai: { ...hopDongRaw, khachThueId: allKt, nguoiDaiDien }, hoaDonMoiNhat, suCoMoi: suCoCount, trangThaiTongHop };
         }
-
-        return {
-          ...phong,
-          hopDongHienTai: null,
-          hoaDonMoiNhat: hoaDonMoiNhat || null,
-          suCoMoi: suCoCount,
-          trangThaiTongHop
-        };
+        return { ...phong, hopDongHienTai: null, hoaDonMoiNhat, suCoMoi: suCoCount, trangThaiTongHop };
       })
     );
-
-
-    return NextResponse.json({
-      success: true,
-      data: phongListWithContracts,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
-
+    return NextResponse.json({ success: true, data: phongListWithContracts, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
   } catch (error) {
     console.error('Error fetching phong:', error);
-    return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
-    if (!session) {
-      return NextResponse.json(
-        { message: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
+    if (!session) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     const body = await request.json();
     const validatedData = phongSchema.parse(body);
-
     await dbConnect();
-
-    // Check if user has access to this building
     const hasAccess = await isToaNhaAccessible(session.user, validatedData.toaNha);
-    if (!hasAccess) {
-      return NextResponse.json(
-        { message: 'Bạn không có quyền thêm phòng vào tòa nhà này' },
-        { status: 403 }
-      );
-    }
-
-    // Check if toa nha exists
-    const toaNha = await ToaNha.findById(validatedData.toaNha);
-    if (!toaNha) {
-      return NextResponse.json(
-        { message: 'Tòa nhà không tồn tại' },
-        { status: 400 }
-      );
-    }
-
-    // Kiểm tra trùng mã phòng trong cùng tòa nhà
-    const filterQuery: any = {
-      toaNha: validatedData.toaNha,
-      maPhong: { $regex: new RegExp(`^${validatedData.maPhong.trim().replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i') }
-    };
-
-    const existingPhong = await Phong.findOne(filterQuery);
-    if (existingPhong) {
-      return NextResponse.json(
-        { message: `Mã phòng "${validatedData.maPhong}" đã tồn tại trong tòa nhà này. Vui lòng sử dụng số khác!` },
-        { status: 400 }
-      );
-    }
-
-    // Chuẩn hóa tienNghi về camelCase trước khi lưu
-    const tienNghiMap: Record<string, string> = {
-      'Điều hòa': 'dieuHoa',
-      'Nóng lạnh': 'nongLanh',
-      'Tủ lạnh': 'tuLanh',
-      'Giường': 'giuong',
-      'Tủ quần áo': 'tuQuanAo',
-      'Bàn ghế': 'banGhe',
-      'WiFi': 'wifi',
-      'Máy giặt': 'mayGiat',
-      'Bếp': 'bep'
-    };
-
-    const normalizedTienNghi = (validatedData.tienNghi || []).map(item => tienNghiMap[item] || item);
-
-    const newPhong = new Phong({
-      ...validatedData,
-      anhPhong: validatedData.anhPhong || [],
-      tienNghi: normalizedTienNghi,
-      trangThai: 'trong', // Mặc định là trống, sẽ được cập nhật tự động
-    });
-
+    if (!hasAccess) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+    const newPhong = new Phong({ ...validatedData, anhPhong: validatedData.anhPhong || [], trangThai: 'trong' });
     await newPhong.save();
-
-    // Cập nhật trạng thái dựa trên hợp đồng
     await updatePhongStatus(newPhong._id.toString());
-
-    return NextResponse.json({
-      success: true,
-      data: newPhong,
-      message: 'Phòng đã được tạo thành công',
-    }, { status: 201 });
-
+    return NextResponse.json({ success: true, data: newPhong }, { status: 201 });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { message: error.issues[0].message },
-        { status: 400 }
-      );
-    }
-
     console.error('Error creating phong:', error);
-    
-    // Catch MongoDB duplicate key error (if the manual check fails due to race condition)
-    if (error && typeof error === 'object' && 'code' in error && (error as any).code === 11000) {
-      return NextResponse.json(
-        { message: 'Mã phòng này đã tồn tại trong tòa nhà. Vui lòng kiểm tra lại!' },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
 }

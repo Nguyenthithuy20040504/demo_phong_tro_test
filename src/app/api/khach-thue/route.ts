@@ -60,14 +60,8 @@ export async function GET(request: NextRequest) {
       ];
     }
     
-    if (trangThai) {
-      if (trangThai === 'hasAccount') {
-        matchQuery.matKhau = { $exists: true, $ne: '' };
-      } else if (trangThai === 'noAccount') {
-        matchQuery.matKhau = { $exists: false };
-      } else {
-        matchQuery.trangThai = trangThai;
-      }
+    if (trangThai && trangThai !== 'hasAccount' && trangThai !== 'noAccount') {
+      matchQuery.trangThai = trangThai;
     }
 
     const accessibleKhachThueIds = await getAccessibleKhachThueIds(session.user);
@@ -112,58 +106,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // === AGGREGATION PIPELINE (Optimized) ===
+    // Get trangThai from searchParams again for pipeline filtering
+    const trangThaiFilter = searchParams.get('trangThai');
+
+    // === AGGREGATION PIPELINE (Refactored to handle account filtering before skip/limit) ===
     const pipeline: any[] = [
       { $match: matchQuery },
-      { $sort: { hoTen: 1 } },
-      { $skip: (page - 1) * limit },
-      { $limit: limit },
-      // Lookup HopDong
-      {
-        $lookup: {
-          from: 'hopdongs',
-          let: { tenantId: '$_id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $or: [
-                    { $in: ['$$tenantId', '$khachThueId'] },
-                    { $eq: ['$$tenantId', '$nguoiDaiDien'] }
-                  ]
-                }
-              }
-            },
-            { $sort: { ngayTao: -1 } },
-            // Chỉ lấy các trường cần thiết từ Hợp đồng để giảm tải filter
-            {
-              $project: {
-                _id: 1,
-                maHopDong: 1,
-                phong: 1,
-                trangThai: 1,
-                ngayBatDau: 1,
-                ngayKetThuc: 1,
-                giaThue: 1,
-                ngayTao: 1
-              }
-            },
-            // Populate Phong và ToaNha (mini-lookup)
-            {
-              $lookup: {
-                from: 'phongs',
-                localField: 'phong',
-                foreignField: '_id',
-                pipeline: [{ $project: { _id: 1, maPhong: 1, toaNha: 1 } }],
-                as: 'phongInfo'
-              }
-            },
-            { $unwind: { path: '$phongInfo', preserveNullAndEmptyArrays: true } }
-          ],
-          as: 'tatCaHopDong'
-        }
-      },
-      // Thêm thông tin NguoiDung (nếu có tài khoản)
+      // Lookup User Account (NguoiDung)
       {
         $lookup: {
           from: 'nguoidungs',
@@ -195,68 +144,128 @@ export async function GET(request: NextRequest) {
         }
       },
       { $unwind: { path: '$userAccount', preserveNullAndEmptyArrays: true } },
-      // Xử lý dữ liệu cuối cùng
+      // Mark hasAccount
       {
         $addFields: {
-          hopDongHienTai: {
-            $slice: [
-              {
-                $filter: {
-                  input: '$tatCaHopDong',
-                  as: 'h',
-                  cond: { $eq: ['$$h.trangThai', 'hoatDong'] }
-                }
-              },
-              1
+          hasAccount: {
+            $or: [
+              { $gt: [{ $strLenCP: { $ifNull: ["$matKhau", ""] } }, 5] },
+              { $eq: ['$userAccount.matKhau', 1] }
             ]
           }
         }
       },
+      // FILTER BY ACCOUNT STATUS IF REQUESTED
+      ...(trangThaiFilter === 'hasAccount' ? [{ $match: { hasAccount: true } }] : []),
+      ...(trangThaiFilter === 'noAccount' ? [{ $match: { hasAccount: false } }] : []),
+      
+      { $sort: { hoTen: 1 } },
+      
+      // Pagination logic moved after filtering
       {
-        $addFields: {
-          hopDongHienTai: { $arrayElemAt: ['$hopDongHienTai', 0] },
-          hasPassword: {
-            $eq: ['$userAccount.matKhau', 1]
-          }
-        }
-      },
-      {
-        $project: {
-          hoTen: 1,
-          soDienThoai: 1,
-          email: 1,
-          cccd: 1,
-          ngaySinh: 1,
-          gioiTinh: 1,
-          queQuan: 1,
-          anhCCCD: 1,
-          ngheNghiep: 1,
-          trangThai: {
-            $cond: {
-              if: { $ne: ['$hopDongHienTai', null] },
-              then: 'dangThue',
-              else: '$trangThai'
+        $facet: {
+          metadata: [{ $count: "total" }],
+          data: [
+            { $skip: (page - 1) * limit },
+            { $limit: limit },
+            // Lookup Contracts
+            {
+              $lookup: {
+                from: 'hopdongs',
+                let: { tenantId: '$_id' },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: {
+                        $or: [
+                          { $in: ['$$tenantId', '$khachThueId'] },
+                          { $eq: ['$$tenantId', '$nguoiDaiDien'] }
+                        ]
+                      }
+                    }
+                  },
+                  { $sort: { ngayTao: -1 } },
+                  {
+                    $project: {
+                      _id: 1,
+                      maHopDong: 1,
+                      phong: 1,
+                      trangThai: 1,
+                      ngayBatDau: 1,
+                      ngayKetThuc: 1,
+                      giaThue: 1,
+                      ngayTao: 1
+                    }
+                  },
+                  {
+                    $lookup: {
+                      from: 'phongs',
+                      localField: 'phong',
+                      foreignField: '_id',
+                      pipeline: [{ $project: { _id: 1, maPhong: 1, toaNha: 1 } }],
+                      as: 'phongInfo'
+                    }
+                  },
+                  { $unwind: { path: '$phongInfo', preserveNullAndEmptyArrays: true } }
+                ],
+                as: 'tatCaHopDong'
+              }
+            },
+            {
+              $addFields: {
+                hopDongHienTai: {
+                  $slice: [
+                    {
+                      $filter: {
+                        input: '$tatCaHopDong',
+                        as: 'h',
+                        cond: { $eq: ['$$h.trangThai', 'hoatDong'] }
+                      }
+                    },
+                    1
+                  ]
+                }
+              }
+            },
+            {
+              $project: {
+                hoTen: 1,
+                soDienThoai: 1,
+                email: 1,
+                cccd: 1,
+                ngaySinh: 1,
+                gioiTinh: 1,
+                queQuan: 1,
+                anhCCCD: 1,
+                ngheNghiep: 1,
+                matKhau: { $cond: { if: '$hasAccount', then: '******', else: null } },
+                trangThai: {
+                  $cond: {
+                    if: { $ne: [{ $arrayElemAt: ['$hopDongHienTai', 0] }, null] },
+                    then: 'dangThue',
+                    else: '$trangThai'
+                  }
+                },
+                ngayTao: { $ifNull: ['$ngayTao', '$createdAt'] },
+                ngayCapNhat: { $ifNull: ['$ngayCapNhat', '$updatedAt'] },
+                hopDongHienTai: { $arrayElemAt: ['$hopDongHienTai', 0] },
+                tatCaHopDong: 1
+              }
             }
-          },
-          ngayTao: { $ifNull: ['$ngayTao', '$createdAt'] },
-          ngayCapNhat: { $ifNull: ['$ngayCapNhat', '$updatedAt'] },
-          matKhau: { $cond: { if: '$hasPassword', then: '******', else: null } },
-          hopDongHienTai: 1,
-          tatCaHopDong: 1
+          ]
         }
       }
     ];
 
-    const [finalData, total] = await Promise.all([
-      KhachThue.aggregate(pipeline),
-      KhachThue.countDocuments(matchQuery)
-    ]);
+    const result = await KhachThue.aggregate(pipeline);
+    const finalData = result[0].data || [];
+    const total = result[0].metadata[0]?.total || 0;
 
     // Chạy cập nhật trạng thái trong background (không await)
     if (finalData.length > 0) {
-      const idsToUpdate = finalData.map(f => f._id.toString());
+      const idsToUpdate = finalData.map((f: any) => f._id.toString());
       // Giới hạn số lượng update background để không overload DB
-      Promise.all(idsToUpdate.slice(0, 5).map(id => updateKhachThueStatus(id))).catch(err => console.error('Background status update failed', err));
+      Promise.all(idsToUpdate.slice(0, 5).map((id: string) => updateKhachThueStatus(id))).catch(err => console.error('Background status update failed', err));
     }
 
     return NextResponse.json({

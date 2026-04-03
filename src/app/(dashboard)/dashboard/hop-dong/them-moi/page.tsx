@@ -35,6 +35,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import {
   Popover,
@@ -53,112 +54,77 @@ interface TenantAutocompleteProps {
 }
 
 function TenantAutocomplete({ index, value, suggestions, onSelect, onRemove, canRemove }: TenantAutocompleteProps) {
-  const [query, setQuery] = useState(value.hoTen);
   const [open, setOpen] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-
-  const filtered = query.trim().length >= 1
-    ? suggestions.filter(k =>
-        k.hoTen.toLowerCase().includes(query.toLowerCase()) ||
-        k.soDienThoai.includes(query)
-      ).slice(0, 8)
-    : suggestions.slice(0, 8);
-
   const isConfirmed = !!value.khachThueId;
 
-  useEffect(() => {
-    setQuery(value.hoTen);
-  }, [value.hoTen]);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   return (
-    <div className="flex items-center gap-2" ref={wrapperRef}>
+    <div className="flex items-center gap-2">
       <div className="flex items-center justify-center size-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex-shrink-0">
         {index + 1}
       </div>
-      <div className="relative flex-1">
-        <div className={cn(
-          "flex items-center gap-1.5 w-full rounded-md border text-sm transition-colors",
-          isConfirmed
-            ? "border-emerald-400 bg-emerald-50 pr-2"
-            : "border-input bg-background"
-        )}>
-          {isConfirmed && (
-            <span className="pl-2.5 text-emerald-600">
-              <UserCheck className="size-3.5" />
-            </span>
-          )}
-          <input
-            className={cn(
-              "flex-1 py-1.5 bg-transparent outline-none placeholder:text-muted-foreground text-sm",
-              isConfirmed ? "pl-0.5" : "pl-2.5"
-            )}
-            placeholder={`Tìm theo tên hoặc SĐT...`}
-            value={isConfirmed ? `${value.hoTen} – ${value.soDienThoai}` : query}
-            onChange={e => {
-              setQuery(e.target.value);
-              setOpen(true);
-              // If user edits after confirming, clear the selection
-              if (isConfirmed) {
-                onSelect(index, { _id: undefined, hoTen: '', soDienThoai: '' } as unknown as KhachThue);
-                setQuery(e.target.value);
-              }
-            }}
-            onFocus={() => setOpen(true)}
-          />
-          {isConfirmed && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-700 border-emerald-300 shrink-0">
-              Đã xác nhận
-            </Badge>
-          )}
-        </div>
-
-        {open && filtered.length > 0 && !isConfirmed && (
-          <div className="absolute z-50 mt-1 w-full rounded-md border bg-white shadow-lg overflow-hidden">
-            <ul className="max-h-52 overflow-auto divide-y">
-              {filtered.map(k => (
-                <li
-                  key={k._id}
-                  className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-blue-50 transition-colors"
-                  onMouseDown={e => { e.preventDefault(); onSelect(index, k); setOpen(false); }}
-                >
-                  <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-bold text-primary">{k.hoTen.charAt(0).toUpperCase()}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-gray-800 truncate">{k.hoTen}</div>
-                    <div className="text-xs text-muted-foreground">{k.soDienThoai}</div>
-                  </div>
-                  <Badge variant="secondary" className="text-[10px] px-1.5 shrink-0 bg-emerald-100 text-emerald-700">
-                    <UserCheck className="size-2.5 mr-0.5" />Có tài khoản
-                  </Badge>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {open && filtered.length === 0 && query.trim().length >= 1 && !isConfirmed && (
-          <div className="absolute z-50 mt-1 w-full rounded-md border bg-white shadow-lg p-3">
-            <div className="flex items-center gap-2 text-amber-600">
-              <AlertCircle className="size-4 shrink-0" />
-              <div>
-                <p className="text-xs font-medium">Không tìm thấy khách thuê có tài khoản</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Chỉ khách thuê đã tạo tài khoản mới có thể thêm vào hợp đồng</p>
-              </div>
-            </div>
-          </div>
-        )}
+      
+      <div className="flex-1">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className={cn(
+                "w-full justify-between font-normal text-sm h-9",
+                isConfirmed ? "border-emerald-400 bg-emerald-50 hover:bg-emerald-100/50" : ""
+              )}
+            >
+              {isConfirmed ? (
+                <div className="flex items-center gap-2 truncate">
+                  <UserCheck className="size-3.5 text-emerald-600 shrink-0" />
+                  <span className="truncate">{value.hoTen} – {value.soDienThoai}</span>
+                </div>
+              ) : (
+                <span className="text-muted-foreground">Chọn khách thuê có tài khoản...</span>
+              )}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[320px] p-0" align="start">
+            <Command>
+              <CommandInput placeholder="Tìm theo tên hoặc SĐT..." autoFocus />
+              <CommandList className="max-h-64 overflow-auto p-1">
+                <CommandEmpty>Không tìm thấy khách thuê.</CommandEmpty>
+                <CommandGroup>
+                  {suggestions.map((k) => (
+                    <CommandItem
+                      key={k._id}
+                      value={`${k.hoTen} ${k.soDienThoai}`}
+                      onSelect={() => {
+                        onSelect(index, k);
+                        setOpen(false);
+                      }}
+                      className="flex items-center gap-2 px-2 py-1.5 cursor-pointer rounded-sm"
+                    >
+                      <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 border border-primary/20">
+                        <span className="text-xs font-bold text-primary">{k.hoTen.charAt(0).toUpperCase()}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold truncate">{k.hoTen}</div>
+                        <div className="text-[11px] text-muted-foreground">{k.soDienThoai}</div>
+                      </div>
+                      {value.khachThueId === k._id ? (
+                        <Check className="size-4 text-emerald-600 ml-auto" />
+                      ) : (
+                        <Badge variant="secondary" className="text-[9px] px-1.5 bg-emerald-50 text-emerald-600 border-emerald-100 shrink-0">
+                          Có tài khoản
+                        </Badge>
+                      )}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
       </div>
+
       {canRemove && (
         <Button
           type="button"
@@ -300,8 +266,8 @@ export default function ThemMoiHopDongPage() {
       const response = await fetch(`/api/phong?toaNha=${toaNhaId}&limit=100`);
       if (response.ok) {
         const data = await response.json();
-        const availablePhong = (data.data || []).filter((phong: Phong) =>
-          phong.trangThai === 'trong' || phong.trangThai === 'daDat'
+        const availablePhong = (data.data || []).filter((phong: any) =>
+          (phong.trangThai === 'trong' || phong.trangThai === 'daDat') && !phong.hopDongHienTai
         );
         setPhongList(availablePhong);
       }
@@ -338,14 +304,19 @@ export default function ThemMoiHopDongPage() {
   const handleTenantSelect = (index: number, tenant: KhachThue) => {
     setFormData(prev => {
       const updated = [...prev.khachThueInputs];
+      // Nếu chọn lại chính người đó thì có thể coi như hủy chọn (nhưng ở đây dropdown bắt buộc chọn)
       updated[index] = {
         hoTen: tenant.hoTen || '',
         soDienThoai: tenant.soDienThoai || '',
         khachThueId: tenant._id || '',
       };
-      // Auto set nguoiDaiDien to first confirmed tenant
-      const firstConfirmed = updated.find(k => k.khachThueId);
-      const nguoiDaiDien = firstConfirmed ? firstConfirmed.hoTen : prev.nguoiDaiDien;
+      
+      // Auto set nguoiDaiDien to first confirmed tenant if no representative yet
+      let nguoiDaiDien = prev.nguoiDaiDien;
+      if (!nguoiDaiDien) {
+        nguoiDaiDien = updated[index].hoTen;
+      }
+      
       return { ...prev, khachThueInputs: updated, nguoiDaiDien };
     });
   };
@@ -554,13 +525,15 @@ export default function ThemMoiHopDongPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-3 p-3 rounded-lg border bg-gray-50/50 border-gray-100 shadow-sm">
                   {formData.khachThueInputs.map((kt, index) => (
                     <TenantAutocomplete
                       key={index}
                       index={index}
                       value={kt}
-                      suggestions={khachThueList}
+                      suggestions={khachThueList.filter(k => 
+                        !formData.khachThueInputs.some((input, i) => i !== index && input.khachThueId === k._id)
+                      )}
                       onSelect={handleTenantSelect}
                       onRemove={removeKhachThueSlot}
                       canRemove={formData.khachThueInputs.length > 1}
@@ -569,12 +542,12 @@ export default function ThemMoiHopDongPage() {
                   {formData.khachThueInputs.length < getMaxTenants() && (
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
-                      className="w-full text-xs border-dashed"
+                      className="w-full text-xs hover:bg-white hover:border-gray-200 border border-transparent transition-all"
                       onClick={addKhachThueSlot}
                     >
-                      <Plus className="size-3.5 mr-1.5" />
+                      <Plus className="size-3.5 mr-1.5 text-primary" />
                       Thêm khách thuê ({formData.khachThueInputs.length}/{getMaxTenants()})
                     </Button>
                   )}

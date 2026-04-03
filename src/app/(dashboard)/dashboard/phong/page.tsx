@@ -77,7 +77,7 @@ interface EnrichedPhong extends Phong {
     conLai: number;
   } | null;
   suCoMoi?: number;
-  trangThaiTongHop?: 'trong' | 'daThanhToan' | 'treTien' | 'suCo';
+  trangThaiTongHop?: 'trong' | 'daThanhToan' | 'treTien' | 'suCo' | 'choDuyet';
   hopDongHienTai?: any;
 }
 
@@ -121,6 +121,15 @@ const STATUS_CONFIG = {
     icon: Wrench,
     hoverBg: 'hover:bg-red-100',
   },
+  choDuyet: {
+    label: 'Đang chờ duyệt',
+    bg: 'bg-blue-50',
+    border: 'border-blue-300',
+    text: 'text-blue-700',
+    dot: 'bg-blue-400',
+    icon: RefreshCw,
+    hoverBg: 'hover:bg-blue-100',
+  },
 } as const;
 
 type StatusKey = keyof typeof STATUS_CONFIG;
@@ -132,8 +141,9 @@ function getStatusConfig(status: string): typeof STATUS_CONFIG[StatusKey] {
 function getTenantName(phong: EnrichedPhong): string {
   const hd = phong.hopDongHienTai;
   if (!hd) return '';
-  if (hd.nguoiDaiDien?.hoTen) return hd.nguoiDaiDien.hoTen;
-  if (hd.khachThueId?.length > 0 && hd.khachThueId[0]?.hoTen) return hd.khachThueId[0].hoTen;
+  const prefix = hd.trangThai === 'choDuyet' ? '⏳ (Chờ duyệt) ' : '';
+  if (hd.nguoiDaiDien?.hoTen) return prefix + hd.nguoiDaiDien.hoTen;
+  if (hd.khachThueId && hd.khachThueId.length > 0 && hd.khachThueId[0]?.hoTen) return prefix + hd.khachThueId[0].hoTen;
   return '';
 }
 
