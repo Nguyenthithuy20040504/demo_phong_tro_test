@@ -399,15 +399,16 @@ export async function POST(request: NextRequest) {
       const phongInfo = await Phong.findById(validatedData.phong).select('maPhong');
       const tenPhong = phongInfo?.maPhong || 'N/A';
 
-      // Gửi thông báo CHỈ cho người đại diện (chỉ người này mới có quyền duyệt)
-      const nguoiDaiDienId = validatedData.nguoiDaiDien;
-      if (nguoiDaiDienId) {
+      // Gửi thông báo cho TẤT CẢ khách thuê trong hợp đồng
+      const khachThueIds = validatedData.khachThueId || [];
+      if (khachThueIds.length > 0) {
+        const nguoiNhanIds = khachThueIds.map((id: string) => new mongoose.Types.ObjectId(id));
         await ThongBao.create({
           tieuDe: `Hợp đồng mới chờ duyệt - Phòng ${tenPhong}`,
-          noiDung: `Bạn có hợp đồng thuê phòng ${tenPhong} (Mã: ${validatedData.maHopDong}) đang chờ xác nhận. Với tư cách là người đại diện, vui lòng xem chi tiết và duyệt hoặc từ chối hợp đồng.`,
+          noiDung: `Hợp đồng thuê phòng ${tenPhong} (Mã: ${validatedData.maHopDong}) đang chờ xác nhận. Nếu bạn là người đại diện, vui lòng xem chi tiết và ký duyệt.`,
           loai: 'hopDong',
           nguoiGui: new mongoose.Types.ObjectId(session.user.id),
-          nguoiNhan: [new mongoose.Types.ObjectId(nguoiDaiDienId)],
+          nguoiNhan: nguoiNhanIds,
           phong: [new mongoose.Types.ObjectId(validatedData.phong)],
           ngayGui: new Date(),
         });

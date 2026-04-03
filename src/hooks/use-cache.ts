@@ -63,7 +63,7 @@ export function useCache<T>(config: CacheConfig) {
     }
   }, [storageKey, userId]);
 
-  // Clear all dashboard caches
+  // Clear all dashboard caches for all buildings or specific ones
   const clearAllCaches = useCallback(() => {
     const keys = [
       'hop-dong-data',
@@ -75,20 +75,33 @@ export function useCache<T>(config: CacheConfig) {
       'su-co-data',
       'tai-khoan-data',
     ];
-    keys.forEach(k => {
-      // Xóa cả key không prefix và có prefix userId
-      sessionStorage.removeItem(k);
-      if (userId) {
-        sessionStorage.removeItem(`${userId}_${k}`);
-      }
-    });
+    
+    // Tìm và xóa tất cả các key liên quan trong sessionStorage
+    // Vì key có cấu trúc phức tạp (userId_buildingId_key), ta sẽ lặp qua storage
+    try {
+      const allKeys = Object.keys(sessionStorage);
+      allKeys.forEach(sKey => {
+        // Nếu sKey chứa một trong các keyword của dashboard
+        if (keys.some(k => sKey.includes(k))) {
+          sessionStorage.removeItem(sKey);
+        }
+      });
+    } catch (e) {
+      // Fallback nếu không lặp được (hiếm)
+      keys.forEach(k => {
+        sessionStorage.removeItem(k);
+        if (userId) {
+          sessionStorage.removeItem(`${userId}_${k}`);
+          sessionStorage.removeItem(`${userId}_all_${k}`);
+        }
+      });
+    }
   }, [userId]);
 
   // Clear cache for current key AND all other caches to prevent cross-entity sync issues
   const clearCache = useCallback(() => {
-    sessionStorage.removeItem(storageKey);
     clearAllCaches();
-  }, [storageKey, clearAllCaches]);
+  }, [clearAllCaches]);
 
   return {
     getCache,

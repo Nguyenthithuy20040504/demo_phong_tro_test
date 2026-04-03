@@ -89,14 +89,21 @@ export async function GET(
     const HoaDonModel = mongoose.models.HoaDon || mongoose.model('HoaDon');
     const SuCoModel = mongoose.models.SuCo || mongoose.model('SuCo');
 
-    const hopDongHienTaiRaw = await HopDongModel.findOne({
+    let hopDongHienTaiRaw = await HopDongModel.findOne({
       phong: id,
-      trangThai: { $in: ['hoatDong', 'choDuyet'] },
-      $or: [
-        { ngayBatDau: { $lte: new Date() }, ngayKetThuc: { $gte: new Date() } },
-        { ngayBatDau: { $gt: new Date() } }
-      ]
-    }).select('_id id maHopDong ngayBatDau ngayKetThuc trangThai khachThueId nguoiDaiDien snapshotKhachThue').lean() as any;
+    }).sort({ ngayTao: -1 }).select('_id id maHopDong ngayBatDau ngayKetThuc trangThai khachThueId nguoiDaiDien snapshotKhachThue').lean() as any;
+
+    if (hopDongHienTaiRaw && !['hoatDong', 'choDuyet'].includes(hopDongHienTaiRaw.trangThai)) {
+      hopDongHienTaiRaw = null;
+    }
+
+    if (hopDongHienTaiRaw) {
+      const now = new Date();
+      const isCurrentOrFuture = (hopDongHienTaiRaw.ngayBatDau <= now && hopDongHienTaiRaw.ngayKetThuc >= now) || (hopDongHienTaiRaw.ngayBatDau > now);
+      if (!isCurrentOrFuture) {
+        hopDongHienTaiRaw = null;
+      }
+    }
 
     const [hoaDonMoiNhat, suCoCount] = await Promise.all([
       HoaDonModel.findOne({ phong: id }).sort({ nam: -1, thang: -1 }).lean(),

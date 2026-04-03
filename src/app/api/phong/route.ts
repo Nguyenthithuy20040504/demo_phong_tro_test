@@ -67,11 +67,23 @@ export async function GET(request: NextRequest) {
     const phongListWithContracts = await Promise.all(
       updatedPhongList.map(async (phongDoc) => {
         const phong: any = phongDoc.toObject();
-        const hopDongRaw: any = await HopDong.findOne({
-          phong: phong._id,
-          trangThai: { $in: ['hoatDong', 'choDuyet'] },
-          $or: [{ ngayBatDau: { $lte: new Date() }, ngayKetThuc: { $gte: new Date() } }, { ngayBatDau: { $gt: new Date() } }]
-        }).lean();
+        let hopDongRaw: any = await HopDong.findOne({
+          phong: phong._id
+        }).sort({ ngayTao: -1 }).lean();
+
+        // Chỉ chấp nhận nếu là hợp đồng đang hoạt động hoặc đang chờ duyệt
+        if (hopDongRaw && !['hoatDong', 'choDuyet'].includes(hopDongRaw.trangThai)) {
+          hopDongRaw = null;
+        }
+
+        // Nếu còn hiệu lực hoặc là tương lai
+        if (hopDongRaw) {
+          const now = new Date();
+          const isCurrentOrFuture = (hopDongRaw.ngayBatDau <= now && hopDongRaw.ngayKetThuc >= now) || (hopDongRaw.ngayBatDau > now);
+          if (!isCurrentOrFuture) {
+            hopDongRaw = null;
+          }
+        }
 
         const [hoaDonMoiNhat, suCoCount] = await Promise.all([
           HoaDon.findOne({ phong: phong._id }).sort({ nam: -1, thang: -1 }).lean(),
