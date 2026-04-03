@@ -160,7 +160,7 @@ export async function GET(request: NextRequest) {
     const startOfCurrentYearFull = new Date(now.getFullYear(), 0, 1);
     const endOfCurrentYearFull = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
 
-    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const chartStartDate = filterStartDate || new Date(now.getFullYear(), now.getMonth() - 5, 1);
     const endOfThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
     
     // Combine complex queries in parallel
@@ -196,7 +196,7 @@ export async function GET(request: NextRequest) {
         { $sort: { '_id': 1 } }
       ]),
       ThanhToan.aggregate([
-        { $match: { ...thanhToanQuery, ngayThanhToan: { $gte: sixMonthsAgo, $lte: endOfThisMonth } } },
+        { $match: { ...thanhToanQuery, ngayThanhToan: { $gte: chartStartDate, $lte: endOfThisMonth } } },
         { $group: { _id: { month: { $month: '$ngayThanhToan' }, year: { $year: '$ngayThanhToan' } }, total: { $sum: '$soTien' } } }
       ]),
       HoaDon.aggregate([
@@ -221,8 +221,13 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    let monthsToChart = 6;
+    if (filterStartDate) {
+       monthsToChart = (now.getFullYear() - filterStartDate.getFullYear()) * 12 + now.getMonth() - filterStartDate.getMonth() + 1;
+    }
+    
     const doanhThuVaCongNo6Thang = [];
-    for (let i = 5; i >= 0; i--) {
+    for (let i = monthsToChart - 1; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const m = d.getMonth() + 1;
       const y = d.getFullYear();

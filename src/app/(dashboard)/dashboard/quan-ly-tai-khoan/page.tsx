@@ -86,7 +86,7 @@ export default function AccountManagementPage() {
     email: '',
     password: '',
     phone: '',
-    role: 'nhanVien'
+    role: 'khachThue'
   });
   
   const [editUserData, setEditUserData] = useState({
@@ -169,7 +169,7 @@ export default function AccountManagementPage() {
           email: '',
           password: '',
           phone: '',
-          role: ((session?.user as any)?.role) === 'admin' ? 'chuNha' : 'nhanVien'
+          role: ((session?.user as any)?.role) === 'admin' ? 'chuNha' : 'khachThue'
         });
         cache.clearCache();
         fetchUsers(true);
@@ -368,7 +368,7 @@ export default function AccountManagementPage() {
               email: '',
               password: '',
               phone: '',
-              role: ((session?.user as any)?.role) === 'admin' ? 'chuNha' : 'nhanVien'
+              role: ((session?.user as any)?.role) === 'admin' ? 'chuNha' : 'khachThue'
             });
             setIsCreateDialogOpen(true);
           }} className="flex-1 sm:flex-none">
@@ -448,7 +448,6 @@ export default function AccountManagementPage() {
                       </>
                     ) : (
                       <>
-                        <SelectItem value="nhanVien" className="text-sm">Nhân viên</SelectItem>
                         <SelectItem value="khachThue" className="text-sm">Khách thuê</SelectItem>
                       </>
                     )}
@@ -739,7 +738,6 @@ export default function AccountManagementPage() {
                     </>
                   ) : (
                     <>
-                      <SelectItem value="nhanVien" className="text-sm">Nhân viên</SelectItem>
                       <SelectItem value="khachThue" className="text-sm">Khách thuê</SelectItem>
                     </>
                   )}

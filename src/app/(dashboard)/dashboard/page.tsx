@@ -602,7 +602,9 @@ export default function DashboardPage() {
             {/* Bar Chart - Revenue vs Debt (2/3 width) */}
             <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
               <div className="mb-6">
-                <h2 className="text-lg font-bold text-gray-900">Doanh thu & Công nợ 6 tháng gần nhất</h2>
+                <h2 className="text-lg font-bold text-gray-900">
+                  Doanh thu & Công nợ {timeRange === '3_months' ? '3 tháng gần nhất' : timeRange === '12_months' ? '12 tháng gần nhất' : timeRange === 'from_year_start' ? 'từ đầu năm' : '6 tháng gần nhất'}
+                </h2>
                 <p className="text-sm text-gray-500">Biểu đồ so sánh tiền đã thu và tiền khách còn nợ</p>
               </div>
               <div className="h-[300px]">
@@ -639,6 +641,7 @@ export default function DashboardPage() {
                       fill="#0d9488"
                       radius={[4, 4, 0, 0]}
                       maxBarSize={40}
+                      animationDuration={1000}
                     />
                     <Bar
                       dataKey="conNo"
@@ -646,6 +649,7 @@ export default function DashboardPage() {
                       fill="#ef4444"
                       radius={[4, 4, 0, 0]}
                       maxBarSize={40}
+                      animationDuration={1000}
                     />
                   </BarChart>
                 </ResponsiveContainer>
