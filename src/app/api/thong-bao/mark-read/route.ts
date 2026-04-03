@@ -17,13 +17,29 @@ export async function POST(request: NextRequest) {
 
     const { id, markAll } = await request.json();
     await dbConnect();
-    const userId = new mongoose.Types.ObjectId(session.user.id);
+    const userIdObj = new mongoose.Types.ObjectId(session.user.id);
+    const userIdStr = session.user.id;
+
+    // Tìm các ID liên kết (KhachThue vs NguoiDung)
+    const KhachThue = (await import('@/models/KhachThue')).default;
+    let khachThueRecord = await KhachThue.findById(userIdStr);
+    if (!khachThueRecord && session.user.phone) {
+      khachThueRecord = await KhachThue.findOne({ soDienThoai: session.user.phone });
+    }
+    if (!khachThueRecord && session.user.email) {
+      khachThueRecord = await KhachThue.findOne({ email: session.user.email });
+    }
+
+    const linkedIds = [userIdObj];
+    if (khachThueRecord && khachThueRecord._id.toString() !== userIdStr) {
+      linkedIds.push(new mongoose.Types.ObjectId(khachThueRecord._id.toString()));
+    }
 
     if (markAll) {
-      // Mark all user's notifications as read
+      // Mark all linked notifications as read
       await ThongBao.updateMany(
-        { nguoiNhan: userId, daDoc: { $nin: [userId] } },
-        { $addToSet: { daDoc: userId } }
+        { nguoiNhan: { $in: linkedIds }, daDoc: { $nin: [userIdObj] } },
+        { $addToSet: { daDoc: userIdObj } }
       );
       return NextResponse.json({ success: true, message: 'Đã đánh dấu tất cả là đã đọc' });
     }
@@ -33,8 +49,8 @@ export async function POST(request: NextRequest) {
     }
 
     await ThongBao.updateOne(
-      { _id: id, nguoiNhan: userId },
-      { $addToSet: { daDoc: userId } }
+      { _id: id, nguoiNhan: { $in: linkedIds } },
+      { $addToSet: { daDoc: userIdObj } }
     );
 
     return NextResponse.json({ success: true });
