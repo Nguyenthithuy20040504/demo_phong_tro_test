@@ -167,6 +167,18 @@ export default function KhachThueDashboardPage() {
     return new Date(date).toLocaleDateString('vi-VN');
   };
 
+  const getHanDuyet = (dateStr: string) => {
+    if (!dateStr) return '';
+    const expDate = new Date(new Date(dateStr).getTime() + 7 * 24 * 60 * 60 * 1000);
+    const now = new Date();
+    const diffMs = expDate.getTime() - now.getTime();
+    const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (days < 0) return `${expDate.toLocaleDateString('vi-VN')} (Đã quá hạn)`;
+    if (days === 0) return `${expDate.toLocaleDateString('vi-VN')} (Hết hạn hôm nay)`;
+    return `${expDate.toLocaleDateString('vi-VN')} (Còn ${days} ngày)`;
+  };
+
   return (
     <motion.div 
       variants={containerVariants}
@@ -201,6 +213,9 @@ export default function KhachThueDashboardPage() {
                         <p><span className="font-bold text-gray-900">Mã HĐ:</span> {hd.maHopDong}</p>
                         <p><span className="font-bold text-gray-900">Giá thuê:</span> {formatCurrency(hd.giaThue)}/tháng • <span className="font-bold text-gray-900">Cọc:</span> {formatCurrency(hd.tienCoc)}</p>
                         <p><span className="font-bold text-gray-900">Thời hạn:</span> {formatDate(hd.ngayBatDau)} → {formatDate(hd.ngayKetThuc)}</p>
+                        {hd.ngayTao && (
+                          <p><span className="font-bold text-red-600">Hạn duyệt:</span> <span className="text-red-500 font-semibold">{getHanDuyet(hd.ngayTao)}</span></p>
+                        )}
                       </div>
                     </div>
                   </div>

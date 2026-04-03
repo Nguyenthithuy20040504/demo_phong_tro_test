@@ -36,11 +36,24 @@ export default function KhachThueDashboardLayout({ children }: { children: React
 
   useEffect(() => {
     if (!session) return;
-    fetch('/api/thong-bao/unread-count').then(r => r.json()).then(d => setUnreadCount(d.count || 0)).catch(() => {});
-    const interval = setInterval(() => {
-      fetch('/api/thong-bao/unread-count').then(r => r.json()).then(d => setUnreadCount(d.count || 0)).catch(() => {});
-    }, 60000);
-    return () => clearInterval(interval);
+    
+    const fetchCount = () => {
+      fetch('/api/thong-bao/unread-count')
+        .then(r => r.json())
+        .then(d => setUnreadCount(d.count || 0))
+        .catch(() => {});
+    };
+
+    fetchCount();
+    const interval = setInterval(fetchCount, 60000);
+    
+    const handleRead = () => setUnreadCount(0);
+    window.addEventListener('notificationsRead', handleRead);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notificationsRead', handleRead);
+    };
   }, [session]);
 
   const handleLogout = async () => {

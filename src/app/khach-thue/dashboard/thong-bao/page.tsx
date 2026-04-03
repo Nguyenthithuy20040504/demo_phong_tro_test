@@ -44,6 +44,7 @@ export default function KhachThueThongBaoPage() {
             body: JSON.stringify({ markAll: true })
           }).catch(() => {});
           setUnreadCount(0);
+          window.dispatchEvent(new Event('notificationsRead'));
         } else {
           setUnreadCount(0);
         }

@@ -15,12 +15,29 @@ export async function GET() {
     }
 
     await dbConnect();
-    const userId = new mongoose.Types.ObjectId(session.user.id);
+    const userId = session.user.id;
 
-    // Count notifications sent to this user that they haven't read yet
+    // Tìm các ID liên kết (KhachThue vs NguoiDung)
+    const KhachThue = (await import('@/models/KhachThue')).default;
+    let khachThueRecord = await KhachThue.findById(userId);
+    if (!khachThueRecord && session.user.phone) {
+      khachThueRecord = await KhachThue.findOne({ soDienThoai: session.user.phone });
+    }
+    if (!khachThueRecord && session.user.email) {
+      khachThueRecord = await KhachThue.findOne({ email: session.user.email });
+    }
+
+    const linkedIds = [new mongoose.Types.ObjectId(userId)];
+    if (khachThueRecord && khachThueRecord._id.toString() !== userId) {
+      linkedIds.push(new mongoose.Types.ObjectId(khachThueRecord._id.toString()));
+    }
+
+    const sessionObjId = new mongoose.Types.ObjectId(userId);
+
+    // Count notifications sent to ANY of the linked IDs that haven't been read by the current session user
     const count = await ThongBao.countDocuments({
-      nguoiNhan: userId,
-      daDoc: { $nin: [userId] }
+      nguoiNhan: { $in: linkedIds },
+      daDoc: { $nin: [sessionObjId] }
     });
 
     return NextResponse.json({ count });

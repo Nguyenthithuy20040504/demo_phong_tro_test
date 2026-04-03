@@ -31,6 +31,7 @@ export interface IHopDong extends Document {
   }>;
   snapshotKhachThue?: ISnapshotKhachThue[];
   trangThai: 'choDuyet' | 'hoatDong' | 'hetHan' | 'daHuy';
+  daNhacChoDuyet?: boolean;
   fileHopDong?: string;
   ngayTao: Date;
   ngayCapNhat: Date;
@@ -135,6 +136,10 @@ const HopDongSchema = new Schema<IHopDong>({
     type: String,
     enum: ['choDuyet', 'hoatDong', 'hetHan', 'daHuy'],
     default: 'choDuyet'
+  },
+  daNhacChoDuyet: {
+    type: Boolean,
+    default: false
   },
   fileHopDong: {
     type: String,
