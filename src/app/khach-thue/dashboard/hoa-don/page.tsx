@@ -76,7 +76,7 @@ export default function HoaDonKhachThuePage() {
   const fetchHoaDons = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/hoa-don');
+      const response = await fetch('/api/hoa-don?limit=1000');
       const result = await response.json();
       if (result.success) {
         setHoaDons(result.data || []);

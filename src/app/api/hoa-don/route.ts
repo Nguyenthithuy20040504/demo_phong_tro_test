@@ -516,7 +516,7 @@ export async function POST(request: NextRequest) {
 
     // Kiểm tra quá hạn
     const finalHanThanhToan = hanThanhToan ? new Date(hanThanhToan) : new Date(nam, thang - 1, hopDongData.ngayThanhToan);
-    if (finalHanThanhToan < new Date() && conLaiValue > 0) {
+    if (new Date(finalHanThanhToan).setHours(0,0,0,0) < new Date().setHours(0,0,0,0) && conLaiValue > 0) {
       trangThaiValue = 'quaHan';
     }
 
@@ -737,7 +737,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const finalHanThanhToan = hanThanhToan ? new Date(hanThanhToan) : existingHoaDon.hanThanhToan;
-    if (finalHanThanhToan < new Date() && conLai > 0) {
+    if (new Date(finalHanThanhToan).setHours(0,0,0,0) < new Date().setHours(0,0,0,0) && conLai > 0) {
       trangThaiValue = 'quaHan';
     }
 

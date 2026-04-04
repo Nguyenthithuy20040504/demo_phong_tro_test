@@ -224,20 +224,49 @@ export async function POST(request: NextRequest) {
 
     await hoaDon.save();
 
-    // Tự động tạo thông báo cho khách thuê
+    // Tự động tạo thông báo
     try {
-      const noiDungThongBao = `Hóa đơn ${hoaDon.maHoaDon} (Tháng ${hoaDon.thang}/${hoaDon.nam}) đã được xác nhận thanh toán số tiền ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(soTien)}. Số tiền còn lại: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(hoaDon.conLai)}.`;
+      let noiDungThongBao = '';
+      let tieuDe = '';
+      let nguoiNhanIds: string[] = [];
+
+      if (isTenant) {
+        // Thông báo cho chủ trọ/quản lý: Khách thuê đã tạo khoản thanh toán chờ duyệt
+        const phongObj = await Phong.findById(hoaDon.phong).populate('toaNha');
+        if (phongObj) {
+           tieuDe = 'Thanh toán mới chờ duyệt';
+           noiDungThongBao = `Khách thuê phòng ${phongObj.maPhong} vừa tạo khoản thanh toán số tiền ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(soTien)} cho hóa đơn ${hoaDon.maHoaDon} (Tháng ${hoaDon.thang}/${hoaDon.nam}). Vui lòng kiểm tra và duyệt.`;
+           
+           if (phongObj.toaNha) {
+             const toaNhaObj = phongObj.toaNha as any;
+             if (toaNhaObj.chuSoHuu) nguoiNhanIds.push(toaNhaObj.chuSoHuu.toString());
+             if (toaNhaObj.nguoiQuanLy && Array.isArray(toaNhaObj.nguoiQuanLy)) {
+               toaNhaObj.nguoiQuanLy.forEach((id: any) => nguoiNhanIds.push(id.toString()));
+             }
+           }
+        }
+      } else {
+        // Thông báo cho khách thuê: Hệ thống đã duyệt / giáo dịch viên tạo thanh toán
+        tieuDe = 'Xác nhận thanh toán hóa đơn';
+        noiDungThongBao = `Hóa đơn ${hoaDon.maHoaDon} (Tháng ${hoaDon.thang}/${hoaDon.nam}) đã được ghi nhận thanh toán số tiền ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(soTien)} thành công. Số tiền còn lại phải đóng: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(hoaDon.conLai)}.`;
+        nguoiNhanIds = [hoaDon.khachThue.toString()];
+      }
       
-      const thongBao = new ThongBao({
-        tieuDe: 'Xác nhận thanh toán hóa đơn',
-        noiDung: noiDungThongBao,
-        loai: 'hoaDon',
-        nguoiGui: session.user.id,
-        nguoiNhan: [hoaDon.khachThue],
-        ngayGui: new Date()
-      });
-      
-      await thongBao.save();
+      nguoiNhanIds = [...new Set(nguoiNhanIds)].filter(id => id && id !== session.user.id); // Lọc trùng & không gửi cho chính mình
+
+      if (nguoiNhanIds.length > 0 && tieuDe) {
+        const phongObj = await Phong.findById(hoaDon.phong);
+        const thongBao = new ThongBao({
+          tieuDe,
+          noiDung: noiDungThongBao,
+          loai: 'hoaDon',
+          nguoiGui: session.user.id,
+          nguoiNhan: nguoiNhanIds,
+          toaNha: phongObj ? phongObj.toaNha : undefined,
+          ngayGui: new Date()
+        });
+        await thongBao.save();
+      }
     } catch (notificationError) {
       console.error('Lỗi khi tạo thông báo thanh toán:', notificationError);
       // Không trả về lỗi API nếu chỉ lỗi tạo thông báo

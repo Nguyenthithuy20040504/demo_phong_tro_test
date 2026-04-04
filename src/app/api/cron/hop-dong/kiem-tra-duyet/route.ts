@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         if (nguoiDaiDienId && landlordId) {
           const tbKhach = new ThongBao({
             tieuDe: 'Hợp đồng đã bị hủy tự động',
-            noiDung: `Hợp đồng phòng ${rPhong?.maPhong || ''} đã tự động bị hủy do quá hạn 7 phút nhưng chưa được xác nhận.`,
+            noiDung: `Hợp đồng phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) đã tự động bị hủy do quá hạn 7 phút nhưng chưa được xác nhận.`,
             loai: 'hopDong',
             nguoiGui: landlordId, 
             nguoiNhan: [nguoiDaiDienId],
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
           // Gửi thông báo cho chủ nhà
           const tbChuNha = new ThongBao({
             tieuDe: 'Hợp đồng bị hủy do quá hạn',
-            noiDung: `Hợp đồng phòng ${rPhong?.maPhong || ''} do bạn vừa tạo đã tự dộng bị hủy vì khách thuê không xác nhận sau 7 phút.`,
+            noiDung: `Hợp đồng phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) do bạn vừa tạo đã tự động bị hủy vì khách thuê không xác nhận sau 7 phút.`,
             loai: 'hopDong',
             nguoiGui: landlordId, // system/owner
             nguoiNhan: [landlordId],
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
         if (nguoiDaiDienId && landlordId) {
           const tbReminder = new ThongBao({
             tieuDe: 'Nhắc nhở xác nhận hợp đồng',
-            noiDung: `Hợp đồng phòng ${rPhong?.maPhong || ''} của bạn sẽ bị hủy sau 2 phút nữa. Vui lòng xác nhận hợp đồng để hoàn tất quá trình thuê.`,
+            noiDung: `Hợp đồng phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) của bạn sẽ bị hủy sau 2 phút nữa. Vui lòng xác nhận hợp đồng để hoàn tất quá trình thuê.`,
             loai: 'hopDong',
             nguoiGui: landlordId,
             nguoiNhan: hd.khachThueId || [nguoiDaiDienId], // Gửi cho toàn bộ khách thuê trong hợp đồng

@@ -3,7 +3,6 @@
 import * as React from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { usePathname } from "next/navigation";
 import { 
   Home,
   Building2,
@@ -48,9 +47,12 @@ import {
 } from "@/components/ui/tooltip";
 import { useState, useEffect } from "react";
 
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+
 export function TopNavbar() {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [toaNhaList, setToaNhaList] = useState<any[]>([]);
   const [selectedToaNha, setSelectedToaNha] = useState<string>('all');
   const [openBox, setOpenBox] = useState(false);
@@ -60,10 +62,19 @@ export function TopNavbar() {
   const isChuNha = (session?.user as any)?.role === 'chuNha';
   const isNhanVien = (session?.user as any)?.role === 'nhanVien';
 
+  // Đồng bộ từ URL param (ưu tiên hàng đầu khi click từ thông báo)
+  useEffect(() => {
+    const bId = searchParams.get('toaNhaId');
+    if (bId) {
+      setSelectedToaNha(bId);
+      localStorage.setItem('selected_building_id', bId);
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     const fetchBuildings = async () => {
       try {
-        const res = await fetch('/api/toa-nha?limit=100');
+        const res = await fetch('/api/toa-nha?limit=100', { cache: 'no-store' });
         if (res.ok) {
           const result = await res.json();
           if (result.success) setToaNhaList(result.data);
@@ -77,6 +88,13 @@ export function TopNavbar() {
     // Sync with local storage if page.tsx uses it
     const cached = localStorage.getItem('selected_building_id');
     if (cached) setSelectedToaNha(cached);
+
+    const handleSyncBuilding = () => {
+      const current = localStorage.getItem('selected_building_id');
+      if (current) setSelectedToaNha(current);
+    };
+    window.addEventListener('buildingChange', handleSyncBuilding);
+    return () => window.removeEventListener('buildingChange', handleSyncBuilding);
   }, []);
 
   const handleBuildingChange = (val: string) => {
@@ -180,7 +198,8 @@ export function TopNavbar() {
                     <span className="truncate max-w-[150px]">
                       {selectedToaNha === "all" 
                         ? "Tất cả tòa nhà" 
-                        : toaNhaList.find((t) => t._id === selectedToaNha)?.tenToaNha || "Chọn tòa nhà..."}
+                        : (toaNhaList.find((t) => (t._id === selectedToaNha || t.id === selectedToaNha))?.tenToaNha || 
+                           (selectedToaNha !== 'all' ? "Tòa nhà mục tiêu..." : "Chọn tòa nhà..."))}
                     </span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>

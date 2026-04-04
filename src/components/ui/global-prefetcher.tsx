@@ -15,18 +15,19 @@ export function GlobalPrefetcher() {
       
       try {
         const [phongRes, toaNhaRes, khachThueRes, hopDongRes, hoaDonRes] = await Promise.all([
-          fetch('/api/phong?limit=500'),
-          fetch('/api/toa-nha'),
-          fetch('/api/khach-thue?limit=500'),
-          fetch('/api/hop-dong?limit=500'),
-          fetch('/api/hoa-don?limit=1000'),
+          fetch('/api/phong?limit=500').catch(e => { console.warn('Prefetch phong failed', e); return null; }),
+          fetch('/api/toa-nha').catch(e => { console.warn('Prefetch toa-nha failed', e); return null; }),
+          fetch('/api/khach-thue?limit=500').catch(e => { console.warn('Prefetch khach-thue failed', e); return null; }),
+          fetch('/api/hop-dong?limit=500').catch(e => { console.warn('Prefetch hop-dong failed', e); return null; }),
+          fetch('/api/hoa-don?limit=1000').catch(e => { console.warn('Prefetch hoa-don failed', e); return null; }),
         ]);
 
-        const phongData = phongRes.ok ? (await phongRes.json()).data : [];
-        const toaNhaData = toaNhaRes.ok ? (await toaNhaRes.json()).data : [];
-        const khachThueData = khachThueRes.ok ? (await khachThueRes.json()).data : [];
-        const hopDongData = hopDongRes.ok ? (await hopDongRes.json()).data : [];
-        const hoaDonData = hoaDonRes.ok ? (await hoaDonRes.json()).data : [];
+        const phongData = phongRes?.ok ? (await phongRes.json()).data : [];
+        const toaNhaData = toaNhaRes?.ok ? (await toaNhaRes.json()).data : [];
+        const khachThueData = khachThueRes?.ok ? (await khachThueRes.json()).data : [];
+        const hopDongData = hopDongRes?.ok ? (await hopDongRes.json()).data : [];
+        const hoaDonData = hoaDonRes?.ok ? (await hoaDonRes.json()).data : [];
+
         
         const timestamp = Date.now();
         

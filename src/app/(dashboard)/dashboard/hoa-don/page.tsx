@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useCache } from '@/hooks/use-cache';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -89,6 +89,7 @@ export default function HoaDonPage() {
   const { data: session } = useSession();
   const isNhanVien = (session?.user as any)?.role === 'nhanVien';
   const router = useRouter();
+  const searchParams = useSearchParams();
   const cache = useCache<{
     hoaDonList: HoaDon[];
     hopDongList: HopDong[];
@@ -118,6 +119,20 @@ export default function HoaDonPage() {
 
   useEffect(() => {
     fetchData();
+  }, []);
+
+  // Tự động refetch khi chuyển trang hoặc quay lại tab (tránh cache cũ)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const cachedData = cache.getCache();
+        if (!cachedData) {
+          fetchData(true);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   // Global Building Sync (listen to TopNavbar)
@@ -152,10 +167,12 @@ export default function HoaDonPage() {
         }
       }
       
-      // Fetch both hoa-don and form-data in parallel with building filter
+      const buildingParamString = buildingParam ? `&${buildingParam}` : '';
+      
+      // Fetch both hoa-don and form-data in parallel with building filter and high limit
       const [hoaDonResponse, formDataResponse] = await Promise.all([
-        fetch(`/api/hoa-don?${buildingParam}`),
-        fetch(`/api/hoa-don/form-data?${buildingParam}`)
+        fetch(`/api/hoa-don?limit=1000${buildingParamString}`, { cache: 'no-store' }),
+        fetch(`/api/hoa-don/form-data?${buildingParam}`, { cache: 'no-store' })
       ]);
 
       const [hoaDonData, formDataResult] = await Promise.all([
@@ -187,6 +204,22 @@ export default function HoaDonPage() {
     }
   };
 
+  // Đồng bộ từ URL param (khi click từ thông báo)
+  useEffect(() => {
+    const bId = searchParams.get('toaNhaId');
+    const s = searchParams.get('search');
+    
+    if (bId) {
+      localStorage.setItem('selected_building_id', bId);
+      // Trigger fetchData directly to ensure it uses the new storage value
+      fetchData(true);
+    }
+    
+    if (s) {
+      setSearchTerm(s);
+    }
+  }, [searchParams]);
+
   if (loading && hoaDonList.length === 0) {
     return (
       <div className="space-y-6">
@@ -210,8 +243,14 @@ export default function HoaDonPage() {
   };
 
   const filteredHoaDon = hoaDonList.filter(hoaDon => {
-    const matchesSearch = hoaDon.maHoaDon.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         hoaDon.ghiChu?.toLowerCase().includes(searchTerm.toLowerCase());
+    const maPhong = getPhongName(hoaDon.phong, phongList);
+    const tenKhach = getKhachThueName(hoaDon.khachThue, khachThueList);
+    const searchLower = searchTerm.toLowerCase().trim();
+    
+    const matchesSearch = hoaDon.maHoaDon.toLowerCase().includes(searchLower) || 
+                         maPhong.toLowerCase().includes(searchLower) ||
+                         tenKhach.toLowerCase().includes(searchLower) ||
+                         (hoaDon.ghiChu || "").toLowerCase().includes(searchLower);
     const matchesStatus = statusFilter === 'all' || hoaDon.trangThai === statusFilter;
     const matchesMonth = monthFilter === 'all' || hoaDon.thang.toString() === monthFilter;
     const matchesYear = yearFilter === 'all' || hoaDon.nam.toString() === yearFilter;
@@ -680,7 +719,7 @@ export default function HoaDonPage() {
             <div>
               <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Quá hạn</p>
               <p className="text-base md:text-2xl font-bold text-orange-600">
-                {hoaDonList.filter(h => h.trangThai !== 'daThanhToan' && new Date(h.hanThanhToan) < new Date()).length}
+                {hoaDonList.filter(h => h.trangThai !== 'daThanhToan' && new Date(h.hanThanhToan).setHours(0,0,0,0) < new Date().setHours(0,0,0,0)).length}
               </p>
             </div>
             <AlertCircle className="h-3 w-3 md:h-4 md:w-4 text-orange-600" />
@@ -816,7 +855,7 @@ export default function HoaDonPage() {
         {/* Mobile Card List */}
         <div className="space-y-3">
           {filteredHoaDon.map((hoaDon) => {
-            const isOverdue = new Date(hoaDon.hanThanhToan) < new Date() && hoaDon.trangThai !== 'daThanhToan';
+            const isOverdue = new Date(hoaDon.hanThanhToan).setHours(0,0,0,0) < new Date().setHours(0,0,0,0) && hoaDon.trangThai !== 'daThanhToan';
             
             return (
               <Card key={hoaDon._id} className="p-4">

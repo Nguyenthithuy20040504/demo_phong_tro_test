@@ -15,6 +15,8 @@ interface Notification {
   ngayGui: string;
   isRead: boolean;
   nguoiGui?: { ten?: string; name?: string; email?: string };
+  toaNha?: any;
+  resolvedMaPhong?: string;
 }
 
 export function NotificationBell() {
@@ -133,6 +135,9 @@ export function NotificationBell() {
     // 1. Phân tách logic đường dẫn tùy theo role (dựa trên URL hiện tại)
     const isTenant = pathname?.startsWith('/khach-thue');
     let targetUrl = '';
+    // Khắc phục lỗi tiếng Việt bằng cách tìm trực tiếp cấu trúc mã (HD- hoặc HD kèm mã số)
+    const codeMatch = notif.noiDung?.match(/(HD-?[A-Z0-9-]{8,})/i) || notif.tieuDe?.match(/(HD-?[A-Z0-9-]{8,})/i);
+    const searchParamValue = codeMatch ? codeMatch[1].trim() : (notif as any).resolvedMaPhong;
 
     if (isTenant) {
       switch (notif.loai) {
@@ -147,6 +152,39 @@ export function NotificationBell() {
         case 'suCo': targetUrl = '/dashboard/su-co'; break;
         case 'hopDong': targetUrl = '/dashboard/hop-dong'; break;
         default: targetUrl = '/dashboard/thong-bao'; break;
+      }
+      
+      // Chuyển tòa nhà nếu thông báo có gắn kèm tòa nhà (dành cho phía admin/chủ nhà)
+      if (notif.toaNha) {
+        const bId = typeof notif.toaNha === 'string' ? notif.toaNha : (notif.toaNha as any)._id || notif.toaNha.toString();
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('selected_building_id', bId);
+          window.dispatchEvent(new Event('buildingChange'));
+          
+          // Gắn thêm params vào targetUrl
+          const params = new URLSearchParams();
+          params.set('toaNhaId', bId);
+          if (searchParamValue) {
+             params.set('search', searchParamValue);
+          }
+          
+          if (targetUrl.includes('?')) {
+            targetUrl += `&${params.toString()}`;
+          } else {
+            targetUrl += `?${params.toString()}`;
+          }
+        }
+      } else if (searchParamValue) {
+        // Vẫn gắn search param nếu không có tòa nhà
+        if (typeof window !== 'undefined') {
+          const params = new URLSearchParams();
+          params.set('search', searchParamValue);
+          if (targetUrl.includes('?')) {
+            targetUrl += `&${params.toString()}`;
+          } else {
+            targetUrl += `?${params.toString()}`;
+          }
+        }
       }
     }
 

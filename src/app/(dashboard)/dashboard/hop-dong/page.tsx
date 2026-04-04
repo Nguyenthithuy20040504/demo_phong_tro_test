@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useCache } from '@/hooks/use-cache';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,6 +51,23 @@ export default function HopDongPage() {
   const { data: session } = useSession();
   const isNhanVien = (session?.user as any)?.role === 'nhanVien';
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Đồng bộ từ URL param (khi click từ thông báo)
+  useEffect(() => {
+    const bId = searchParams.get('toaNhaId');
+    const s = searchParams.get('search');
+    
+    if (bId) {
+      localStorage.setItem('selected_building_id', bId);
+      setGlobalBuildingId(bId);
+      fetchData(true);
+    }
+    
+    if (s) {
+      setSearchTerm(s);
+    }
+  }, [searchParams]);
   const cache = useCache<{
     hopDongList: HopDong[];
     phongList: Phong[];
@@ -117,10 +134,10 @@ export default function HopDongPage() {
 
       // Fetch tất cả dữ liệu song song
       const [hopDongRes, phongRes, khachThueRes, toaNhaRes] = await Promise.all([
-        fetch(`/api/hop-dong?${query}`),
-        fetch(`/api/phong?${query}`),
-        fetch(`/api/khach-thue?${query}`),
-        fetch('/api/toa-nha'),
+        fetch(`/api/hop-dong?${query}`, { cache: 'no-store' }),
+        fetch(`/api/phong?${query}`, { cache: 'no-store' }),
+        fetch(`/api/khach-thue?${query}`, { cache: 'no-store' }),
+        fetch('/api/toa-nha', { cache: 'no-store' }),
       ]);
 
       // Kiểm tra nếu bất kỳ API quan trọng nào lỗi thì không ghi đè cache
@@ -190,8 +207,14 @@ export default function HopDongPage() {
 
 
   const filteredHopDong = hopDongList.filter(hopDong => {
-    const matchesSearch = hopDong.maHopDong.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         hopDong.dieuKhoan.toLowerCase().includes(searchTerm.toLowerCase());
+    const phongInfo = getPhongInfo(hopDong.phong);
+    const tenKhach = getKhachThueName(hopDong.nguoiDaiDien);
+    const searchLower = searchTerm.toLowerCase().trim();
+    
+    const matchesSearch = hopDong.maHopDong.toLowerCase().includes(searchLower) ||
+                         phongInfo.maPhong.toLowerCase().includes(searchLower) ||
+                         tenKhach.toLowerCase().includes(searchLower) ||
+                         (hopDong.dieuKhoan || "").toLowerCase().includes(searchLower);
     const matchesStatus = statusFilter === 'all' || hopDong.trangThai === statusFilter;
     
     // Filter by toa nha
@@ -252,7 +275,7 @@ export default function HopDongPage() {
     return toaNhaObj?.tenToaNha || 'Không xác định';
   };
 
-  const getPhongInfo = (phong: string | { maPhong: string; toaNha?: { tenToaNha: string } }) => {
+  function getPhongInfo(phong: string | { maPhong: string; toaNha?: { tenToaNha: string } }) {
     if (typeof phong === 'object' && phong?.maPhong) {
       return {
         maPhong: phong.maPhong,
@@ -268,15 +291,15 @@ export default function HopDongPage() {
       maPhong: phongObj.maPhong,
       toaNha: toaNha?.tenToaNha || 'Không xác định'
     };
-  };
+  }
 
-  const getKhachThueName = (khachThue: string | { hoTen: string }) => {
+  function getKhachThueName(khachThue: string | { hoTen: string }) {
     if (typeof khachThue === 'object' && khachThue?.hoTen) {
       return khachThue.hoTen;
     }
     const khachThueObj = khachThueList.find(k => k._id === khachThue);
     return khachThueObj?.hoTen || 'Không xác định';
-  };
+  }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', {

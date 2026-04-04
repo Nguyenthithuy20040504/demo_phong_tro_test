@@ -137,7 +137,9 @@ const getStatusBadge = (status: string) => {
 
 const isOverdue = (hanThanhToan: Date | string) => {
   const today = new Date()
+  today.setHours(0, 0, 0, 0)
   const dueDate = new Date(hanThanhToan)
+  dueDate.setHours(0, 0, 0, 0)
   return dueDate < today
 }
 
