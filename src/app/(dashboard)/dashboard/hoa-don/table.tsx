@@ -291,11 +291,6 @@ const createColumns = (props: HoaDonTableProps & { setHoaDonToDelete: (h: HoaDon
     cell: ({ row }) => (
       <div className="text-right">
         <div className="font-medium">{formatCurrency(row.original.tongTien)}</div>
-        {row.original.conLai > 0 && (
-          <div className="text-xs text-orange-600">
-            Còn {formatCurrency(row.original.conLai)}
-          </div>
-        )}
       </div>
     ),
   },

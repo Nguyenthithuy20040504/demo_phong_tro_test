@@ -78,6 +78,7 @@ export default function ThanhToanPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingThanhToan, setEditingThanhToan] = useState<ThanhToanPopulated | null>(null);
   const [globalBuildingId, setGlobalBuildingId] = useState<string>('all');
+  const [viewingReceiptUrl, setViewingReceiptUrl] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = 'Quản lý Thanh toán';
@@ -254,6 +255,12 @@ export default function ThanhToanPage() {
   const handleEdit = (thanhToan: ThanhToanPopulated) => {
     setEditingThanhToan(thanhToan);
     setIsDialogOpen(true);
+  };
+
+  const handleViewReceipt = (thanhToan: ThanhToanPopulated) => {
+    if (thanhToan.anhBienLai) {
+      setViewingReceiptUrl(thanhToan.anhBienLai);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -465,6 +472,7 @@ export default function ThanhToanPage() {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onDownload={handleDownload}
+            onViewReceipt={handleViewReceipt}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             methodFilter={methodFilter}
@@ -480,6 +488,26 @@ export default function ThanhToanPage() {
           />
         </CardContent>
       </Card>
+
+      {/* View Receipt Dialog */}
+      <Dialog open={!!viewingReceiptUrl} onOpenChange={(open) => !open && setViewingReceiptUrl(null)}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Biên lai thanh toán</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center p-4 bg-gray-50 rounded-lg min-h-[300px]">
+             {viewingReceiptUrl ? (
+               <img src={viewingReceiptUrl} alt="Biên lai" className="max-w-full max-h-[70vh] object-contain rounded-md shadow-sm" />
+             ) : (
+               <div className="text-gray-400">Không có ảnh biên lai</div>
+             )}
+          </div>
+          <DialogFooter>
+             <Button variant="outline" onClick={() => setViewingReceiptUrl(null)}>Đóng</Button>
+             <Button onClick={() => window.open(viewingReceiptUrl || '', '_blank')}><Download className="h-4 w-4 mr-2" />Tải xuống</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Mobile view */}
       <div className="md:hidden">
@@ -656,6 +684,15 @@ export default function ThanhToanPage() {
                           <Button variant="outline" size="sm" className="text-emerald-600 border-emerald-200" onClick={() => handleUpdateStatus(thanhToan._id!, 'duyet')}>Duyệt</Button>
                           <Button variant="outline" size="sm" className="text-orange-600 border-orange-200 mr-2" onClick={() => handleUpdateStatus(thanhToan._id!, 'tuChoi')}>Từ chối</Button>
                         </>
+                      )}
+                      {thanhToan.anhBienLai && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewReceipt(thanhToan)}
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
                       )}
                       <Button
                         variant="outline"

@@ -136,6 +136,7 @@ type ThanhToanTableProps = {
   onEdit: (thanhToan: ThanhToanPopulated) => void
   onDelete: (id: string) => void
   onDownload?: (thanhToan: ThanhToanPopulated) => void
+  onViewReceipt?: (thanhToan: ThanhToanPopulated) => void
   onUpdateStatus?: (id: string, action: 'duyet' | 'tuChoi') => void
 }
 
@@ -292,6 +293,15 @@ const createColumns = (props: ThanhToanTableProps & { setThanhToanToDelete: (t: 
             <Edit className="mr-2 h-4 w-4" />
             Chỉnh sửa
           </DropdownMenuItem>
+          {row.original.anhBienLai && props.onViewReceipt && (
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              props.onViewReceipt!(row.original);
+            }}>
+              <Eye className="mr-2 h-4 w-4" />
+              Xem biên lai
+            </DropdownMenuItem>
+          )}
           {row.original.anhBienLai && props.onDownload && (
             <DropdownMenuItem onClick={(e) => {
               e.stopPropagation();

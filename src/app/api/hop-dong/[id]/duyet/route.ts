@@ -103,12 +103,72 @@ export async function PUT(
       const khachThueIds = hopDong.khachThueId.map((id: any) => id.toString());
       await updateAllKhachThueStatus(khachThueIds);
 
-      // Gửi thông báo cho chủ nhà
+      // Import HoaDon if not already
+      const HoaDon = (await import('@/models/HoaDon')).default;
+
+      // Sinh hóa đơn tiền cọc tự động
+      let checkoutUrl = '';
+      if (chuNhaId && hopDong.tienCoc > 0) {
+        const dbUser = await mongoose.model('NguoiDung').findById(chuNhaId).select('thongTinThanhToan');
+        if (dbUser && dbUser.thongTinThanhToan && dbUser.thongTinThanhToan.soTaiKhoan) {
+          const { nganHang, soTaiKhoan, chuTaiKhoan } = dbUser.thongTinThanhToan;
+          // Fix URL spaces and ensure clean query params
+          const bankId = encodeURIComponent(nganHang.trim().replace(/\s+/g, ''));
+          const accNo = encodeURIComponent(soTaiKhoan.trim());
+          const addInfo = encodeURIComponent(`Thu tien coc HD ${hopDong.maHopDong}`);
+          let accName = '';
+          if (chuTaiKhoan) accName = `&accountName=${encodeURIComponent(chuTaiKhoan.trim())}`;
+          
+          checkoutUrl = `https://img.vietqr.io/image/${bankId}-${accNo}-compact2.png?amount=${hopDong.tienCoc}&addInfo=${addInfo}${accName}`;
+        }
+
+        const now = new Date();
+        const hoaDonCoc = await HoaDon.create({
+          maHoaDon: 'COC-' + hopDong.maHopDong,
+          hopDong: hopDong._id,
+          phong: hopDong.phong._id || hopDong.phong,
+          khachThue: hopDong.nguoiDaiDien,
+          thang: now.getMonth() + 1,
+          nam: now.getFullYear(),
+          tienPhong: 0,
+          tienDien: 0,
+          soDien: 0,
+          chiSoDienBanDau: hopDong.chiSoDienBanDau,
+          chiSoDienCuoiKy: hopDong.chiSoDienBanDau,
+          tienNuoc: 0,
+          soNuoc: 0,
+          chiSoNuocBanDau: hopDong.chiSoNuocBanDau,
+          chiSoNuocCuoiKy: hopDong.chiSoNuocBanDau,
+          phiDichVu: [],
+          tongTien: hopDong.tienCoc,
+          daThanhToan: 0,
+          conLai: hopDong.tienCoc,
+          trangThai: 'chuaThanhToan',
+          hanThanhToan: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000), // 3 days to pay deposit
+          ghiChu: `Hóa đơn thu tiền ĐẶT CỌC ban đầu cho hợp đồng ${hopDong.maHopDong}`,
+          checkoutUrl: checkoutUrl
+        });
+
+        // Gửi thông báo có Hóa đơn Cọc
+        try {
+          await ThongBao.create({
+            tieuDe: `[Quan Trọng] Đóng phí Đặt cọc Hợp đồng - Phòng ${tenPhong}`,
+            noiDung: `Hệ thống vừa phát hành Hóa đơn tiền cọc trị giá ${hopDong.tienCoc.toLocaleString('vi-VN')}đ. Bạn vui lòng quét mã VietQR và thanh toán nhé!`,
+            loai: 'hoaDon',
+            nguoiGui: new mongoose.Types.ObjectId(chuNhaId.toString()), // Chủ nhà gửi
+            nguoiNhan: [new mongoose.Types.ObjectId(userId)], // Gửi về cho bạn người duyệt
+            phong: [hopDong.phong._id || hopDong.phong],
+            ngayGui: new Date(),
+          });
+        } catch(e) {}
+      }
+
+      // Gửi thông báo cho chủ nhà (Hợp đồng đã duyệt)
       if (chuNhaId) {
         try {
           await ThongBao.create({
             tieuDe: `Hợp đồng đã được duyệt - Phòng ${tenPhong}`,
-            noiDung: `Khách thuê đã đồng ý và duyệt hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}). Hợp đồng hiện đã có hiệu lực.`,
+            noiDung: `Khách thuê đã đồng ý và duyệt hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}). ${hopDong.tienCoc > 0 ? 'Hóa đơn tiền Đặt cọc đã được phát hành tự động tới khách.' : ''}`,
             loai: 'hopDong',
             nguoiGui: new mongoose.Types.ObjectId(userId),
             nguoiNhan: [chuNhaId],
