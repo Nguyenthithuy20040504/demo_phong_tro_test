@@ -153,20 +153,16 @@ export async function GET(request: NextRequest) {
             {
               $match: {
                 $expr: {
-                  $or: [
-                    { $eq: ['$_id', '$$tenantId'] },
+                  $and: [
+                    { $eq: ['$nguoiQuanLy', '$$landlordId'] },
                     {
-                      $and: [
-                        { $eq: ['$nguoiQuanLy', '$$landlordId'] },
-                        {
-                          $or: [
-                            { $eq: ['$soDienThoai', '$$phone'] },
-                            { $and: [
-                              { $ne: ['$$email', null] },
-                              { $eq: [{ $toLower: '$email' }, '$$email'] }
-                            ]}
-                          ]
-                        }
+                      $or: [
+                        { $eq: ['$_id', '$$tenantId'] },
+                        { $eq: ['$soDienThoai', '$$phone'] },
+                        { $and: [
+                          { $ne: ['$$email', null] },
+                          { $eq: [{ $toLower: '$email' }, '$$email'] }
+                        ]}
                       ]
                     }
                   ]
@@ -184,10 +180,7 @@ export async function GET(request: NextRequest) {
       {
         $addFields: {
           hasAccount: {
-            $or: [
-              { $gt: [{ $strLenCP: { $ifNull: ["$matKhau", ""] } }, 5] },
-              { $eq: ['$userAccount.matKhau', 1] }
-            ]
+            $eq: ['$userAccount.matKhau', 1]
           }
         }
       },

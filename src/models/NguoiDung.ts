@@ -66,7 +66,7 @@ const NguoiDungSchema = new Schema<INguoiDung>({
   soDienThoai: {
     type: String,
     required: false,
-    match: [/^[0-9]{10,11}$/, 'Số điện thoại không hợp lệ']
+    match: [/^(kt_)?[0-9]{10,11}$/, 'Số điện thoại không hợp lệ']
   },
   vaiTro: {
     type: String,
@@ -97,7 +97,7 @@ const NguoiDungSchema = new Schema<INguoiDung>({
   phone: {
     type: String,
     required: false,
-    match: [/^[0-9]{10,11}$/, 'Invalid phone number']
+    match: [/^(kt_)?[0-9]{10,11}$/, 'Invalid phone number']
   },
   role: {
     type: String,
