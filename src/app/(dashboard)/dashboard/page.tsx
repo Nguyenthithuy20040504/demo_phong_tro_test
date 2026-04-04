@@ -440,22 +440,22 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 pb-12 w-full">
       {/* ===== HEADER SECTION ===== */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 md:gap-4 mb-4 md:mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Dashboard tổng quan</h1>
-          <p className="text-sm font-medium text-gray-500 mt-1 flex items-center gap-2">
-            <CalendarIcon className="h-4 w-4 opacity-70" />
+          <h1 className="text-xl md:text-3xl font-extrabold text-gray-900 tracking-tight">Dashboard tổng quan</h1>
+          <p className="text-xs md:text-sm font-medium text-gray-500 mt-1 flex items-center gap-2">
+            <CalendarIcon className="h-3.5 md:h-4 w-3.5 md:w-4 opacity-70" />
             Báo cáo vận hành tháng {currentMonth}, {currentYear}
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs font-bold text-teal-600 bg-teal-50 px-3 py-1.5 rounded-full border border-teal-100 uppercase tracking-wider">
-           <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+        <div className="flex items-center gap-2 text-[10px] md:text-xs font-bold text-teal-600 bg-teal-50 px-2.5 md:px-3 py-1 md:py-1.5 rounded-full border border-teal-100 uppercase tracking-wider w-fit">
+           <div className="w-1.5 md:w-2 h-1.5 md:h-2 rounded-full bg-teal-500 animate-pulse" />
            Dữ liệu thời gian thực
         </div>
       </div>
 
       {/* ===== FILTERS BAR ===== */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-1.5 rounded-2xl border border-gray-100 shadow-sm mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4 bg-white p-1.5 rounded-xl md:rounded-2xl border border-gray-100 shadow-sm mb-4 md:mb-8">
         <div className="flex flex-wrap items-center gap-2 p-1.5">
           <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-r border-gray-100 mr-2">
             <Filter className="h-3.5 w-3.5" />
@@ -463,7 +463,7 @@ export default function DashboardPage() {
           </div>
 
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-[160px] h-10 rounded-xl border-none bg-gray-50 hover:bg-gray-100 transition-colors text-sm font-semibold shadow-none focus:ring-0">
+            <SelectTrigger className="w-[140px] md:w-[160px] h-9 md:h-10 rounded-xl border-none bg-gray-50 hover:bg-gray-100 transition-colors text-xs md:text-sm font-semibold shadow-none focus:ring-0">
               <div className="flex items-center gap-2 text-gray-700">
                 <CalendarIcon className="h-4 w-4 text-teal-600" />
                 <SelectValue placeholder="Khoảng thời gian" />
@@ -498,19 +498,19 @@ export default function DashboardPage() {
       {stats && (
         <>
           {/* ===== 4 SUMMARY CARDS ===== */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
             {/* Card 1: Tổng doanh thu */}
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300">
               <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#14b8a6]" />
-              <div className="p-6">
-                <div className="flex items-center gap-3 text-sm font-medium text-gray-500 mb-4">
-                  <div className="p-2 bg-teal-50 rounded-lg text-teal-600 group-hover:scale-110 transition-transform">
-                    <DollarSign className="h-4 w-4" />
+              <div className="p-3 md:p-6">
+                <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm font-medium text-gray-500 mb-2 md:mb-4">
+                  <div className="p-1.5 md:p-2 bg-teal-50 rounded-lg text-teal-600 group-hover:scale-110 transition-transform">
+                    <DollarSign className="h-3.5 w-3.5 md:h-4 md:w-4" />
                   </div>
                   <span>Tổng doanh thu {monthNames[currentMonth]}</span>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <p className="text-3xl font-bold text-gray-900 tracking-tight leading-none mb-2">
+                  <p className="text-lg md:text-3xl font-bold text-gray-900 tracking-tight leading-none mb-1 md:mb-2">
                     {formatCurrency(stats.doanhThuThang)}
                   </p>
                   <div className="flex items-center gap-1.5 text-xs">
@@ -533,15 +533,15 @@ export default function DashboardPage() {
             {/* Card 2: Tổng nợ chưa thu */}
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300">
               <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#ef4444]" />
-              <div className="p-6">
-                <div className="flex items-center gap-3 text-sm font-medium text-gray-500 mb-4">
-                  <div className="p-2 bg-red-50 rounded-lg text-red-600 group-hover:scale-110 transition-transform">
-                    <AlertCircle className="h-4 w-4" />
+              <div className="p-3 md:p-6">
+                <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm font-medium text-gray-500 mb-2 md:mb-4">
+                  <div className="p-1.5 md:p-2 bg-red-50 rounded-lg text-red-600 group-hover:scale-110 transition-transform">
+                    <AlertCircle className="h-3.5 w-3.5 md:h-4 md:w-4" />
                   </div>
                   <span>Tổng nợ chưa thu</span>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <p className="text-3xl font-bold text-red-600 tracking-tight leading-none mb-2">
+                  <p className="text-lg md:text-3xl font-bold text-red-600 tracking-tight leading-none mb-1 md:mb-2">
                     {formatCurrency(stats.tongNoKhongThu ?? 0)}
                   </p>
                   <div className="flex items-center gap-1.5 text-xs px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 font-bold border border-orange-100 w-fit">
@@ -555,15 +555,15 @@ export default function DashboardPage() {
             {/* Card 3: Tỉ lệ lấp đầy */}
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300">
               <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#3b82f6]" />
-              <div className="p-6">
-                <div className="flex items-center gap-3 text-sm font-medium text-gray-500 mb-4">
-                  <div className="p-2 bg-blue-50 rounded-lg text-blue-600 group-hover:scale-110 transition-transform">
-                    <Home className="h-4 w-4" />
+              <div className="p-3 md:p-6">
+                <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm font-medium text-gray-500 mb-2 md:mb-4">
+                  <div className="p-1.5 md:p-2 bg-blue-50 rounded-lg text-blue-600 group-hover:scale-110 transition-transform">
+                    <Home className="h-3.5 w-3.5 md:h-4 md:w-4" />
                   </div>
                   <span>Tỉ lệ lấp đầy</span>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <p className="text-3xl font-bold text-gray-900 tracking-tight leading-none mb-2">
+                  <p className="text-lg md:text-3xl font-bold text-gray-900 tracking-tight leading-none mb-1 md:mb-2">
                     {stats.tongSoPhong > 0 ? Math.round((stats.phongDangThue / stats.tongSoPhong) * 100) : 0}%
                   </p>
                   <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
@@ -577,15 +577,15 @@ export default function DashboardPage() {
             {/* Card 4: Sự cố chờ xử lý */}
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300">
               <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#fb923c]" />
-              <div className="p-6">
-                <div className="flex items-center gap-3 text-sm font-medium text-gray-500 mb-4">
-                  <div className="p-2 bg-orange-50 rounded-lg text-orange-600 group-hover:scale-110 transition-transform">
-                    <Wrench className="h-4 w-4" />
+              <div className="p-3 md:p-6">
+                <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm font-medium text-gray-500 mb-2 md:mb-4">
+                  <div className="p-1.5 md:p-2 bg-orange-50 rounded-lg text-orange-600 group-hover:scale-110 transition-transform">
+                    <Wrench className="h-3.5 w-3.5 md:h-4 md:w-4" />
                   </div>
                   <span>Sự cố chờ xử lý</span>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <p className="text-3xl font-bold text-orange-600 tracking-tight leading-none mb-2">
+                  <p className="text-lg md:text-3xl font-bold text-orange-600 tracking-tight leading-none mb-1 md:mb-2">
                     {stats.suCoCanXuLy}
                   </p>
                   <div className="flex items-center gap-1.5 text-xs text-rose-600 px-1.5 py-0.5 rounded-full bg-rose-50 font-bold border border-rose-100 w-fit">
@@ -598,16 +598,16 @@ export default function DashboardPage() {
           </div>
 
           {/* ===== CHARTS SECTION ===== */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">
             {/* Bar Chart - Revenue vs Debt (2/3 width) */}
-            <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <div className="mb-6">
-                <h2 className="text-lg font-bold text-gray-900">
+            <div className="lg:col-span-2 bg-white rounded-xl md:rounded-2xl border border-gray-100 shadow-sm p-4 md:p-6">
+              <div className="mb-4 md:mb-6">
+                <h2 className="text-base md:text-lg font-bold text-gray-900">
                   Doanh thu & Công nợ {timeRange === '3_months' ? '3 tháng gần nhất' : timeRange === '12_months' ? '12 tháng gần nhất' : timeRange === 'from_year_start' ? 'từ đầu năm' : '6 tháng gần nhất'}
                 </h2>
-                <p className="text-sm text-gray-500">Biểu đồ so sánh tiền đã thu và tiền khách còn nợ</p>
+                <p className="text-xs md:text-sm text-gray-500">Biểu đồ so sánh tiền đã thu và tiền khách còn nợ</p>
               </div>
-              <div className="h-[300px]">
+              <div className="h-[220px] md:h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={stats.doanhThuVaCongNo6Thang || []}
@@ -657,7 +657,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Donut Chart - Room Status (1/3 width) */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 pb-8">
+            <div className="bg-white rounded-xl md:rounded-2xl border border-gray-100 shadow-sm p-4 md:p-6 pb-6 md:pb-8">
               <div className="mb-4">
                 <h2 className="text-lg font-bold text-gray-900">Trạng thái phòng</h2>
                 <p className="text-sm text-gray-500">Tỉ trọng phòng theo trạng thái</p>
@@ -667,7 +667,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ===== TABLES SECTION ===== */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 pb-8">
             {/* Hóa đơn quá hạn */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
               <div className="p-6 border-b border-gray-50 bg-gray-50/30">

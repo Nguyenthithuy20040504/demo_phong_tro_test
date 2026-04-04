@@ -2,12 +2,11 @@
 
 import * as React from "react";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Carousel,
   CarouselContent,
@@ -40,6 +39,7 @@ import type { SuCo, Phong, ToaNha, KhachThue } from '@/types';
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface SuCoDetailDialogProps {
@@ -65,41 +65,41 @@ export function SuCoDetailDialog({ suCo, isOpen, onClose, phongList, toaNhaList 
     switch (status) {
       case 'moi':
         return (
-          <Badge variant="destructive" className="bg-red-500 hover:bg-red-600 shadow-sm border-0 whitespace-nowrap px-4 py-1.5 font-bold rounded-full transition-colors">
-            <AlertCircle className="h-3.5 w-3.5 mr-1" />
+          <Badge variant="destructive" className="bg-red-500 hover:bg-red-600 shadow-sm border-0 whitespace-nowrap px-4 py-1.5 font-bold rounded-full transition-colors text-sm">
+            <AlertCircle className="h-4 w-4 mr-1 inline-block" />
             Mới
           </Badge>
         );
       case 'dangXuLy':
         return (
-          <Badge variant="secondary" className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm border-0 whitespace-nowrap px-4 py-1.5 font-bold rounded-full transition-colors">
-            <Clock className="h-3.5 w-3.5 mr-1" />
+          <Badge variant="secondary" className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm border-0 whitespace-nowrap px-4 py-1.5 font-bold rounded-full transition-colors text-sm">
+            <Clock className="h-4 w-4 mr-1 inline-block" />
             Đang xử lý
           </Badge>
         );
       case 'daXong':
         return (
-          <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 shadow-sm border-0 whitespace-nowrap px-4 py-1.5 font-bold rounded-full transition-colors">
-            <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+          <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 shadow-sm border-0 whitespace-nowrap px-4 py-1.5 font-bold rounded-full transition-colors text-sm">
+            <CheckCircle2 className="h-4 w-4 mr-1 inline-block" />
             Đã xong
           </Badge>
         );
       case 'daHuy':
         return (
-          <Badge variant="outline" className="border-gray-400 text-gray-600 font-black whitespace-nowrap px-4 py-1.5 bg-gray-50/50 rounded-full transition-colors">
-            <AlertTriangle className="h-3.5 w-3.5 mr-1" />
+          <Badge variant="outline" className="border-slate-400 text-slate-600 font-black whitespace-nowrap px-4 py-1.5 bg-slate-50/50 rounded-full transition-colors text-sm">
+            <AlertTriangle className="h-4 w-4 mr-1 inline-block" />
             Đã hủy
           </Badge>
         );
       default:
-        return <Badge variant="outline" className="whitespace-nowrap px-4 py-1.5 font-bold rounded-full uppercase tracking-widest">{status}</Badge>;
+        return <Badge variant="outline" className="whitespace-nowrap px-4 py-1.5 font-bold rounded-full uppercase tracking-widest text-sm">{status}</Badge>;
     }
   };
 
   const getPriorityBadge = (priority: string) => {
     switch (priority) {
       case 'thap':
-        return <Badge variant="outline" className="text-gray-500 border-gray-200">Thấp</Badge>;
+        return <Badge variant="outline" className="text-slate-500 border-slate-200">Thấp</Badge>;
       case 'trungBinh':
         return <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-100">Trung bình</Badge>;
       case 'cao':
@@ -122,7 +122,7 @@ export function SuCoDetailDialog({ suCo, isOpen, onClose, phongList, toaNhaList 
       case 'anNinh':
         return <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200">An ninh</Badge>;
       case 'khac':
-        return <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">Khác</Badge>;
+        return <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">Khác</Badge>;
       default:
         return <Badge variant="outline">{type}</Badge>;
     }
@@ -140,229 +140,215 @@ export function SuCoDetailDialog({ suCo, isOpen, onClose, phongList, toaNhaList 
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent 
-        className="w-[98vw] lg:max-w-6xl p-0 flex flex-col h-[96vh] my-auto mr-4 lg:mr-6 rounded-[3rem] border-0 shadow-[0_0_50px_-12px_rgba(0,0,0,0.15)] overflow-hidden bg-background/80 backdrop-blur-3xl transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent 
+        className="max-w-[95vw] sm:max-w-[650px] md:max-w-[850px] p-0 flex flex-col h-[85vh] border-0 shadow-2xl overflow-hidden rounded-[2.5rem] bg-white"
       >
         <div className="flex flex-col h-full overflow-hidden">
-          {/* Panoramic Top Header */}
-          <SheetHeader className="px-10 py-8 border-b bg-gradient-to-br from-primary/[0.03] via-transparent to-primary/[0.03] shrink-0 space-y-0">
-             <div className="flex items-center justify-between gap-8">
-              <div className="space-y-2 overflow-hidden">
-                <div className="flex items-center gap-5">
-                  <div className="bg-primary/10 p-3 rounded-[1.25rem] shadow-sm transform -rotate-2 hover:rotate-0 transition-all duration-500">
-                     <Wrench className="h-7 w-7 text-primary" />
-                  </div>
-                  <div>
-                    <SheetTitle className="text-4xl font-black tracking-tight text-foreground leading-none mb-1">
-                      {suCo.tieuDe}
-                    </SheetTitle>
-                    <SheetDescription className="text-muted-foreground font-semibold flex items-center gap-2">
-                       Mã sự cố: {suCo._id?.substring(0, 8).toUpperCase()}
-                    </SheetDescription>
-                  </div>
+          {/* Header */}
+          <DialogHeader className="px-6 md:px-8 py-5 md:py-6 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between shrink-0 space-y-4 sm:space-y-0 bg-white">
+             <div className="flex flex-col space-y-3 overflow-hidden w-full">
+                <div className="flex items-center gap-3 md:gap-4">
+                  <DialogTitle className="text-2xl md:text-3xl font-black text-slate-800 flex items-center gap-2 md:gap-3">
+                     <Wrench className="h-7 w-7 md:h-9 md:w-9 text-primary" />
+                     {suCo.tieuDe}
+                  </DialogTitle>
                   {getStatusBadge(suCo.trangThai)}
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-x-8 gap-y-1.5 text-muted-foreground/80 font-bold ml-1">
-                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/[0.03] border border-primary/[0.05]">
-                    <Home className="h-4 w-4 text-primary/60" />
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-slate-500 font-bold ml-10 md:ml-12">
+                  <div className="flex items-center gap-1.5 md:gap-2 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-100 text-xs md:text-sm">
+                    <Home className="h-3.5 w-3.5 md:h-4 md:w-4 text-slate-400" />
                     Phòng {(phongObj as Phong)?.maPhong || 'N/A'}
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/[0.03] border border-primary/[0.05]">
-                    <Building2 className="h-4 w-4 text-primary/60" />
+                  <div className="flex items-center gap-1.5 md:gap-2 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-100 text-xs md:text-sm">
+                    <Building2 className="h-3.5 w-3.5 md:h-4 md:w-4 text-slate-400" />
                     {toaNhaName}
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/[0.03] border border-primary/[0.05]">
-                    <Calendar className="h-4 w-4 text-primary/60" />
-                    {formatDate(suCo.ngayBaoCao)}
+                  <div className="text-xs md:text-sm font-semibold ml-1 text-slate-400 border-l pl-3 border-slate-200">
+                    Mã sự cố: <span className="uppercase text-slate-600">{suCo._id?.substring(0, 8)}</span>
                   </div>
                 </div>
-              </div>
+             </div>
+          </DialogHeader>
 
-              <div className="hidden lg:flex items-center gap-10 shrink-0 pr-4">
-                 <div className="text-right">
-                    <p className="text-[11px] text-muted-foreground uppercase font-black tracking-[0.2em] mb-1 opacity-60">Mức độ ưu tiên</p>
-                    <div>{getPriorityBadge(suCo.mucDoUuTien)}</div>
-                 </div>
-                 <div className="w-[1px] h-14 bg-primary/10 rotate-12" />
-                 <div className="text-right">
-                    <p className="text-[11px] text-muted-foreground uppercase font-black tracking-[0.2em] mb-1 opacity-60">Loại sự cố</p>
-                    <div>{getLoaiSuCoBadge(suCo.loaiSuCo)}</div>
-                 </div>
-              </div>
-            </div>
-          </SheetHeader>
-
-          <ScrollArea className="flex-1 w-full overflow-x-hidden no-scrollbar">
-            <div className="p-10 pb-16 max-w-full overflow-x-hidden">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+          <ScrollArea className="flex-1 w-full overflow-x-hidden no-scrollbar bg-slate-50/50">
+            <div className="p-6 md:p-8 pb-12 max-w-full overflow-x-hidden">
+              <div className="flex flex-col gap-8 md:grid md:grid-cols-2 items-start">
                 
-                {/* COLUMN 1: Visuals & Reporter Info (4/12) */}
-                <div className="lg:col-span-4 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100 fill-mode-both">
-                   <div className="space-y-5">
+                {/* COLUMN 1 */}
+                <div className="space-y-6 md:space-y-8 w-full">
+                   <div className="space-y-3.5 md:space-y-4 mt-2">
                     <div className="flex items-center justify-between px-2">
-                       <h3 className="font-black text-xs uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2.5">
-                         <GalleryVerticalEnd className="h-4 w-4 text-primary/60" />
+                       <h3 className="font-black text-xs md:text-sm uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2 md:gap-2.5">
+                         <GalleryVerticalEnd className="h-4 w-4 md:h-5 md:w-5 text-slate-400" />
                          Ảnh hiện trường
                        </h3>
-                       <Badge variant="secondary" className="rounded-full text-[10px] px-2.5 py-0.5 bg-primary/5 text-primary/70 border-0 font-black">
+                       <Badge variant="secondary" className="rounded-full text-[10px] md:text-xs px-2.5 py-0.5 bg-slate-100 text-slate-600 font-black">
                          {suCo.anhSuCo?.length || 0}
                        </Badge>
                     </div>
 
                     {suCo.anhSuCo && suCo.anhSuCo.length > 0 ? (
-                      <div className="relative group overflow-hidden rounded-[2.5rem]">
+                      <div className="relative group overflow-hidden rounded-[1.5rem] md:rounded-[2rem] border-2 border-slate-100 shadow-sm">
                         <Carousel className="w-full" opts={{ loop: true }}>
                           <CarouselContent>
                             {suCo.anhSuCo.map((img, index) => (
                               <CarouselItem key={index}>
-                                <div className="p-0">
-                                  <Card className="overflow-hidden border-0 shadow-none bg-transparent rounded-none">
-                                    <img
-                                      src={img}
-                                      alt={`Sự cố ${suCo.tieuDe}`}
-                                      className="w-full aspect-[4/3] object-cover transition-transform duration-1000 group-hover:scale-105"
-                                    />
-                                  </Card>
+                                <div className="p-0 bg-white">
+                                  <img
+                                    src={img}
+                                    alt={`Sự cố ${suCo.tieuDe}`}
+                                    className="w-full aspect-[4/3] md:aspect-[16/10] object-cover transition-transform duration-1000 group-hover:scale-105"
+                                  />
                                 </div>
                               </CarouselItem>
                             ))}
                           </CarouselContent>
                           {suCo.anhSuCo.length > 1 && (
                             <>
-                              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none z-20">
-                                <CarouselPrevious className="static translate-y-0 h-11 w-11 bg-white/30 backdrop-blur-sm hover:bg-white/60 text-white/90 hover:text-white border border-white/20 shadow-lg pointer-events-auto opacity-85 hover:opacity-100 transition-all flex items-center justify-center [&_svg]:size-5" />
+                              <div className="absolute inset-y-0 left-2 flex items-center pointer-events-none z-20">
+                                <CarouselPrevious className="static translate-y-0 h-8 w-8 md:h-9 md:w-9 bg-white/50 backdrop-blur-sm hover:bg-white text-slate-700 shadow-sm pointer-events-auto transition-all [&_svg]:size-3 md:[&_svg]:size-4" />
                               </div>
-                              <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none z-20">
-                                <CarouselNext className="static translate-y-0 h-11 w-11 bg-white/30 backdrop-blur-sm hover:bg-white/60 text-white/90 hover:text-white border border-white/20 shadow-lg pointer-events-auto opacity-85 hover:opacity-100 transition-all flex items-center justify-center [&_svg]:size-5" />
+                              <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none z-20">
+                                <CarouselNext className="static translate-y-0 h-8 w-8 md:h-9 md:w-9 bg-white/50 backdrop-blur-sm hover:bg-white text-slate-700 shadow-sm pointer-events-auto transition-all [&_svg]:size-3 md:[&_svg]:size-4" />
                               </div>
                             </>
                           )}
                         </Carousel>
                       </div>
                     ) : (
-                      <div className="aspect-[4/3] flex flex-col items-center justify-center bg-primary/[0.02] rounded-[2.5rem] border-2 border-dashed border-primary/10 space-y-4">
-                        <ImageIcon className="h-12 w-12 text-primary/10" />
-                        <p className="text-[11px] font-black text-primary/30 uppercase tracking-widest">Không có ảnh đính kèm</p>
+                      <div className="aspect-[4/3] md:aspect-[16/10] flex flex-col items-center justify-center bg-white rounded-[1.5rem] md:rounded-[2rem] border-2 border-dashed border-slate-200 space-y-3 shadow-sm">
+                        <ImageIcon className="h-8 w-8 md:h-10 md:w-10 text-slate-300" />
+                        <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">Không đính kèm ảnh</p>
                       </div>
                     )}
                    </div>
 
-                   <section className="space-y-5">
-                      <h3 className="font-black text-xs uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2.5 px-2">
-                        <User className="h-4 w-4 text-primary/60" />
+                   <section className="space-y-3.5 md:space-y-4">
+                      <h3 className="font-black text-xs md:text-sm uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2 md:gap-2.5 px-2">
+                        <MessageSquare className="h-4 w-4 md:h-5 md:w-5 text-slate-400" />
+                        Mô tả chi tiết
+                      </h3>
+                      <div className="bg-white p-5 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border-2 border-slate-100 min-h-[120px] md:min-h-[140px] shadow-sm">
+                        <p className="text-base md:text-lg text-slate-700 leading-relaxed font-bold">
+                          "{suCo.moTa}"
+                        </p>
+                      </div>
+                   </section>
+
+                   <section className="space-y-3.5 md:space-y-4">
+                      <h3 className="font-black text-xs md:text-sm uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2 md:gap-2.5 px-2">
+                        <ClipboardList className="h-4 w-4 md:h-5 md:w-5 text-slate-400" />
+                        Ghi chú xử lý
+                      </h3>
+                      <div className="bg-amber-50 p-5 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border-2 border-amber-100/50 min-h-[100px] md:min-h-[120px] shadow-sm">
+                        <p className="text-sm md:text-base text-amber-800/80 leading-relaxed font-bold italic">
+                          {suCo.ghiChuXuLy || "Chưa có ghi chú xử lý nào..."}
+                        </p>
+                      </div>
+                   </section>
+                </div>
+
+                {/* COLUMN 2 */}
+                <div className="space-y-6 md:space-y-8 w-full mt-2 lg:mt-0">
+                   <div className="grid grid-cols-2 gap-3 mb-2">
+                     <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center flex flex-col items-center justify-center">
+                        <p className="text-[10px] sm:text-xs text-slate-400 uppercase font-black tracking-widest mb-2">Ưu tiên</p>
+                        <div>{getPriorityBadge(suCo.mucDoUuTien)}</div>
+                     </div>
+                     <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center flex flex-col items-center justify-center">
+                        <p className="text-[10px] sm:text-xs text-slate-400 uppercase font-black tracking-widest mb-2">Phân loại</p>
+                        <div>{getLoaiSuCoBadge(suCo.loaiSuCo)}</div>
+                     </div>
+                   </div>
+
+                   <section className="space-y-3.5 md:space-y-4">
+                      <h3 className="font-black text-xs md:text-sm uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2 md:gap-2.5 px-2">
+                        <User className="h-4 w-4 md:h-5 md:w-5 text-slate-400" />
                         Người báo cáo
                       </h3>
                       
                       {hasReporter ? (
-                        <Card className="border-0 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.05)] bg-gradient-to-br from-indigo-500/[0.08] to-emerald-500/[0.03] rounded-[2.5rem] overflow-hidden p-6 hover:shadow-xl hover:scale-[1.02] transition-all duration-500 group">
-                          <div className="flex items-center gap-5">
-                             <div className="bg-white p-3 rounded-2xl shadow-sm shrink-0 group-hover:rotate-12 transition-transform duration-500">
-                               <Users className="h-6 w-6 text-indigo-500/80" />
+                        <div className="bg-white border-2 border-slate-100 rounded-[1.5rem] md:rounded-[2rem] overflow-hidden p-5 md:p-6 hover:border-indigo-100 transition-colors shadow-sm group">
+                          <div className="flex items-center gap-4 md:gap-5">
+                             <div className="bg-indigo-50 p-2.5 md:p-3 rounded-[1rem] md:rounded-2xl border border-indigo-100 shrink-0 group-hover:scale-110 transition-transform duration-300">
+                               <Users className="h-5 w-5 md:h-6 md:w-6 text-indigo-500" />
                              </div>
                              <div className="overflow-hidden">
-                               <h4 className="text-2xl font-black text-foreground truncate drop-shadow-sm">{khachThueInfo.hoTen}</h4>
-                               <a href={`tel:${khachThueInfo.soDienThoai}`} className="text-xs font-black text-primary/80 flex items-center gap-1.5 mt-1 hover:text-primary hover:translate-x-1 transition-all">
-                                 <Phone className="h-3.5 w-3.5" />
+                               <h4 className="text-lg md:text-xl font-black text-slate-700 truncate">{khachThueInfo.hoTen}</h4>
+                               <a href={`tel:${khachThueInfo.soDienThoai}`} className="text-xs md:text-sm font-bold text-slate-500 flex items-center gap-1.5 mt-1 hover:text-primary transition-all">
+                                 <Phone className="h-3.5 w-3.5 md:h-4 md:w-4" />
                                  {khachThueInfo.soDienThoai}
                                </a>
                              </div>
                           </div>
-                        </Card>
+                        </div>
                       ) : (
-                        <div className="flex flex-col items-center justify-center py-8 bg-primary/[0.01] rounded-[2.5rem] border-2 border-dashed border-primary/10 space-y-4 text-center p-8 group overflow-hidden relative">
-                           <div className="absolute inset-0 bg-primary/[0.02] opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
-                           <AlertCircle className="h-10 w-10 text-primary/10 relative z-10" />
-                           <p className="text-[11px] font-black text-primary/40 uppercase tracking-[0.2em] relative z-10">
-                             Báo cáo bởi hệ thống / Quản trị viên
+                        <div className="flex flex-col items-center justify-center py-6 md:py-8 bg-slate-100/50 rounded-[1.5rem] md:rounded-[2rem] border-2 border-dashed border-slate-200 space-y-3 md:space-y-4 text-center px-4 md:px-6">
+                           <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-slate-300" />
+                           <p className="text-[10px] md:text-xs font-black text-slate-500 uppercase tracking-wider">
+                             Báo cáo bởi Quản trị viên
                            </p>
                         </div>
                       )}
                    </section>
-                </div>
 
-                {/* COLUMN 2: Description & Content (5/12) */}
-                <div className="lg:col-span-5 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200 fill-mode-both">
-                   <section className="space-y-5">
-                      <h3 className="font-black text-xs uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2.5 px-2">
-                        <MessageSquare className="h-4 w-4 text-primary/60" />
-                        Mô tả chi tiết sự cố
-                      </h3>
-                      <div className="bg-primary/[0.01] p-7 rounded-[2.5rem] border border-primary/5 min-h-[160px] shadow-sm relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-1000" />
-                        <ScrollArea className="h-full pr-4 relative z-10">
-                          <p className="text-lg text-foreground/70 leading-relaxed font-bold opacity-90">
-                            {suCo.moTa}
-                          </p>
-                        </ScrollArea>
-                      </div>
-                   </section>
-
-                   <section className="space-y-5">
-                      <h3 className="font-black text-xs uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2.5 px-2">
-                        <ClipboardList className="h-4 w-4 text-primary/60" />
-                        Ghi chú xử lý
-                      </h3>
-                      <div className="bg-amber-500/[0.03] p-7 rounded-[2.5rem] border border-amber-500/10 min-h-[120px] shadow-sm relative overflow-hidden group">
-                        <ScrollArea className="h-full pr-4 relative z-10">
-                          <p className="text-sm text-amber-900/70 leading-relaxed font-bold italic">
-                            {suCo.ghiChuXuLy || "Chưa có ghi chú xử lý nào được cập nhật..."}
-                          </p>
-                        </ScrollArea>
-                      </div>
-                   </section>
-                </div>
-
-                {/* COLUMN 3: Processing Timeline (3/12) */}
-                <div className="lg:col-span-3 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300 fill-mode-both">
-                   <section className="space-y-5">
-                      <h3 className="font-black text-xs uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2.5 px-2">
-                        <History className="h-4 w-4 text-primary/60" />
-                        Mốc thời gian
+                   <section className="space-y-3.5 md:space-y-4">
+                      <h3 className="font-black text-xs md:text-sm uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2 md:gap-2.5 px-2">
+                        <History className="h-4 w-4 md:h-5 md:w-5 text-slate-400" />
+                        Tiến độ xử lý
                       </h3>
                       
-                      <div className="space-y-4 relative ml-3">
-                         <div className="absolute left-[-13px] top-2 bottom-2 w-0.5 bg-primary/10" />
-                         
-                         <div className="relative pl-6">
-                            <div className="absolute left-[-19px] top-1.5 h-3 w-3 rounded-full bg-primary ring-4 ring-primary/10" />
-                            <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest opacity-60 mb-0.5">Ngày báo cáo</p>
-                            <p className="text-sm font-black text-foreground">{formatDate(suCo.ngayBaoCao)}</p>
-                         </div>
-
-                         {suCo.ngayXuLy && (
-                           <div className="relative pl-6">
-                              <div className="absolute left-[-19px] top-1.5 h-3 w-3 rounded-full bg-amber-500 ring-4 ring-amber-500/10" />
-                              <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest opacity-60 mb-0.5">Bắt đầu xử lý</p>
-                              <p className="text-sm font-black text-foreground">{formatDate(suCo.ngayXuLy)}</p>
+                      <div className="bg-white p-5 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border-2 border-slate-100 shadow-sm">
+                        <div className="space-y-4 md:space-y-5 relative ml-2 md:ml-3 py-1 md:py-2">
+                           {/* Dòng timeline dọc */}
+                           <div className="absolute left-[2.5px] top-2 bottom-2 w-0.5 bg-slate-100" />
+                           
+                           <div className="relative pl-7 md:pl-8">
+                              <div className="absolute left-[-2px] top-1.5 h-3 w-3 md:h-3.5 md:w-3.5 rounded-full bg-slate-300 ring-4 ring-slate-100" />
+                              <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Ngày báo cáo</p>
+                              <p className="text-sm md:text-base font-black text-slate-700">{formatDate(suCo.ngayBaoCao)}</p>
                            </div>
-                         )}
 
-                         {suCo.ngayHoanThanh && (
-                           <div className="relative pl-6">
-                              <div className="absolute left-[-19px] top-1.5 h-3 w-3 rounded-full bg-emerald-500 ring-4 ring-emerald-500/10" />
-                              <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest opacity-60 mb-0.5">Hoàn thành</p>
-                              <p className="text-sm font-black text-foreground">{formatDate(suCo.ngayHoanThanh)}</p>
+                           {suCo.ngayXuLy && (
+                             <div className="relative pl-7 md:pl-8">
+                                <div className="absolute left-[-2px] top-1.5 h-3 w-3 md:h-3.5 md:w-3.5 rounded-full bg-amber-400 ring-4 ring-amber-50" />
+                                <p className="text-[10px] md:text-xs text-amber-500 font-bold uppercase tracking-wider mb-1">Bắt đầu xử lý</p>
+                                <p className="text-sm md:text-base font-black text-slate-700">{formatDate(suCo.ngayXuLy)}</p>
+                             </div>
+                           )}
+
+                           {suCo.ngayHoanThanh && (
+                             <div className="relative pl-7 md:pl-8">
+                                <div className="absolute left-[-2px] top-1.5 h-3 w-3 md:h-3.5 md:w-3.5 rounded-full bg-emerald-500 ring-4 ring-emerald-50" />
+                                <p className="text-[10px] md:text-xs text-emerald-600 font-bold uppercase tracking-wider mb-1">Hoàn thành</p>
+                                <p className="text-sm md:text-base font-black text-emerald-700">{formatDate(suCo.ngayHoanThanh)}</p>
+                             </div>
+                           )}
+
+                           <div className="relative pl-7 md:pl-8">
+                              <div className="absolute left-[-2px] top-1.5 h-3 w-3 md:h-3.5 md:w-3.5 rounded-full bg-blue-400 ring-4 ring-blue-50" />
+                              <p className="text-[10px] md:text-xs text-blue-500 font-bold uppercase tracking-wider mb-1">Cập nhật cuối</p>
+                              <p className="text-sm md:text-base font-black text-slate-700">{formatDate(suCo.ngayCapNhat)}</p>
                            </div>
-                         )}
-
-                         <div className="relative pl-6">
-                            <div className="absolute left-[-19px] top-1.5 h-3 w-3 rounded-full bg-gray-300 ring-4 ring-gray-100" />
-                            <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest opacity-60 mb-0.5">Cập nhật cuối</p>
-                            <p className="text-sm font-black text-foreground">{formatDate(suCo.ngayCapNhat)}</p>
-                         </div>
+                        </div>
                       </div>
                    </section>
-
-                   {/* Assignee section removed as per user request */}
                 </div>
 
               </div>
             </div>
           </ScrollArea>
         </div>
-      </SheetContent>
-    </Sheet>
+
+        {/* Footer */}
+        <div className="p-4 md:p-5 border-t bg-white flex justify-end gap-3 shrink-0">
+           <Button variant="outline" onClick={onClose} className="rounded-xl px-6 md:px-8 font-bold text-slate-600 text-sm md:text-base h-10 md:h-11">
+             Đóng
+           </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

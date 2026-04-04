@@ -215,3 +215,79 @@
     caret-color: transparent !important;
   }
 }
+
+/* ============================================
+   RESPONSIVE UTILITIES - TOÀN CỤC
+   ============================================ */
+
+/* Hide scrollbar while keeping scroll functionality */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Tables: horizontal scroll on mobile */
+@media (max-width: 768px) {
+  .overflow-x-auto table {
+    min-width: 600px;
+  }
+
+  /* Dashboard summary cards: tighter on small screens */
+  .recharts-wrapper {
+    font-size: 10px !important;
+  }
+
+  /* Dialog responsive: full width on mobile */
+  [role="dialog"] > div {
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* Smaller text in badges on mobile */
+  [class*="Badge"],
+  .badge {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+}
+
+/* Smaller devices (< 480px) */
+@media (max-width: 480px) {
+  /* Reduce base font-size slightly for tiny screens */
+  body {
+    font-size: 14px;
+  }
+
+  /* Cards: compact padding */
+  .p-6 {
+    padding: 1rem;
+  }
+
+  /* Tables header: smaller text */
+  th {
+    font-size: 10px !important;
+    padding: 8px 6px !important;
+  }
+
+  td {
+    font-size: 12px !important;
+    padding: 8px 6px !important;
+  }
+}
+
+/* Touch-friendly: larger tap targets on mobile */
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  a {
+    min-height: 36px;
+  }
+
+  /* Larger select triggers for touch */
+  [role="combobox"] {
+    min-height: 40px;
+  }
+}

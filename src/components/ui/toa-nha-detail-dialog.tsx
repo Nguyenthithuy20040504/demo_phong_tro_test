@@ -2,12 +2,11 @@
 
 import * as React from "react";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import {
   Building2,
@@ -16,17 +15,15 @@ import {
   Sparkles,
   Clock,
   History,
-  GalleryVerticalEnd,
-  LayoutDashboard,
   AlertCircle,
   CheckCircle2,
   Home,
   Layers,
+  X as CloseIcon,
 } from "lucide-react";
 import type { ToaNha } from '@/types';
-import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 
 interface ToaNhaDetailDialogProps {
   toaNha: ToaNha | null;
@@ -48,15 +45,15 @@ export function ToaNhaDetailDialog({ toaNha, isOpen, onClose }: ToaNhaDetailDial
   const getTrangThaiBadge = (count: number) => {
     if (count > 0) {
       return (
-        <Badge variant="destructive" className="bg-red-500 hover:bg-red-600 shadow-sm border-0 whitespace-nowrap px-4 py-1.5 font-bold rounded-full transition-colors">
-          <AlertCircle className="h-3.5 w-3.5 mr-1" />
+        <Badge variant="destructive" className="bg-red-500 hover:bg-red-600 shadow-sm border-0 whitespace-nowrap px-4 py-1.5 font-bold rounded-full transition-colors leading-none">
+          <AlertCircle className="h-3.5 w-3.5 mr-1 inline-block" />
           {count} Hỏng hóc
         </Badge>
       );
     }
     return (
-      <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 shadow-sm border-0 whitespace-nowrap px-4 py-1.5 font-bold rounded-full transition-colors">
-        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+      <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 shadow-sm border-0 whitespace-nowrap px-4 py-1.5 font-bold rounded-full transition-colors leading-none">
+        <CheckCircle2 className="h-3.5 w-3.5 mr-1 inline-block" />
         Bình thường
       </Badge>
     );
@@ -89,160 +86,145 @@ export function ToaNhaDetailDialog({ toaNha, isOpen, onClose }: ToaNhaDetailDial
   const getTienNghiLabel = (item: string) => {
     if (!item) return '';
     const lowerItem = item.toLowerCase();
-    
-    // Check if it already matches a label (accented)
     const labelValues = Object.values(tienNghiLabels);
     if (labelValues.some(l => l.toLowerCase() === lowerItem)) {
       const exactMatch = labelValues.find(l => l.toLowerCase() === lowerItem);
       return exactMatch || item;
     }
-
     if (tienNghiLabels[item]) return tienNghiLabels[item];
-    
-    // Search in keys case-insensitively
     const match = Object.entries(tienNghiLabels).find(([k]) => k.toLowerCase() === lowerItem);
     if (match) return match[1];
-
     return item;
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent 
-        className="w-[98vw] lg:max-w-4xl p-0 flex flex-col h-[90vh] my-auto mr-4 lg:mr-6 rounded-[3rem] border-0 shadow-[0_0_50px_-12px_rgba(0,0,0,0.15)] overflow-hidden bg-background/80 backdrop-blur-3xl transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent 
+        className="max-w-[95vw] sm:max-w-[550px] md:max-w-[650px] p-0 flex flex-col h-[85vh] border-0 shadow-2xl overflow-hidden rounded-[2.5rem]"
       >
-        <div className="flex flex-col h-full overflow-hidden">
-          <SheetHeader className="px-10 py-8 border-b bg-gradient-to-br from-primary/[0.03] via-transparent to-primary/[0.03] shrink-0 space-y-0">
-             <div className="flex items-center justify-between gap-8">
-              <div className="space-y-2 overflow-hidden">
-                <div className="flex items-center gap-5">
-                  <div className="bg-primary/10 p-3 rounded-[1.25rem] shadow-sm transform -rotate-2 hover:rotate-0 transition-all duration-500">
-                     <Building2 className="h-7 w-7 text-primary" />
-                  </div>
-                  <div>
-                    <SheetTitle className="text-4xl font-black tracking-tight text-foreground leading-none mb-1">
-                      {toaNha.tenToaNha}
-                    </SheetTitle>
-                    <SheetDescription className="text-muted-foreground font-semibold flex items-center gap-2">
-                       Thông tin chi tiết và tình trạng vận hành
-                    </SheetDescription>
-                  </div>
-                  {getTrangThaiBadge(suCoCount)}
-                </div>
-                
-                <div className="flex flex-wrap items-center gap-x-8 gap-y-1.5 text-muted-foreground/80 font-bold ml-1">
-                  <div className="flex items-center gap-2 text-sm max-w-[600px]">
-                    <MapPin className="h-4 w-4 text-primary/60 shrink-0" />
-                    <span className="truncate">{formatAddress(toaNha.diaChi)}</span>
-                  </div>
-                </div>
-              </div>
+        {/* Header */}
+        <DialogHeader className="px-8 py-5 border-b flex flex-row items-center justify-between shrink-0 space-y-0 bg-white">
+          <div className="flex items-center gap-4">
+            <DialogTitle className="text-3xl font-black text-slate-800 flex items-center gap-2">
+              <Building2 className="h-8 w-8 text-primary" />
+              Tòa nhà {toaNha.tenToaNha}
+            </DialogTitle>
+            {getTrangThaiBadge(suCoCount)}
+          </div>
+        </DialogHeader>
 
-              <div className="hidden lg:flex items-center gap-10 shrink-0 pr-4">
-                 <div className="text-right">
-                    <p className="text-[11px] text-muted-foreground uppercase font-black tracking-[0.2em] mb-1 opacity-60">Tổng số phòng</p>
-                    <p className="text-3xl font-black text-primary drop-shadow-sm">{toaNha.tongSoPhong}</p>
-                 </div>
+        {/* Body */}
+        <div className="flex-1 min-h-0 overflow-y-auto bg-slate-50/30 custom-scrollbar">
+          <div className="p-8 space-y-8">
+            {/* Address */}
+            <div className="bg-slate-100/50 p-4 rounded-xl flex items-center gap-3 border border-slate-100">
+              <div className="bg-slate-200/50 p-2 rounded-lg">
+                <MapPin className="h-5 w-5 text-slate-500" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Địa chỉ</p>
+                <p className="text-sm font-bold text-slate-700 truncate">
+                  {formatAddress(toaNha.diaChi)}
+                </p>
               </div>
             </div>
-          </SheetHeader>
 
-          <ScrollArea className="flex-1 w-full overflow-x-hidden no-scrollbar">
-            <div className="p-10 pb-16 max-w-full overflow-x-hidden">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
-                
-                {/* COLUMN 1 */}
-                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100 fill-mode-both">
-                   <section className="space-y-5">
-                      <h3 className="font-black text-xs uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2.5 px-2">
-                        <Info className="h-4 w-4 text-primary/60" />
-                        Mô tả chung
-                      </h3>
-                      <div className="bg-primary/[0.01] p-7 rounded-[2.5rem] border border-primary/5 min-h-[140px] shadow-sm relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-1000" />
-                        <ScrollArea className="h-full pr-4 relative z-10">
-                          <p className="text-base text-foreground/70 leading-relaxed font-bold italic opacity-90">
-                            {toaNha.moTa ? `"${toaNha.moTa}"` : "Một tòa nhà khang trang, an toàn và hiện đại..."}
-                          </p>
-                        </ScrollArea>
-                      </div>
-                   </section>
-
-                   <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-emerald-500/[0.05] p-5 rounded-[2rem] border border-emerald-500/10 shadow-inner-sm">
-                        <p className="text-[10px] text-emerald-600 uppercase font-black tracking-widest mb-1.5 opacity-60">Phòng trống</p>
-                        <p className="text-2xl font-black text-emerald-600">{(toaNha as any).phongTrong || 0}</p>
-                      </div>
-                      <div className="bg-indigo-500/[0.05] p-5 rounded-[2rem] border border-indigo-500/10 shadow-inner-sm">
-                        <p className="text-[10px] text-indigo-600 uppercase font-black tracking-widest mb-1.5 opacity-60">Đang thuê</p>
-                        <p className="text-2xl font-black text-indigo-600">{(toaNha as any).phongDangThue || 0}</p>
-                      </div>
-                   </div>
-
-                   <Card className="rounded-[2rem] border-primary/5 bg-primary/[0.02] shadow-none">
-                      <CardContent className="p-6 space-y-4">
-                        <div className="flex items-center gap-4 text-[11px]">
-                          <div className="bg-background/50 p-2 rounded-xl border border-primary/5 shadow-sm">
-                            <Clock className="h-4 w-4 text-primary/60" />
-                          </div>
-                          <span className="text-muted-foreground font-black uppercase tracking-wider opacity-60">Ngày tạo</span>
-                          <span className="font-black text-foreground ml-auto">{formatDate(toaNha.ngayTao)}</span>
-                        </div>
-                        <Separator className="bg-primary/5 shadow-sm" />
-                        <div className="flex items-center gap-4 text-[11px]">
-                          <div className="bg-background/50 p-2 rounded-xl border border-primary/5 shadow-sm">
-                            <History className="h-4 w-4 text-primary/60" />
-                          </div>
-                          <span className="text-muted-foreground font-black uppercase tracking-wider opacity-60">Cập nhật cuối</span>
-                          <span className="font-black text-foreground ml-auto">{formatDate(toaNha.ngayCapNhat)}</span>
-                        </div>
-                      </CardContent>
-                   </Card>
-                </div>
-
-                {/* COLUMN 2 */}
-                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200 fill-mode-both">
-                   <section className="space-y-5">
-                      <h3 className="font-black text-xs uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2.5 px-2">
-                        <Sparkles className="h-4 w-4 text-primary/60" />
-                        Tiện ích dùng chung
-                      </h3>
-                      <div className="flex flex-wrap gap-2.5 p-1">
-                        {toaNha.tienNghiChung && toaNha.tienNghiChung.length > 0 ? (
-                          toaNha.tienNghiChung.map((item) => (
-                            <Badge key={item} variant="secondary" className="px-4 py-2 rounded-2xl bg-white text-foreground/80 border border-primary/5 shadow-sm font-black text-[11px] uppercase tracking-widest hover:bg-primary/5 hover:text-primary transition-all duration-300">
-                              {getTienNghiLabel(item)}
-                            </Badge>
-                          ))
-                        ) : (
-                          <div className="bg-primary/[0.02] border border-dashed border-primary/10 px-6 py-3 rounded-2xl text-xs font-black text-primary/20 uppercase tracking-widest">Tiện ích cơ bản</div>
-                        )}
-                      </div>
-                   </section>
-
-                   <section className="space-y-5">
-                      <h3 className="font-black text-xs uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2.5 px-2">
-                        <AlertCircle className="h-4 w-4 text-primary/60" />
-                        Phòng bảo trì & Sự cố
-                      </h3>
-                      <div className="bg-red-500/[0.02] p-6 rounded-[2.5rem] border border-red-500/10 flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-black text-foreground/70">Phòng đang bảo trì</p>
-                          <p className="text-2xl font-black text-red-500">{(toaNha as any).phongBaoTri || 0}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-black text-foreground/70">Sự cố đang xử lý</p>
-                          <p className="text-2xl font-black text-red-500">{suCoCount}</p>
-                        </div>
-                      </div>
-                   </section>
-                </div>
-
+            {/* Main stats */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-white p-5 rounded-2xl border-2 border-slate-100 shadow-sm text-center">
+                <p className="text-[11px] font-black text-slate-500/70 uppercase tracking-widest mb-1">Tổng số phòng</p>
+                <p className="text-2xl font-black text-slate-700">{toaNha.tongSoPhong}</p>
+              </div>
+              <div className="bg-white p-5 rounded-2xl border-2 border-emerald-100 shadow-sm text-center">
+                <p className="text-[11px] font-black text-emerald-500/70 uppercase tracking-widest mb-1">Phòng trống</p>
+                <p className="text-2xl font-black text-emerald-600">{(toaNha as any).phongTrong || 0}</p>
+              </div>
+              <div className="bg-white p-5 rounded-2xl border-2 border-indigo-100 shadow-sm text-center">
+                <p className="text-[11px] font-black text-indigo-500/70 uppercase tracking-widest mb-1">Phòng đang thuê</p>
+                <p className="text-2xl font-black text-indigo-600">{(toaNha as any).phongDangThue || 0}</p>
               </div>
             </div>
-          </ScrollArea>
+
+            {/* Description */}
+            {toaNha.moTa && (
+              <div className="space-y-3">
+                <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Info className="h-4 w-4" />
+                  Mô tả tòa nhà
+                </h3>
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                  <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line italic">
+                    "{toaNha.moTa}"
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Amenities */}
+            <div className="space-y-3">
+              <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                <Sparkles className="h-4 w-4" />
+                Tiện ích dùng chung
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {toaNha.tienNghiChung && toaNha.tienNghiChung.length > 0 ? (
+                  toaNha.tienNghiChung.map((item) => (
+                    <Badge key={item} variant="outline" className="px-4 py-1.5 rounded-full text-[11px] font-semibold text-slate-600 border-slate-200 bg-white">
+                      {getTienNghiLabel(item)}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-400 italic">Tiện ích cơ bản</span>
+                )}
+              </div>
+            </div>
+
+            {/* Maintenance */}
+            <div className="space-y-3">
+              <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                Sự cố & Bảo trì
+              </h3>
+              <div className="bg-red-50 p-5 rounded-2xl border border-red-100 shadow-sm flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-slate-600 mb-1">Phòng đang bảo trì</p>
+                  <p className="text-xl font-black text-red-500">{(toaNha as any).phongBaoTri || 0}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-bold text-slate-600 mb-1">Sự cố đang xử lý</p>
+                  <p className="text-xl font-black text-red-500">{suCoCount}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer info (Dates) */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                <p className="text-[10px] font-black text-blue-400 uppercase tracking-tight flex items-center gap-1 mb-1">
+                  <Clock className="h-3 w-3" />
+                  Ngày tạo
+                </p>
+                <p className="text-sm font-black text-blue-600 truncate">{formatDate(toaNha.ngayTao)}</p>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-tight flex items-center gap-1 mb-1">
+                  <History className="h-3 w-3" />
+                  Cập nhật cuối
+                </p>
+                <p className="text-sm font-black text-slate-600">{formatDate(toaNha.ngayCapNhat)}</p>
+              </div>
+            </div>
+
+          </div>
         </div>
-      </SheetContent>
-    </Sheet>
+
+        {/* Footer actions */}
+        <div className="p-4 border-t bg-white flex justify-end gap-3 shrink-0">
+           <Button variant="outline" onClick={onClose} className="rounded-lg px-6 font-bold text-slate-600">
+             Đóng
+           </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

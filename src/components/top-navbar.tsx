@@ -136,22 +136,22 @@ export function TopNavbar() {
     <TooltipProvider delayDuration={300}>
       <div className="w-full flex flex-col sticky top-0 z-50 shadow-sm transition-all duration-300">
         {/* Primary Header (Dark Teal) */}
-        <header className="h-16 bg-[#006050] text-white flex items-center px-4 md:px-8 justify-between border-b border-white/5">
-          <div className="flex items-center gap-6">
-            <Link href="/dashboard" className="flex items-center gap-2.5 group">
-              <Home className="size-6 text-white" />
-              <span className="text-xl font-bold tracking-tight text-white hidden sm:inline-block">Quản lý nhà trọ</span>
+        <header className="h-14 md:h-16 bg-[#006050] text-white flex items-center px-3 md:px-8 justify-between border-b border-white/5">
+          <div className="flex items-center gap-3 md:gap-6">
+            <Link href="/dashboard" className="flex items-center gap-2 md:gap-2.5 group">
+              <Home className="size-5 md:size-6 text-white" />
+              <span className="text-base md:text-xl font-bold tracking-tight text-white hidden sm:inline-block">Quản lý nhà trọ</span>
             </Link>
           </div>
 
-          <div className="flex items-center gap-4 md:gap-6 lg:gap-8">
+          <div className="flex items-center gap-2 md:gap-6 lg:gap-8">
             {/* Building Selector */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 md:gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Link 
                     href="/dashboard/toa-nha" 
-                    className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-md transition-all text-white shadow-sm"
+                    className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-md transition-all text-white shadow-sm"
                   >
                     <Building className="h-4 w-4" />
                     <span className="hidden md:block text-sm font-medium">Tòa nhà:</span>
@@ -175,7 +175,7 @@ export function TopNavbar() {
                     variant="outline"
                     role="combobox"
                     aria-expanded={openBox}
-                    className="h-9 min-w-[200px] justify-between bg-white border-none text-gray-900 focus:ring-0 text-sm font-medium rounded-md px-3 shadow-sm hover:bg-white/95 transition-colors"
+                    className="h-8 md:h-9 min-w-[130px] md:min-w-[200px] justify-between bg-white border-none text-gray-900 focus:ring-0 text-xs md:text-sm font-medium rounded-md px-2 md:px-3 shadow-sm hover:bg-white/95 transition-colors"
                   >
                     <span className="truncate max-w-[150px]">
                       {selectedToaNha === "all" 
@@ -241,7 +241,7 @@ export function TopNavbar() {
               </Popover>
             </div>
 
-          <div className="flex items-center gap-3 md:gap-5">
+          <div className="flex items-center gap-2 md:gap-5">
             <NotificationBell />
             <NavUser user={userData} hideText />
           </div>
@@ -249,16 +249,16 @@ export function TopNavbar() {
       </header>
 
       {/* Secondary Header (Navigation Menu) */}
-      <nav className="h-12 bg-white border-b border-gray-100 flex items-center px-4 md:px-8 space-x-1 overflow-x-auto no-scrollbar">
+      <nav className="h-10 md:h-12 bg-white border-b border-gray-100 flex items-center px-2 md:px-8 space-x-0.5 md:space-x-1 overflow-x-auto no-scrollbar">
         {navItems.map((item, idx) => (
           <div key={idx} className="h-full flex items-center">
             {item.items ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-full px-4 rounded-none border-b-2 border-transparent data-[state=open]:border-primary data-[state=open]:bg-teal-50/50 transition-all font-medium text-gray-600 hover:text-primary">
-                    <item.icon className="size-4 mr-2 opacity-70" />
+                  <Button variant="ghost" size="sm" className="h-full px-2.5 md:px-4 rounded-none border-b-2 border-transparent data-[state=open]:border-primary data-[state=open]:bg-teal-50/50 transition-all font-medium text-xs md:text-sm text-gray-600 hover:text-primary whitespace-nowrap">
+                    <item.icon className="size-3.5 md:size-4 mr-1 md:mr-2 opacity-70" />
                     {item.title}
-                    <ChevronDown className="ml-1.5 size-3.5 opacity-50" />
+                    <ChevronDown className="ml-1 md:ml-1.5 size-3 md:size-3.5 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="min-w-[180px] rounded-xl shadow-xl border-gray-100 p-1.5">
@@ -272,9 +272,9 @@ export function TopNavbar() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button asChild variant="ghost" size="sm" className={`h-full px-4 rounded-none border-b-2 transition-all font-medium ${pathname === item.url ? 'border-primary text-primary bg-teal-50/30' : 'border-transparent text-gray-600 hover:text-primary'}`}>
+              <Button asChild variant="ghost" size="sm" className={`h-full px-2.5 md:px-4 rounded-none border-b-2 transition-all font-medium text-xs md:text-sm whitespace-nowrap ${pathname === item.url ? 'border-primary text-primary bg-teal-50/30' : 'border-transparent text-gray-600 hover:text-primary'}`}>
                 <Link href={item.url} className="flex items-center">
-                  <item.icon className="size-4 mr-2 opacity-70" />
+                  <item.icon className="size-3.5 md:size-4 mr-1 md:mr-2 opacity-70" />
                   {item.title}
                 </Link>
               </Button>
