@@ -35,6 +35,14 @@ export default function KhachThueDashboardPage() {
 
   const fetchDashboardData = async () => {
     try {
+      // Gọi ngầm CRON trong môi trường local để kích hoạt tự động hủy/nhắc nhở 
+      // (Trong thực tế function này sẽ do Vercel Cron chạy tự động)
+      try {
+        await fetch('/api/cron/hop-dong/kiem-tra-duyet');
+      } catch (e) {
+        console.error('Silently ignored cron fetch error');
+      }
+
       const response = await fetch('/api/auth/khach-thue/me', {
         credentials: "include",   
         cache: "no-store",

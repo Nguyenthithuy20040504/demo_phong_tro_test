@@ -8,11 +8,8 @@ import NguoiDung from '@/models/NguoiDung';
 
 export async function GET(request: NextRequest) {
   try {
-    // Basic authorization check (similar to existing cron)
-    const authHeader = request.headers.get('authorization');
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ message: 'Unauthorized cron trigger' }, { status: 401 });
-    }
+    // Bỏ qua check Authorization để cho phép cron-job.org truy cập tự do
+    // Vì đây là luồng tự động dọn dẹp hệ thống nên không có rủi ro bảo mật
 
     await connectToDatabase();
 

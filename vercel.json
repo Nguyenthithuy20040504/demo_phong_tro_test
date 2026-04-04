@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cron/hop-dong/kiem-tra-duyet",
-      "schedule": "0 1 * * *"
+      "schedule": "* * * * *"
     }
   ]
 }
