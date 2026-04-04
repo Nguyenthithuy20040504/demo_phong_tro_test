@@ -119,11 +119,14 @@ export default function ThongBaoPage() {
       }
       
       // Fetch all data in parallel
+      const limitQuery = '?limit=2000';
+      const buildingFilterQuery = selectedBuildingId !== 'all' ? `&toaNhaId=${selectedBuildingId}` : '';
+      
       const [thongBaoResponse, toaNhaResponse, phongResponse, khachThueResponse] = await Promise.all([
-        fetch('/api/thong-bao'),
+        fetch(`/api/thong-bao${limitQuery}${buildingFilterQuery}`),
         fetch('/api/toa-nha'),
-        fetch('/api/phong'),
-        fetch('/api/khach-thue')
+        fetch(`/api/phong${limitQuery}`),
+        fetch(`/api/khach-thue${limitQuery}`)
       ]);
 
       const [thongBaoData, toaNhaData, phongData, khachThueData] = await Promise.all([
@@ -944,21 +947,38 @@ function ThongBaoForm({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Helper function to extract Room ID from a tenant
+  const getTenantRoomId = (k: any) => {
+    const rId = k.hopDongHienTai?.phongInfo?._id || k.hopDongHienTai?.phong;
+    return typeof rId === 'object' ? rId?._id || rId?.toString() : rId;
+  };
+
+  // Helper function to get Building ID from a tenant
+  const getTenantToaNhaId = (k: any) => {
+    const tId = k.hopDongHienTai?.phongInfo?.toaNhaInfo?._id || k.hopDongHienTai?.phong?.toaNha?._id || k.toaNhaBanDau || k.toaNha;
+    return typeof tId === 'object' ? tId?._id || tId?.toString() : tId;
+  };
+
   // Filter phongList based on toaNha
   const filteredRooms = formData.toaNha && formData.toaNha !== 'all'
-    ? phongList.filter(p => p.toaNha === formData.toaNha)
+    ? phongList.filter(p => {
+        const pToaNhaId = typeof p.toaNha === 'object' ? (p.toaNha as any)._id : p.toaNha;
+        return pToaNhaId === formData.toaNha;
+      })
     : phongList;
 
-  // Filter khachThueList based on selected rooms or toaNha
+  // Filter khachThueList based on selected toaNha
   const filteredTenants = khachThueList.filter(k => {
-    // Lấy ID tòa nhà của khách (có thể từ k.toaNha nếu API trả về hoặc từ hợp đồng)
-    const tenantToaNhaId = (k as any).toaNha || k.hopDongHienTai?.phong?.toaNha?._id;
-
     if (formData.toaNha && formData.toaNha !== 'all') {
+      const tenantToaNhaId = getTenantToaNhaId(k);
       return tenantToaNhaId === formData.toaNha;
     }
     return true;
   });
+
+  const handleToaNhaChange = (value: string) => {
+    setFormData(prev => ({ ...prev, toaNha: value, phong: [], nguoiNhan: [] }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -999,21 +1019,57 @@ function ThongBaoForm({
   };
 
   const handleNguoiNhanChange = (khachThueId: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      nguoiNhan: checked 
+    setFormData(prev => {
+      const newNguoiNhan = checked 
         ? [...prev.nguoiNhan, khachThueId]
-        : prev.nguoiNhan.filter(id => id !== khachThueId)
-    }));
+        : prev.nguoiNhan.filter(id => id !== khachThueId);
+
+      // Tự động check phòng nếu chọn khách
+      let newPhong = [...prev.phong];
+      const tenant = khachThueList.find(k => k._id === khachThueId);
+      const roomId = tenant ? getTenantRoomId(tenant) : null;
+
+      if (roomId) {
+        if (checked) {
+          if (!newPhong.includes(roomId)) newPhong.push(roomId);
+        } else {
+          // Chỉ bỏ check phòng nếu không còn vị khách nào khác chọn phòng đó
+          const otherSelectedTenantsInRoom = khachThueList.filter(k => 
+            k._id !== khachThueId && 
+            newNguoiNhan.includes(k._id!) && 
+            getTenantRoomId(k) === roomId
+          );
+          if (otherSelectedTenantsInRoom.length === 0) {
+            newPhong = newPhong.filter(id => id !== roomId);
+          }
+        }
+      }
+
+      return { ...prev, nguoiNhan: newNguoiNhan, phong: newPhong };
+    });
   };
 
   const handlePhongChange = (phongId: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      phong: checked 
+    setFormData(prev => {
+      const newPhong = checked 
         ? [...prev.phong, phongId]
-        : prev.phong.filter(id => id !== phongId)
-    }));
+        : prev.phong.filter(id => id !== phongId);
+      
+      // Tự động check/uncheck các khách nằm trong phòng này
+      let newNguoiNhan = [...prev.nguoiNhan];
+      const tenantsInRoom = khachThueList.filter(k => getTenantRoomId(k) === phongId);
+      const tenantIdsInRoom = tenantsInRoom.map(k => k._id!);
+
+      if (checked) {
+        tenantIdsInRoom.forEach(id => {
+          if (!newNguoiNhan.includes(id)) newNguoiNhan.push(id);
+        });
+      } else {
+        newNguoiNhan = newNguoiNhan.filter(id => !tenantIdsInRoom.includes(id));
+      }
+
+      return { ...prev, phong: newPhong, nguoiNhan: newNguoiNhan };
+    });
   };
 
   return (
@@ -1061,7 +1117,7 @@ function ThongBaoForm({
 
       <div className="space-y-2">
         <Label htmlFor="toaNha" className="text-xs md:text-sm">Tòa nhà</Label>
-        <Select value={formData.toaNha} onValueChange={(value) => setFormData(prev => ({ ...prev, toaNha: value }))}>
+        <Select value={formData.toaNha} onValueChange={handleToaNhaChange}>
           <SelectTrigger className="text-sm">
             <SelectValue placeholder="Chọn tòa nhà (tùy chọn)" />
           </SelectTrigger>
@@ -1084,8 +1140,23 @@ function ThongBaoForm({
               type="button" 
               variant="ghost" 
               size="sm" 
-              className="text-[10px] h-6 px-2"
-              onClick={() => setFormData(prev => ({ ...prev, phong: filteredRooms.map(p => p._id!) }))}
+              className="text-[10px] h-6 px-2 text-blue-600 hover:text-blue-700"
+              onClick={() => {
+                const allRoomIds = filteredRooms.map(p => p._id!);
+                
+                // Cũng tự động check tất cả khách trong các phòng này
+                const allTenantIds = khachThueList
+                  .filter(k => {
+                    const rId = getTenantRoomId(k);
+                    return rId && allRoomIds.includes(rId);
+                  })
+                  .map(k => k._id!);
+
+                setFormData(prev => {
+                  const mergedNguoiNhan = Array.from(new Set([...prev.nguoiNhan, ...allTenantIds]));
+                  return { ...prev, phong: allRoomIds, nguoiNhan: mergedNguoiNhan };
+                });
+              }}
             >
               Chọn tất cả
             </Button>
@@ -1093,8 +1164,24 @@ function ThongBaoForm({
               type="button" 
               variant="ghost" 
               size="sm" 
-              className="text-[10px] h-6 px-2"
-              onClick={() => setFormData(prev => ({ ...prev, phong: [] }))}
+              className="text-[10px] h-6 px-2 text-red-600 hover:text-red-700"
+              onClick={() => {
+                const allRoomIds = filteredRooms.map(p => p._id!);
+                
+                // Cũng tự động uncheck tất cả khách trong các phòng này
+                const allTenantIds = khachThueList
+                  .filter(k => {
+                    const rId = getTenantRoomId(k);
+                    return rId && allRoomIds.includes(rId);
+                  })
+                  .map(k => k._id!);
+
+                setFormData(prev => ({ 
+                  ...prev, 
+                  phong: [], 
+                  nguoiNhan: prev.nguoiNhan.filter(id => !allTenantIds.includes(id))
+                }));
+              }}
             >
               Bỏ chọn
             </Button>
@@ -1131,8 +1218,20 @@ function ThongBaoForm({
               type="button" 
               variant="ghost" 
               size="sm" 
-              className="text-[10px] h-6 px-2"
-              onClick={() => setFormData(prev => ({ ...prev, nguoiNhan: filteredTenants.map(k => k._id!) }))}
+              className="text-[10px] h-6 px-2 text-green-600 hover:text-green-700"
+              onClick={() => {
+                const allTenantIds = filteredTenants.map(k => k._id!);
+                
+                // Tự động check các phòng của những khách này
+                const allRoomIds = filteredTenants
+                  .map(k => getTenantRoomId(k))
+                  .filter(Boolean) as string[];
+
+                setFormData(prev => {
+                  const mergedPhong = Array.from(new Set([...prev.phong, ...allRoomIds]));
+                  return { ...prev, nguoiNhan: allTenantIds, phong: mergedPhong };
+                });
+              }}
             >
               Chọn tất cả
             </Button>
@@ -1140,8 +1239,25 @@ function ThongBaoForm({
               type="button" 
               variant="ghost" 
               size="sm" 
-              className="text-[10px] h-6 px-2"
-              onClick={() => setFormData(prev => ({ ...prev, nguoiNhan: [] }))}
+              className="text-[10px] h-6 px-2 text-red-600 hover:text-red-700"
+              onClick={() => {
+                const allTenantIds = filteredTenants.map(k => k._id!);
+                
+                // Tự động uncheck các phòng của những khách này, NẾU không có khách nào khác đag chọn phòng đó
+                setFormData(prev => {
+                  const remainingTenants = prev.nguoiNhan.filter(id => !allTenantIds.includes(id));
+                  
+                  // Chỉ giữ lại những phòng có khách thuê nằm trong remainingTenants
+                  const remainingRoomIds = khachThueList
+                    .filter(k => remainingTenants.includes(k._id!))
+                    .map(k => getTenantRoomId(k))
+                    .filter(Boolean) as string[];
+
+                  const updatedPhong = prev.phong.filter(rId => remainingRoomIds.includes(rId));
+                  
+                  return { ...prev, nguoiNhan: remainingTenants, phong: updatedPhong };
+                });
+              }}
             >
               Bỏ chọn
             </Button>

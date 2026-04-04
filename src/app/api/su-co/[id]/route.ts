@@ -3,8 +3,11 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import SuCo from '@/models/SuCo';
+import ThongBao from '@/models/ThongBao';
 import { isToaNhaAccessible } from '@/lib/auth-utils';
+import { sendGeneralNotificationEmail } from '@/lib/mail';
 import { z } from 'zod';
+import mongoose from 'mongoose';
 
 const updateSuCoSchema = z.object({
   tieuDe: z.string().min(1, 'Tiêu đề là bắt buộc').optional(),
@@ -108,13 +111,105 @@ export async function PUT(
       );
     }
 
-    const suCo = await SuCo.findByIdAndUpdate(
-      id,
-      validatedData,
-      { new: true, runValidators: true }
-    ).populate('phong', 'maPhong toaNha')
-     .populate('khachThue', 'hoTen soDienThoai')
-     .populate('nguoiXuLy', 'ten email');
+    // Lưu trạng thái cũ để so sánh sau khi cập nhật
+    const oldTrangThai = existingSuCo.trangThai;
+
+    // Query lại document KHÔNG populate để tránh lỗi cast khi .save()
+    const suCoToUpdate = await SuCo.findById(id);
+    // Gán dữ liệu mới lên document rồi .save() để pre-save hook chạy
+    // (tự động cập nhật ngayXuLy khi chuyển sang dangXuLy, ngayHoanThanh khi chuyển sang daXong)
+    Object.assign(suCoToUpdate!, validatedData);
+    await suCoToUpdate!.save();
+
+    // Populate lại để trả về dữ liệu đầy đủ
+    const suCo = await SuCo.findById(id)
+      .populate('phong', 'maPhong toaNha')
+      .populate('khachThue', 'hoTen soDienThoai')
+      .populate('nguoiXuLy', 'ten email');
+
+    // --- Gửi thông báo In-App + Email cho khách thuê khi trạng thái thay đổi ---
+    const newTrangThai = validatedData.trangThai;
+    if (newTrangThai && newTrangThai !== oldTrangThai && existingSuCo.khachThue) {
+      const statusLabels: Record<string, string> = {
+        moi: 'Mới',
+        dangXuLy: 'Đang xử lý',
+        daXong: 'Đã hoàn thành',
+        daHuy: 'Đã hủy',
+      };
+
+      const statusEmoji: Record<string, string> = {
+        dangXuLy: '🔧',
+        daXong: '✅',
+        daHuy: '❌',
+      };
+
+      const maPhong = (suCo?.phong as any)?.maPhong || '';
+      const emoji = statusEmoji[newTrangThai] || '📋';
+      const label = statusLabels[newTrangThai] || newTrangThai;
+
+      const tieuDeNotif = `${emoji} Sự cố "${existingSuCo.tieuDe}" - ${label}`;
+      const noiDungNotif = `Sự cố "${existingSuCo.tieuDe}" tại phòng ${maPhong} đã được cập nhật trạng thái: ${label}.${
+        newTrangThai === 'dangXuLy'
+          ? '\n\nĐội ngũ kỹ thuật đang tiến hành xử lý. Chúng tôi sẽ thông báo khi hoàn tất.'
+          : newTrangThai === 'daXong'
+          ? '\n\nSự cố đã được khắc phục hoàn toàn. Nếu vẫn còn vấn đề, vui lòng báo cáo sự cố mới.'
+          : newTrangThai === 'daHuy'
+          ? '\n\nSự cố đã bị hủy. Nếu bạn cho rằng đây là nhầm lẫn, vui lòng liên hệ chủ nhà.'
+          : ''
+      }`;
+
+      // 1) In-App Notification
+      try {
+        await ThongBao.create({
+          tieuDe: tieuDeNotif,
+          noiDung: noiDungNotif,
+          loai: 'suCo',
+          nguoiGui: new mongoose.Types.ObjectId(session.user.id),
+          nguoiNhan: [existingSuCo.khachThue],
+          daDoc: [],
+        });
+      } catch (notifError) {
+        console.error('Error creating issue notification:', notifError);
+      }
+
+      // 2) Email Notification
+      try {
+        const KhachThue = (await import('@/models/KhachThue')).default;
+        const NguoiDung = (await import('@/models/NguoiDung')).default;
+
+        // Tìm email và tên khách thuê từ cả 2 collection
+        let tenantEmail = '';
+        let tenantName = 'Khách thuê';
+        const ktId = existingSuCo.khachThue.toString();
+
+        const ktRecord = await KhachThue.findById(ktId).select('email hoTen').lean() as any;
+        if (ktRecord?.email) {
+          tenantEmail = ktRecord.email;
+          tenantName = ktRecord.hoTen || tenantName;
+        }
+
+        // Fallback: tìm trong NguoiDung nếu KhachThue không có email
+        if (!tenantEmail) {
+          const ndRecord = await NguoiDung.findById(ktId).select('email ten name').lean() as any;
+          if (ndRecord?.email) {
+            tenantEmail = ndRecord.email;
+            tenantName = ndRecord.ten || ndRecord.name || tenantName;
+          }
+        }
+
+        if (tenantEmail) {
+          await sendGeneralNotificationEmail({
+            email: tenantEmail,
+            khachThueName: tenantName,
+            tieuDe: tieuDeNotif.replace(/[🔧✅❌📋]\s?/, ''), // Bỏ emoji cho email subject
+            noiDung: noiDungNotif,
+          });
+          console.log(`[SuCo Email] Đã gửi email cập nhật sự cố tới ${tenantEmail}`);
+        }
+      } catch (emailError) {
+        console.error('Error sending issue email notification:', emailError);
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -125,7 +220,7 @@ export async function PUT(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { message: error.errors[0].message },
+        { message: (error as z.ZodError).issues[0].message },
         { status: 400 }
       );
     }

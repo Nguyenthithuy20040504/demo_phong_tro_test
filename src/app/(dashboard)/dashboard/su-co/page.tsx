@@ -123,26 +123,29 @@ export default function SuCoPage() {
       const limitParam = '?limit=1000';
       const query = `${limitParam}${buildingParam}`;
 
-      // Fetch sự cố từ API
+      // Fetch sự cố từ API (chỉ lấy theo buildingId)
       const suCoResponse = await fetch(`/api/su-co${query}`);
       const suCoData = await suCoResponse.json();
       const suCos = (suCoData.success ? suCoData.data : []) || [];
       setSuCoList(suCos);
 
+      // Fetch data dùng chung cho Form tạo mới (KHÔNG filter theo buildingId, lấy toàn bộ)
+      const allQuery = '?limit=2000';
+
       // Fetch phòng từ API
-      const phongResponse = await fetch(`/api/phong${query}`);
+      const phongResponse = await fetch(`/api/phong${allQuery}`);
       const phongData = await phongResponse.json();
       const phongs = (phongData.success ? phongData.data : []) || [];
       setPhongList(phongs);
 
       // Fetch khách thuê từ API
-      const khachThueResponse = await fetch(`/api/khach-thue${query}`);
+      const khachThueResponse = await fetch(`/api/khach-thue${allQuery}`);
       const khachThueData = await khachThueResponse.json();
       const khachThues = (khachThueData.success ? khachThueData.data : []) || [];
       setKhachThueList(khachThues);
 
       // Fetch hợp đồng từ API
-      const hopDongResponse = await fetch(`/api/hop-dong${query}`);
+      const hopDongResponse = await fetch(`/api/hop-dong${allQuery}`);
       const hopDongData = await hopDongResponse.json();
       const hopDongs = (hopDongData.success ? hopDongData.data : []) || [];
       setHopDongList(hopDongs);
