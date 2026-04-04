@@ -169,14 +169,15 @@ export default function KhachThueDashboardPage() {
 
   const getHanDuyet = (dateStr: string) => {
     if (!dateStr) return '';
-    const expDate = new Date(new Date(dateStr).getTime() + 7 * 24 * 60 * 60 * 1000);
+    const expDate = new Date(new Date(dateStr).getTime() + 7 * 60 * 1000);
     const now = new Date();
     const diffMs = expDate.getTime() - now.getTime();
-    const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const minutes = Math.ceil(diffMs / (1000 * 60));
     
-    if (days < 0) return `${expDate.toLocaleDateString('vi-VN')} (Đã quá hạn)`;
-    if (days === 0) return `${expDate.toLocaleDateString('vi-VN')} (Hết hạn hôm nay)`;
-    return `${expDate.toLocaleDateString('vi-VN')} (Còn ${days} ngày)`;
+    const timeStr = expDate.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+    if (minutes < 0) return `${timeStr} (Đã quá hạn)`;
+    if (minutes === 0) return `${timeStr} (Sắp hết hạn)`;
+    return `${timeStr} (Còn ${minutes} phút)`;
   };
 
   return (

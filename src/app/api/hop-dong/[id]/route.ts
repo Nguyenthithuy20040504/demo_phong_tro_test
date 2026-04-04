@@ -308,6 +308,7 @@ export async function PUT(
             nguoiGui: new mongoose.Types.ObjectId(session.user.id),
             nguoiNhan: nguoiNhanIds,
             phong: [hopDong.phong._id],
+            toaNha: hopDong.phong.toaNha,
             ngayGui: new Date(),
           });
         }

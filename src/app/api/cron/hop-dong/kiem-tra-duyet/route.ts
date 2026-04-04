@@ -36,15 +36,15 @@ export async function GET(request: NextRequest) {
       if (!hd.ngayTao) continue;
 
       const diffMs = now.getTime() - new Date(hd.ngayTao).getTime();
-      const daysSinceCreation = diffMs / (1000 * 60 * 60 * 24);
+      const minutesSinceCreation = diffMs / (1000 * 60);
 
       // Extract references for notifications
       const nguoiDaiDienId = hd.nguoiDaiDien;
       const rPhong = hd.phong as any;
       const landlordId = rPhong?.toaNha?.chuSoHuu;
 
-      if (daysSinceCreation >= 7) {
-        // Hủy bỏ hợp đồng sau 7 ngày chờ duyệt
+      if (minutesSinceCreation >= 7) {
+        // Hủy bỏ hợp đồng sau 7 phút chờ duyệt
         hd.trangThai = 'daHuy';
         await hd.save();
         
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         if (nguoiDaiDienId && landlordId) {
           const tbKhach = new ThongBao({
             tieuDe: 'Hợp đồng đã bị hủy tự động',
-            noiDung: `Hợp đồng phòng ${rPhong?.maPhong || ''} đã tự động bị hủy do quá hạn 7 ngày nhưng chưa được xác nhận.`,
+            noiDung: `Hợp đồng phòng ${rPhong?.maPhong || ''} đã tự động bị hủy do quá hạn 7 phút nhưng chưa được xác nhận.`,
             loai: 'hopDong',
             nguoiGui: landlordId, 
             nguoiNhan: [nguoiDaiDienId],
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
           // Gửi thông báo cho chủ nhà
           const tbChuNha = new ThongBao({
             tieuDe: 'Hợp đồng bị hủy do quá hạn',
-            noiDung: `Hợp đồng phòng ${rPhong?.maPhong || ''} do bạn vừa tạo đã tự dộng bị hủy vì khách thuê không xác nhận sau 7 ngày.`,
+            noiDung: `Hợp đồng phòng ${rPhong?.maPhong || ''} do bạn vừa tạo đã tự dộng bị hủy vì khách thuê không xác nhận sau 7 phút.`,
             loai: 'hopDong',
             nguoiGui: landlordId, // system/owner
             nguoiNhan: [landlordId],
@@ -77,12 +77,12 @@ export async function GET(request: NextRequest) {
         }
         
         cancelledCount++;
-      } else if (daysSinceCreation >= 5 && !hd.daNhacChoDuyet) {
+      } else if (minutesSinceCreation >= 5 && !hd.daNhacChoDuyet) {
         // Gửi thông báo nhắc nhở ngày thứ 5
         if (nguoiDaiDienId && landlordId) {
           const tbReminder = new ThongBao({
             tieuDe: 'Nhắc nhở xác nhận hợp đồng',
-            noiDung: `Hợp đồng phòng ${rPhong?.maPhong || ''} của bạn sẽ bị hủy sau 2 ngày nữa. Vui lòng xác nhận hợp đồng để hoàn tất quá trình thuê.`,
+            noiDung: `Hợp đồng phòng ${rPhong?.maPhong || ''} của bạn sẽ bị hủy sau 2 phút nữa. Vui lòng xác nhận hợp đồng để hoàn tất quá trình thuê.`,
             loai: 'hopDong',
             nguoiGui: landlordId,
             nguoiNhan: hd.khachThueId || [nguoiDaiDienId], // Gửi cho toàn bộ khách thuê trong hợp đồng
