@@ -75,19 +75,45 @@ export async function GET(request: NextRequest) {
       const phongs = await Phong.find({ toaNha: toaNhaId }).select('_id');
       const phongIds = phongs.map(p => p._id);
       
-      const hopDongs = await HopDong.find({ phong: { $in: phongIds } }).select('khachThueId nguoiDaiDien');
+      // 1. Tenants who CURRENTLY have active contracts in this building
+      const activeHopDongs = await HopDong.find({ 
+        phong: { $in: phongIds },
+        trangThai: { $in: ['hoatDong', 'choDuyet'] }
+      }).select('khachThueId nguoiDaiDien');
       
       const tenantIdsInBuilding = new Set<string>();
-      hopDongs.forEach(hd => {
+      activeHopDongs.forEach(hd => {
         if (hd.khachThueId) hd.khachThueId.forEach((id: any) => tenantIdsInBuilding.add(id.toString()));
         if (hd.nguoiDaiDien) tenantIdsInBuilding.add(hd.nguoiDaiDien.toString());
       });
 
-      // Lấy thêm các khách thuê được tạo trực tiếp ở tòa nhà này (toaNhaBanDau)
-      const tenantsCreatedInBuilding = await KhachThue.find({ toaNhaBanDau: toaNhaId }).select('_id');
-      tenantsCreatedInBuilding.forEach(t => tenantIdsInBuilding.add(t._id.toString()));
+      // 2. Tenants who are NOT renting anywhere (chuaThue) BUT were created or historically rented here
+      const historicalHopDongs = await HopDong.find({ phong: { $in: phongIds } }).select('khachThueId nguoiDaiDien');
+      const historicalTenantIds = new Set<string>();
+      historicalHopDongs.forEach(hd => {
+        if (hd.khachThueId) hd.khachThueId.forEach((id: any) => historicalTenantIds.add(id.toString()));
+        if (hd.nguoiDaiDien) historicalTenantIds.add(hd.nguoiDaiDien.toString());
+      });
 
-      const buildingTenantIds = Array.from(tenantIdsInBuilding);
+      const chuaThueTenants = await KhachThue.find({
+        trangThai: 'chuaThue',
+        $or: [
+          { toaNhaBanDau: toaNhaId },
+          { _id: { $in: Array.from(historicalTenantIds).map(id => new mongoose.Types.ObjectId(id)) } }
+        ]
+      }).select('_id');
+      
+      chuaThueTenants.forEach(t => tenantIdsInBuilding.add(t._id.toString()));
+
+      let buildingTenantIds = Array.from(tenantIdsInBuilding);
+      
+      // Edge case: if buildingTenantIds is empty, we must enforce an empty result!
+      // By pushing a fake non-existent ID or relying on the $in: [] if it is passed correctly.
+      // But let's be explicit:
+      if (buildingTenantIds.length === 0) {
+        // Return 0 results instantly
+        return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
+      }
       
       if (accessibleKhachThueIds !== null) {
         // Intersect building tenants with accessible tenants
@@ -212,7 +238,19 @@ export async function GET(request: NextRequest) {
                       from: 'phongs',
                       localField: 'phong',
                       foreignField: '_id',
-                      pipeline: [{ $project: { _id: 1, maPhong: 1, toaNha: 1 } }],
+                      pipeline: [
+                        {
+                          $lookup: {
+                            from: 'toanhas',
+                            localField: 'toaNha',
+                            foreignField: '_id',
+                            pipeline: [{ $project: { _id: 1, tenToaNha: 1 } }],
+                            as: 'toaNhaInfo'
+                          }
+                        },
+                        { $unwind: { path: '$toaNhaInfo', preserveNullAndEmptyArrays: true } },
+                        { $project: { _id: 1, maPhong: 1, toaNhaInfo: 1 } }
+                      ],
                       as: 'phongInfo'
                     }
                   },
@@ -229,7 +267,15 @@ export async function GET(request: NextRequest) {
                       $filter: {
                         input: '$tatCaHopDong',
                         as: 'h',
-                        cond: { $eq: ['$$h.trangThai', 'hoatDong'] }
+                        cond: { 
+                          $and: [
+                            { $eq: ['$$h.trangThai', 'hoatDong'] },
+                            ...(toaNhaId && toaNhaId !== 'all' 
+                              ? [{ $eq: ['$$h.phongInfo.toaNhaInfo._id', new mongoose.Types.ObjectId(toaNhaId)] }] 
+                              : []
+                            )
+                          ]
+                        }
                       }
                     },
                     1

@@ -199,7 +199,7 @@ export function KhachThueDetailDialog({ khachThue, isOpen, onClose }: KhachThueD
                                 <div className={`h-14 w-14 rounded-2xl flex items-center justify-center font-black text-xl shadow-inner-sm shrink-0 ${
                                   hd.trangThai === 'hoatDong' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-100 text-gray-400'
                                 }`}>
-                                    {hd.phong?.maPhong || '??'}
+                                    {hd.phongInfo?.maPhong || '??'}
                                 </div>
                                 <div className="flex-1 overflow-hidden">
                                     <div className="flex items-center justify-between mb-1">
@@ -211,7 +211,7 @@ export function KhachThueDetailDialog({ khachThue, isOpen, onClose }: KhachThueD
                                             {hd.trangThai === 'hoatDong' ? 'Đang hiệu lực' : hd.trangThai === 'hetHan' ? 'Hết hạn' : 'Đã hủy'}
                                         </Badge>
                                     </div>
-                                    <h4 className="text-base font-black text-foreground truncate">{hd.phong?.toaNha?.tenToaNha || 'N/A'}</h4>
+                                    <h4 className="text-base font-black text-foreground truncate">{hd.phongInfo?.toaNhaInfo?.tenToaNha || hd.phongInfo?.toaNha?.tenToaNha || 'Không rõ Tòa nhà'}</h4>
                                     <div className="flex items-center gap-4 mt-1">
                                         <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground">
                                             <Calendar className="h-3 w-3" />

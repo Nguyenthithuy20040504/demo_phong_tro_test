@@ -184,7 +184,9 @@ const createColumns = (props: KhachThueTableProps & { setKhachThueToDelete: (k: 
       const khachThue = row.original as any;
       const hopDong = khachThue.hopDongHienTai;
       
-      if (!hopDong || !hopDong.phong) {
+      const phong = hopDong?.phongInfo;
+      
+      if (!phong) {
         return (
           <div className="flex items-center gap-2 text-muted-foreground">
             <Home className="h-4 w-4" />
@@ -193,8 +195,7 @@ const createColumns = (props: KhachThueTableProps & { setKhachThueToDelete: (k: 
         );
       }
       
-      const phong = hopDong.phong;
-      const toaNha = phong.toaNha;
+      const toaNha = phong.toaNhaInfo;
       
       return (
         <div className="min-w-32">

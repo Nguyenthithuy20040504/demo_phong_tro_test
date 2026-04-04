@@ -96,7 +96,18 @@ export interface KhachThue {
   ngayCapNhat: Date;
   hopDongHienTai?: {
     _id: string;
-    phong: {
+    phongInfo?: {
+      _id: string;
+      maPhong: string;
+      toaNhaInfo?: {
+        _id: string;
+        tenToaNha: string;
+      };
+      toaNha?: {
+        tenToaNha: string;
+      };
+    };
+    phong?: {
       _id: string;
       maPhong: string;
       toaNha: {
@@ -112,7 +123,18 @@ export interface KhachThue {
     trangThai: string;
     ngayBatDau: Date;
     ngayKetThuc: Date;
-    phong: {
+    phongInfo?: {
+      _id: string;
+      maPhong: string;
+      toaNhaInfo?: {
+        _id: string;
+        tenToaNha: string;
+      };
+      toaNha?: {
+        tenToaNha: string;
+      };
+    };
+    phong?: {
       _id: string;
       maPhong: string;
       toaNha: {
