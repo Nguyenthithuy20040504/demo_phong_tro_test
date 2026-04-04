@@ -126,7 +126,8 @@ export async function GET(request: NextRequest) {
           email: emailToSend,
           khachThueName,
           hoaDonData: hoaDon.toObject(),
-          qrUrl: vietQrUrl
+          qrUrl: vietQrUrl,
+          ccEmail: owner?.email
         });
 
         if (success) {

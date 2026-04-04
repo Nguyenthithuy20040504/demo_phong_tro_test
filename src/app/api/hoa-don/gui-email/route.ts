@@ -43,6 +43,11 @@ export async function POST(request: NextRequest) {
         errors.push(`Hóa đơn ${hoaDon.maHoaDon} đã thanh toán đủ.`);
         continue;
       }
+      if (hoaDon.soLanGuiEmailNhacNoThatBai >= 3) {
+        failedCount++;
+        errors.push(`Hóa đơn ${hoaDon.maHoaDon} đã gửi lỗi quá 3 lần. Ngưng gửi để tránh spam.`);
+        continue;
+      }
 
       // Ủy quyền quyền: Kiểm tra tòa nhà
       const toaNhaId = (hoaDon.phong as any)?.toaNha;
@@ -104,7 +109,8 @@ export async function POST(request: NextRequest) {
         email: emailToSend,
         khachThueName,
         hoaDonData: hoaDon.toObject(),
-        qrUrl: qrUrl
+        qrUrl: qrUrl,
+        ccEmail: owner?.email
       });
 
       if (success) {
@@ -112,10 +118,13 @@ export async function POST(request: NextRequest) {
         // Cập nhật trạng thái bằng findByIdAndUpdate để tránh lỗi validation không đáng có
         await HoaDon.findByIdAndUpdate(hoaDon._id, {
           $inc: { lanGuiEmailNhacNo: 1 },
-          $set: { ngayGuiEmailNhacNoCuoi: new Date() }
+          $set: { ngayGuiEmailNhacNoCuoi: new Date(), soLanGuiEmailNhacNoThatBai: 0 }
         });
       } else {
         failedCount++;
+        await HoaDon.findByIdAndUpdate(hoaDon._id, {
+          $inc: { soLanGuiEmailNhacNoThatBai: 1 }
+        });
         errors.push(`Lỗi kết nối SMTP/Mail cho hóa đơn ${hoaDon.maHoaDon}.`);
       }
     }
