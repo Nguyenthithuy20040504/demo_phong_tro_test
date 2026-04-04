@@ -227,14 +227,14 @@ export default function ThanhToanPage() {
     }).format(amount);
   };
 
-  const isToday = (date: Date) => {
+  function isToday(date: Date) {
     const today = new Date();
     return date.getFullYear() === today.getFullYear() &&
            date.getMonth() === today.getMonth() &&
            date.getDate() === today.getDate();
-  };
+  }
 
-  const isThisWeek = (date: Date) => {
+  function isThisWeek(date: Date) {
     const today = new Date();
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
@@ -245,12 +245,12 @@ export default function ThanhToanPage() {
     endOfWeek.setHours(23, 59, 59, 999);
     
     return date >= startOfWeek && date <= endOfWeek;
-  };
+  }
 
-  const isThisMonth = (date: Date) => {
+  function isThisMonth(date: Date) {
     const today = new Date();
     return date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
-  };
+  }
 
   const handleEdit = (thanhToan: ThanhToanPopulated) => {
     setEditingThanhToan(thanhToan);
@@ -469,6 +469,7 @@ export default function ThanhToanPage() {
           <ThanhToanDataTable
             data={filteredThanhToan}
             hoaDonList={hoaDonList}
+            onView={handleEdit}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onDownload={handleDownload}
@@ -600,7 +601,11 @@ export default function ThanhToanPage() {
             const khachThueInfo = hoaDonInfo && typeof hoaDonInfo.khachThue === 'object' ? (hoaDonInfo.khachThue as any) : null;
             
             return (
-              <Card key={thanhToan._id} className="p-4">
+              <Card 
+                key={thanhToan._id} 
+                className="p-4 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                onClick={() => handleEdit(thanhToan)}
+              >
                 <div className="space-y-3">
                   <div className="flex justify-between items-start">
                     <div>
@@ -681,15 +686,15 @@ export default function ThanhToanPage() {
                     <div className="flex items-center gap-1">
                       {thanhToan.trangThai === 'choDuyet' && (
                         <>
-                          <Button variant="outline" size="sm" className="text-emerald-600 border-emerald-200" onClick={() => handleUpdateStatus(thanhToan._id!, 'duyet')}>Duyệt</Button>
-                          <Button variant="outline" size="sm" className="text-orange-600 border-orange-200 mr-2" onClick={() => handleUpdateStatus(thanhToan._id!, 'tuChoi')}>Từ chối</Button>
+                          <Button variant="outline" size="sm" className="text-emerald-600 border-emerald-200" onClick={(e) => { e.stopPropagation(); handleUpdateStatus(thanhToan._id!, 'duyet') }}>Duyệt</Button>
+                          <Button variant="outline" size="sm" className="text-orange-600 border-orange-200 mr-2" onClick={(e) => { e.stopPropagation(); handleUpdateStatus(thanhToan._id!, 'tuChoi') }}>Từ chối</Button>
                         </>
                       )}
                       {thanhToan.anhBienLai && (
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleViewReceipt(thanhToan)}
+                          onClick={(e) => { e.stopPropagation(); handleViewReceipt(thanhToan) }}
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
@@ -697,14 +702,14 @@ export default function ThanhToanPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleEdit(thanhToan)}
+                        onClick={(e) => { e.stopPropagation(); handleEdit(thanhToan) }}
                       >
                         <Edit className="h-3.5 w-3.5" />
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleDelete(thanhToan._id!)}
+                        onClick={(e) => { e.stopPropagation(); handleDelete(thanhToan._id!) }}
                         className="text-red-600 hover:text-red-700 hover:bg-red-50"
                       >
                         <Trash2 className="h-3.5 w-3.5" />

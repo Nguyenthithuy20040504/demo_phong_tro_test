@@ -280,7 +280,19 @@ export default function ThemMoiHoaDonPage() {
 
       if (response.ok) {
         const result = await response.json();
-        sessionStorage.removeItem('hoa-don-data');
+        
+        // Xóa cache động từ useCache để hệ thống load lại dữ liệu mới
+        try {
+          const allKeys = Object.keys(sessionStorage);
+          allKeys.forEach(sKey => {
+            if (sKey.includes('hoa-don-data')) {
+              sessionStorage.removeItem(sKey);
+            }
+          });
+        } catch (e) {
+          sessionStorage.removeItem('hoa-don-data'); // Fallback
+        }
+        
         toast.success(result.message || 'Tuyệt vời! Hóa đơn đã được tạo thành công.');
         router.replace('/dashboard/hoa-don');
         router.refresh();

@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     const [toaNhaListRaw, phongListRaw, khachThueListRaw, nguoiDungListRaw] = await Promise.all([
       ToaNha.find(query).select('tenToaNha').sort({ tenToaNha: 1 }).lean(),
-      Phong.find(phongQuery).select('maPhong toaNha tang giaThue').sort({ maPhong: 1 }).lean(),
+      Phong.find(phongQuery).select('maPhong toaNha tang giaThue trangThai').sort({ maPhong: 1 }).lean(),
       KhachThue.find().select('hoTen soDienThoai email').sort({ hoTen: 1 }).lean(),
       mongoose.model('NguoiDung').find({ role: 'khachThue' }).select('ten name soDienThoai phone email').lean()
     ]);

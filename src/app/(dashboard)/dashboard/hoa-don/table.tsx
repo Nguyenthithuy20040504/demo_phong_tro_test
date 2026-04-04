@@ -396,10 +396,12 @@ const createColumns = (props: HoaDonTableProps & { setHoaDonToDelete: (h: HoaDon
   },
 ]
 
-function HoaDonTableRow({ row }: { row: Row<HoaDon> }) {
+function HoaDonTableRow({ row, onView }: { row: Row<HoaDon>; onView?: () => void }) {
   return (
     <TableRow
       data-state={row.getIsSelected() && "selected"}
+      className={onView ? "cursor-pointer" : undefined}
+      onClick={onView}
     >
       {row.getVisibleCells().map((cell) => (
         <TableCell key={cell.id}>
@@ -637,7 +639,11 @@ export function HoaDonDataTable(props: HoaDonDataTableProps) {
           <TableBody className="**:data-[slot=table-cell]:first:w-8">
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <HoaDonTableRow key={row.id} row={row} />
+                <HoaDonTableRow 
+                  key={row.id} 
+                  row={row} 
+                  onView={() => props.onView(row.original)}
+                />
               ))
             ) : (
               <TableRow>

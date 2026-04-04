@@ -575,6 +575,8 @@ export function ThanhToanDataTable(props: ThanhToanDataTableProps) {
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className={tableProps.onView ? "cursor-pointer" : undefined}
+                  onClick={() => tableProps.onView?.(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
