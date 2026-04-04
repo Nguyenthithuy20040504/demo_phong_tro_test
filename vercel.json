@@ -7,10 +7,6 @@
     {
       "path": "/api/cron/hoa-don/nhac-no/sms",
       "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/hop-dong/kiem-tra-duyet",
-      "schedule": "* * * * *"
     }
   ]
 }
