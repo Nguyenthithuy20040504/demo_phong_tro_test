@@ -130,87 +130,122 @@ export async function PUT(
     await dbConnect();
     const { id } = await params;
 
+    const dbSession = await mongoose.startSession();
+    dbSession.startTransaction();
+
     // 1. Check and Update/Create KhachThue (Profile) to get nguoiQuanLy
-    let khachThue = await KhachThue.findById(id);
+    let khachThue = await KhachThue.findById(id).session(dbSession);
     let nguoiQuanLyId = session.user.id;
 
-    if (khachThue) {
-      nguoiQuanLyId = khachThue.nguoiQuanLy.toString();
-    } else {
-      const user = await NguoiDungModel.findById(id);
-      if (user?.nguoiQuanLy) {
-        nguoiQuanLyId = user.nguoiQuanLy.toString();
-      } else if (session.user.role === 'nhanVien') {
-        // Find staff's manager
-        const nhanVien = await NguoiDungModel.findById(session.user.id).select('nguoiQuanLy');
-        if (nhanVien?.nguoiQuanLy) {
-          nguoiQuanLyId = nhanVien.nguoiQuanLy.toString();
+    try {
+      if (khachThue) {
+        nguoiQuanLyId = khachThue.nguoiQuanLy.toString();
+      } else {
+        const user = await NguoiDungModel.findById(id).session(dbSession);
+        if (user?.nguoiQuanLy) {
+          nguoiQuanLyId = user.nguoiQuanLy.toString();
+        } else if (session.user.role === 'nhanVien') {
+          // Find staff's manager
+          const nhanVien = await NguoiDungModel.findById(session.user.id).select('nguoiQuanLy').session(dbSession);
+          if (nhanVien?.nguoiQuanLy) {
+            nguoiQuanLyId = nhanVien.nguoiQuanLy.toString();
+          }
         }
       }
-    }
 
-    // Check if phone or CCCD already exists (excluding current record) FOR THIS LANDLORD
-    const existingKhachThue = await KhachThue.findOne({
-      _id: { $ne: id },
-      nguoiQuanLy: new mongoose.Types.ObjectId(nguoiQuanLyId),
-      $or: [
-        { soDienThoai: validatedData.soDienThoai },
-        { cccd: validatedData.cccd }
-      ]
-    });
+      // Check if phone or CCCD already exists (excluding current record) FOR THIS LANDLORD
+      const existingKhachThue = await KhachThue.findOne({
+        _id: { $ne: id },
+        nguoiQuanLy: new mongoose.Types.ObjectId(nguoiQuanLyId),
+        $or: [
+          { soDienThoai: validatedData.soDienThoai },
+          { cccd: validatedData.cccd }
+        ]
+      }).session(dbSession);
 
-    if (existingKhachThue) {
-      return NextResponse.json(
-        { message: 'Số điện thoại hoặc CCCD này đã được bạn sử dụng cho một khách thuê khác.' },
-        { status: 400 }
-      );
-    }
+      if (existingKhachThue) {
+        await dbSession.abortTransaction();
+        dbSession.endSession();
+        return NextResponse.json(
+          { message: 'Số điện thoại hoặc CCCD này đã được bạn sử dụng cho một khách thuê khác.' },
+          { status: 400 }
+        );
+      }
 
-    // Prepare update data
-    const updateData: any = {
-      ...validatedData,
-      ngaySinh: new Date(validatedData.ngaySinh),
-      anhCCCD: validatedData.anhCCCD || { matTruoc: '', matSau: '' },
-    };
+      // Kiểm tra trùng lặp Email ở NguoiDung collection (Tài khoản truy cập)
+      if (validatedData.email) {
+        const existingEmailUser = await NguoiDungModel.findOne({
+          email: validatedData.email.toLowerCase(),
+          _id: { $ne: id }
+        }).session(dbSession);
 
-    // 1. Update NguoiDung (Account) info
-    const NguoiDung = NguoiDungModel;
-    await NguoiDung.findByIdAndUpdate(id, {
-        ten: validatedData.hoTen,
-        soDienThoai: validatedData.soDienThoai,
-        email: validatedData.email,
-        // matKhau will be handled below if provided
-    });
+        if (existingEmailUser) {
+          await dbSession.abortTransaction();
+          dbSession.endSession();
+          return NextResponse.json(
+            { message: 'Email này đã tồn tại trong hệ thống. Vui lòng sử dụng email khác.' },
+            { status: 400 }
+          );
+        }
+      }
 
-    // 2. Already fetched khachThue above
-    
-    if (!khachThue) {
-      // IF NOT FOUND in KhachThue, create one using same ID
-      const user = await NguoiDung.findById(id);
-      khachThue = new KhachThue({
-        _id: id,
-        ...updateData,
-        trangThai: 'chuaThue',
-        nguoiQuanLy: user?.nguoiQuanLy || session.user.id
-      });
-    } else {
-      // IF FOUND, update
-      Object.assign(khachThue, updateData);
-    }
+      // Prepare update data
+      const updateData: any = {
+        ...validatedData,
+        ngaySinh: new Date(validatedData.ngaySinh),
+        anhCCCD: validatedData.anhCCCD || { matTruoc: '', matSau: '' },
+      };
 
-    // Handle password change for both models
-    if (validatedData.matKhau) {
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(validatedData.matKhau, salt);
+      // Cập nhật NguoiDung (Account) info (Gồm: name, phone, email, username)
+      const NguoiDung = NguoiDungModel;
       
-      // Update NguoiDung password
-      await NguoiDung.findByIdAndUpdate(id, { matKhau: hashedPassword });
-      
-      // Update KhachThue password
-      khachThue.matKhau = validatedData.matKhau; // Will be hashed by its own middleware
-    }
+      let passwordUpdate = {};
+      if (validatedData.matKhau) {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(validatedData.matKhau, salt);
+        passwordUpdate = { matKhau: hashedPassword, password: hashedPassword };
+      }
 
-    await khachThue.save();
+      await NguoiDung.findByIdAndUpdate(id, {
+          ten: validatedData.hoTen,
+          name: validatedData.hoTen, // Sync English field
+          soDienThoai: validatedData.soDienThoai,
+          phone: validatedData.soDienThoai, // Sync English field
+          email: validatedData.email,
+          // Note: Schema currently has email as primary credential. Assumed equivalent to username.
+          ...passwordUpdate
+      }, { session: dbSession, new: true });
+
+      // Cập nhật hoặc tạo mới KhachThue
+      if (!khachThue) {
+        // IF NOT FOUND in KhachThue, create one using same ID
+        const user = await NguoiDung.findById(id).session(dbSession);
+        khachThue = new KhachThue({
+          _id: id,
+          ...updateData,
+          trangThai: 'chuaThue',
+          nguoiQuanLy: user?.nguoiQuanLy || session.user.id
+        });
+      } else {
+        // IF FOUND, update
+        Object.assign(khachThue, updateData);
+      }
+
+      // Handle password change for KhachThue
+      if (validatedData.matKhau) {
+        khachThue.matKhau = validatedData.matKhau; // Will be hashed by its own middleware
+      }
+
+      await khachThue.save({ session: dbSession });
+
+      // Commit transaction success
+      await dbSession.commitTransaction();
+      dbSession.endSession();
+    } catch (transactionError) {
+      await dbSession.abortTransaction();
+      dbSession.endSession();
+      throw transactionError; // Ném ra ngoài để block catch to nhận diện lỗi
+    }
 
     // Lấy đầy đủ thông tin sau khi lưu
     const tatCaHopDong = await HopDong.find({
@@ -247,7 +282,7 @@ export async function PUT(
         hopDongHienTai: hopDongHienTai || null,
         tatCaHopDong: tatCaHopDong || [],
       },
-      message: 'Hồ sơ khách thuê đã được cập nhật thành công',
+      message: 'Hồ sơ đã được cập nhật thành công. Vui lòng nhắc khách thuê sử dụng Email mới để đăng nhập từ lần sau!',
     });
 
   } catch (error) {

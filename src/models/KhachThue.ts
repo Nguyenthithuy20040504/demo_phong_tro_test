@@ -25,6 +25,7 @@ export interface IKhachThue extends Document {
   lastLogin?: Date;
   vaiTro: 'khachThue';
   nguoiQuanLy: mongoose.Types.ObjectId;
+  toaNhaBanDau?: mongoose.Types.ObjectId;
 }
 
 const AnhCCCDSchema = new Schema({
@@ -113,6 +114,11 @@ const KhachThueSchema = new Schema<IKhachThue>({
     type: Schema.Types.ObjectId,
     ref: 'NguoiDung',
     required: [true, 'Người quản lý (Chủ nhà) là bắt buộc']
+  },
+  toaNhaBanDau: {
+    type: Schema.Types.ObjectId,
+    ref: 'ToaNha',
+    default: null
   },
   lastLogin: {
     type: Date,

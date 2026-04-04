@@ -97,7 +97,6 @@ export function TopNavbar() {
       title: "Quản lý cơ bản",
       icon: Building,
       items: [
-        { title: "Tòa nhà", url: "/dashboard/toa-nha" },
         { title: "Phòng", url: "/dashboard/phong" },
         ...(!isAdmin ? [{ title: "Khách thuê", url: "/dashboard/khach-thue" }] : []),
       ],

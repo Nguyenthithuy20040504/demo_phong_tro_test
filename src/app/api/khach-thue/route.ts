@@ -25,6 +25,8 @@ const khachThueSchema = z.object({
   }).optional(),
   ngheNghiep: z.string().optional(),
   matKhau: z.string().min(6, 'Mật khẩu phải có ít nhất 6 ký tự').optional(),
+  toaNhaBanDau: z.string().optional(),
+  userId: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -81,6 +83,10 @@ export async function GET(request: NextRequest) {
         if (hd.nguoiDaiDien) tenantIdsInBuilding.add(hd.nguoiDaiDien.toString());
       });
 
+      // Lấy thêm các khách thuê được tạo trực tiếp ở tòa nhà này (toaNhaBanDau)
+      const tenantsCreatedInBuilding = await KhachThue.find({ toaNhaBanDau: toaNhaId }).select('_id');
+      tenantsCreatedInBuilding.forEach(t => tenantIdsInBuilding.add(t._id.toString()));
+
       const buildingTenantIds = Array.from(tenantIdsInBuilding);
       
       if (accessibleKhachThueIds !== null) {
@@ -116,21 +122,25 @@ export async function GET(request: NextRequest) {
       {
         $lookup: {
           from: 'nguoidungs',
-          let: { phone: '$soDienThoai', email: { $toLower: '$email' }, landlordId: new mongoose.Types.ObjectId(chuNhaId) },
+          let: { tenantId: '$_id', phone: '$soDienThoai', email: { $toLower: '$email' }, landlordId: new mongoose.Types.ObjectId(chuNhaId) },
           pipeline: [
             {
               $match: {
                 $expr: {
-                  $and: [
-                    { $eq: ['$nguoiQuanLy', '$$landlordId'] },
+                  $or: [
+                    { $eq: ['$_id', '$$tenantId'] },
                     {
-                      $or: [
-                        { $eq: ['$phone', '$$phone'] },
-                        { $eq: ['$soDienThoai', '$$phone'] },
-                        { $and: [
-                          { $ne: ['$$email', null] },
-                          { $eq: [{ $toLower: '$email' }, '$$email'] }
-                        ]}
+                      $and: [
+                        { $eq: ['$nguoiQuanLy', '$$landlordId'] },
+                        {
+                          $or: [
+                            { $eq: ['$soDienThoai', '$$phone'] },
+                            { $and: [
+                              { $ne: ['$$email', null] },
+                              { $eq: [{ $toLower: '$email' }, '$$email'] }
+                            ]}
+                          ]
+                        }
                       ]
                     }
                   ]
@@ -305,49 +315,100 @@ export async function POST(request: NextRequest) {
     await dbConnect();
 
     let nguoiQuanLyId = session.user.id;
+    const NguoiDung = mongoose.model('NguoiDung');
+    
     if (session.user.role === 'nhanVien') {
-      const nhanVien = await mongoose.model('NguoiDung').findById(session.user.id).select('nguoiQuanLy');
+      const nhanVien = await NguoiDung.findById(session.user.id).select('nguoiQuanLy');
       if (nhanVien && nhanVien.nguoiQuanLy) {
         nguoiQuanLyId = nhanVien.nguoiQuanLy.toString();
       }
     }
 
-    // Check if phone or CCCD already exists for THIS landlord
-    const existingKhachThue = await KhachThue.findOne({
-      nguoiQuanLy: new mongoose.Types.ObjectId(nguoiQuanLyId),
-      $or: [
-        { soDienThoai: validatedData.soDienThoai },
-        { cccd: validatedData.cccd }
-      ]
-    });
+    // Start Transaction
+    const dbSession = await mongoose.startSession();
+    let newKhachThueData: any;
 
-    if (existingKhachThue) {
-      return NextResponse.json(
-        { message: 'Số điện thoại hoặc CCCD đã được bạn sử dụng cho khách thuê khác trong hệ thống của mình.' },
-        { status: 400 }
-      );
+    try {
+      await dbSession.withTransaction(async () => {
+        // Check if phone or CCCD already exists for THIS landlord
+        const existingKhachThue = await KhachThue.findOne({
+          nguoiQuanLy: new mongoose.Types.ObjectId(nguoiQuanLyId),
+          $or: [
+            { soDienThoai: validatedData.soDienThoai },
+            { cccd: validatedData.cccd }
+          ]
+        }).session(dbSession);
+
+        if (existingKhachThue) {
+          throw new Error('Số điện thoại hoặc CCCD đã được bạn sử dụng cho khách thuê khác trong hệ thống của mình.');
+        }
+
+        let linkUserId = undefined;
+
+        // Nếu có truyền userId (Account vừa chọn)
+        if (validatedData.userId) {
+          const userObjId = new mongoose.Types.ObjectId(validatedData.userId);
+          
+          // Kiểm tra User này có tồn tại không và role có phải TENANT không
+          const userTarget = await NguoiDung.findById(userObjId).session(dbSession);
+          if (!userTarget) {
+            throw new Error('Tài khoản được chọn không tồn tại.');
+          }
+          if (userTarget.role !== 'khachThue' && userTarget.vaiTro !== 'khachThue') {
+            throw new Error('Tài khoản được chọn không phải là vai trò Khách thuê.');
+          }
+
+          // Kiểm tra xem User này đã bị liên kết với một KhachThue khác chưa
+          const alreadyLinkedKhachThue = await KhachThue.findById(userObjId).session(dbSession);
+          if (alreadyLinkedKhachThue) {
+            throw new Error('Tài khoản này đã được liên kết với một hồ sơ khách thuê khác!');
+          }
+
+          linkUserId = userObjId;
+          
+          // Cập nhật lại thông tin của User cho khớp 100% với hồ sơ chuẩn
+          await NguoiDung.findByIdAndUpdate(userObjId, {
+            $set: {
+              ten: validatedData.hoTen,
+              name: validatedData.hoTen,
+              soDienThoai: validatedData.soDienThoai,
+              phone: validatedData.soDienThoai,
+              email: validatedData.email || userTarget.email
+            }
+          }, { session: dbSession });
+        }
+
+        const newKhachThueObj = new KhachThue({
+          ...(linkUserId ? { _id: linkUserId } : {}),
+          ...validatedData,
+          ngaySinh: new Date(validatedData.ngaySinh),
+          anhCCCD: validatedData.anhCCCD || { matTruoc: '', matSau: '' },
+          trangThai: 'chuaThue',
+          nguoiQuanLy: new mongoose.Types.ObjectId(nguoiQuanLyId),
+          toaNhaBanDau: validatedData.toaNhaBanDau ? new mongoose.Types.ObjectId(validatedData.toaNhaBanDau) : undefined
+        });
+
+        await newKhachThueObj.save({ session: dbSession });
+        newKhachThueData = newKhachThueObj;
+      });
+      await dbSession.endSession();
+    } catch (e: any) {
+      await dbSession.endSession();
+      throw e;
     }
 
-    const newKhachThue = new KhachThue({
-      ...validatedData,
-      ngaySinh: new Date(validatedData.ngaySinh),
-      anhCCCD: validatedData.anhCCCD || { matTruoc: '', matSau: '' },
-      trangThai: 'chuaThue', // Mặc định là chưa thuê, sẽ được cập nhật tự động
-      nguoiQuanLy: new mongoose.Types.ObjectId(nguoiQuanLyId)
-    });
-
-    await newKhachThue.save();
-
-    // Cập nhật trạng thái dựa trên hợp đồng (chạy background)
-    updateKhachThueStatus(newKhachThue._id.toString()).catch(e => console.error(e));
+    // Background process outside transaction
+    if (newKhachThueData) {
+      updateKhachThueStatus(newKhachThueData._id.toString()).catch(e => console.error(e));
+    }
 
     return NextResponse.json({
       success: true,
-      data: newKhachThue,
-      message: 'Khách thuê đã được tạo thành công',
+      data: newKhachThueData,
+      message: validatedData.userId ? 'Đã tạo hồ sơ và liên kết tài khoản thành công. Khách thuê có thể dùng tài khoản cũ.' : 'Khách thuê đã được tạo thành công',
     }, { status: 201 });
 
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { message: error.issues[0].message },
@@ -356,6 +417,12 @@ export async function POST(request: NextRequest) {
     }
 
     console.error('Error creating khach thue:', error);
+    
+    // Nếu lỗi do throw new Error bên trong transaction
+    if (error.message && !error.message.includes('Internal server error')) {
+      return NextResponse.json({ message: error.message }, { status: 400 });
+    }
+
     return NextResponse.json(
       { message: 'Internal server error' },
       { status: 500 }

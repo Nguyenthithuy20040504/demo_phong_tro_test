@@ -78,10 +78,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       isActive: true,
       items: [
         {
-          title: "Tòa nhà",
-          url: "/dashboard/toa-nha",
-        },
-        {
           title: "Phòng",
           url: "/dashboard/phong",
         },

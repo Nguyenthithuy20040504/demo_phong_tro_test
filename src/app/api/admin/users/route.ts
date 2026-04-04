@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, email, password, phone, role } = body;
+    const { name, email, password, phone, role, tenantId } = body;
 
     // Validation
     if (!name || !email || !password || !role) {
@@ -147,7 +147,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Create user (password will be hashed by the model's pre-save hook)
+    const mongoose = require('mongoose');
     const newUser = new NguoiDung({
+      ...(tenantId ? { _id: new mongoose.Types.ObjectId(tenantId) } : {}),
       // Vietnamese fields
       ten: name,
       email,

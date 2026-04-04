@@ -39,8 +39,16 @@ import {
   CreditCard,
   RefreshCw,
   Copy,
-  UserPlus
+  UserPlus,
+  AlertCircle,
+  Check,
+  ChevronsUpDown,
+  X,
+  UserCheck
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import useSWR, { mutate } from 'swr';
 import { KhachThue } from '@/types';
 import { KhachThueDataTable } from './table';
@@ -549,13 +557,15 @@ export default function KhachThuePage() {
 
             {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="acc-email">Email đăng nhập <span className="text-red-500">*</span></Label>
+              <Label htmlFor="acc-email" className={cn(createAccountTarget?.email && "text-gray-500")}>Email đăng nhập <span className="text-red-500">*</span></Label>
               <Input
                 id="acc-email"
                 type="email"
                 placeholder="Nhập email cho khách thuê"
                 value={accountForm.email}
                 onChange={(e) => setAccountForm(prev => ({ ...prev, email: e.target.value }))}
+                readOnly={!!createAccountTarget?.email}
+                className={cn(createAccountTarget?.email && "bg-gray-100 border-gray-200 text-gray-600 focus-visible:ring-0")}
               />
             </div>
 
@@ -585,6 +595,15 @@ export default function KhachThuePage() {
                 <p className="text-xs text-red-500">Mật khẩu xác nhận không khớp</p>
               )}
             </div>
+
+            {createAccountTarget?.email && (
+              <div className="flex gap-2 items-start bg-amber-50 border border-amber-200 p-2.5 rounded-md mt-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-800 leading-tight">
+                  Thông tin này được đồng bộ từ hồ sơ khách thuê. Để thay đổi, vui lòng chỉnh sửa tại mục <strong>Quản lý khách thuê</strong>.
+                </p>
+              </div>
+            )}
           </div>
           
           <DialogFooter className="gap-2">
@@ -627,9 +646,26 @@ function KhachThueForm({
       matSau: khachThue?.anhCCCD?.matSau || '',
     },
     ngheNghiep: khachThue?.ngheNghiep || '',
+    userId: undefined as string | undefined,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [openUserPopover, setOpenUserPopover] = useState(false);
+  const [unlinkedUsers, setUnlinkedUsers] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Only fetch unlinked users if creating a new tenant profile
+    if (!khachThue) {
+      fetch('/api/khach-thue/users-chua-lien-ket')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setUnlinkedUsers(data.data);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [khachThue]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -639,7 +675,15 @@ function KhachThueForm({
       const url = khachThue ? `/api/khach-thue/${khachThue._id}` : '/api/khach-thue';
       const method = khachThue ? 'PUT' : 'POST';
 
-      const submitData = { ...formData };
+      const submitData: any = { ...formData };
+      
+      // Nếu là tạo mới và đang ở trong bộ lọc của 1 tòa nhà cụ thể, gán tòa nhà đó làm tòa gốc
+      if (!khachThue) {
+        const currentBuilding = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') : null;
+        if (currentBuilding && currentBuilding !== 'all') {
+          submitData.toaNhaBanDau = currentBuilding;
+        }
+      }
 
       const response = await fetch(url, {
         method,
@@ -687,42 +731,131 @@ function KhachThueForm({
         </TabsList>
         
         <TabsContent value="thong-tin" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
+          {!khachThue && (
+            <div className="relative group rounded-lg border border-dashed border-[#0d9488]/40 bg-[#0d9488]/5 p-3 md:p-3.5 transition-all hover:bg-[#0d9488]/10 mb-4 pointer-events-auto">
+              <div className="flex items-start gap-2.5 md:gap-3">
+                <div className="mt-0.5 rounded-full bg-white shadow-sm p-1.5 text-[#0d9488]">
+                  <UserPlus className="h-4 w-4" />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div>
+                    <Label className="text-sm font-semibold text-[#0f766e]">Liên kết tài khoản đã tạo (Tùy chọn)</Label>
+                    <p className="text-[11px] md:text-xs text-[#0d9488]/80 mt-0.5 leading-tight">Nếu khách đã được tạo tài khoản trước đó mà chưa có hồ sơ, hãy chọn tại đây để đồng bộ.</p>
+                  </div>
+                  <Popover open={openUserPopover} onOpenChange={setOpenUserPopover}>
+                    <PopoverTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        role="combobox" 
+                        aria-expanded={openUserPopover} 
+                        className={cn(
+                          "w-full justify-between bg-white/90 backdrop-blur-sm border-[#0d9488]/20 hover:bg-white hover:border-[#0d9488]/40 shadow-sm h-9 px-3",
+                          !formData.userId && "text-muted-foreground"
+                        )}
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <Search className="h-3.5 w-3.5 opacity-50 shrink-0" />
+                          <span className="truncate">
+                            {formData.userId && unlinkedUsers.find(u => u._id === formData.userId)
+                              ? `${unlinkedUsers.find(u => u._id === formData.userId)?.hoTen} - ${unlinkedUsers.find(u => u._id === formData.userId)?.soDienThoai}`
+                              : "Tìm theo tên hoặc SĐT..."}
+                          </span>
+                        </div>
+                        {!formData.userId ? (
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        ) : (
+                          <div 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFormData(prev => ({ 
+                                ...prev, 
+                                hoTen: '', soDienThoai: '', email: '', userId: undefined 
+                              }));
+                            }} 
+                            className="ml-2 p-1 rounded-sm hover:bg-red-100 text-red-500 hover:text-red-700 transition-colors"
+                          >
+                            <X className="h-3.5 w-3.5 shrink-0" />
+                          </div>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[370px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Tìm theo tên hoặc SĐT..." />
+                        <CommandList>
+                          <CommandEmpty>Không có tài khoản tự do nào.</CommandEmpty>
+                          <CommandGroup>
+                            {unlinkedUsers.map((user) => (
+                              <CommandItem
+                                key={user._id}
+                                value={user.hoTen + ' ' + user.soDienThoai}
+                                onSelect={() => {
+                                  setFormData(prev => ({ 
+                                    ...prev, 
+                                    hoTen: user.hoTen !== '(Trống)' ? user.hoTen : '', 
+                                    soDienThoai: user.soDienThoai !== '(Trống)' ? user.soDienThoai : '', 
+                                    email: user.email || '',
+                                    userId: user._id
+                                  }));
+                                  setOpenUserPopover(false);
+                                }}
+                              >
+                                <Check className={cn("mr-2 h-4 w-4", formData.userId === user._id ? "opacity-100" : "opacity-0")} />
+                                <div className="flex flex-col">
+                                  <span>{user.hoTen}</span>
+                                  <span className="text-xs text-muted-foreground">SĐT: {user.soDienThoai}</span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
             <div className="space-y-2">
-              <Label htmlFor="hoTen" className="text-sm">Họ và tên</Label>
+              <Label htmlFor="hoTen" className={cn("text-sm", formData.userId && "text-gray-500")}>Họ và tên</Label>
               <Input
                 id="hoTen"
                 value={formData.hoTen}
                 onChange={(e) => setFormData(prev => ({ ...prev, hoTen: e.target.value }))}
                 required
                 placeholder="Nhập đầy đủ tên khách"
-                className="text-sm"
+                readOnly={!!formData.userId}
+                className={cn("text-sm", formData.userId && "bg-gray-100 border-gray-200 text-gray-600 focus-visible:ring-0")}
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="soDienThoai" className="text-sm">Số điện thoại</Label>
+              <Label htmlFor="soDienThoai" className={cn("text-sm", formData.userId && "text-gray-500")}>Số điện thoại</Label>
               <Input
                 id="soDienThoai"
                 value={formData.soDienThoai}
                 onChange={(e) => setFormData(prev => ({ ...prev, soDienThoai: e.target.value }))}
                 required
                 placeholder="Số điện thoại liên lạc"
-                className="text-sm"
+                readOnly={!!formData.userId}
+                className={cn("text-sm", formData.userId && "bg-gray-100 border-gray-200 text-gray-600 focus-visible:ring-0")}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm">Email</Label>
+              <Label htmlFor="email" className={cn("text-sm", formData.userId && "text-gray-500")}>Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 placeholder="địa_chỉ@email.com"
-                className="text-sm"
+                readOnly={!!formData.userId}
+                className={cn("text-sm", formData.userId && "bg-gray-100 border-gray-200 text-gray-600 focus-visible:ring-0")}
               />
             </div>
             
