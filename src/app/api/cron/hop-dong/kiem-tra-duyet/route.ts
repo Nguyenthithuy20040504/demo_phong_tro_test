@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     await connectToDatabase();
 
     const now = new Date();
-    
+
     // Find all pending contracts
     const pendingContracts = await HopDong.find({ trangThai: 'choDuyet' })
       .populate({
@@ -44,21 +44,21 @@ export async function GET(request: NextRequest) {
         // Hủy bỏ hợp đồng sau 7 phút chờ duyệt
         hd.trangThai = 'daHuy';
         await hd.save();
-        
+
         // Gửi thông báo cho khách thuê
         if (nguoiDaiDienId && landlordId) {
           const tbKhach = new ThongBao({
             tieuDe: 'Hợp đồng đã bị hủy tự động',
             noiDung: `Hợp đồng phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) đã tự động bị hủy do quá hạn 7 phút nhưng chưa được xác nhận.`,
             loai: 'hopDong',
-            nguoiGui: landlordId, 
+            nguoiGui: landlordId,
             nguoiNhan: [nguoiDaiDienId],
             phong: rPhong?._id ? [rPhong._id] : [],
             toaNha: rPhong?.toaNha?._id,
             ngayGui: new Date()
           });
           await tbKhach.save();
-          
+
           // Gửi thông báo cho chủ nhà
           const tbChuNha = new ThongBao({
             tieuDe: 'Hợp đồng bị hủy do quá hạn',
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
           });
           await tbChuNha.save();
         }
-        
+
         cancelledCount++;
       } else if (minutesSinceCreation >= 5 && !hd.daNhacChoDuyet) {
         // Gửi thông báo nhắc nhở ngày thứ 5
@@ -88,10 +88,10 @@ export async function GET(request: NextRequest) {
             ngayGui: new Date()
           });
           await tbReminder.save();
-          
+
           hd.daNhacChoDuyet = true;
           await hd.save();
-          
+
           reminderCount++;
         }
       }

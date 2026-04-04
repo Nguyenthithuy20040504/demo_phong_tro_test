@@ -40,7 +40,7 @@ const SuCoSchema = new Schema<ISuCo>({
     type: String,
     required: [true, 'Mô tả là bắt buộc'],
     trim: true,
-    maxlength: [1000, 'Mô tả không được quá 1000 ký tự']
+    maxlength: [5000, 'Mô tả không được quá 5000 ký tự']
   },
   anhSuCo: [{
     type: String,
@@ -68,7 +68,7 @@ const SuCoSchema = new Schema<ISuCo>({
   ghiChuXuLy: {
     type: String,
     trim: true,
-    maxlength: [500, 'Ghi chú xử lý không được quá 500 ký tự']
+    maxlength: [2000, 'Ghi chú xử lý không được quá 2000 ký tự']
   },
   ngayBaoCao: {
     type: Date,

@@ -848,27 +848,35 @@ function SuCoForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="tieuDe" className="text-xs md:text-sm">Tiêu đề</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="tieuDe" className="text-xs md:text-sm">Tiêu đề</Label>
+          <span className="text-[10px] text-gray-400">{formData.tieuDe.length}/200</span>
+        </div>
         <Input
           id="tieuDe"
           value={formData.tieuDe}
-          onChange={(e) => setFormData(prev => ({ ...prev, tieuDe: e.target.value }))}
+          onChange={(e) => setFormData(prev => ({ ...prev, tieuDe: e.target.value.slice(0, 200) }))}
           placeholder="Nhập tiêu đề sự cố"
           required
           className="text-sm"
+          maxLength={200}
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="moTa" className="text-xs md:text-sm">Mô tả chi tiết</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="moTa" className="text-xs md:text-sm">Mô tả chi tiết</Label>
+          <span className="text-[10px] text-gray-400">{formData.moTa.length}/5000</span>
+        </div>
         <Textarea
           id="moTa"
           value={formData.moTa}
-          onChange={(e) => setFormData(prev => ({ ...prev, moTa: e.target.value }))}
+          onChange={(e) => setFormData(prev => ({ ...prev, moTa: e.target.value.slice(0, 5000) }))}
           rows={4}
           placeholder="Mô tả chi tiết về sự cố..."
           required
           className="text-sm"
+          maxLength={5000}
         />
       </div>
 
@@ -924,14 +932,18 @@ function SuCoForm({
 
       {suCo && (formData.trangThai === 'dangXuLy' || formData.trangThai === 'daXong') && (
         <div className="space-y-2">
-          <Label htmlFor="ghiChuXuLy" className="text-xs md:text-sm">Ghi chú xử lý</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="ghiChuXuLy" className="text-xs md:text-sm">Ghi chú xử lý</Label>
+            <span className="text-[10px] text-gray-400">{formData.ghiChuXuLy.length}/2000</span>
+          </div>
           <Textarea
             id="ghiChuXuLy"
             value={formData.ghiChuXuLy}
-            onChange={(e) => setFormData(prev => ({ ...prev, ghiChuXuLy: e.target.value }))}
+            onChange={(e) => setFormData(prev => ({ ...prev, ghiChuXuLy: e.target.value.slice(0, 2000) }))}
             rows={3}
             placeholder="Ghi chú về quá trình xử lý..."
             className="text-sm"
+            maxLength={2000}
           />
         </div>
       )}

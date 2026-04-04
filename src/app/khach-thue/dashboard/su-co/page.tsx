@@ -78,21 +78,23 @@ export default function SuCoKhachThuePage() {
 
   const fetchMyRooms = async () => {
     try {
-      const res = await fetch('/api/hop-dong?trangThai=hoatDong&limit=50');
+      const res = await fetch('/api/hop-dong?limit=50');
       const data = await res.json();
       if (data.success && data.data) {
+        // Chỉ lấy những hợp đồng chưa bị hủy
+        const activeContracts = data.data.filter((hd: any) => hd.trangThai !== 'daHuy');
         const rooms: Array<{phongId: string; maPhong: string; toaNhaId: string; tenToaNha: string}> = [];
-        for (const hd of data.data) {
+        for (const hd of activeContracts) {
           const phong = hd.phong;
           if (phong && typeof phong === 'object' && (phong as any).maPhong) {
             const toaNha = (phong as any).toaNha;
             const toaNhaId = typeof toaNha === 'object' ? toaNha._id : toaNha;
             const tenToaNha = typeof toaNha === 'object' ? toaNha.tenToaNha : 'Tòa nhà';
             rooms.push({
-              phongId: (phong as any)._id,
+              phongId: (phong as any)._id || phong.toString(),
               maPhong: (phong as any).maPhong,
               toaNhaId: toaNhaId || '',
-              tenToaNha: tenToaNha || ''
+              tenToaNha: tenToaNha || 'Tòa nhà'
             });
           }
         }
@@ -239,9 +241,13 @@ export default function SuCoKhachThuePage() {
                       <SelectValue placeholder="Chọn tòa nhà" />
                     </SelectTrigger>
                     <SelectContent>
-                      {[...new Map(myRooms.map(r => [r.toaNhaId, r])).values()].map(r => (
-                        <SelectItem key={r.toaNhaId} value={r.toaNhaId}>{r.tenToaNha}</SelectItem>
-                      ))}
+                      {myRooms.length === 0 ? (
+                        <div className="p-2 text-xs text-center text-gray-500 italic">Bạn chưa thuê phòng nào</div>
+                      ) : (
+                        [...new Map(myRooms.map(r => [r.toaNhaId, r])).values()].map(r => (
+                          <SelectItem key={r.toaNhaId} value={r.toaNhaId}>{r.tenToaNha}</SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -256,34 +262,46 @@ export default function SuCoKhachThuePage() {
                       <SelectValue placeholder={selectedToaNha ? "Chọn phòng" : "Chọn tòa nhà trước"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {filteredRooms.map(r => (
-                        <SelectItem key={r.phongId} value={r.phongId}>{r.maPhong}</SelectItem>
-                      ))}
+                      {filteredRooms.length === 0 ? (
+                        <div className="p-2 text-xs text-center text-gray-500 italic">Không có phòng</div>
+                      ) : (
+                        filteredRooms.map(r => (
+                          <SelectItem key={r.phongId} value={r.phongId}>{r.maPhong}</SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="tieuDe" className="text-xs md:text-sm">Tiêu đề</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="tieuDe" className="text-xs md:text-sm">Tiêu đề</Label>
+                  <span className="text-[10px] text-gray-400">{formData.tieuDe.length}/200</span>
+                </div>
                 <Input 
                   id="tieuDe" 
                   placeholder="Nhập tiêu đề sự cố" 
                   className="text-sm border-gray-200 focus:border-primary/50 transition-colors"
                   value={formData.tieuDe}
-                  onChange={(e) => setFormData({...formData, tieuDe: e.target.value})}
+                  onChange={(e) => setFormData({...formData, tieuDe: e.target.value.slice(0, 200)})}
                   required
+                  maxLength={200}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="moTa" className="text-xs md:text-sm">Mô tả chi tiết</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="moTa" className="text-xs md:text-sm">Mô tả chi tiết</Label>
+                  <span className="text-[10px] text-gray-400">{formData.moTa.length}/5000</span>
+                </div>
                 <Textarea 
                   id="moTa" 
                   placeholder="Mô tả chi tiết về sự cố..." 
                   className="min-h-[100px] text-sm border-gray-200 focus:border-primary/50 transition-colors resize-none"
                   value={formData.moTa}
-                  onChange={(e) => setFormData({...formData, moTa: e.target.value})}
+                  onChange={(e) => setFormData({...formData, moTa: e.target.value.slice(0, 5000)})}
                   required
                   rows={4}
+                  maxLength={5000}
                 />
               </div>
 

@@ -231,7 +231,7 @@ export function SuCoDetailDialog({ suCo, isOpen, onClose, phongList, toaNhaList 
                         Mô tả chi tiết
                       </h3>
                       <div className="bg-white p-5 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border-2 border-slate-100 min-h-[120px] md:min-h-[140px] shadow-sm">
-                        <p className="text-base md:text-lg text-slate-700 leading-relaxed font-bold">
+                        <p className="text-base md:text-lg text-slate-700 leading-relaxed font-bold whitespace-pre-wrap">
                           "{suCo.moTa}"
                         </p>
                       </div>
@@ -243,7 +243,7 @@ export function SuCoDetailDialog({ suCo, isOpen, onClose, phongList, toaNhaList 
                         Ghi chú xử lý
                       </h3>
                       <div className="bg-amber-50 p-5 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border-2 border-amber-100/50 min-h-[100px] md:min-h-[120px] shadow-sm">
-                        <p className="text-sm md:text-base text-amber-800/80 leading-relaxed font-bold italic">
+                        <p className="text-sm md:text-base text-amber-800/80 leading-relaxed font-bold italic whitespace-pre-wrap">
                           {suCo.ghiChuXuLy || "Chưa có ghi chú xử lý nào..."}
                         </p>
                       </div>

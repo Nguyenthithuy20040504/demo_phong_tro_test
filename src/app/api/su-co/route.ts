@@ -13,7 +13,7 @@ const suCoSchema = z.object({
   phong: z.string().min(1, 'Phòng là bắt buộc'),
   khachThue: z.string().nullable().optional(),
   tieuDe: z.string().min(1, 'Tiêu đề là bắt buộc'),
-  moTa: z.string().min(1, 'Mô tả là bắt buộc'),
+  moTa: z.string().min(1, 'Mô tả là bắt buộc').max(5000, 'Mô tả không được quá 5000 ký tự'),
   anhSuCo: z.array(z.string()).optional(),
   loaiSuCo: z.enum(['dienNuoc', 'noiThat', 'vesinh', 'anNinh', 'khac']),
   mucDoUuTien: z.enum(['thap', 'trungBinh', 'cao', 'khancap']).optional(),
@@ -96,6 +96,12 @@ export async function GET(request: NextRequest) {
       }
       
       query.khachThue = { $in: linkedIds };
+
+      // Filter by building if tenant specify it
+      if (targetToaNhaIds !== null && targetToaNhaIds.length > 0) {
+        const phongsInBuilding = await Phong.find({ toaNha: { $in: targetToaNhaIds } }).select('_id');
+        query.phong = { $in: phongsInBuilding.map(p => p._id) };
+      }
     } else if (targetToaNhaIds !== null) {
       if (targetToaNhaIds.length === 0) {
          return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
@@ -199,29 +205,29 @@ export async function POST(request: NextRequest) {
       
       const ktId = khachThue ? khachThue._id : new mongoose.Types.ObjectId(userId);
       
-      // Tìm tất cả hợp đồng hoạt động để xác thực phòng được chọn
+      // Tìm tất cả hợp đồng chưa bị hủy để xác thực phòng được chọn
       const HopDong = (await import('@/models/HopDong')).default;
-      const activeContracts = await HopDong.find({
+      const validContracts = await HopDong.find({
         khachThueId: { $in: [new mongoose.Types.ObjectId(userId), ktId] },
-        trangThai: 'hoatDong'
+        trangThai: { $ne: 'daHuy' }
       }).select('phong');
       
-      if (!activeContracts || activeContracts.length === 0) {
+      if (!validContracts || validContracts.length === 0) {
         return NextResponse.json(
-          { message: 'Bạn không có hợp đồng thuê phòng nào đang hoạt động' },
+          { message: 'Bạn không có hợp đồng thuê phòng nào' },
           { status: 400 }
         );
       }
       
       // Nếu client không gửi phòng, tự động lấy phòng đầu tiên
       if (!body.phong) {
-        body.phong = activeContracts[0].phong.toString();
+        body.phong = validContracts[0].phong.toString();
       } else {
         // Kiểm tra phòng client gửi phải thuộc hợp đồng của họ
-        const validPhongIds = activeContracts.map(c => c.phong.toString());
+        const validPhongIds = validContracts.map(c => c.phong.toString());
         if (!validPhongIds.includes(body.phong)) {
           return NextResponse.json(
-            { message: 'Phòng được chọn không thuộc hợp đồng của bạn' },
+             { message: 'Phòng được chọn không thuộc hợp đồng của bạn hoặc hợp đồng đã bị hủy' },
             { status: 403 }
           );
         }

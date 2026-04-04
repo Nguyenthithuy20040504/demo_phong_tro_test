@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
       query.khachThueId = { $in: [new mongoose.Types.ObjectId(userId), ktId] };
       
       // If toaNhaId is provided for tenant, we should also filter by it
-      if (targetToaNhaIds !== null) {
+      if (targetToaNhaIds !== null && targetToaNhaIds.length > 0) {
         const phongsInBuilding = await Phong.find({ toaNha: { $in: targetToaNhaIds } }).select('_id');
         query.phong = { $in: phongsInBuilding.map(p => p._id) };
       }
