@@ -22,7 +22,9 @@ import {
   Sparkles,
   Droplets,
   Building2,
+  Search,
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -58,7 +60,8 @@ export default function HoaDonTuDongPage() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showResultDialog, setShowResultDialog] = useState(false);
   const [isReadingsModalOpen, setIsReadingsModalOpen] = useState(false);
-  const [bulkReadings, setBulkReadings] = useState<Record<string, { chiSoDienCuoiKy: number; chiSoNuocCuoiKy: number }>>({});
+  const [searchTerm, setSearchTerm] = useState('');
+  const [bulkReadings, setBulkReadings] = useState<Record<string, { chiSoDienCuoiKy: number | undefined; chiSoNuocCuoiKy: number | undefined }>>({});
 
   // Hàm lấy buildingId hiện tại từ localStorage
   const getBuildingId = () => {
@@ -87,13 +90,13 @@ export default function HoaDonTuDongPage() {
       if (response.ok) {
         const data = await response.json();
         setStatus(data.data);
-        
-        // Initialize bulk readings with current values
+
+        // Initialize bulk readings to undefined to force user entry
         const initialReadings: Record<string, any> = {};
         data.data.pendingContracts.forEach((c: any) => {
           initialReadings[c._id] = {
-            chiSoDienCuoiKy: c.chiSoDienCu,
-            chiSoNuocCuoiKy: c.chiSoNuocCu
+            chiSoDienCuoiKy: undefined,
+            chiSoNuocCuoiKy: undefined
           };
         });
         setBulkReadings(initialReadings);
@@ -143,21 +146,32 @@ export default function HoaDonTuDongPage() {
   };
 
   const handleBulkCreate = async () => {
+    const filteredContracts = (status?.pendingContracts || []).filter((c: any) => {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        c.phong?.maPhong?.toLowerCase().includes(searchLower) ||
+        c.khachThue?.ten?.toLowerCase().includes(searchLower)
+      );
+    });
+
+    if (filteredContracts.length === 0) return;
+
     setIsReadingsModalOpen(false);
     setIsCreating(true);
-    const toastId = toast.loading('Đang tạo hóa đơn hàng loạt...');
+    const toastId = toast.loading(`Đang tạo hóa đơn cho ${filteredContracts.length} phòng...`);
 
     try {
       const buildingId = getBuildingId();
-      const readingsArray = Object.entries(bulkReadings).map(([contractId, data]) => ({
-        contractId,
-        ...data
+      // Only send readings for filtered contracts
+      const readingsArray = filteredContracts.map(c => ({
+        contractId: c._id,
+        ...bulkReadings[c._id]
       }));
 
       const response = await fetch('/api/auto-invoice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           toaNhaId: buildingId,
           readings: readingsArray
         }),
@@ -188,7 +202,7 @@ export default function HoaDonTuDongPage() {
     return 'warning';
   };
 
-  const updateReading = (contractId: string, field: 'chiSoDienCuoiKy' | 'chiSoNuocCuoiKy', value: number) => {
+  const updateReading = (contractId: string, field: 'chiSoDienCuoiKy' | 'chiSoNuocCuoiKy', value: number | undefined) => {
     setBulkReadings(prev => ({
       ...prev,
       [contractId]: {
@@ -200,16 +214,29 @@ export default function HoaDonTuDongPage() {
 
   const isAllReadingsFilled = () => {
     if (!status?.pendingContracts) return false;
-    return status.pendingContracts.every(contract => {
-      const reading = bulkReadings[contract._id];
-      // Kiểm tra nếu đã nhập tỉ số và số mới phải >= số cũ
+    
+    const filteredContracts = status.pendingContracts.filter((c: any) => {
+      const searchLower = searchTerm.toLowerCase();
       return (
-        reading && 
-        reading.chiSoDienCuoiKy >= contract.chiSoDienCu && 
-        reading.chiSoNuocCuoiKy >= contract.chiSoNuocCu &&
-        // Đảm bảo không để trống (giả định người dùng phải tương tác)
-        reading.chiSoDienCuoiKy !== undefined &&
-        reading.chiSoNuocCuoiKy !== undefined
+        c.phong?.maPhong?.toLowerCase().includes(searchLower) ||
+        c.khachThue?.ten?.toLowerCase().includes(searchLower)
+      );
+    });
+
+    if (filteredContracts.length === 0) return false;
+
+    return filteredContracts.every(contract => {
+      const reading = bulkReadings[contract._id];
+      if (!reading) return false;
+      
+      const { chiSoDienCuoiKy, chiSoNuocCuoiKy } = reading;
+
+      // Kiểm tra nếu đã nhập tỉ số (không để trống) và số mới phải >= số cũ
+      return (
+        typeof chiSoDienCuoiKy === 'number' && 
+        typeof chiSoNuocCuoiKy === 'number' &&
+        chiSoDienCuoiKy >= contract.chiSoDienCu && 
+        chiSoNuocCuoiKy >= contract.chiSoNuocCu
       );
     });
   };
@@ -329,46 +356,40 @@ export default function HoaDonTuDongPage() {
 
         {/* Chưa có chỉ số */}
         <Card className="relative overflow-hidden">
-          <div className={`absolute inset-0 bg-gradient-to-br ${
-            (status?.contractsWithoutReadingsCount ?? 0) > 0
+          <div className={`absolute inset-0 bg-gradient-to-br ${(status?.contractsWithoutReadingsCount ?? 0) > 0
               ? 'from-amber-50 to-amber-100/30'
               : 'from-gray-50 to-gray-100/30'
-          }`}></div>
+            }`}></div>
           <CardContent className="relative p-4 md:p-5">
             <div className="flex items-start justify-between">
               <div>
-                <p className={`text-xs font-medium uppercase tracking-wider ${
-                  (status?.contractsWithoutReadingsCount ?? 0) > 0
+                <p className={`text-xs font-medium uppercase tracking-wider ${(status?.contractsWithoutReadingsCount ?? 0) > 0
                     ? 'text-amber-600'
                     : 'text-gray-600'
-                }`}>
+                  }`}>
                   Chưa có chỉ số
                 </p>
-                <p className={`text-2xl md:text-3xl font-bold mt-1 ${
-                  (status?.contractsWithoutReadingsCount ?? 0) > 0
+                <p className={`text-2xl md:text-3xl font-bold mt-1 ${(status?.contractsWithoutReadingsCount ?? 0) > 0
                     ? 'text-amber-700'
                     : 'text-gray-700'
-                }`}>
+                  }`}>
                   {status?.contractsWithoutReadingsCount ?? 0}
                 </p>
-                <p className={`text-xs mt-1 ${
-                  (status?.contractsWithoutReadingsCount ?? 0) > 0
+                <p className={`text-xs mt-1 ${(status?.contractsWithoutReadingsCount ?? 0) > 0
                     ? 'text-amber-500'
                     : 'text-gray-500'
-                }`}>
+                  }`}>
                   phòng chưa ghi điện nước
                 </p>
               </div>
-              <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                (status?.contractsWithoutReadingsCount ?? 0) > 0
+              <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${(status?.contractsWithoutReadingsCount ?? 0) > 0
                   ? 'bg-amber-100'
                   : 'bg-gray-100'
-              }`}>
-                <ClipboardList className={`h-5 w-5 ${
-                  (status?.contractsWithoutReadingsCount ?? 0) > 0
+                }`}>
+                <ClipboardList className={`h-5 w-5 ${(status?.contractsWithoutReadingsCount ?? 0) > 0
                     ? 'text-amber-600'
                     : 'text-gray-600'
-                }`} />
+                  }`} />
               </div>
             </div>
           </CardContent>
@@ -473,7 +494,7 @@ export default function HoaDonTuDongPage() {
               <div>
                 <p className="text-sm font-medium text-amber-800">Có phòng chưa nhập chỉ số điện nước</p>
                 <p className="text-xs text-amber-600 mt-1">
-                  Những phòng chưa có chỉ số sẽ bị bỏ qua khi tạo hóa đơn tự động. 
+                  Những phòng chưa có chỉ số sẽ bị bỏ qua khi tạo hóa đơn tự động.
                   Bạn vẫn có thể tiếp tục, nhưng một số hóa đơn sẽ không được tạo.
                 </p>
               </div>
@@ -486,7 +507,7 @@ export default function HoaDonTuDongPage() {
               <div>
                 <p className="text-sm font-medium text-green-800">Sẵn sàng tạo hóa đơn!</p>
                 <p className="text-xs text-green-600 mt-1">
-                  Tất cả điều kiện đã được đáp ứng. Bạn có thể tạo hóa đơn tự động cho 
+                  Tất cả điều kiện đã được đáp ứng. Bạn có thể tạo hóa đơn tự động cho
                   {' '}{status?.activeContractsCount} hợp đồng.
                 </p>
               </div>
@@ -528,7 +549,7 @@ export default function HoaDonTuDongPage() {
             </DialogTitle>
             <DialogDescription className="text-left pt-2 space-y-2">
               <p>
-                Hệ thống sẽ tạo hóa đơn <strong>{getMonthName(status?.currentMonth ?? 1)}/{status?.currentYear}</strong> cho 
+                Hệ thống sẽ tạo hóa đơn <strong>{getMonthName(status?.currentMonth ?? 1)}/{status?.currentYear}</strong> cho
                 {' '}<strong>{status?.activeContractsCount} hợp đồng</strong> đang hoạt động.
               </p>
               <div className="text-xs p-3 bg-amber-50 rounded-lg border border-amber-200 space-y-1">
@@ -611,7 +632,7 @@ export default function HoaDonTuDongPage() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowResultDialog(false)}>Đóng</Button>
-            <Button 
+            <Button
               className="bg-teal-600 text-white"
               onClick={() => {
                 setShowResultDialog(false);
@@ -625,7 +646,13 @@ export default function HoaDonTuDongPage() {
       </Dialog>
 
       {/* Popup nhập chỉ số hàng loạt */}
-      <Dialog open={isReadingsModalOpen} onOpenChange={setIsReadingsModalOpen}>
+      <Dialog 
+        open={isReadingsModalOpen} 
+        onOpenChange={(open) => {
+          setIsReadingsModalOpen(open);
+          if (!open) setSearchTerm('');
+        }}
+      >
         <DialogContent className="max-w-[95vw] md:max-w-6xl lg:max-w-7xl max-h-[90vh] overflow-hidden flex flex-col p-0">
           <DialogHeader className="p-6 pb-2">
             <DialogTitle className="flex items-center gap-2 text-xl">
@@ -635,6 +662,16 @@ export default function HoaDonTuDongPage() {
             <DialogDescription>
               Nhập chỉ số cuối kỳ cho các phòng thuộc kỳ {status ? `${getMonthName(status.currentMonth)}/${status.currentYear}` : ''}
             </DialogDescription>
+            
+            <div className="relative mt-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Tìm tên phòng hoặc mã phòng..."
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto p-4 md:p-6 pt-2">
@@ -648,7 +685,15 @@ export default function HoaDonTuDongPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {status?.pendingContracts.map((contract: any) => (
+                  {status?.pendingContracts
+                    .filter((c: any) => {
+                      const searchLower = searchTerm.toLowerCase();
+                      return (
+                        c.phong?.maPhong?.toLowerCase().includes(searchLower) ||
+                        c.khachThue?.ten?.toLowerCase().includes(searchLower)
+                      );
+                    })
+                    .map((contract: any) => (
                     <tr key={contract._id} className="hover:bg-gray-50/30">
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="font-bold text-gray-900">{contract.phong?.maPhong || 'N/A'}</div>
@@ -665,14 +710,18 @@ export default function HoaDonTuDongPage() {
                             <input
                               type="number"
                               className="w-full pl-9 pr-3 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white transition-all shadow-sm"
-                              value={bulkReadings[contract._id]?.chiSoDienCuoiKy || ''}
-                              min={contract.chiSoDienCu}
+                              placeholder={contract.chiSoDienCu.toString()}
                               onFocus={(e) => e.target.select()}
-                              onChange={(e) => updateReading(contract._id, 'chiSoDienCuoiKy', parseInt(e.target.value) || 0)}
+                              min={contract.chiSoDienCu}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                updateReading(contract._id, 'chiSoDienCuoiKy', val);
+                              }}
+                              value={bulkReadings[contract._id]?.chiSoDienCuoiKy ?? ''}
                             />
                           </div>
                         </div>
-                        {bulkReadings[contract._id]?.chiSoDienCuoiKy < contract.chiSoDienCu && (
+                        {bulkReadings[contract._id]?.chiSoDienCuoiKy !== undefined && (bulkReadings[contract._id]?.chiSoDienCuoiKy ?? 0) < contract.chiSoDienCu && (
                           <p className="text-[10px] text-red-500 mt-1 text-center font-medium">Lớn hơn {contract.chiSoDienCu}</p>
                         )}
                       </td>
@@ -687,14 +736,18 @@ export default function HoaDonTuDongPage() {
                             <input
                               type="number"
                               className="w-full pl-9 pr-3 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none bg-white transition-all shadow-sm"
-                              value={bulkReadings[contract._id]?.chiSoNuocCuoiKy || ''}
-                              min={contract.chiSoNuocCu}
+                              placeholder={contract.chiSoNuocCu.toString()}
                               onFocus={(e) => e.target.select()}
-                              onChange={(e) => updateReading(contract._id, 'chiSoNuocCuoiKy', parseInt(e.target.value) || 0)}
+                              min={contract.chiSoNuocCu}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                updateReading(contract._id, 'chiSoNuocCuoiKy', val);
+                              }}
+                              value={bulkReadings[contract._id]?.chiSoNuocCuoiKy ?? ''}
                             />
                           </div>
                         </div>
-                        {bulkReadings[contract._id]?.chiSoNuocCuoiKy < contract.chiSoNuocCu && (
+                        {bulkReadings[contract._id]?.chiSoNuocCuoiKy !== undefined && (bulkReadings[contract._id]?.chiSoNuocCuoiKy ?? 0) < contract.chiSoNuocCu && (
                           <p className="text-[10px] text-red-500 mt-1 text-center font-medium">Lớn hơn {contract.chiSoNuocCu}</p>
                         )}
                       </td>
@@ -723,7 +776,15 @@ export default function HoaDonTuDongPage() {
               ) : (
                 <>
                   <Sparkles className="h-5 w-5 mr-2" />
-                  Sinh hóa đơn tự động
+                  {searchTerm ? `Sinh hóa đơn cho ${
+                    status?.pendingContracts.filter((c: any) => {
+                      const searchLower = searchTerm.toLowerCase();
+                      return (
+                        c.phong?.maPhong?.toLowerCase().includes(searchLower) ||
+                        c.khachThue?.ten?.toLowerCase().includes(searchLower)
+                      );
+                    }).length
+                  } phòng` : 'Sinh hóa đơn tự động'}
                 </>
               )}
             </Button>

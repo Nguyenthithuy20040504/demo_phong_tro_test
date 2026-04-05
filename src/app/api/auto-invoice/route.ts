@@ -53,13 +53,21 @@ export async function POST(request: NextRequest) {
       : null;
 
     // Build contract query
+    const submittedContractIds = submittedReadings.map((r: any) => r.contractId);
+
     const contractQuery: any = {
       trangThai: 'hoatDong',
       ngayBatDau: { $lte: currentDate },
       ngayKetThuc: { $gte: currentDate },
     };
+
     if (phongIds !== null) {
       contractQuery.phong = { $in: phongIds };
+    }
+
+    // Nếu có gửi readings lên (tức là tạo chọn lọc), chỉ xử lý những hợp đồng đó
+    if (submittedContractIds.length > 0) {
+      contractQuery._id = { $in: submittedContractIds };
     }
 
     // Get active contracts
@@ -73,12 +81,21 @@ export async function POST(request: NextRequest) {
 
     for (const contract of activeContracts) {
       try {
-        // Check if invoice already exists
+        const invoiceNumber = `HD${currentYear}${currentMonth.toString().padStart(2, '0')}${contract.phong.maPhong}`;
+
+        // Check if invoice already exists (by contract OR by generated ID)
         const existingInvoice = await HoaDon.findOne({
-          hopDong: contract._id,
-          thang: currentMonth,
-          nam: currentYear,
-          maHoaDon: { $not: /^COC-/i } // Bỏ qua hóa đơn cọc
+          $or: [
+            {
+              hopDong: contract._id,
+              thang: currentMonth,
+              nam: currentYear,
+              maHoaDon: { $not: /^COC-/i }
+            },
+            {
+              maHoaDon: invoiceNumber
+            }
+          ]
         });
 
         if (existingInvoice) {
@@ -122,7 +139,7 @@ export async function POST(request: NextRequest) {
         const tongTienDichVu = contract.phiDichVu.reduce((sum: number, dv: { gia: number }) => sum + dv.gia, 0);
         const tongTien = contract.giaThue + tienDien + tienNuoc + tongTienDichVu;
 
-        const invoiceNumber = `HD${currentYear}${currentMonth.toString().padStart(2, '0')}${contract.phong.maPhong}`;
+        // invoiceNumber already defined above for check
 
         const dueDate = new Date(currentYear, currentMonth - 1, contract.ngayThanhToan);
         if (dueDate < currentDate) {

@@ -199,12 +199,14 @@ const createColumns = (props: HoaDonTableProps & { setHoaDonToDelete: (h: HoaDon
       />
     ),
     cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        disabled={row.original.trangThai === 'daThanhToan'}
-        aria-label="Select row"
-      />
+      <div onClick={(e) => e.stopPropagation()}>
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          disabled={row.original.trangThai === 'daThanhToan'}
+          aria-label="Select row"
+        />
+      </div>
     ),
     enableSorting: false,
     enableHiding: false,
