@@ -131,33 +131,37 @@ export async function GET(request: NextRequest) {
           ccEmail: owner?.email
         });
 
-        if (success) {
-          sentCount++;
-          await HoaDon.findByIdAndUpdate(hoaDon._id, {
-            $inc: { lanGuiEmailNhacNo: 1 },
-            $set: { soLanGuiEmailNhacNoThatBai: 0, ngayGuiEmailNhacNoCuoi: new Date() }
-          });
-          if (owner?._id) {
-             await NguoiDungModel.findByIdAndUpdate(owner._id, {
-               'caiDatThongBao.ngayGuiThongBaoCuoi': new Date()
-             });
+          if (success) {
+            sentCount++;
+            await HoaDon.findByIdAndUpdate(hoaDon._id, {
+              $inc: { lanGuiEmailNhacNo: 1 },
+              $set: { soLanGuiEmailNhacNoThatBai: 0, ngayGuiEmailNhacNoCuoi: new Date() }
+            });
+            if (owner?._id) {
+               await NguoiDungModel.findByIdAndUpdate(owner._id, {
+                 'caiDatThongBao.ngayGuiThongBaoCuoi': new Date()
+               });
+            }
+          } else {
+            failedCount++;
+            await HoaDon.findByIdAndUpdate(hoaDon._id, { $inc: { soLanGuiEmailNhacNoThatBai: 1 } });
           }
 
-          // Create In-App Notification
-          const noiDungThongBao = `Thông báo quá hạn: Hóa đơn tháng ${hoaDon.thang}/${hoaDon.nam} của bạn đã quá hạn thanh toán. Số tiền còn lại: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(hoaDon.conLai)}. Vui lòng hoàn tất thanh toán sớm.`;
+          // Create In-App Notification (Independent of email success)
+          try {
+            const noiDungThongBao = `Thông báo quá hạn: Hóa đơn tháng ${hoaDon.thang}/${hoaDon.nam} của bạn đã quá hạn thanh toán. Số tiền còn lại: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(hoaDon.conLai)}. Vui lòng hoàn tất thanh toán sớm.`;
 
-          await new ThongBao({
-            tieuDe: 'Thông báo nợ (Quá hạn)',
-            noiDung: noiDungThongBao,
-            loai: 'hoaDon',
-            nguoiGui: owner?._id || null,
-            nguoiNhan: [hoaDon.khachThue],
-            ngayGui: new Date()
-          }).save();
-        } else {
-          failedCount++;
-          await HoaDon.findByIdAndUpdate(hoaDon._id, { $inc: { soLanGuiEmailNhacNoThatBai: 1 } });
-        }
+            await new ThongBao({
+              tieuDe: 'Thông báo nợ (Quá hạn)',
+              noiDung: noiDungThongBao,
+              loai: 'hoaDon',
+              nguoiGui: owner?._id || null,
+              nguoiNhan: [hoaDon.khachThue],
+              ngayGui: new Date()
+            }).save();
+          } catch (notifyErr) {
+            console.error('Failed to create in-app notification:', notifyErr);
+          }
       } catch (err: any) {
         failedCount++;
         if (hoaDon?._id) {

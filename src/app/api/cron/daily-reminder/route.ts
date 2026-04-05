@@ -95,29 +95,33 @@ export async function GET(request: NextRequest) {
             qrUrl: invoice.checkoutUrl || '' 
           });
 
-          if (success) {
-            results.sent++;
-            // Update invoice to track notifications sent
-            invoice.lanGuiEmailNhacNo = (invoice.lanGuiEmailNhacNo || 0) + 1;
-            invoice.ngayGuiEmailNhacNoCuoi = new Date();
-            await invoice.save();
+            if (success) {
+              results.sent++;
+              // Update invoice to track notifications sent
+              invoice.lanGuiEmailNhacNo = (invoice.lanGuiEmailNhacNo || 0) + 1;
+              invoice.ngayGuiEmailNhacNoCuoi = new Date();
+              await invoice.save();
+            } else {
+              results.errors.push(`Failed to send email to ${tenant.email} for invoice ${invoice.maHoaDon}`);
+            }
 
-            // Create In-App Notification
-            const ownerId = (invoice.phong as any)?.toaNha?.chuSoHuu;
-            const noiDungThongBao = `Nhắc nhở: Hóa đơn tháng ${invoice.thang}/${invoice.nam} của bạn đến hạn thanh toán vào hôm nay. Số tiền: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(invoice.conLai)}.`;
+            // Create In-App Notification (Independent of email success)
+            try {
+              const ownerId = (invoice.phong as any)?.toaNha?.chuSoHuu;
+              const noiDungThongBao = `Nhắc nhở: Hóa đơn tháng ${invoice.thang}/${invoice.nam} của bạn đến hạn thanh toán vào hôm nay. Số tiền: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(invoice.conLai)}.`;
 
-            await new ThongBao({
-              tieuDe: 'Nhắc nhở đóng tiền (Hôm nay)',
-              noiDung: noiDungThongBao,
-              loai: 'hoaDon',
-              nguoiGui: ownerId || null,
-              nguoiNhan: [invoice.khachThue],
-              ngayGui: new Date()
-            }).save();
-          } else {
-            results.errors.push(`Failed to send email to ${tenant.email} for invoice ${invoice.maHoaDon}`);
-          }
-        } catch (err: any) {
+              await new ThongBao({
+                tieuDe: 'Nhắc nhở đóng tiền (Hôm nay)',
+                noiDung: noiDungThongBao,
+                loai: 'hoaDon',
+                nguoiGui: ownerId || null,
+                nguoiNhan: [invoice.khachThue],
+                ngayGui: new Date()
+              }).save();
+            } catch (notifyErr) {
+              console.error('Failed to create in-app notification:', notifyErr);
+            }
+          } catch (err: any) {
           results.errors.push(`Error processing ${tenant.email}: ${err.message}`);
         }
       } else {
