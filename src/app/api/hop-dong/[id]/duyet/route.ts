@@ -7,6 +7,7 @@ import KhachThue from '@/models/KhachThue';
 import ThongBao from '@/models/ThongBao';
 import { updatePhongStatus, updateAllKhachThueStatus } from '@/lib/status-utils';
 import mongoose from 'mongoose';
+import { sendGeneralNotificationEmail, sendDebtNotificationEmail, isValidEmail } from '@/lib/mail';
 
 export async function PUT(
   request: NextRequest,
@@ -175,8 +176,71 @@ export async function PUT(
             phong: [hopDong.phong._id || hopDong.phong],
             ngayGui: new Date(),
           });
+
+          // Gửi email cho chủ nhà báo đã được duyệt (không kèm QR)
+          try {
+            const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+            const chuNhaDoc = await NguoiDungModel.findById(chuNhaId).select('email ten name').lean() as any;
+            if (chuNhaDoc?.email && isValidEmail(chuNhaDoc.email)) {
+              await sendGeneralNotificationEmail({
+                email: chuNhaDoc.email,
+                khachThueName: chuNhaDoc.ten || chuNhaDoc.name || 'Chủ trọ',
+                tieuDe: `Hợp đồng đã được ký duyệt - Phòng ${tenPhong}`,
+                noiDung: `Khách thuê đã đồng ý và ký duyệt hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}).\n\n${hopDong.tienCoc > 0 ? 'Hóa đơn tiền đặt cọc đã được gửi tự động tới khách thuê.' : 'Hợp đồng đã có hiệu lực.'}`,
+                ccEmail: '', // Không CC khi gửi cho chủ nhà
+              });
+            }
+          } catch (emailErr) {
+            console.error('[Email] Lỗi gửi email cho chủ nhà khi duyệt hợp đồng:', emailErr);
+          }
         } catch (e) {
           console.error('Error sending approval notification:', e);
+        }
+      }
+
+      // Nếu có hoá đơn cọc: gửi email cho khách thuê (người duyệt) kèm QR
+      if (hopDong.tienCoc > 0) {
+        try {
+          let ktEmail = '';
+          let ktName = 'Khách thuê';
+          const ktDoc = await KhachThue.findById(userId).select('email hoTen').lean() as any;
+          if (ktDoc) {
+            ktEmail = ktDoc.email || '';
+            ktName = ktDoc.hoTen || 'Khách thuê';
+          } else {
+            const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+            const ndDoc = await NguoiDungModel.findById(userId).select('email ten name').lean() as any;
+            if (ndDoc) {
+              ktEmail = ndDoc.email || '';
+              ktName = ndDoc.ten || ndDoc.name || 'Khách thuê';
+            }
+          }
+          if (ktEmail && isValidEmail(ktEmail)) {
+            const now = new Date();
+            const hoaDonCocData = {
+              maHoaDon: `COC-${hopDong.maHopDong}`,
+              thang: now.getMonth() + 1,
+              nam: now.getFullYear(),
+              tienPhong: 0,
+              tienDien: 0,
+              tienNuoc: 0,
+              phiDichVu: [],
+              tongTien: hopDong.tienCoc,
+              daThanhToan: 0,
+              conLai: hopDong.tienCoc,
+              hanThanhToan: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
+              chiSoDienCuoiKy: 0,
+              chiSoNuocCuoiKy: 0,
+            };
+            await sendDebtNotificationEmail({
+              email: ktEmail,
+              khachThueName: ktName,
+              hoaDonData: hoaDonCocData,
+              qrUrl: checkoutUrl || '',
+            });
+          }
+        } catch (emailErr) {
+          console.error('[Email] Lỗi gửi email hoá đơn cọc cho khách thuê:', emailErr);
         }
       }
 
@@ -203,6 +267,23 @@ export async function PUT(
             phong: [hopDong.phong._id || hopDong.phong],
             ngayGui: new Date(),
           });
+
+          // Gửi email cho chủ nhà báo khách từ chối (không kèm QR)
+          try {
+            const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+            const chuNhaDoc = await NguoiDungModel.findById(chuNhaId).select('email ten name').lean() as any;
+            if (chuNhaDoc?.email && isValidEmail(chuNhaDoc.email)) {
+              await sendGeneralNotificationEmail({
+                email: chuNhaDoc.email,
+                khachThueName: chuNhaDoc.ten || chuNhaDoc.name || 'Chủ trọ',
+                tieuDe: `Khách thuê từ chối hợp đồng - Phòng ${tenPhong}`,
+                noiDung: `Khách thuê đã từ chối ký duyệt hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}).\n\nVui lòng liên hệ với khách thuê để biết thêm chi tiết hoặc xem xét ký lại hợp đồng.`,
+                ccEmail: '', // Không CC khi gửi cho chủ nhà
+              });
+            }
+          } catch (emailErr) {
+            console.error('[Email] Lỗi gửi email cho chủ nhà khi từ chối hợp đồng:', emailErr);
+          }
         } catch (e) {
           console.error('Error sending rejection notification:', e);
         }

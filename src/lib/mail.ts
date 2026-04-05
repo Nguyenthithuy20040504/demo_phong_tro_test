@@ -146,12 +146,14 @@ export const sendGeneralNotificationEmail = async ({
   tieuDe,
   noiDung,
   qrUrl,
+  ccEmail,
 }: {
   email: string;
   khachThueName: string;
   tieuDe: string;
   noiDung: string;
   qrUrl?: string;
+  ccEmail?: string;
 }) => {
   if (!email || !process.env.SMTP_USER) {
     console.warn('Bỏ qua gửi email: cấu hình SMTP hoặc email khách hàng không tồn tại.');
@@ -192,12 +194,12 @@ export const sendGeneralNotificationEmail = async ({
 
   try {
     const transport = getMailTransport();
-    const ccEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER; // Use ADMIN_EMAIL if set, else fallback to SMTP_USER
+    const resolvedCcEmail = ccEmail !== undefined ? ccEmail : (process.env.ADMIN_EMAIL || process.env.SMTP_USER);
 
     const info = await transport.sendMail({
       from: `"Quản Lý Phòng Trọ" <${process.env.SMTP_USER}>`,
       to: email,
-      cc: ccEmail, // Chủ nhà nhận một bản copy
+      ...(resolvedCcEmail ? { cc: resolvedCcEmail } : {}),
       subject: `[Thông báo] ${tieuDe}`,
       html: htmlContent,
     });
