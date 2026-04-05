@@ -6,6 +6,7 @@ import NguoiDung from '@/models/NguoiDung';
 import Phong from '@/models/Phong';
 import ToaNha from '@/models/ToaNha';
 import HopDong from '@/models/HopDong';
+import ThongBao from '@/models/ThongBao';
 import mongoose from 'mongoose';
 import { sendDebtNotificationEmail, isValidEmail } from '@/lib/mail';
 import { getOwnerByHoaDon, getVietQrUrl } from '@/lib/payment-utils';
@@ -141,6 +142,18 @@ export async function GET(request: NextRequest) {
                'caiDatThongBao.ngayGuiThongBaoCuoi': new Date()
              });
           }
+
+          // Create In-App Notification
+          const noiDungThongBao = `Thông báo quá hạn: Hóa đơn tháng ${hoaDon.thang}/${hoaDon.nam} của bạn đã quá hạn thanh toán. Số tiền còn lại: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(hoaDon.conLai)}. Vui lòng hoàn tất thanh toán sớm.`;
+
+          await new ThongBao({
+            tieuDe: 'Thông báo nợ (Quá hạn)',
+            noiDung: noiDungThongBao,
+            loai: 'hoaDon',
+            nguoiGui: owner?._id || null,
+            nguoiNhan: [hoaDon.khachThue],
+            ngayGui: new Date()
+          }).save();
         } else {
           failedCount++;
           await HoaDon.findByIdAndUpdate(hoaDon._id, { $inc: { soLanGuiEmailNhacNoThatBai: 1 } });
