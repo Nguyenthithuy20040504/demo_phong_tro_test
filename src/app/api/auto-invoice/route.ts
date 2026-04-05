@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
           hopDong: contract._id,
           thang: currentMonth,
           nam: currentYear,
+          maHoaDon: { $not: /^COC-/i } // Bỏ qua hóa đơn cọc
         });
 
         if (existingInvoice) {
@@ -258,7 +259,8 @@ export async function GET(request: NextRequest) {
     const invoiceQuery: any = {
       thang: currentMonth,
       nam: currentYear,
-      phong: { $in: phongIds }
+      phong: { $in: phongIds },
+      maHoaDon: { $not: /^COC-/i } // Bỏ qua hóa đơn cọc
     };
     const existingInvoicesCount = await HoaDon.countDocuments(invoiceQuery);
 
