@@ -38,6 +38,11 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -314,7 +319,7 @@ export default function ThemMoiHopDongPage() {
       // Auto set nguoiDaiDien to first confirmed tenant if no representative yet
       let nguoiDaiDien = prev.nguoiDaiDien;
       if (!nguoiDaiDien) {
-        nguoiDaiDien = updated[index].hoTen;
+        nguoiDaiDien = updated[index].khachThueId;
       }
       
       return { ...prev, khachThueInputs: updated, nguoiDaiDien };
@@ -410,17 +415,11 @@ export default function ThemMoiHopDongPage() {
 
       // Build IDs directly from confirmed selections
       const khachThueIds: string[] = validKhachThue.map(kt => kt.khachThueId);
-      let nguoiDaiDienId = '';
+      let nguoiDaiDienId = formData.nguoiDaiDien;
 
-      for (const kt of validKhachThue) {
-        if (kt.hoTen === formData.nguoiDaiDien) {
-          nguoiDaiDienId = kt.khachThueId;
-        }
-      }
-
-      // Nếu không tìm thấy ID cho người đại diện, lấy ID đầu tiên có sẵn
-      if (!nguoiDaiDienId && khachThueIds.length > 0) {
-        nguoiDaiDienId = khachThueIds[0];
+      // Kiểm tra người đại diện có trong danh sách IDs không
+      if (!khachThueIds.includes(nguoiDaiDienId)) {
+        nguoiDaiDienId = khachThueIds[0] || '';
       }
 
       const response = await fetch('/api/hop-dong', {
@@ -496,6 +495,18 @@ export default function ThemMoiHopDongPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 md:p-6">
+          <Alert className="mb-6 bg-teal-50 border-teal-100 text-teal-900 py-4 shadow-sm animate-in fade-in slide-in-from-top-1 duration-500">
+            <AlertCircle className="h-5 w-5 text-teal-600 mt-0.5" />
+            <div className="ml-3">
+              <AlertTitle className="text-sm font-bold text-teal-950 mb-1.5 flex items-center gap-2">
+                Thông tin quy định liên kết tài khoản
+              </AlertTitle>
+              <AlertDescription className="text-[13px] text-teal-800 leading-normal">
+                Để đảm bảo tính minh bạch, hệ thống quy định <strong>mọi thành viên</strong> phải có tài khoản cá nhân đã được liên kết tại trang <strong>Quản lý khách thuê</strong>. Nếu không tìm thấy tên khách, hãy tạo tài khoản cho họ trước khi thêm vào hợp đồng nhé!
+              </AlertDescription>
+            </div>
+          </Alert>
+
           <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
               <div className="space-y-2">
@@ -663,7 +674,7 @@ export default function ThemMoiHopDongPage() {
                   {formData.khachThueInputs
                     .filter(kt => kt.hoTen.trim() && kt.khachThueId)
                     .map((kt, index) => (
-                      <SelectItem key={index} value={kt.hoTen}>
+                      <SelectItem key={index} value={kt.khachThueId}>
                         <div className="flex items-center gap-2">
                           <UserCheck className="size-3.5 text-emerald-600" />
                           {kt.hoTen}{kt.soDienThoai ? ` – ${kt.soDienThoai}` : ''}

@@ -125,14 +125,20 @@ export async function POST(request: NextRequest) {
 
     await dbConnect();
 
-    const newThongBao = new ThongBao({
+    // Chuẩn bị dữ liệu lưu, loại bỏ các giá trị không hợp lệ cho ObjectId
+    const thongBaoData: any = {
       ...validatedData,
       nguoiGui: session.user.id,
       loai: validatedData.loai || 'chung',
       phong: validatedData.phong || [],
       daDoc: [],
-    });
+    };
 
+    if (validatedData.toaNha === 'all') {
+      delete thongBaoData.toaNha;
+    }
+
+    const newThongBao = new ThongBao(thongBaoData);
     await newThongBao.save();
 
     return NextResponse.json({

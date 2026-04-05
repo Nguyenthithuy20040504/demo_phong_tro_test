@@ -228,20 +228,73 @@ export async function PUT(
       }
     }
 
-    // Nếu có cập nhật khách thuê, kiểm tra khách thuê tồn tại
+    // Chuẩn bị dữ liệu cập nhật
+    const updateData: any = { ...validatedData };
+
+    // Nếu có cập nhật khách thuê, kiểm tra khách thuê tồn tại và có tài khoản
     if (validatedData.khachThueId) {
-      const khachThueList = await KhachThue.find({ _id: { $in: validatedData.khachThueId } });
-      if (khachThueList.length !== validatedData.khachThueId.length) {
+      const ktIds = validatedData.khachThueId;
+      
+      const tenantsWithAccounts = await KhachThue.aggregate([
+        { $match: { _id: { $in: ktIds.map(id => new mongoose.Types.ObjectId(id)) } } },
+        {
+          $lookup: {
+            from: 'nguoidungs',
+            let: { tenantId: '$_id', phone: '$soDienThoai', email: { $toLower: '$email' } },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $or: [
+                      { $eq: ['$_id', '$$tenantId'] },
+                      { $eq: ['$soDienThoai', '$$phone'] },
+                      {
+                        $and: [
+                          { $ne: ['$$email', null] },
+                          { $eq: [{ $toLower: '$email' }, '$$email'] }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              { $limit: 1 }
+            ],
+            as: 'account'
+          }
+        }
+      ]);
+
+      if (tenantsWithAccounts.length !== ktIds.length) {
         return NextResponse.json(
           { message: 'Một hoặc nhiều khách thuê không tồn tại' },
           { status: 400 }
         );
       }
+
+      // Ensure ALL selected tenants have an account
+      const missingAccount = tenantsWithAccounts.find(t => !t.account || t.account.length === 0);
+      if (missingAccount) {
+        return NextResponse.json(
+          { message: `Khách thuê "${missingAccount.hoTen}" chưa có tài khoản hoặc chưa được liên kết. Vui lòng kiểm tra lại trang Quản lý khách thuê.` },
+          { status: 400 }
+        );
+      }
+
+      // Update snapshotKhachThue to maintain data consistency
+      const snapshotKhachThue = tenantsWithAccounts.map(t => ({
+        id: t._id.toString(),
+        hoTen: t.hoTen || 'Không rõ',
+        soDienThoai: t.soDienThoai || '',
+        laNoiDaiDien: validatedData.nguoiDaiDien ? t._id.toString() === validatedData.nguoiDaiDien : (existingHopDong.nguoiDaiDien?.toString() === t._id.toString())
+      }));
+      updateData.snapshotKhachThue = snapshotKhachThue;
     }
 
     // Nếu có cập nhật người đại diện, kiểm tra người đại diện có trong danh sách khách thuê không
-    if (validatedData.nguoiDaiDien && validatedData.khachThueId) {
-      if (!validatedData.khachThueId.includes(validatedData.nguoiDaiDien)) {
+    if (validatedData.nguoiDaiDien && (validatedData.khachThueId || existingHopDong.khachThueId)) {
+      const currentKtIds = validatedData.khachThueId || existingHopDong.khachThueId.map((id: any) => id.toString());
+      if (!currentKtIds.includes(validatedData.nguoiDaiDien)) {
         return NextResponse.json(
           { message: 'Người đại diện phải là một trong các khách thuê' },
           { status: 400 }
@@ -249,9 +302,6 @@ export async function PUT(
       }
     }
 
-    // Chuẩn bị dữ liệu cập nhật
-    const updateData: any = { ...validatedData };
-    
     // Xử lý ngày tháng
     if (validatedData.ngayBatDau) {
       updateData.ngayBatDau = new Date(validatedData.ngayBatDau);

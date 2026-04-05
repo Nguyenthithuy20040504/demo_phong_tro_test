@@ -31,8 +31,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     await thanhToan.save();
 
     // Update Invoice DaThanhToan
-    const hoaDon = await HoaDon.findById(thanhToan.hoaDon);
+    const hoaDon = await HoaDon.findById(thanhToan.hoaDon).populate('phong');
     if (hoaDon) {
+      const toaNhaId = (hoaDon.phong as any)?.toaNha || hoaDon.phong;
       hoaDon.daThanhToan += thanhToan.soTien;
       hoaDon.conLai = hoaDon.tongTien - hoaDon.daThanhToan;
       
@@ -65,6 +66,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
           loai: 'hoaDon',
           nguoiGui: session.user.id,
           nguoiNhan: [hoaDon.khachThue],
+          phong: [hoaDon.phong._id || hoaDon.phong],
+          toaNha: toaNhaId,
           ngayGui: new Date()
         });
         

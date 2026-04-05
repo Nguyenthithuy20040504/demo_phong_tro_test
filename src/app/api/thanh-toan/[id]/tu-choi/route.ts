@@ -31,8 +31,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     // Reset Invoice daThanhToan if needed? Actually we didn't add the amount to daThanhToan when it was choDuyet.
     // We just need to check if we should reset the HoaDon's trangThai back if there are no other pending payments.
-    const hoaDon = await HoaDon.findById(thanhToan.hoaDon);
+    const hoaDon = await HoaDon.findById(thanhToan.hoaDon).populate('phong');
     if (hoaDon) {
+      const toaNhaId = (hoaDon.phong as any)?.toaNha || hoaDon.phong;
       // Find if there are any other 'choDuyet' payments for this invoice
       const pendingPayments = await ThanhToan.countDocuments({ hoaDon: hoaDon._id, trangThai: 'choDuyet', _id: { $ne: thanhToan._id } });
       
@@ -56,6 +57,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
           loai: 'suCo',
           nguoiGui: session.user.id,
           nguoiNhan: [hoaDon.khachThue],
+          phong: [hoaDon.phong._id || hoaDon.phong],
+          toaNha: toaNhaId,
           ngayGui: new Date()
         });
         

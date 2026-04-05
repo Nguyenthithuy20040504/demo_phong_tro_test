@@ -169,6 +169,7 @@ export async function PUT(
             loai: 'suCo',
             nguoiGui: new mongoose.Types.ObjectId(session.user.id),
             nguoiNhan: [khachThueId],
+            phong: [(existingSuCo.phong as any)._id || existingSuCo.phong],
             toaNha: toaNhaId,
             daDoc: [],
           });

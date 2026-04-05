@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState, useMemo } from 'react';
+import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
   Receipt, 
@@ -13,11 +15,11 @@ import {
   Filter, 
   Download,
   FileSpreadsheet,
-  Camera
+  Camera,
+  ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ImageUpload } from '@/components/ui/image-upload';
-import { useEffect, useState, useMemo } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { HoaDon } from '@/types';
@@ -215,6 +217,12 @@ export default function HoaDonKhachThuePage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 mb-1">
+            <Home className="size-3" />
+            <Link href="/khach-thue/dashboard" className="hover:text-primary transition-colors cursor-pointer capitalize">Trang chủ</Link>
+            <ChevronRight className="size-3" />
+            <span className="text-primary">Hóa đơn</span>
+          </div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Quản lý hóa đơn</h1>
           <p className="text-gray-500">Theo dõi và thanh toán các hóa đơn hàng tháng · Click vào hàng để xem chi tiết</p>
         </div>
@@ -222,8 +230,8 @@ export default function HoaDonKhachThuePage() {
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="rounded-xl gap-2 border-gray-200">
-                <Download className="size-4" />
+              <Button className="rounded-xl gap-2.5 bg-[#5fb3a6] text-white hover:bg-[#4ea296] shadow-md hover:shadow-lg transition-all h-10 px-6 font-black uppercase text-[11px] tracking-widest border-none">
+                <Download className="size-4 stroke-[3px]" />
                 <span>Xuất file</span>
               </Button>
             </DropdownMenuTrigger>

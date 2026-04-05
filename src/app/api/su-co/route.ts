@@ -303,6 +303,7 @@ export async function POST(request: NextRequest) {
             loai: 'suCo',
             nguoiGui: new mongoose.Types.ObjectId(senderId),
             nguoiNhan: landlordReceiverIds,
+            phong: [roomInfo._id],
             toaNha: toaNhaDetails._id,
             daDoc: [],
           });
@@ -318,6 +319,7 @@ export async function POST(request: NextRequest) {
               loai: 'suCo',
               nguoiGui: new mongoose.Types.ObjectId(senderId),
               nguoiNhan: [new mongoose.Types.ObjectId(tenantIdStr)],
+              phong: [roomInfo._id],
               toaNha: toaNhaDetails._id,
               daDoc: [],
             });

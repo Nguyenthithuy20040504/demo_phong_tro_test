@@ -22,11 +22,19 @@ import {
   X,
   Plus,
   Check,
-  ChevronsUpDown
+  ChevronsUpDown,
+  UserCheck,
+  Search,
+  AlertCircle
 } from 'lucide-react';
 import { HopDong, Phong, KhachThue } from '@/types';
 import { toast } from 'sonner';
 import { cn } from "@/lib/utils";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
 import {
   Command,
   CommandEmpty,
@@ -131,11 +139,13 @@ export default function ChinhSuaHopDongPage() {
         setPhongList(phongData.data || []);
       }
 
-      // Fetch khach thue data
-      const khachThueResponse = await fetch('/api/khach-thue?limit=100');
+      // Fetch khach thue data - only those with accounts (trangThai=hasAccount)
+      const khachThueResponse = await fetch('/api/khach-thue?limit=200&trangThai=hasAccount');
       if (khachThueResponse.ok) {
         const khachThueData = await khachThueResponse.json();
-        setKhachThueList(khachThueData.data || []);
+        // Extra client-side filter: ensure matKhau is present (masked by API)
+        const withAccount = (khachThueData.data || []).filter((k: KhachThue) => !!(k as any).matKhau);
+        setKhachThueList(withAccount);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -305,6 +315,18 @@ export default function ChinhSuaHopDongPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 md:p-6">
+          <Alert className="mb-6 bg-teal-50 border-teal-100 text-teal-900 py-4 shadow-sm animate-in fade-in slide-in-from-top-1 duration-500">
+            <AlertCircle className="h-5 w-5 text-teal-600 mt-0.5" />
+            <div className="ml-3">
+              <AlertTitle className="text-sm font-bold text-teal-950 mb-1.5 flex items-center gap-2">
+                Quy định liên kết tài khoản bắt buộc
+              </AlertTitle>
+              <AlertDescription className="text-[13px] text-teal-800 leading-normal">
+                Để kích hoạt hợp đồng, hệ thống yêu cầu <strong>tất cả thành viên</strong> phải có tài khoản cá nhân đã được liên kết hồ sơ tại trang <strong>Quản lý khách thuê</strong>. Vui lòng kiểm tra lại trước khi nhấn lưu nhé!
+              </AlertDescription>
+            </div>
+          </Alert>
+          
           <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
               <div className="space-y-2">

@@ -233,26 +233,44 @@ export default function ThongBaoPage() {
     }
   };
 
-  const getToaNhaName = (toaNhaId?: string) => {
-    if (!toaNhaId) return 'Tất cả tòa nhà';
-    const toaNha = toaNhaList.find(tn => tn._id === toaNhaId);
-    return toaNha?.tenToaNha || 'Không xác định';
+  const getToaNhaName = (toaNha: any) => {
+    if (!toaNha || toaNha === 'all') return 'Tất cả tòa nhà';
+    if (typeof toaNha === 'object') {
+      if (toaNha.tenToaNha) return toaNha.tenToaNha;
+      const found = toaNhaList.find(tn => tn._id === toaNha._id);
+      return found?.tenToaNha || 'Không xác định';
+    }
+    const toaNhaId = String(toaNha);
+    const found = toaNhaList.find(tn => tn._id === toaNhaId);
+    return found?.tenToaNha || 'Không xác định';
   };
 
-  const getPhongNames = (phongIds: string[]) => {
-    if (phongIds.length === 0) return 'Tất cả phòng';
-    const phongNames = phongIds.map(id => {
-      const phong = phongList.find(p => p._id === id);
-      return phong?.maPhong || 'Không xác định';
+  const getPhongNames = (phongs: any[]) => {
+    if (!phongs || phongs.length === 0) return 'Tất cả phòng';
+    const phongNames = phongs.map(p => {
+      if (typeof p === 'object') {
+        if (p.maPhong) return p.maPhong;
+        const found = phongList.find(r => r._id === p._id);
+        return found?.maPhong || 'Không xác định';
+      }
+      const phongId = String(p);
+      const found = phongList.find(r => r._id === phongId);
+      return found?.maPhong || 'Không xác định';
     });
     return phongNames.join(', ');
   };
 
-  const getKhachThueNames = (khachThueIds: string[]) => {
-    if (khachThueIds.length === 0) return 'Tất cả khách thuê';
-    const khachThueNames = khachThueIds.map(id => {
-      const khachThue = khachThueList.find(k => k._id === id);
-      return khachThue?.hoTen || 'Không xác định';
+  const getKhachThueNames = (khachThues: any[]) => {
+    if (!khachThues || khachThues.length === 0) return 'Tất cả khách thuê';
+    const khachThueNames = khachThues.map(k => {
+      if (typeof k === 'object') {
+        if (k.hoTen) return k.hoTen;
+        const found = khachThueList.find(kt => kt._id === k._id);
+        return found?.hoTen || 'Không xác định';
+      }
+      const ktId = String(k);
+      const found = khachThueList.find(kt => kt._id === ktId);
+      return found?.hoTen || 'Không xác định';
     });
     return khachThueNames.join(', ');
   };
@@ -1028,12 +1046,19 @@ function ThongBaoForm({
       let newPhong = [...prev.phong];
       const tenant = khachThueList.find(k => k._id === khachThueId);
       const roomId = tenant ? getTenantRoomId(tenant) : null;
+      const tenantToaNhaId = tenant ? getTenantToaNhaId(tenant) : null;
 
-      if (roomId) {
-        if (checked) {
-          if (!newPhong.includes(roomId)) newPhong.push(roomId);
-        } else {
-          // Chỉ bỏ check phòng nếu không còn vị khách nào khác chọn phòng đó
+      let newToaNha = prev.toaNha;
+
+      if (checked) {
+        if (roomId && !newPhong.includes(roomId)) newPhong.push(roomId);
+        // Nếu tên tòa nhà chưa có hoặc đang là "Tất cả", tự động gán theo người đầu tiên được chọn
+        if (tenantToaNhaId && (!newToaNha || newToaNha === 'all')) {
+          newToaNha = tenantToaNhaId;
+        }
+      } else {
+        // Chỉ bỏ check phòng nếu không còn vị khách nào khác chọn phòng đó
+        if (roomId) {
           const otherSelectedTenantsInRoom = khachThueList.filter(k => 
             k._id !== khachThueId && 
             newNguoiNhan.includes(k._id!) && 
@@ -1045,7 +1070,7 @@ function ThongBaoForm({
         }
       }
 
-      return { ...prev, nguoiNhan: newNguoiNhan, phong: newPhong };
+      return { ...prev, nguoiNhan: newNguoiNhan, phong: newPhong, toaNha: newToaNha };
     });
   };
 
@@ -1060,15 +1085,24 @@ function ThongBaoForm({
       const tenantsInRoom = khachThueList.filter(k => getTenantRoomId(k) === phongId);
       const tenantIdsInRoom = tenantsInRoom.map(k => k._id!);
 
+      const phong = phongList.find(p => p._id === phongId);
+      const phongToaNhaId = phong ? (typeof phong.toaNha === 'object' ? (phong.toaNha as any)._id : phong.toaNha) : null;
+      
+      let newToaNha = prev.toaNha;
+
       if (checked) {
         tenantIdsInRoom.forEach(id => {
           if (!newNguoiNhan.includes(id)) newNguoiNhan.push(id);
         });
+        // Tự động set tòa nhà
+        if (phongToaNhaId && (!newToaNha || newToaNha === 'all')) {
+          newToaNha = phongToaNhaId;
+        }
       } else {
         newNguoiNhan = newNguoiNhan.filter(id => !tenantIdsInRoom.includes(id));
       }
 
-      return { ...prev, phong: newPhong, nguoiNhan: newNguoiNhan };
+      return { ...prev, phong: newPhong, nguoiNhan: newNguoiNhan, toaNha: newToaNha };
     });
   };
 

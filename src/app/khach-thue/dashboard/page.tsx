@@ -254,7 +254,13 @@ export default function KhachThueDashboardPage() {
       )}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-2 border-b border-gray-50/50">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-20">
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight">Tổng quan</h1>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 mb-1">
+            <Home className="size-3" />
+            <span className="text-primary">Trang chủ</span>
+          </div>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tight">Trang chủ</h1>
+        </div>
           {hasMultipleRooms && (
             <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur-xl p-1.5 rounded-[1.25rem] shadow-premium border border-gray-100/50">
               {hopDongList.map((hd: any, idx: number) => (
@@ -274,84 +280,99 @@ export default function KhachThueDashboardPage() {
             </div>
           )}
         </div>
-        <p className="text-gray-500 font-medium md:text-right hidden sm:block">
-          Xin chào, <span className="text-primary font-bold">{khachThue.hoTen}</span> 👋
-        </p>
+        <div className="hidden sm:flex items-center gap-2 bg-[#f0f9f8] px-4 py-2 rounded-full border border-[#5fb3a6]/20 shadow-sm self-center">
+          <div className="w-2 h-2 bg-[#5fb3a6] rounded-full animate-pulse" />
+          <span className="text-[#5fb3a6] text-[10px] font-black uppercase tracking-widest leading-none pt-0.5">
+            Dữ liệu thời gian thực
+          </span>
+        </div>
       </div>
 
       {/* Stats Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Card 1: Phòng đang xem */}
         <motion.div variants={itemVariants}>
-          <Card className="border-none shadow-premium bg-white rounded-[2rem] overflow-hidden group hover:shadow-2xl transition-all duration-500">
-            <CardContent className="p-8">
-              <div className="flex items-center justify-between mb-6">
-                <div className="size-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-500">
-                  <Home className="size-7" />
-                </div>
-                <div className="flex items-center gap-2">
-                  {hasMultipleRooms && (
-                    <Badge variant="secondary" className="bg-indigo-50 text-indigo-600 border-none px-2 rounded-lg font-black text-[10px]">
-                      {hopDongList.length} PHÒNG
-                    </Badge>
-                  )}
-                </div>
+          <div className="relative group bg-white rounded-[2.5rem] p-8 shadow-premium hover:shadow-2xl transition-all duration-500 overflow-hidden border border-gray-100/50 flex flex-col h-full pl-10">
+            {/* Left Accent Bar */}
+            <div className="absolute left-0 top-0 h-full w-2.5 bg-indigo-500" />
+            
+            <div className="flex items-center gap-3 mb-6">
+              <div className="size-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                <Home className="size-5" />
               </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-1">Đang xem phòng</p>
-              <h3 className="text-3xl font-black text-gray-900 tracking-tight flex items-baseline gap-2">
-                {currentHopDong?.phong?.maPhong || 'N/A'}
-                {hasMultipleRooms && <span className="text-xs text-primary animate-pulse font-black">(Phòng {selectedRoomIndex + 1})</span>}
-              </h3>
-              <p className="text-sm text-gray-400 mt-2 font-medium truncate">
+              <span className="text-gray-500 font-bold text-sm tracking-tight">Đang xem phòng</span>
+            </div>
+
+            <h3 className="text-4xl font-black text-gray-900 tracking-tight flex items-baseline gap-2 mb-6">
+              {currentHopDong?.phong?.maPhong || 'N/A'}
+            </h3>
+
+            <div className="mt-auto">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[11px] font-black uppercase tracking-wider">
+                <MapPin className="size-3" />
                 {currentHopDong?.phong?.toaNha?.tenToaNha || 'Chưa xác định'}
-              </p>
-            </CardContent>
-          </Card>
+              </div>
+            </div>
+          </div>
         </motion.div>
 
+        {/* Card 2: Hóa đơn chờ */}
         <motion.div variants={itemVariants}>
-          <Card className="border-none shadow-premium bg-white rounded-[2rem] overflow-hidden group hover:shadow-2xl transition-all duration-500">
-            <CardContent className="p-8">
-              <div className="flex items-center justify-between mb-6">
-                <div className="size-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center group-hover:bg-rose-600 group-hover:text-white transition-colors duration-500">
-                  <Receipt className="size-7" />
-                </div>
-                <Link href="/khach-thue/dashboard/hoa-don" className="text-gray-300 hover:text-primary transition-colors">
-                  <ArrowUpRight className="size-6" />
-                </Link>
+          <div className="relative group bg-white rounded-[2.5rem] p-8 shadow-premium hover:shadow-2xl transition-all duration-500 overflow-hidden border border-gray-100/50 flex flex-col h-full pl-10">
+            {/* Left Accent Bar */}
+            <div className="absolute left-0 top-0 h-full w-2.5 bg-rose-500" />
+            
+            <div className="flex items-center gap-3 mb-6">
+              <div className="size-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                <Receipt className="size-5" />
               </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-1">Tổng hóa đơn chờ</p>
-              <h3 className="text-3xl font-black text-gray-900 tracking-tight">
-                {soHoaDonChuaThanhToan} <span className="text-sm text-gray-300 font-bold">hóa đơn</span>
-              </h3>
-              <p className={`text-sm mt-2 font-bold ${soHoaDonChuaThanhToan > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                {soHoaDonChuaThanhToan > 0 ? 'Tổng hợp tất cả các phòng' : 'Đã thanh toán đầy đủ'}
-              </p>
-            </CardContent>
-          </Card>
+              <span className="text-gray-500 font-bold text-sm tracking-tight">Tổng hóa đơn chờ</span>
+            </div>
+
+            <h3 className="text-4xl font-black text-gray-900 tracking-tight flex items-baseline gap-2 mb-6">
+              {soHoaDonChuaThanhToan}
+              <span className="text-lg text-gray-300 font-bold">phiếu</span>
+            </h3>
+
+            <div className="mt-auto">
+              <Link href="/khach-thue/dashboard/hoa-don" className="inline-flex items-center gap-2 px-4 py-1.5 bg-rose-50 text-rose-600 rounded-full text-[11px] font-black uppercase tracking-wider hover:bg-rose-100 transition-colors">
+                <ArrowUpRight className="size-3" />
+                Xem danh sách thanh toán
+              </Link>
+            </div>
+          </div>
         </motion.div>
 
+        {/* Card 3: Trạng thái thuê */}
         <motion.div variants={itemVariants}>
-          <Card className="border-none shadow-premium bg-white rounded-[2rem] overflow-hidden group hover:shadow-2xl transition-all duration-500">
-            <CardContent className="p-8">
-              <div className="flex items-center justify-between mb-6">
-                <div className="size-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-500">
-                  <AlertCircle className="size-7" />
+          <div className="relative group bg-white rounded-[2.5rem] p-8 shadow-premium hover:shadow-2xl transition-all duration-500 overflow-hidden border border-gray-100/50 flex flex-col h-full pl-10">
+            {/* Left Accent Bar */}
+            <div className="absolute left-0 top-0 h-full w-2.5 bg-emerald-500" />
+            
+            <div className="flex items-center gap-3 mb-6">
+              <div className="size-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <ShieldCheck className="size-5" />
+              </div>
+              <span className="text-gray-500 font-bold text-sm tracking-tight">Trạng thái thuê</span>
+            </div>
+
+            <div className="mb-6">
+              {khachThue.trangThai === 'dangThue' || hopDongList.length > 0 ? (
+                <div className="flex items-center gap-3">
+                  <span className="text-4xl font-black text-gray-900 tracking-tight">Active</span>
                 </div>
-                <Link href="/khach-thue/dashboard/su-co" className="text-gray-300 hover:text-primary transition-colors">
-                  <ArrowUpRight className="size-6" />
-                </Link>
+              ) : (
+                <span className="text-4xl font-black text-gray-400 tracking-tight">Expired</span>
+              )}
+            </div>
+
+            <div className="mt-auto">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[11px] font-black uppercase tracking-wider">
+                <div className="size-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                Thông tin đã xác thực
               </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-1">Trạng thái thuê</p>
-              <div className="mt-1">
-                {khachThue.trangThai === 'dangThue' || hopDongList.length > 0 ? (
-                  <Badge className="bg-emerald-500 text-white border-none px-4 py-1.5 rounded-xl font-bold">Đang hoạt động</Badge>
-                ) : (
-                  <Badge variant="secondary" className="px-4 py-1.5 rounded-xl font-bold">Không hoạt động</Badge>
-                )}
-              </div>
-              <p className="text-sm text-gray-400 mt-4 font-medium italic">Thông tin đã xác thực</p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </motion.div>
       </div>
 
@@ -367,83 +388,100 @@ export default function KhachThueDashboardPage() {
             >
               <Dialog>
                 <DialogTrigger asChild>
-                  <Card className="border-none shadow-premium bg-white rounded-[2.5rem] overflow-hidden cursor-pointer hover:shadow-2xl transition-all duration-500 group">
+                  <Card className="border-none shadow-premium bg-white rounded-[2.5rem] overflow-hidden cursor-pointer hover:shadow-2xl transition-all duration-500 group relative pl-4">
+                    {/* Left Accent Bar */}
+                    <div className="absolute left-0 top-0 h-full w-2.5 bg-primary" />
+                    
                     <CardHeader className="p-8 pb-4">
-                      <CardTitle className="flex items-center justify-between text-xl font-black text-gray-900 border-b border-transparent group-hover:border-primary/20 pb-4 transition-all">
+                      <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="bg-primary/10 p-2 rounded-xl text-primary"><Home className="size-5" /></div>
-                          Chi tiết hợp đồng & Phòng thuê
+                          <div className="size-12 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                            <Home className="size-5" />
+                          </div>
+                          <h3 className="text-2xl font-black text-gray-900 tracking-tight">Chi tiết hợp đồng & Phòng thuê</h3>
                         </div>
                         <div className="flex items-center gap-2">
                           {hasMultipleRooms && (
-                            <span className="text-[10px] bg-secondary px-3 py-1 rounded-full text-secondary-foreground font-bold tracking-widest">
+                            <span className="text-[10px] bg-secondary px-4 py-1.5 rounded-full text-secondary-foreground font-black tracking-widest uppercase">
                               PHÒNG {selectedRoomIndex + 1}/{hopDongList.length}
                             </span>
                           )}
-                          <div className="size-8 rounded-full bg-primary/5 flex items-center justify-center text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="size-8 rounded-full bg-primary/5 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                             <ChevronRight className="size-4" />
                           </div>
                         </div>
-                      </CardTitle>
+                      </div>
                     </CardHeader>
-                    <CardContent className="p-8 pt-0">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                        <div className="space-y-6">
-                          <div className="p-5 bg-secondary/20 rounded-2xl border border-transparent group-hover:border-primary/20 transition-all cursor-default group/item">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">Vị trí</p>
-                            <p className="font-bold text-gray-900 leading-tight group-hover/item:text-primary transition-colors">
-                              Phòng {currentHopDong.phong.maPhong} - {currentHopDong.phong.toaNha.tenToaNha}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
-                              <MapPin className="size-3" /> {currentHopDong.phong.toaNha.diaChi?.duong}, {currentHopDong.phong.toaNha.diaChi?.phuong}
-                            </p>
-                          </div>
-                          
-                          <div className="flex items-center justify-between px-2">
-                            <div className="flex items-center gap-3">
-                              <div className="bg-emerald-50 text-emerald-600 p-2 rounded-lg"><DollarSign className="size-4" /></div>
-                              <span className="text-xs font-bold text-gray-500">Giá thuê</span>
-                            </div>
-                            <span className="text-lg font-black text-emerald-600">{formatCurrency(currentHopDong.phong.giaThue)}</span>
+                    
+                    <CardContent className="p-8 pt-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-8">
+                        {/* Vị trí */}
+                        <div className="p-6 bg-gray-50/80 rounded-3xl border border-gray-100 group-hover:border-primary/20 transition-all">
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 mb-3">Vị trí</p>
+                          <p className="text-xl font-black text-gray-900 leading-tight mb-2">
+                            Phòng {currentHopDong.phong.maPhong} — {currentHopDong.phong.toaNha.tenToaNha}
+                          </p>
+                          <div className="flex items-start gap-2 text-xs text-gray-500 font-bold leading-relaxed">
+                            <MapPin className="size-3.5 shrink-0 text-gray-400 mt-0.5" />
+                            <span>{currentHopDong.phong.toaNha.diaChi?.duong}, {currentHopDong.phong.toaNha.diaChi?.phuong}</span>
                           </div>
                         </div>
-
-                        <div className="space-y-6">
-                          <div className="p-5 bg-secondary/10 rounded-2xl border border-dashed border-gray-200">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">Thời hạn hợp đồng</p>
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs font-bold text-gray-900">{formatDate(currentHopDong.ngayBatDau)}</span>
-                              <span className="text-[10px] text-gray-300">đến</span>
-                              <span className="text-xs font-bold text-gray-900">{formatDate(currentHopDong.ngayKetThuc)}</span>
-                            </div>
-                            <div className="w-full bg-gray-100 h-1.5 rounded-full mt-3 overflow-hidden">
-                              <motion.div 
-                                initial={{ width: 0 }}
-                                animate={{ width: "75%" }}
-                                transition={{ duration: 1, ease: "easeOut" }}
-                                className="bg-primary h-full rounded-full" 
-                              />
-                            </div>
+                        
+                        {/* Thời hạn */}
+                        <div className="p-6 bg-gray-50/80 rounded-3xl border border-gray-100 group-hover:border-primary/20 transition-all">
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 mb-3">Thời hạn hợp đồng</p>
+                          <div className="flex items-center justify-between font-black text-sm text-gray-900 mb-4">
+                            <span>{formatDate(currentHopDong.ngayBatDau)}</span>
+                            <span className="text-[10px] text-gray-300 uppercase tracking-widest px-2">đến</span>
+                            <span>{formatDate(currentHopDong.ngayKetThuc)}</span>
                           </div>
-
-                          <div className="flex items-center justify-between px-2">
-                            <div className="flex items-center gap-3">
-                              <div className="bg-orange-50 text-orange-600 p-2 rounded-lg"><FileText className="size-4" /></div>
-                              <span className="text-xs font-bold text-gray-500">Mã Hợp Đồng</span>
-                            </div>
-                            <span className="text-sm font-black text-gray-900">{currentHopDong.maHopDong}</span>
+                          <div className="w-full bg-gray-200/50 h-2 rounded-full overflow-hidden">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: "75%" }}
+                              transition={{ duration: 1, ease: "easeOut" }}
+                              className="bg-primary h-full rounded-full shadow-[0_0_10px_rgba(95,179,166,0.3)]" 
+                            />
                           </div>
                         </div>
                       </div>
-                      <div className="mt-8 pt-6 border-t border-gray-50 text-center">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-4 py-2 rounded-full hover:bg-primary/10 transition-colors">
-                           Ấn để xem chi tiết đầy đủ 📄
-                        </span>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-2">
+                        <div className="flex items-center gap-4">
+                          <div className="size-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                            <DollarSign className="size-5" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600/50">Giá thuê</p>
+                            <p className="text-2xl font-black text-emerald-600 tracking-tight">{formatCurrency(currentHopDong.phong.giaThue)}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-4 sm:justify-end">
+                          <div className="size-12 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0 sm:order-2">
+                            <FileText className="size-5" />
+                          </div>
+                          <div className="sm:text-right sm:order-1">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-orange-600/50">Mã Hợp Đồng</p>
+                            <p className="text-lg font-black text-gray-900 tracking-tight">{currentHopDong.maHopDong}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-10 flex justify-center">
+                        <div className="bg-primary/5 px-6 py-2.5 rounded-full border border-primary/10 group-hover:bg-primary/10 transition-colors flex items-center gap-2">
+                          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Ấn để xem chi tiết đầy đủ</span>
+                          <ChevronRight className="size-3 text-primary" />
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
                 </DialogTrigger>
                 <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 rounded-[2.5rem] border-none shadow-premium">
+                  <DialogHeader className="sr-only">
+                    <DialogTitle>Chi tiết hợp đồng & Phòng thuê</DialogTitle>
+                    <DialogDescription>Xem thông tin chi tiết về căn phòng và các điều khoản hợp đồng của bạn.</DialogDescription>
+                  </DialogHeader>
                   <div className="relative">
                     {/* Header Image Room */}
                     <div className="h-64 bg-gray-100 relative overflow-hidden">

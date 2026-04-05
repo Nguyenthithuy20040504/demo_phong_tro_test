@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bell, BellRing, CheckCheck, Receipt, FileText, AlertTriangle, Info, Calendar } from 'lucide-react';
+import { Bell, BellRing, CheckCheck, Receipt, FileText, AlertTriangle, Info, Calendar, Home, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -112,11 +113,16 @@ export default function KhachThueThongBaoPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Bell className="h-5 w-5" />
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 mb-1">
+            <Home className="size-3" />
+            <Link href="/khach-thue/dashboard" className="hover:text-primary transition-colors cursor-pointer capitalize">Trang chủ</Link>
+            <ChevronRight className="size-3" />
+            <span className="text-primary">Thông báo</span>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+            <Bell className="h-7 w-7 text-primary/80" />
             Thông báo của tôi
           </h1>
-          {/* Unread count no longer needs to be shown since it automatically reads on entering page */}
         </div>
       </div>
 

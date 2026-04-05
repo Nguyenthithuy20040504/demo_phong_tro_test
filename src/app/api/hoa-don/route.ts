@@ -589,6 +589,8 @@ export async function POST(request: NextRequest) {
         loai: 'hoaDon',
         nguoiGui: session.user.id,
         nguoiNhan: [hoaDon.khachThue],
+        phong: [hoaDon.phong],
+        toaNha: toaNhaId,
         ngayGui: new Date()
       });
       

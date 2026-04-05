@@ -5,8 +5,9 @@ import {
   User, Mail, Phone, MapPin, Briefcase, Calendar, 
   ShieldCheck, BadgeCheck, Loader2, Home, FileText, 
   Smartphone, Camera, Lock, PlusCircle, Clock, CheckCircle2,
-  XCircle, AlertCircle, Trash2, Edit, Printer, Download, Eye
+  XCircle, AlertCircle, Trash2, Edit, Printer, Download, Eye, ChevronRight
 } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -206,6 +207,12 @@ export default function ThongTinKhachThuePage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-20">
+      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">
+        <Home className="size-3" />
+        <Link href="/khach-thue/dashboard" className="hover:text-primary transition-colors cursor-pointer capitalize">Trang chủ</Link>
+        <ChevronRight className="size-3" />
+        <span className="text-primary">Cá nhân</span>
+      </div>
       <div className="flex flex-col lg:flex-row gap-8 items-start">
         {/* Cột trái: Avatar và tóm tắt */}
         <div className="w-full lg:w-1/3 space-y-6">

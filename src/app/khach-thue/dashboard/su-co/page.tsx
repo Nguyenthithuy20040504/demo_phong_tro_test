@@ -1,7 +1,8 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Wrench, MessageSquare, Clock, Plus, Loader2, CheckCircle2, Calendar, AlertCircle, MapPin, Search } from 'lucide-react';
+import { Wrench, MessageSquare, Clock, Plus, Loader2, CheckCircle2, Calendar, AlertCircle, MapPin, Search, Home, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -229,7 +230,13 @@ export default function SuCoKhachThuePage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.1em] text-muted-foreground/40 mb-0.5">
+            <Home className="size-3.5" />
+            <Link href="/khach-thue/dashboard" className="hover:text-primary transition-colors cursor-pointer capitalize">Trang chủ</Link>
+            <ChevronRight className="size-3.5 text-muted-foreground/20" />
+            <span className="text-primary/80">Sự cố</span>
+          </div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Báo cáo sự cố</h1>
           <p className="text-gray-500">Quản lý và theo dõi các yêu cầu hỗ trợ sửa chữa</p>
         </div>

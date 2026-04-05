@@ -278,33 +278,63 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate: phải có ít nhất 1 khách thuê (qua khachThueId hoặc snapshotKhachThue)
-    const hasDbTenants = validatedData.khachThueId && validatedData.khachThueId.length > 0;
-    const hasFrontendSnapshot = validatedData.snapshotKhachThue && validatedData.snapshotKhachThue.length > 0;
-    
-    if (!hasDbTenants && !hasFrontendSnapshot) {
+    // Validate: phải có ít nhất 1 khách thuê thực sự trong DB
+    if (!validatedData.khachThueId || validatedData.khachThueId.length === 0) {
       return NextResponse.json(
-        { message: 'Phải có ít nhất 1 khách thuê' },
+        { message: 'Phải có ít nhất 1 khách thuê đã có tài khoản và được liên kết' },
         { status: 400 }
       );
     }
 
-    // Check if khach thue exist (chỉ khi có khachThueId)
-    if (hasDbTenants) {
-      const [khachThueFromKT, khachThueFromND] = await Promise.all([
-        KhachThue.find({ _id: { $in: validatedData.khachThueId } }).select('_id'),
-        mongoose.model('NguoiDung').find({ _id: { $in: validatedData.khachThueId }, role: 'khachThue' }).select('_id')
-      ]);
-      const totalFound = new Set([
-        ...khachThueFromKT.map((k: any) => k._id.toString()),
-        ...khachThueFromND.map((u: any) => u._id.toString())
-      ]);
-      if (totalFound.size !== validatedData.khachThueId!.length) {
-        return NextResponse.json(
-          { message: 'Một hoặc nhiều khách thuê không tồn tại' },
-          { status: 400 }
-        );
+    // Check if each khach thue ID exists and has an account
+    const ktIds = validatedData.khachThueId;
+    const chuNhaId = session.user.id;
+
+    // Use aggregation to check for accounts (matching the logic in khach-thue API)
+    const tenantsWithAccounts = await KhachThue.aggregate([
+      { $match: { _id: { $in: ktIds.map(id => new mongoose.Types.ObjectId(id)) } } },
+      {
+        $lookup: {
+          from: 'nguoidungs',
+          let: { tenantId: '$_id', phone: '$soDienThoai', email: { $toLower: '$email' } },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $eq: ['$_id', '$$tenantId'] },
+                    { $eq: ['$soDienThoai', '$$phone'] },
+                    {
+                      $and: [
+                        { $ne: ['$$email', null] },
+                        { $eq: [{ $toLower: '$email' }, '$$email'] }
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            { $limit: 1 }
+          ],
+          as: 'account'
+        }
       }
+    ]);
+
+    if (tenantsWithAccounts.length !== ktIds.length) {
+      return NextResponse.json(
+        { message: 'Một hoặc nhiều khách thuê không tồn tại' },
+        { status: 400 }
+      );
+    }
+
+    // Ensure ALL selected tenants have an account
+    const missingAccount = tenantsWithAccounts.find(t => !t.account || t.account.length === 0);
+    if (missingAccount) {
+      return NextResponse.json(
+        { message: `Khách thuê "${missingAccount.hoTen}" chưa có tài khoản hoặc chưa được liên kết. Vui lòng kiểm tra lại trang Quản lý khách thuê.` },
+        { status: 400 }
+      );
     }
 
     // Kiểm tra phòng có hợp đồng đang hoạt động hoặc chờ duyệt không
@@ -333,46 +363,14 @@ export async function POST(request: NextRequest) {
     // Build snapshot khách thuê
     const snapshotKhachThue: Array<{id?: string, hoTen: string, soDienThoai: string, laNoiDaiDien: boolean}> = [];
     
-    // 1) Từ khachThueId (nếu có) - khách thuê đã có tài khoản
-    if (hasDbTenants) {
-      for (const ktId of validatedData.khachThueId!) {
-        let hoTen = '';
-        let soDienThoai = '';
-        const ktDoc = await KhachThue.findById(ktId).select('hoTen soDienThoai').lean() as any;
-        if (ktDoc) {
-          hoTen = ktDoc.hoTen || '';
-          soDienThoai = ktDoc.soDienThoai || '';
-        } else {
-          const ndDoc = await mongoose.model('NguoiDung').findById(ktId).select('ten name soDienThoai phone').lean() as any;
-          if (ndDoc) {
-            hoTen = ndDoc.ten || ndDoc.name || '';
-            soDienThoai = ndDoc.soDienThoai || ndDoc.phone || '';
-          }
-        }
-        snapshotKhachThue.push({
-          id: ktId,
-          hoTen: hoTen || 'Không rõ',
-          soDienThoai: soDienThoai,
-          laNoiDaiDien: validatedData.nguoiDaiDien ? ktId === validatedData.nguoiDaiDien : false
-        });
-      }
-    }
-    
-    // 2) Từ frontend snapshot (khách thuê chưa có tài khoản - chỉ có tên + SĐT)
-    if (hasFrontendSnapshot) {
-      for (const kt of validatedData.snapshotKhachThue!) {
-        // Kiểm tra xem đã được thêm từ khachThueId chưa (tránh trùng)
-        const alreadyAdded = snapshotKhachThue.some(
-          s => s.hoTen === kt.hoTen || (kt.soDienThoai && s.soDienThoai === kt.soDienThoai)
-        );
-        if (!alreadyAdded) {
-          snapshotKhachThue.push({
-            hoTen: kt.hoTen,
-            soDienThoai: kt.soDienThoai || '',
-            laNoiDaiDien: false
-          });
-        }
-      }
+    // 1) Từ khachThueId (đã được validate ở trên là có tài khoản và tồn tại)
+    for (const t of tenantsWithAccounts) {
+      snapshotKhachThue.push({
+        id: t._id.toString(),
+        hoTen: t.hoTen || 'Không rõ',
+        soDienThoai: t.soDienThoai || '',
+        laNoiDaiDien: validatedData.nguoiDaiDien ? t._id.toString() === validatedData.nguoiDaiDien : false
+      });
     }
 
     const newHopDong = new HopDong({
