@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useCache } from '@/hooks/use-cache';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -67,10 +68,20 @@ export default function ThanhToanPage() {
     hoaDonList: HoaDon[];
   }>({ key: 'thanh-toan-data', duration: 300000 });
   
+  const searchParams = useSearchParams();
   const [thanhToanList, setThanhToanList] = useState<ThanhToanPopulated[]>([]);
   const [hoaDonList, setHoaDonList] = useState<HoaDon[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Tự động gán searchTerm từ URL (Deep-linking)
+  useEffect(() => {
+    const search = searchParams.get('search');
+    if (search) {
+      setSearchTerm(search);
+    }
+  }, [searchParams]);
+
   const [methodFilter, setMethodFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>('all');
   const [startDate, setStartDate] = useState<string>('');

@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Wrench, MessageSquare, Clock, Plus, Loader2, CheckCircle2, Calendar, AlertCircle, MapPin } from 'lucide-react';
+import { Wrench, MessageSquare, Clock, Plus, Loader2, CheckCircle2, Calendar, AlertCircle, MapPin, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -51,6 +51,12 @@ export default function SuCoKhachThuePage() {
   const [myRooms, setMyRooms] = useState<Array<{phongId: string; maPhong: string; toaNhaId: string; tenToaNha: string}>>([]);
   const [selectedToaNha, setSelectedToaNha] = useState('');
   const [filteredRooms, setFilteredRooms] = useState<Array<{phongId: string; maPhong: string; toaNhaId: string; tenToaNha: string}>>([]);
+
+  // Bộ lọc
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
 
   useEffect(() => {
     document.title = 'Báo cáo Sự cố - Khách thuê';
@@ -170,7 +176,8 @@ export default function SuCoKhachThuePage() {
   };
 
   const getPriorityBadge = (priority: string) => {
-    switch (priority) {
+    const val = priority || 'trungBinh';
+    switch (val) {
       case 'khancap':
         return <Badge variant="destructive" className="animate-pulse">Khẩn cấp</Badge>;
       case 'cao':
@@ -180,7 +187,7 @@ export default function SuCoKhachThuePage() {
       case 'thap':
         return <Badge className="bg-slate-500/10 text-slate-600 border-slate-500/20">Thấp</Badge>;
       default:
-        return null;
+        return <Badge variant="outline">{val}</Badge>;
     }
   };
 
@@ -193,6 +200,22 @@ export default function SuCoKhachThuePage() {
       default: return 'Khác';
     }
   };
+
+  const filteredSuCos = suCos.filter(sc => {
+    const searchLow = searchTerm.toLowerCase();
+    const matchesSearch = !searchTerm || 
+      (sc.tieuDe?.toLowerCase() || '').includes(searchLow) || 
+      (sc.moTa?.toLowerCase() || '').includes(searchLow);
+    
+    const matchesStatus = statusFilter === 'all' || sc.trangThai === statusFilter;
+    const matchesType = typeFilter === 'all' || sc.loaiSuCo === typeFilter;
+    
+    // Xử lý an toàn cho mức độ ưu tiên (mặc định trungBinh nếu không có)
+    const currentPriority = sc.mucDoUuTien || 'trungBinh';
+    const matchesPriority = priorityFilter === 'all' || currentPriority === priorityFilter;
+    
+    return matchesSearch && matchesStatus && matchesType && matchesPriority;
+  });
 
   if (loading) {
     return (
@@ -208,7 +231,7 @@ export default function SuCoKhachThuePage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Báo cáo sự cố</h1>
-          <p className="text-gray-500">Quản lý và theo dõi các yêu cầu hỗ trợ sửa chữa · Click vào hàng để xem chi tiết</p>
+          <p className="text-gray-500">Quản lý và theo dõi các yêu cầu hỗ trợ sửa chữa</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -361,60 +384,133 @@ export default function SuCoKhachThuePage() {
         </Dialog>
       </div>
 
-      {suCos.length === 0 ? (
-        <Card className="border-none shadow-sm bg-white/60 rounded-2xl overflow-hidden">
+      {/* Bộ lọc tìm kiếm */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-white/50 p-4 rounded-3xl border border-white backdrop-blur-sm shadow-sm">
+        <div className="relative group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-primary transition-colors" />
+          <Input 
+            placeholder="Tìm theo tiêu đề, mô tả..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 h-10 rounded-2xl border-none bg-white shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 text-xs md:text-sm"
+          />
+        </div>
+        
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="h-10 rounded-2xl border-none bg-white shadow-sm focus:ring-1 focus:ring-primary/20 text-xs md:text-sm">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-gray-400" />
+              <SelectValue placeholder="Trạng thái" />
+            </div>
+          </SelectTrigger>
+          <SelectContent className="rounded-2xl border-none shadow-xl">
+            <SelectItem value="all">Tất cả trạng thái</SelectItem>
+            <SelectItem value="moi">Mới gửi</SelectItem>
+            <SelectItem value="dangXuLy">Đang xử lý</SelectItem>
+            <SelectItem value="daXong">Hoàn thành</SelectItem>
+            <SelectItem value="daHuy">Đã hủy</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="h-10 rounded-2xl border-none bg-white shadow-sm focus:ring-1 focus:ring-primary/20 text-xs md:text-sm">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-gray-400" />
+              <SelectValue placeholder="Loại sự cố" />
+            </div>
+          </SelectTrigger>
+          <SelectContent className="rounded-2xl border-none shadow-xl">
+            <SelectItem value="all">Tất cả loại</SelectItem>
+            <SelectItem value="dienNuoc">Điện & Nước</SelectItem>
+            <SelectItem value="noiThat">Nội thất</SelectItem>
+            <SelectItem value="vesinh">Vệ sinh</SelectItem>
+            <SelectItem value="anNinh">An ninh</SelectItem>
+            <SelectItem value="khac">Khác</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+          <SelectTrigger className="h-10 rounded-2xl border-none bg-white shadow-sm focus:ring-1 focus:ring-primary/20 text-xs md:text-sm">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-gray-400" />
+              <SelectValue placeholder="Ưu tiên" />
+            </div>
+          </SelectTrigger>
+          <SelectContent className="rounded-2xl border-none shadow-xl">
+            <SelectItem value="all">Tất cả mức độ</SelectItem>
+            <SelectItem value="thap">Thấp</SelectItem>
+            <SelectItem value="trungBinh">Trung bình</SelectItem>
+            <SelectItem value="cao">Cao</SelectItem>
+            <SelectItem value="khancap">Khẩn cấp</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {filteredSuCos.length === 0 ? (
+        <Card className="border-none shadow-sm bg-white/60 rounded-3xl overflow-hidden">
           <CardContent className="flex flex-col items-center justify-center py-24 text-center px-4">
             <div className="bg-primary/5 p-10 rounded-full mb-8 relative">
-              <CheckCircle2 className="h-16 w-16 text-primary/40" />
-              <div className="absolute inset-0 bg-primary/10 rounded-full animate-ping opacity-20" />
+              {searchTerm || statusFilter !== 'all' || typeFilter !== 'all' || priorityFilter !== 'all' ? (
+                <Search className="h-16 w-16 text-primary/40" />
+              ) : (
+                <CheckCircle2 className="h-16 w-16 text-primary/40" />
+              )}
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 tracking-tight">Phòng bạn đang rất tốt!</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4 tracking-tight">
+              {searchTerm || statusFilter !== 'all' || typeFilter !== 'all' || priorityFilter !== 'all' 
+                ? "Không tìm thấy kết quả" 
+                : "Phòng bạn đang rất tốt!"}
+            </h2>
             <p className="text-gray-500 max-w-md mx-auto leading-relaxed">
-              Hệ thống không ghi nhận bất kỳ sự cố nào từ phía bạn. Phòng trọ của bạn đang trong trạng thái hoàn hảo.
+              {searchTerm || statusFilter !== 'all' || typeFilter !== 'all' || priorityFilter !== 'all' 
+                ? "Hãy thử thay đổi từ khóa hoặc bộ lọc để tìm kiếm lại."
+                : "Hệ thống không ghi nhận bất kỳ sự cố nào từ phía bạn. Phòng trọ của bạn đang trong trạng thái hoàn hảo."}
             </p>
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
+        <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
-                    <TableHead className="font-semibold text-gray-700">Tiêu đề</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Tòa / Phòng</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Loại</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Ưu tiên</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Ngày báo cáo</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Trạng thái</TableHead>
+                  <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+                    <TableHead className="font-bold text-slate-500 h-14">Tiêu đề</TableHead>
+                    <TableHead className="font-bold text-slate-500 h-14">Tòa / Phòng</TableHead>
+                    <TableHead className="font-bold text-slate-500 h-14">Loại</TableHead>
+                    <TableHead className="font-bold text-slate-500 h-14">Ưu tiên</TableHead>
+                    <TableHead className="font-bold text-slate-500 h-14">Ngày báo cáo</TableHead>
+                    <TableHead className="font-bold text-slate-500 h-14">Trạng thái</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {suCos.map((sc) => (
+                  {filteredSuCos.map((sc) => (
                     <TableRow 
                       key={sc._id} 
-                      className="hover:bg-primary/5 transition-colors cursor-pointer"
+                      className="hover:bg-slate-50/80 transition-all border-slate-50 h-20 group"
                       onClick={() => setSelectedSuCo(sc)}
                     >
                       <TableCell>
-                        <div className="max-w-[220px]">
-                          <div className="font-semibold text-gray-900 truncate">{sc.tieuDe}</div>
-                          <div className="text-xs text-gray-400 truncate mt-0.5 italic">{sc.moTa}</div>
+                        <div className="max-w-[280px]">
+                          <div className="font-bold text-slate-900 group-hover:text-primary transition-colors truncate">{sc.tieuDe}</div>
+                          <div className="text-xs text-slate-400 truncate mt-1 italic leading-relaxed">{sc.moTa}</div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div className="text-gray-700 font-medium">{(sc.phong as any)?.toaNha?.tenToaNha || 'N/A'}</div>
-                          <div className="text-xs text-gray-400">{(sc.phong as any)?.maPhong || ''}</div>
+                          <div className="text-slate-700 font-bold">{(sc.phong as any)?.toaNha?.tenToaNha || 'N/A'}</div>
+                          <div className="text-[11px] text-slate-400 font-medium">Phòng {(sc.phong as any)?.maPhong || ''}</div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-gray-600">{getLoaiSuCoText(sc.loaiSuCo)}</span>
+                        <span className="text-sm font-medium text-slate-600 bg-slate-100/80 px-2.5 py-1 rounded-lg">{getLoaiSuCoText(sc.loaiSuCo)}</span>
                       </TableCell>
                       <TableCell>{getPriorityBadge(sc.mucDoUuTien)}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1.5 text-sm text-gray-500">
-                          <Calendar className="size-3.5" />
+                        <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
+                          <div className="p-1.5 rounded-lg bg-slate-50 group-hover:bg-white transition-colors">
+                            <Calendar className="size-3.5" />
+                          </div>
                           {new Date(sc.ngayBaoCao).toLocaleDateString('vi-VN')}
                         </div>
                       </TableCell>

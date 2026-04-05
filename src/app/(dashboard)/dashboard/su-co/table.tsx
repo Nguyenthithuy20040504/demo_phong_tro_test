@@ -38,7 +38,8 @@ import {
 } from "@tanstack/react-table"
 import { toast } from "sonner"
 
-import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
+import { Badge, badgeVariants } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -234,37 +235,109 @@ const createColumns = (props: SuCoTableProps & { setSuCoToDelete: (s: SuCo) => v
     header: "Trạng thái",
     cell: ({ row }) => {
       const suCo = row.original
+      const canChangeStatus = suCo.trangThai === 'moi' || suCo.trangThai === 'dangXuLy'
+
+      if (!canChangeStatus) {
+        return (
+          <div className="flex items-center">
+            {getStatusBadge(suCo.trangThai)}
+          </div>
+        )
+      }
+
+      // Helper for icons and colors within the pill
+      const getStyles = (status: string) => {
+        switch (status) {
+          case 'moi': return "bg-red-50 text-red-600 border-red-200 hover:bg-red-100 hover:border-red-300 shadow-sm"
+          case 'dangXuLy': return "bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100 hover:border-orange-300 shadow-sm"
+          default: return "bg-slate-50 text-slate-600 border-slate-200"
+        }
+      }
+
+      const getIcon = (status: string) => {
+        switch (status) {
+          case 'moi': return <AlertCircle className="h-3 w-3" />
+          case 'dangXuLy': return <Clock className="h-3 w-3" />
+          default: return null
+        }
+      }
+
+      const getText = (status: string) => {
+        switch (status) {
+          case 'moi': return "Mới"
+          case 'dangXuLy': return "Đang xử lý"
+          default: return status
+        }
+      }
+
+      // Căn chỉnh giao diện nút thả xuống cho giống với Badge nhưng vẫn đảm bảo tính tương tác mượt mà
       return (
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          {getStatusBadge(suCo.trangThai)}
-          {suCo.trangThai === 'moi' && (
-            <Select
-              value={suCo.trangThai}
-              onValueChange={(value) => props.onStatusChange(suCo._id!, value)}
-            >
-              <SelectTrigger className="w-32 h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="dangXuLy">Xử lý</SelectItem>
-                <SelectItem value="daHuy">Hủy</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-          {suCo.trangThai === 'dangXuLy' && (
-            <Select
-              value={suCo.trangThai}
-              onValueChange={(value) => props.onStatusChange(suCo._id!, value)}
-            >
-              <SelectTrigger className="w-32 h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="daXong">Hoàn thành</SelectItem>
-                <SelectItem value="daHuy">Hủy</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
+        <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button 
+                className={cn(
+                  "flex items-center gap-1 px-3 py-1.5 rounded-full text-[13px] font-bold transition-all duration-300 border-none outline-none focus:ring-2 focus:ring-offset-2",
+                  suCo.trangThai === 'moi' ? "bg-red-500 text-white hover:bg-red-600 shadow-md shadow-red-100" :
+                  suCo.trangThai === 'dangXuLy' ? "bg-secondary text-secondary-foreground hover:bg-secondary/80" : ""
+                )}
+              >
+                {getIcon(suCo.trangThai)}
+                <span className="mx-1">{getText(suCo.trangThai)}</span>
+                <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52 p-2 rounded-2xl shadow-2xl border-slate-100/50 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200">
+              <div className="px-3 py-2 text-[10px] uppercase font-bold text-slate-400 tracking-wider">Cập nhật trạng thái</div>
+              {suCo.trangThai === 'moi' ? (
+                <>
+                  <DropdownMenuItem 
+                    onClick={() => props.onStatusChange(suCo._id!, 'dangXuLy')}
+                    className="flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer focus:bg-slate-100 transition-all duration-200"
+                  >
+                    <div className="bg-amber-100 p-1.5 rounded-lg"><Clock className="h-4 w-4 text-amber-600" /></div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold">Xác nhận xử lý</span>
+                      <span className="text-[10px] text-slate-500">Chuyển trạng thái sang Đang xử lý</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => props.onStatusChange(suCo._id!, 'daHuy')}
+                    className="flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer focus:bg-red-50 transition-all duration-200 mt-1"
+                  >
+                    <div className="bg-red-100 p-1.5 rounded-lg"><XCircle className="h-4 w-4 text-red-600" /></div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-red-600">Hủy sự cố</span>
+                      <span className="text-[10px] text-red-400">Đóng và hủy báo cáo này</span>
+                    </div>
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <>
+                  <DropdownMenuItem 
+                    onClick={() => props.onStatusChange(suCo._id!, 'daXong')}
+                    className="flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer focus:bg-emerald-50 transition-all duration-200"
+                  >
+                    <div className="bg-emerald-100 p-1.5 rounded-lg"><CheckCircle2 className="h-4 w-4 text-emerald-600" /></div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-emerald-600">Hoàn thành</span>
+                      <span className="text-[10px] text-emerald-400">Xác nhận sự cố đã được xử lý xong</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => props.onStatusChange(suCo._id!, 'daHuy')}
+                    className="flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer focus:bg-red-50 transition-all duration-200 mt-1"
+                  >
+                    <div className="bg-red-100 p-1.5 rounded-lg"><XCircle className="h-4 w-4 text-red-600" /></div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-red-600">Hủy sự cố</span>
+                      <span className="text-[10px] text-red-400">Đóng và hủy báo cáo này</span>
+                    </div>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )
     },

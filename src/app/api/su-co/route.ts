@@ -5,6 +5,8 @@ import dbConnect from '@/lib/mongodb';
 import SuCo from '@/models/SuCo';
 import Phong from '@/models/Phong';
 import KhachThue from '@/models/KhachThue';
+import ThongBao from '@/models/ThongBao';
+import ToaNha from '@/models/ToaNha';
 import { getAccessibleToaNhaIds } from '@/lib/auth-utils';
 import { z } from 'zod';
 import mongoose from 'mongoose';
@@ -270,6 +272,62 @@ export async function POST(request: NextRequest) {
     });
 
     await newSuCo.save();
+
+    // --- Gửi thông báo cho các bên liên quan (Chủ nhà/Quản lý & Khách thuê) ---
+    try {
+      const roomInfo = await Phong.findById(validatedData.phong).populate('toaNha');
+      if (roomInfo && roomInfo.toaNha) {
+        const toaNhaDetails = roomInfo.toaNha as any;
+        const senderId = session.user.id;
+        const isSenderKhachThue = session.user.role === 'khachThue';
+        
+        // 1) Thông báo cho Chủ nhà & Quản lý (nếu người gửi là khách thuê hoặc quản lý khác)
+        const landlords = [
+          toaNhaDetails.chuSoHuu,
+          ...(toaNhaDetails.nguoiQuanLy || [])
+        ].filter(Boolean);
+
+        const landlordReceiverIds = Array.from(new Set(
+          landlords.map(r => r.toString())
+        )).filter(id => id !== senderId)
+          .map(id => new mongoose.Types.ObjectId(id));
+
+        if (landlordReceiverIds.length > 0 && isSenderKhachThue) {
+          const senderName = session.user.name || 'Khách thuê';
+          const maPhong = roomInfo.maPhong || '';
+          const tenToaNha = toaNhaDetails.tenToaNha || '';
+
+          await ThongBao.create({
+            tieuDe: `🚀 Sự cố mới: ${validatedData.tieuDe}`,
+            noiDung: `Khách thuê ${senderName} (phòng ${maPhong} - ${tenToaNha}) vừa báo cáo sự cố mới: ${validatedData.tieuDe}.\n\nMô tả: ${validatedData.moTa}`,
+            loai: 'suCo',
+            nguoiGui: new mongoose.Types.ObjectId(senderId),
+            nguoiNhan: landlordReceiverIds,
+            toaNha: toaNhaDetails._id,
+            daDoc: [],
+          });
+        }
+
+        // 2) Thông báo cho Khách thuê (nếu người gửi là Quản lý/Chủ nhà)
+        if (!isSenderKhachThue && validatedData.khachThue) {
+          const tenantIdStr = validatedData.khachThue.toString();
+          if (tenantIdStr !== senderId) {
+            await ThongBao.create({
+              tieuDe: `🚩 Thông báo sự cố: ${validatedData.tieuDe}`,
+              noiDung: `Quản lý vừa báo cáo sự cố mới cho phòng của bạn: ${validatedData.tieuDe}.\n\nTrạng thái: ${validatedData.trangThai === 'dangXuLy' ? 'Đang được xử lý' : 'Chờ xử lý'}.\nMô tả: ${validatedData.moTa}`,
+              loai: 'suCo',
+              nguoiGui: new mongoose.Types.ObjectId(senderId),
+              nguoiNhan: [new mongoose.Types.ObjectId(tenantIdStr)],
+              toaNha: toaNhaDetails._id,
+              daDoc: [],
+            });
+            console.log(`[SuCo Notification] Đã gửi thông báo cho khách thuê ${tenantIdStr}`);
+          }
+        }
+      }
+    } catch (notifError) {
+      console.error('Error creating su co notification:', notifError);
+    }
 
     return NextResponse.json({
       success: true,

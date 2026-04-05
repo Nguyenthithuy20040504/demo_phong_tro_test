@@ -127,7 +127,7 @@ export async function PUT(
       .populate('khachThue', 'hoTen soDienThoai')
       .populate('nguoiXuLy', 'ten email');
 
-    // --- Gửi thông báo In-App + Email cho khách thuê khi trạng thái thay đổi ---
+    // --- Gửi thông báo In-App + Email cho khách thuê trong BACKGROUND (không await) ---
     const newTrangThai = validatedData.trangThai;
     if (newTrangThai && newTrangThai !== oldTrangThai && existingSuCo.khachThue) {
       const statusLabels: Record<string, string> = {
@@ -158,57 +158,59 @@ export async function PUT(
           : ''
       }`;
 
-      // 1) In-App Notification
-      try {
-        await ThongBao.create({
-          tieuDe: tieuDeNotif,
-          noiDung: noiDungNotif,
-          loai: 'suCo',
-          nguoiGui: new mongoose.Types.ObjectId(session.user.id),
-          nguoiNhan: [existingSuCo.khachThue],
-          daDoc: [],
-        });
-      } catch (notifError) {
-        console.error('Error creating issue notification:', notifError);
-      }
-
-      // 2) Email Notification
-      try {
-        const KhachThue = (await import('@/models/KhachThue')).default;
-        const NguoiDung = (await import('@/models/NguoiDung')).default;
-
-        // Tìm email và tên khách thuê từ cả 2 collection
-        let tenantEmail = '';
-        let tenantName = 'Khách thuê';
-        const ktId = existingSuCo.khachThue.toString();
-
-        const ktRecord = await KhachThue.findById(ktId).select('email hoTen').lean() as any;
-        if (ktRecord?.email) {
-          tenantEmail = ktRecord.email;
-          tenantName = ktRecord.hoTen || tenantName;
-        }
-
-        // Fallback: tìm trong NguoiDung nếu KhachThue không có email
-        if (!tenantEmail) {
-          const ndRecord = await NguoiDung.findById(ktId).select('email ten name').lean() as any;
-          if (ndRecord?.email) {
-            tenantEmail = ndRecord.email;
-            tenantName = ndRecord.ten || ndRecord.name || tenantName;
-          }
-        }
-
-        if (tenantEmail) {
-          await sendGeneralNotificationEmail({
-            email: tenantEmail,
-            khachThueName: tenantName,
-            tieuDe: tieuDeNotif.replace(/[🔧✅❌📋]\s?/, ''), // Bỏ emoji cho email subject
+      // Thực thi ngầm không đợi kết quả để API phản hồi ngay
+      const khachThueId = existingSuCo.khachThue;
+      (async () => {
+        // 1) In-App Notification
+        try {
+          await ThongBao.create({
+            tieuDe: tieuDeNotif,
             noiDung: noiDungNotif,
+            loai: 'suCo',
+            nguoiGui: new mongoose.Types.ObjectId(session.user.id),
+            nguoiNhan: [khachThueId],
+            toaNha: toaNhaId,
+            daDoc: [],
           });
-          console.log(`[SuCo Email] Đã gửi email cập nhật sự cố tới ${tenantEmail}`);
+          console.log(`[SuCo Notification] Background In-App notification sent to ${khachThueId}`);
+        } catch (notifError) {
+          console.error('Error in background notification:', notifError);
         }
-      } catch (emailError) {
-        console.error('Error sending issue email notification:', emailError);
-      }
+
+        // 2) Email Notification
+        try {
+          const KhachThue = (await import('@/models/KhachThue')).default;
+          const NguoiDung = (await import('@/models/NguoiDung')).default;
+
+          let tenantEmail = '';
+          let tenantName = 'Khách thuê';
+          const ktId = khachThueId.toString();
+
+          const ktRecord = await KhachThue.findById(ktId).select('email hoTen').lean() as any;
+          if (ktRecord?.email) {
+            tenantEmail = ktRecord.email;
+            tenantName = ktRecord.hoTen || tenantName;
+          } else {
+            const ndRecord = await NguoiDung.findById(ktId).select('email ten name').lean() as any;
+            if (ndRecord?.email) {
+              tenantEmail = ndRecord.email;
+              tenantName = ndRecord.ten || ndRecord.name || tenantName;
+            }
+          }
+
+          if (tenantEmail) {
+            await sendGeneralNotificationEmail({
+              email: tenantEmail,
+              khachThueName: tenantName,
+              tieuDe: tieuDeNotif.replace(/[🔧✅❌📋]\s?/, ''),
+              noiDung: noiDungNotif,
+            });
+            console.log(`[SuCo Email] Background email sent to ${tenantEmail}`);
+          }
+        } catch (emailError) {
+          console.error('Error in background email:', emailError);
+        }
+      })();
     }
 
     return NextResponse.json({

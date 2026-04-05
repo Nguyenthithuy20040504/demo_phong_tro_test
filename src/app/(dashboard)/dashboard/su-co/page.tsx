@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useCache } from '@/hooks/use-cache';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -64,13 +65,16 @@ export default function SuCoPage() {
     toaNhaList: ToaNha[];
   }>({ key: 'su-co-data', duration: 300000 });
 
+  const searchParams = useSearchParams();
+  const searchParam = searchParams.get('search') || '';
+
   const [suCoList, setSuCoList] = useState<SuCo[]>([]);
   const [phongList, setPhongList] = useState<Phong[]>([]);
   const [khachThueList, setKhachThueList] = useState<KhachThue[]>([]);
   const [hopDongList, setHopDongList] = useState<HopDong[]>([]);
   const [toaNhaList, setToaNhaList] = useState<ToaNha[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(searchParam);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -100,6 +104,14 @@ export default function SuCoPage() {
   useEffect(() => {
     fetchData(true);
   }, [selectedBuildingId]);
+
+  // Đồng bộ search term từ URL khi chuyển từ thông báo khác sang
+  useEffect(() => {
+    const searchVal = searchParams.get('search') || '';
+    if (searchVal) {
+      setSearchTerm(searchVal);
+    }
+  }, [searchParams]);
 
   const fetchData = async (forceRefresh = false) => {
     try {
@@ -286,6 +298,12 @@ export default function SuCoPage() {
   };
 
   const handleStatusChange = async (id: string, newStatus: string) => {
+    // 1. Optimistic Update - Cập nhật UI ngay lập tức
+    const previousList = [...suCoList];
+    setSuCoList(prev => prev.map(suCo => 
+      suCo._id === id ? { ...suCo, trangThai: newStatus as any } : suCo
+    ));
+
     try {
       const response = await fetch(`/api/su-co/${id}`, {
         method: 'PUT',
@@ -300,17 +318,17 @@ export default function SuCoPage() {
       const result = await response.json();
 
       if (result.success) {
-        setSuCoList(prev => prev.map(suCo => {
-          if (suCo._id === id) {
-            return result.data;
-          }
-          return suCo;
-        }));
+        // Cập nhật lại với dữ liệu chính xác từ server (vd: có thêm ngày xử lý)
+        setSuCoList(prev => prev.map(suCo => suCo._id === id ? result.data : suCo));
         toast.success('Đã cập nhật tình trạng xử lý sự cố mới nhất.');
       } else {
+        // Rollback nếu có lỗi từ server
+        setSuCoList(previousList);
         toast.error('Chưa cập nhật được trạng thái. Bạn thử lại xem sao!');
       }
     } catch (error) {
+      // Rollback nếu lỗi kết nối
+      setSuCoList(previousList);
       toast.error('Lỗi kết nối rồi. Bạn kiểm tra lại mạng nhé!');
     }
   };

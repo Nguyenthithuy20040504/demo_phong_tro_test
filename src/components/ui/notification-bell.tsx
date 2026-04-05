@@ -137,18 +137,37 @@ export function NotificationBell() {
     let targetUrl = '';
     // Khắc phục lỗi tiếng Việt bằng cách tìm trực tiếp cấu trúc mã (HD- hoặc HD kèm mã số)
     const codeMatch = notif.noiDung?.match(/(HD-?[A-Z0-9-]{8,})/i) || notif.tieuDe?.match(/(HD-?[A-Z0-9-]{8,})/i);
-    const searchParamValue = codeMatch ? codeMatch[1].trim() : (notif as any).resolvedMaPhong;
+    let searchParamValue = codeMatch ? codeMatch[1].trim() : (notif as any).resolvedMaPhong;
+
+    // Đối với sự cố, BẮT BUỘC ưu tiên bóc tách tên sự cố từ tiêu đề (ví dụ: "🚀 Sự cố mới: [Tiêu đề]")
+    if (notif.loai === 'suCo') {
+      const suCoMatch = notif.tieuDe?.match(/(?:Sự cố mới|Sự cố):\s*(.*)/i);
+      if (suCoMatch) {
+        searchParamValue = suCoMatch[1].trim();
+      }
+    }
 
     if (isTenant) {
       switch (notif.loai) {
-        case 'hoaDon': targetUrl = '/khach-thue/dashboard/hoa-don'; break;
+        case 'hoaDon': 
+          targetUrl = '/khach-thue/dashboard/hoa-don'; 
+          break;
         case 'suCo': targetUrl = '/khach-thue/dashboard/su-co'; break;
         case 'hopDong': targetUrl = '/khach-thue/dashboard'; break; // Tenant ko có trang hop-dong rời, nó ở trang chính
         default: targetUrl = '/khach-thue/dashboard/thong-bao'; break;
       }
     } else {
       switch (notif.loai) {
-        case 'hoaDon': targetUrl = '/dashboard/hoa-don'; break;
+        case 'hoaDon': 
+          // Nếu là thông báo thanh toán (chờ duyệt), dẫn về trang thanh toán
+          if (notif.tieuDe?.includes('Thanh toán mới') || 
+              notif.tieuDe?.includes('chờ duyệt') || 
+              notif.noiDung?.includes('khoản thanh toán')) {
+            targetUrl = '/dashboard/thanh-toan';
+          } else {
+            targetUrl = '/dashboard/hoa-don';
+          }
+          break;
         case 'suCo': targetUrl = '/dashboard/su-co'; break;
         case 'hopDong': targetUrl = '/dashboard/hop-dong'; break;
         default: targetUrl = '/dashboard/thong-bao'; break;
