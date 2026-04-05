@@ -10,6 +10,7 @@ import { getAccessibleToaNhaIds, isToaNhaAccessible } from '@/lib/auth-utils';
 import { PhiDichVu } from '@/types';
 import mongoose from 'mongoose';
 import ThongBao from '@/models/ThongBao';
+import { sendDebtNotificationEmail, isValidEmail } from '@/lib/mail';
 
 
 // GET - Lấy danh sách hóa đơn
@@ -595,6 +596,34 @@ export async function POST(request: NextRequest) {
       });
       
       await thongBao.save();
+
+      // Gửi email cho khách thuê kèm mã QR (nếu có email hợp lệ)
+      try {
+        const KhachThueModel2 = (await import('@/models/KhachThue')).default;
+        let ktEmail = '';
+        let ktName = 'Khách thuê';
+        const ktDoc2 = await KhachThueModel2.findById(hoaDon.khachThue).select('email hoTen').lean() as any;
+        if (ktDoc2) {
+          ktEmail = ktDoc2.email || '';
+          ktName = ktDoc2.hoTen || 'Khách thuê';
+        } else {
+          const ndDoc2 = await NguoiDungModel.findById(hoaDon.khachThue).select('email ten name').lean() as any;
+          if (ndDoc2) {
+            ktEmail = ndDoc2.email || '';
+            ktName = ndDoc2.ten || ndDoc2.name || 'Khách thuê';
+          }
+        }
+        if (ktEmail && isValidEmail(ktEmail)) {
+          await sendDebtNotificationEmail({
+            email: ktEmail,
+            khachThueName: ktName,
+            hoaDonData: hoaDon.toObject(),
+            qrUrl: checkoutUrl || '',
+          });
+        }
+      } catch (emailErr) {
+        console.error('[Email] Lỗi gửi email hóa đơn mới cho khách thuê:', emailErr);
+      }
     } catch (notificationError) {
       console.error('Lỗi khi tạo thông báo hóa đơn mới:', notificationError);
       // Không trả về lỗi API nếu chỉ lỗi tạo thông báo

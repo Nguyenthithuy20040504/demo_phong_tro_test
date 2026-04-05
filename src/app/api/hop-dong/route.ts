@@ -11,6 +11,7 @@ import { updatePhongStatus, updateAllKhachThueStatus } from '@/lib/status-utils'
 import { getAccessibleToaNhaIds } from '@/lib/auth-utils';
 import { z } from 'zod';
 import mongoose from 'mongoose';
+import { sendGeneralNotificationEmail, isValidEmail } from '@/lib/mail';
 
 const phiDichVuSchema = z.object({
   ten: z.string().min(1, 'Tên dịch vụ là bắt buộc'),
@@ -397,7 +398,7 @@ export async function POST(request: NextRequest) {
       const phongInfo = await Phong.findById(validatedData.phong).select('maPhong');
       const tenPhong = phongInfo?.maPhong || 'N/A';
 
-      // Gửi thông báo cho TẤT CẢ khách thuê trong hợp đồng
+      // Gửi thông báo cho TấT CẢ khách thuê trong hợp đồng
       const khachThueIds = validatedData.khachThueId || [];
       if (khachThueIds.length > 0) {
         const nguoiNhanIds = khachThueIds.map((id: string) => new mongoose.Types.ObjectId(id));
@@ -410,6 +411,36 @@ export async function POST(request: NextRequest) {
           phong: [new mongoose.Types.ObjectId(validatedData.phong)],
           ngayGui: new Date(),
         });
+
+        // Gửi email cho từng khách thuê (không kèm QR - chỉ thông báo)
+        for (const ktId of khachThueIds) {
+          try {
+            let ktEmail = '';
+            let ktName = 'Khách thuê';
+            const ktDoc = await KhachThue.findById(ktId).select('hoTen email').lean() as any;
+            if (ktDoc) {
+              ktEmail = ktDoc.email || '';
+              ktName = ktDoc.hoTen || 'Khách thuê';
+            } else {
+              const ndDoc = await NguoiDung.findById(ktId).select('ten name email').lean() as any;
+              if (ndDoc) {
+                ktEmail = ndDoc.email || '';
+                ktName = ndDoc.ten || ndDoc.name || 'Khách thuê';
+              }
+            }
+            if (ktEmail && isValidEmail(ktEmail)) {
+              await sendGeneralNotificationEmail({
+                email: ktEmail,
+                khachThueName: ktName,
+                tieuDe: `Hợp đồng thuê phòng mới chờ duyệt - Phòng ${tenPhong}`,
+                noiDung: `Chủ trọ vừa tạo hợp đồng thuê phòng ${tenPhong} (Mã hợp đồng: ${validatedData.maHopDong}) và đang chờ bạn xác nhận.\n\nVui lòng đăng nhập vào hệ thống để xem chi tiết hợp đồng. Nếu bạn là người đại diện, vui lòng ký duyệt để hợp đồng có hiệu lực.`,
+                ccEmail: '', // Không CC chủ nhà khi gửi cho khách
+              });
+            }
+          } catch (emailErr) {
+            console.error(`[Email] Lỗi gửi email cho khách thuê ${ktId}:`, emailErr);
+          }
+        }
       }
     } catch (notifError) {
       console.error('Error sending notification:', notifError);

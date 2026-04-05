@@ -10,6 +10,7 @@ import { getAccessibleToaNhaIds } from '@/lib/auth-utils';
 import Phong from '@/models/Phong';
 import mongoose from 'mongoose';
 import ThongBao from '@/models/ThongBao';
+import { sendGeneralNotificationEmail, isValidEmail } from '@/lib/mail';
 
 
 // GET - Lấy danh sách thanh toán
@@ -266,6 +267,56 @@ export async function POST(request: NextRequest) {
           ngayGui: new Date()
         });
         await thongBao.save();
+      }
+
+      // Gửi email
+      try {
+        if (isTenant) {
+          // Khách gửi thanh toán -> báo chủ nhà (không kèm QR)
+          const phongForEmail = await Phong.findById(hoaDon.phong).populate('toaNha').lean() as any;
+          if (phongForEmail?.toaNha) {
+            const chuNhaIdForEmail = (phongForEmail.toaNha as any).chuSoHuu;
+            if (chuNhaIdForEmail) {
+              const chuNhaDoc = await NguoiDung.findById(chuNhaIdForEmail).select('email ten name').lean() as any;
+              if (chuNhaDoc?.email && isValidEmail(chuNhaDoc.email)) {
+                await sendGeneralNotificationEmail({
+                  email: chuNhaDoc.email,
+                  khachThueName: chuNhaDoc.ten || chuNhaDoc.name || 'Chủ trọ',
+                  tieuDe: 'Khách thuê gửi thanh toán chờ duyệt',
+                  noiDung: `Khách thuê phòng ${(phongForEmail as any).maPhong || 'N/A'} vừa gửi khoản thanh toán số tiền ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(soTien)} cho hóa đơn ${hoaDon.maHoaDon} (Tháng ${hoaDon.thang}/${hoaDon.nam}).\n\nVui lòng đăng nhập vào hệ thống để kiểm tra biến lai và xác nhận thanh toán.`,
+                  ccEmail: '', // Không CC khi gửi cho chủ nhà
+                });
+              }
+            }
+          }
+        } else {
+          // Chủ xác nhận thanh toán -> báo khách thuê (không kèm QR)
+          const KhachThueModel2 = (await import('@/models/KhachThue')).default;
+          let ktEmail = '';
+          let ktName = 'Khách thuê';
+          const ktDoc2 = await KhachThueModel2.findById(hoaDon.khachThue).select('email hoTen').lean() as any;
+          if (ktDoc2) {
+            ktEmail = ktDoc2.email || '';
+            ktName = ktDoc2.hoTen || 'Khách thuê';
+          } else {
+            const ndDoc2 = await NguoiDung.findById(hoaDon.khachThue).select('email ten name').lean() as any;
+            if (ndDoc2) {
+              ktEmail = ndDoc2.email || '';
+              ktName = ndDoc2.ten || ndDoc2.name || 'Khách thuê';
+            }
+          }
+          if (ktEmail && isValidEmail(ktEmail)) {
+            await sendGeneralNotificationEmail({
+              email: ktEmail,
+              khachThueName: ktName,
+              tieuDe: 'Xác nhận thanh toán hóa đơn',
+              noiDung: `Hóa đơn ${hoaDon.maHoaDon} (Tháng ${hoaDon.thang}/${hoaDon.nam}) đã được ghi nhận thanh toán số tiền ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(soTien)}.\n\nSố tiền còn lại: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(hoaDon.conLai)}.`,
+              ccEmail: undefined, // Dùng mặc định (ADMIN_EMAIL)
+            });
+          }
+        }
+      } catch (emailErr) {
+        console.error('[Email] Lỗi gửi email thông báo thanh toán:', emailErr);
       }
     } catch (notificationError) {
       console.error('Lỗi khi tạo thông báo thanh toán:', notificationError);
