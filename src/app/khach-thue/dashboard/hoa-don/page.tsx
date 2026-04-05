@@ -16,12 +16,14 @@ import {
   Download,
   FileSpreadsheet,
   Camera,
-  ChevronRight
+  ChevronRight,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import { motion } from 'framer-motion';
 import { HoaDon } from '@/types';
 import {
   Table,
@@ -214,122 +216,156 @@ export default function HoaDonKhachThuePage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 mb-1">
-            <Home className="size-3" />
-            <Link href="/khach-thue/dashboard" className="hover:text-primary transition-colors cursor-pointer capitalize">Trang chủ</Link>
-            <ChevronRight className="size-3" />
-            <span className="text-primary">Hóa đơn</span>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Quản lý hóa đơn</h1>
-          <p className="text-gray-500">Theo dõi và thanh toán các hóa đơn hàng tháng · Click vào hàng để xem chi tiết</p>
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-8 pb-10"
+    >
+      {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-2 border-b-2 border-gray-100">
+        <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest mb-1">
+              <Link 
+                href="/khach-thue/dashboard" 
+                className="flex items-center gap-1.5 text-gray-400 hover:text-primary transition-colors"
+              >
+                <Home className="size-3" />
+                Trang Chủ
+              </Link>
+              <ChevronRight className="size-3 text-gray-300" />
+              <span className="text-primary/80">Hóa đơn</span>
+            </div>
+          <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight leading-none">
+            Hóa đơn
+          </h1>
+          <p className="text-gray-500 font-medium text-sm mt-2">Theo dõi và thanh toán các hóa đơn hàng tháng của bạn</p>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button className="rounded-xl gap-2.5 bg-[#5fb3a6] text-white hover:bg-[#4ea296] shadow-md hover:shadow-lg transition-all h-10 px-6 font-black uppercase text-[11px] tracking-widest border-none">
-                <Download className="size-4 stroke-[3px]" />
-                <span>Xuất file</span>
+              <Button className="h-14 px-8 rounded-[1.5rem] bg-gradient-to-r from-[#5fb3a6] to-[#4ea296] text-white font-black uppercase text-[11px] tracking-widest border-none shadow-lg shadow-emerald-200/50 hover:shadow-xl hover:scale-[1.03] transition-all active:scale-95 group">
+                <Download className="size-4 stroke-[3px] mr-3 group-hover:-translate-y-1 transition-transform" />
+                Xuất file
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 rounded-xl">
-              <DropdownMenuLabel>Định dạng xuất</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={exportToPDF} className="gap-2 focus:bg-primary/5 cursor-pointer">
-                <FileText className="size-4 text-rose-500" />
-                <span>Xuất PDF</span>
+            <DropdownMenuContent align="end" className="w-56 p-2 bg-white/80 backdrop-blur-2xl rounded-[1.5rem] border-gray-100 shadow-2xl">
+              <DropdownMenuLabel className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400">Định dạng xuất</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-gray-50" />
+              <DropdownMenuItem onClick={exportToPDF} className="p-3 gap-3 rounded-xl focus:bg-primary/5 cursor-pointer">
+                <div className="size-9 rounded-lg bg-rose-50 flex items-center justify-center text-rose-500">
+                  <FileText className="size-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-black text-gray-900">Xuất PDF</div>
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Portable Document</div>
+                </div>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={exportToExcel} className="gap-2 focus:bg-primary/5 cursor-pointer">
-                <FileSpreadsheet className="size-4 text-emerald-500" />
-                <span>Xuất Excel (CSV)</span>
+              <DropdownMenuItem onClick={exportToExcel} className="p-3 gap-3 rounded-xl focus:bg-primary/5 cursor-pointer">
+                <div className="size-9 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500">
+                  <FileSpreadsheet className="size-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-black text-gray-900">Xuất Excel</div>
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Spreadsheet Data</div>
+                </div>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <Card className="border-none shadow-sm rounded-2xl bg-white overflow-visible">
-        <CardContent className="p-4 flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2 text-sm font-medium text-gray-500 mr-2">
-            <Filter className="size-4" />
-            <span>Bộ lọc:</span>
-          </div>
-
+      {/* Advanced Filter Bar - Revitalized */}
+      <Card className="border-2 shadow-premium rounded-[2.5rem] bg-white/80 backdrop-blur-md border-gray-100 overflow-hidden relative group">
+        {/* Subtle decorative accent */}
+        <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        
+        <CardContent className="p-3 flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
+            {/* Filter Label Button */}
+            <div className="flex items-center gap-2 px-5 h-11 bg-gray-50/80 rounded-2xl border border-gray-100 shadow-inner">
+              <Filter className="size-4 text-primary" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Bộ lọc</span>
+            </div>
+
             {/* Filter Tháng */}
             <Select value={filterMonth} onValueChange={setFilterMonth}>
-              <SelectTrigger className="w-[140px] rounded-xl bg-gray-50/50 border-gray-100">
-                <SelectValue placeholder="Chọn tháng" />
+              <SelectTrigger className="w-[160px] h-11 rounded-2xl bg-white border-gray-100/50 text-xs font-bold text-gray-800 shadow-sm hover:shadow-md hover:border-primary/20 transition-all focus:ring-primary/10">
+                <SelectValue placeholder="Tháng" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả tháng</SelectItem>
+              <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                <SelectItem value="all" className="rounded-xl">Tất cả tháng</SelectItem>
                 {Array.from({ length: 12 }, (_, i) => (
-                  <SelectItem key={i + 1} value={(i + 1).toString()}>Tháng {i + 1}</SelectItem>
+                  <SelectItem key={i + 1} value={(i + 1).toString()} className="rounded-xl">Tháng {i + 1}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
             {/* Filter Năm */}
             <Select value={filterYear} onValueChange={setFilterYear}>
-              <SelectTrigger className="w-[120px] rounded-xl bg-gray-50/50 border-gray-100">
-                <SelectValue placeholder="Chọn năm" />
+              <SelectTrigger className="w-[130px] h-11 rounded-2xl bg-white border-gray-100/50 text-xs font-bold text-gray-800 shadow-sm hover:shadow-md hover:border-primary/20 transition-all focus:ring-primary/10">
+                <SelectValue placeholder="Năm" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả năm</SelectItem>
-                <SelectItem value="2024">Năm 2024</SelectItem>
-                <SelectItem value="2025">Năm 2025</SelectItem>
-                <SelectItem value="2026">Năm 2026</SelectItem>
+              <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                <SelectItem value="all" className="rounded-xl">Tất cả năm</SelectItem>
+                <SelectItem value="2024" className="rounded-xl">Năm 2024</SelectItem>
+                <SelectItem value="2025" className="rounded-xl">Năm 2025</SelectItem>
+                <SelectItem value="2026" className="rounded-xl">Năm 2026</SelectItem>
               </SelectContent>
             </Select>
 
             {/* Filter Trạng thái */}
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[160px] rounded-xl bg-gray-50/50 border-gray-100">
+              <SelectTrigger className="w-[180px] h-11 rounded-2xl bg-white border-gray-100/50 text-xs font-bold text-gray-800 shadow-sm hover:shadow-md hover:border-primary/20 transition-all focus:ring-primary/10">
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                <SelectItem value="daThanhToan">Đã thanh toán</SelectItem>
-                <SelectItem value="chuaThanhToan">Chưa thanh toán</SelectItem>
-                <SelectItem value="choDuyet">Chờ duyệt</SelectItem>
-                <SelectItem value="quaHan">Quá hạn</SelectItem>
-                <SelectItem value="tuChoi">Từ chối</SelectItem>
+              <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                <SelectItem value="all" className="rounded-xl font-bold">Tất cả trạng thái</SelectItem>
+                <SelectItem value="daThanhToan" className="rounded-xl">Đã thanh toán</SelectItem>
+                <SelectItem value="chuaThanhToan" className="rounded-xl">Chưa thanh toán</SelectItem>
+                <SelectItem value="choDuyet" className="rounded-xl">Chờ duyệt</SelectItem>
+                <SelectItem value="quaHan" className="rounded-xl">Quá hạn</SelectItem>
               </SelectContent>
             </Select>
 
             <Button 
               variant="ghost" 
-              size="sm" 
               onClick={() => {
                 setFilterMonth('all');
                 setFilterStatus('all');
                 setFilterYear(new Date().getFullYear().toString());
               }}
-              className="text-xs text-primary hover:bg-primary/5 rounded-lg"
+              className="px-4 h-11 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 rounded-2xl transition-all"
             >
               Đặt lại
             </Button>
           </div>
 
-          <div className="flex-1 text-right text-xs text-gray-400 font-medium hidden sm:block">
-            Hiển thị {filteredHoaDons.length} / {hoaDons.length} hóa đơn
+          {/* Floating Result Badge - Primary Light Style */}
+          <div className="hidden lg:flex items-center px-6 h-11 bg-white border border-primary/10 rounded-2xl shadow-lg shadow-primary/5 group-hover:bg-primary/5 group-hover:border-primary/20 transition-all duration-300">
+            <span className="text-[10px] font-black uppercase tracking-widest text-primary/60 flex items-center gap-2">
+              Kết quả của bạn 
+              <span className="text-secondary text-base font-black font-mono">
+                {filteredHoaDons.length}
+              </span>
+            </span>
           </div>
         </CardContent>
       </Card>
 
       {filteredHoaDons.length === 0 ? (
-        <Card className="border-none shadow-sm bg-white/60 rounded-2xl overflow-hidden">
-          <CardContent className="flex flex-col items-center justify-center py-20 text-center px-4">
-            <div className="bg-blue-50 p-8 rounded-full mb-6">
-              <Receipt className="h-16 w-16 text-blue-500/60" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">Không tìm thấy hóa đơn</h2>
-            <p className="text-gray-500 max-w-md mx-auto leading-relaxed">
-              Thử thay đổi bộ lọc hoặc kiểm tra lại sau.
+        <Card className="border-2 border-gray-100 shadow-premium bg-white/60 backdrop-blur-xl rounded-[2.5rem] overflow-hidden">
+          <CardContent className="flex flex-col items-center justify-center py-24 text-center px-4">
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-blue-50/50 p-10 rounded-[3rem] mb-8"
+            >
+              <Receipt className="h-20 w-20 text-blue-500/30" strokeWidth={1} />
+            </motion.div>
+            <h2 className="text-3xl font-black text-gray-900 mb-4 tracking-tight">Không tìm thấy hóa đơn</h2>
+            <p className="text-gray-500 max-w-sm mx-auto leading-relaxed font-medium">
+              Dữ liệu theo bộ lọc hiện tại trống. Vui lòng thay đổi tiêu chí tìm kiếm.
             </p>
             <Button 
               variant="outline" 
@@ -337,70 +373,69 @@ export default function HoaDonKhachThuePage() {
                 setFilterMonth('all');
                 setFilterStatus('all');
               }}
-              className="mt-6 rounded-xl"
+              className="mt-10 rounded-[1.25rem] h-12 px-8 font-black uppercase text-[11px] tracking-widest border-2 border-gray-100 hover:bg-gray-50 hover:border-gray-200 transition-all"
             >
               Xóa tất cả bộ lọc
             </Button>
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
+        <Card className="border-2 border-gray-200 shadow-premium rounded-[2.5rem] overflow-hidden bg-white/90 backdrop-blur-xl group">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
-                    <TableHead className="font-semibold text-gray-700">Mã hóa đơn</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Kỳ</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Tiền phòng</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Điện</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Nước</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Tổng tiền</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Hạn TT</TableHead>
-                    <TableHead className="font-semibold text-gray-700">Trạng thái</TableHead>
+                  <TableRow className="bg-gray-50/50 border-b border-gray-100/50 h-12 hover:bg-gray-50/50">
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 pl-8">Mã hóa đơn</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400">Kỳ thanh toán</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400">Tiền phòng</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400">Điện</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400">Nước</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400">Tổng cộng</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400">Hạn cuối</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 pr-8">Trạng thái</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredHoaDons.map((hd) => (
                     <TableRow
                       key={hd._id}
-                      className="hover:bg-primary/5 transition-colors cursor-pointer"
+                      className="hover:bg-primary/5 transition-all cursor-pointer group/row h-14"
                       onClick={() => setSelectedHoaDon(hd)}
                     >
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="size-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary shrink-0">
+                      <TableCell className="pl-8">
+                        <div className="flex items-center gap-3">
+                          <div className="size-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 group-hover/row:bg-primary group-hover/row:text-white transition-all shadow-sm">
                             <Receipt className="size-4" />
                           </div>
-                          <span className="font-mono text-sm font-medium text-gray-900">{hd.maHoaDon}</span>
+                          <span className="font-black text-sm text-gray-900 tracking-tight">{hd.maHoaDon}</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-gray-700">Tháng {hd.thang}/{hd.nam}</span>
+                        <span className="text-sm font-bold text-gray-700">T. {hd.thang}/{hd.nam}</span>
                       </TableCell>
-                      <TableCell className="text-sm">{fmt(hd.tienPhong)}</TableCell>
-                      <TableCell className="text-sm">
-                        <div>
-                          <div className="text-gray-900">{fmt(hd.tienDien)}</div>
-                          <div className="text-xs text-gray-400">{hd.soDien} kWh</div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        <div>
-                          <div className="text-gray-900">{fmt(hd.tienNuoc)}</div>
-                          <div className="text-xs text-gray-400">{hd.soNuoc} m³</div>
+                      <TableCell className="font-bold text-gray-800 text-sm">{fmt(hd.tienPhong)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="text-sm font-bold text-gray-900">{fmt(hd.tienDien)}</div>
+                          <div className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono bg-gray-50 px-1 rounded">{hd.soDien}</div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="font-bold text-gray-900">{fmt(hd.tongTien)}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="text-sm font-bold text-gray-900">{fmt(hd.tienNuoc)}</div>
+                          <div className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono bg-gray-50 px-1 rounded">{hd.soNuoc}</div>
+                        </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1.5 text-sm text-gray-500">
-                          <Calendar className="size-3.5" />
+                        <span className="text-[14px] font-black text-gray-900 tracking-tight">{fmt(hd.tongTien)}</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 text-sm font-bold text-gray-500">
                           {fmtDate(hd.hanThanhToan)}
                         </div>
                       </TableCell>
-                      <TableCell>{getStatusBadge(hd.trangThai)}</TableCell>
+                      <TableCell className="pr-8">{getStatusBadge(hd.trangThai)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -410,15 +445,38 @@ export default function HoaDonKhachThuePage() {
         </Card>
       )}
 
-      {/* Thông tin hỗ trợ */}
-      <Card className="border-none shadow-sm bg-gradient-to-br from-primary/5 to-indigo-500/5 rounded-2xl overflow-hidden">
-        <CardContent className="p-6 md:p-8 flex flex-col md:flex-row items-center gap-6">
-          <div className="bg-white p-4 rounded-2xl shadow-sm text-primary">
-            <CreditCard className="size-8" />
+      {/* Payment Guide - Compact Light Section */}
+      <Card className="border-2 border-primary/20 shadow-premium rounded-[2.5rem] bg-gradient-to-br from-primary/10 via-white to-white overflow-hidden relative group">
+        <div className="absolute -bottom-24 -right-24 size-64 bg-primary/5 rounded-full blur-3xl" />
+        
+        <CardContent className="p-6 md:p-10 flex flex-col md:flex-row items-center gap-6 md:gap-10 relative z-10">
+          <div className="size-20 rounded-[1.5rem] bg-white shadow-lg shadow-primary/10 border border-primary/5 flex items-center justify-center text-primary shrink-0 group-hover:scale-105 transition-all duration-500">
+            <CreditCard className="size-8" strokeWidth={1.5} />
           </div>
-          <div className="flex-1 text-center md:text-left">
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Hướng dẫn thanh toán</h3>
-            <p className="text-sm text-gray-600">Bạn có thể thanh toán trực tiếp tại văn phòng hoặc chuyển khoản ngân hàng qua thông tin có sẵn trong chi tiết hóa đơn.</p>
+          
+          <div className="flex-1 text-center md:text-left space-y-3">
+            <div className="flex flex-col md:flex-row md:items-center gap-3 justify-center md:justify-start">
+              <h3 className="text-2xl font-black text-gray-900 tracking-tight">
+                Hướng dẫn thanh toán
+              </h3>
+              <div className="px-2 py-0.5 bg-primary/10 text-primary text-[9px] font-black uppercase tracking-widest rounded-full border border-primary/20 self-center">
+                System Verified
+              </div>
+            </div>
+            
+            <p className="text-gray-500 font-medium leading-normal max-w-2xl text-sm">
+              Bạn có thể dễ dàng thanh toán trực tiếp tại văn phòng PiRoom hoặc sử dụng hình thức chuyển khoản ngân hàng 24/7. 
+              Dữ liệu của bạn được mã hóa và bảo mật tuyệt đối qua hệ thống của chúng tôi.
+            </p>
+            
+            <div className="flex flex-wrap items-center gap-3 pt-2 justify-center md:justify-start">
+               <div className="flex items-center gap-2 bg-gray-50/80 border border-gray-100 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider text-gray-600">
+                 <Zap className="size-3 text-emerald-500" /> Nhanh chóng
+               </div>
+               <div className="flex items-center gap-2 bg-gray-50/80 border border-gray-100 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider text-gray-600">
+                 <ShieldCheck className="size-3 text-primary" /> Bảo mật 100%
+               </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -696,6 +754,6 @@ export default function HoaDonKhachThuePage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </motion.div>
   );
 }

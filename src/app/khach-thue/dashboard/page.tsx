@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Home, FileText, AlertCircle, MapPin, Calendar, DollarSign, Phone, Mail, ChevronRight, User, ArrowUpRight, Receipt, Loader2, ShieldCheck, Smartphone, Users, Lock, CheckCircle2 } from 'lucide-react';
+import { Home, FileText, AlertCircle, MapPin, Calendar, DollarSign, Phone, Mail, ChevronRight, User, ArrowUpRight, Receipt, Loader2, ShieldCheck, Smartphone, Users, Lock, CheckCircle2, Headset } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSession } from "next-auth/react";
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown } from 'lucide-react';
 
 export default function KhachThueDashboardPage() {
   const [dashboardData, setDashboardData] = useState<any>(null);
@@ -252,39 +259,76 @@ export default function KhachThueDashboardPage() {
           ))}
         </motion.div>
       )}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-2 border-b border-gray-50/50">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-20">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 mb-1">
-            <Home className="size-3" />
-            <span className="text-primary">Trang chủ</span>
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 pb-6 border-b border-gray-100">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary/60 mb-1">
+            <div className="size-1 bg-primary rounded-full" />
+            Workspace
           </div>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight">Trang chủ</h1>
+          <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight leading-none">
+            Dashboard
+          </h1>
         </div>
-          {hasMultipleRooms && (
-            <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur-xl p-1.5 rounded-[1.25rem] shadow-premium border border-gray-100/50">
-              {hopDongList.map((hd: any, idx: number) => (
-                <Button
-                  key={hd._id}
-                  variant={selectedRoomIndex === idx ? "default" : "ghost"}
-                  onClick={() => setSelectedRoomIndex(idx)}
-                  className={`rounded-[1rem] px-6 py-2.5 h-10 text-xs font-black transition-all duration-500 ${
-                    selectedRoomIndex === idx 
-                      ? "shadow-xl shadow-primary/30 bg-primary text-white scale-105" 
-                      : "text-muted-foreground hover:bg-gray-50 hover:text-primary"
-                  }`}
-                >
-                  P.{hd.phong?.maPhong}
-                </Button>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="hidden sm:flex items-center gap-2 bg-[#f0f9f8] px-4 py-2 rounded-full border border-[#5fb3a6]/20 shadow-sm self-center">
-          <div className="w-2 h-2 bg-[#5fb3a6] rounded-full animate-pulse" />
-          <span className="text-[#5fb3a6] text-[10px] font-black uppercase tracking-widest leading-none pt-0.5">
-            Dữ liệu thời gian thực
-          </span>
+
+        <div className="flex items-center gap-4 ml-auto self-end">
+          {/* Room Selector Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-4 p-2 pl-4 bg-white hover:bg-gray-50 rounded-[1.5rem] border border-gray-200 shadow-sm transition-all group">
+                <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                  <Home className="size-5" strokeWidth={2.5} />
+                </div>
+                <div className="flex flex-col text-left pr-2">
+                  <span className="text-[14px] font-black tracking-tight text-gray-900 leading-none mb-1">
+                    Phòng {currentHopDong?.phong?.maPhong}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    {currentHopDong?.phong?.toaNha?.tenToaNha || 'Trọ PiRoom'}
+                  </span>
+                </div>
+                <div className="ml-2 pr-2 border-l border-gray-100 pl-4">
+                  <ChevronDown className="size-4 text-gray-300 group-hover:text-primary transition-colors" />
+                </div>
+              </button>
+            </DropdownMenuTrigger>
+            
+            <DropdownMenuContent align="end" className="w-[280px] p-2 bg-white/80 backdrop-blur-2xl rounded-[2rem] border-gray-100 shadow-2xl space-y-1">
+              <div className="px-4 py-3 mb-1 border-b border-gray-50">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60">Danh sách phòng thuê</p>
+              </div>
+              {hopDongList.map((hd: any, idx: number) => {
+                const isSelected = selectedRoomIndex === idx;
+                return (
+                  <DropdownMenuItem 
+                    key={hd._id}
+                    onClick={() => setSelectedRoomIndex(idx)}
+                    className={`
+                      flex items-center gap-4 p-3 rounded-[1.25rem] cursor-pointer transition-all mb-1
+                      ${isSelected ? "bg-primary text-white focus:bg-primary focus:text-white" : "hover:bg-gray-50 focus:bg-gray-50"}
+                    `}
+                  >
+                    <div className={`size-10 rounded-xl flex items-center justify-center shrink-0 ${isSelected ? "bg-white/20 text-white" : "bg-primary/5 text-primary"}`}>
+                       <Home className="size-5" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className={`text-sm font-black tracking-tight leading-none mb-1 ${isSelected ? "text-white" : "text-gray-900"}`}>
+                        Phòng {hd.phong?.maPhong}
+                      </span>
+                      <p className={`text-[10px] font-bold uppercase tracking-wider truncate opacity-70`}>
+                        {hd.phong?.toaNha?.tenToaNha || 'PiRoom'}
+                      </p>
+                    </div>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Real-time Status Badge */}
+          <div className="hidden sm:flex items-center gap-3 px-5 py-2.5 bg-emerald-50 rounded-full border border-emerald-100 shadow-sm shrink-0">
+            <div className="size-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+            <span className="text-emerald-700 text-[11px] font-black uppercase tracking-widest">Dữ liệu thời gian thực</span>
+          </div>
         </div>
       </div>
 
@@ -367,8 +411,8 @@ export default function KhachThueDashboardPage() {
             </div>
 
             <div className="mt-auto">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[11px] font-black uppercase tracking-wider">
-                <div className="size-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-[11px] font-black uppercase tracking-wider">
+                <div className="size-1.5 bg-emerald-500 rounded-full" />
                 Thông tin đã xác thực
               </div>
             </div>
@@ -616,85 +660,133 @@ export default function KhachThueDashboardPage() {
         {/* Cột phụ: Hóa đơn gần nhất & Liên hệ */}
         <div className="lg:col-span-2 space-y-8">
           {hoaDonGanNhat && (
-            <motion.div variants={itemVariants}>
-              <Card className="border-none shadow-premium bg-white rounded-[2.5rem] overflow-hidden">
+            <motion.div variants={itemVariants} className="h-full">
+              <Card className="border-none shadow-premium bg-white rounded-[2.5rem] overflow-hidden group relative pl-4 h-full">
+                {/* Left Accent Bar */}
+                <div className="absolute left-0 top-0 h-full w-2.5 bg-emerald-500" />
+                
                 <CardHeader className="p-8 pb-4">
-                  <CardTitle className="text-xl font-black text-gray-900">Hóa đơn gần nhất</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xl font-black text-gray-900">Hóa đơn gần nhất</CardTitle>
+                    <div className="size-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                      <Receipt className="size-5" />
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent className="p-8 pt-4 space-y-6">
-                  <div className="flex items-center justify-between pb-6 border-b border-gray-50">
+                <CardContent className="p-8 pt-4 flex flex-col h-[calc(100%-100px)]">
+                  <div className="flex items-center justify-between pb-6 border-b border-gray-50 mb-6">
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-1">Kỳ hóa đơn</p>
                       <p className="text-sm font-bold text-gray-900">Tháng {hoaDonGanNhat.thang}/{hoaDonGanNhat.nam}</p>
                     </div>
                     {hoaDonGanNhat.trangThai === 'daThanhToan' ? (
-                      <Badge className="bg-emerald-500 text-white rounded-lg">Đã thanh toán</Badge>
+                      <Badge className="bg-emerald-500 text-white rounded-lg px-3 py-1 font-black text-[10px] uppercase">Đã thanh toán</Badge>
                     ) : (
-                      <Badge variant="destructive" className="rounded-lg">Chờ xử lý</Badge>
+                      <Badge variant="destructive" className="rounded-lg px-3 py-1 font-black text-[10px] uppercase">Chờ thanh toán</Badge>
                     )}
                   </div>
                   
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-xs font-medium">
+                  <div className="space-y-4 flex-1">
+                    <div className="flex justify-between items-center text-xs font-bold">
                       <span className="text-gray-400">Tiền phòng (P.{hoaDonGanNhat.phong?.maPhong})</span>
                       <span className="text-gray-900">{formatCurrency(hoaDonGanNhat.tienPhong)}</span>
                     </div>
-                    <div className="flex justify-between text-xs font-medium">
+                    <div className="flex justify-between items-center text-xs font-bold">
                       <span className="text-gray-400">Dịch vụ & Tiện ích</span>
                       <span className="text-gray-900">{formatCurrency(hoaDonGanNhat.tienDien + hoaDonGanNhat.tienNuoc)}</span>
                     </div>
-                    <div className="flex justify-between pt-4 mt-4 border-t border-gray-100">
-                      <span className="text-sm font-black text-gray-900 uppercase">Tổng cộng</span>
-                      <span className="text-xl font-black text-primary">{formatCurrency(hoaDonGanNhat.tongTien)}</span>
+                    <div className="flex justify-between pt-6 mt-6 border-t border-gray-100 flex-wrap gap-2">
+                      <span className="text-sm font-black text-gray-900 uppercase tracking-tight">Tổng cộng</span>
+                      <span className="text-2xl font-black text-emerald-600 tracking-tighter">{formatCurrency(hoaDonGanNhat.tongTien)}</span>
                     </div>
                   </div>
                   
-                  <Link href="/khach-thue/dashboard/hoa-don" className="block w-full">
-                    <Button className="w-full rounded-2xl h-14 font-black shadow-lg">Xem chi tiết hóa đơn</Button>
-                  </Link>
+                  <div className="mt-8">
+                    <Link href="/khach-thue/dashboard/hoa-don" className="block w-full">
+                      <Button className="w-full rounded-2xl h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-black shadow-lg shadow-emerald-200 transition-all hover:scale-[1.02] active:scale-95">
+                        Xem chi tiết hóa đơn
+                      </Button>
+                    </Link>
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>
           )}
 
-          <motion.div variants={itemVariants}>
-            <Card className="border-none shadow-sm bg-secondary/10 rounded-[2rem] overflow-hidden p-8">
-              <h3 className="font-black text-gray-900 mb-6">Liên hệ Chủ nhà</h3>
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm">
-                  <div className="bg-primary/5 p-2 rounded-xl text-primary"><Phone className="size-4" /></div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Số điện thoại</span>
-                    <span className="text-sm font-black text-gray-900">
-                      {dashboardData?.chuNha?.soDienThoai || 'Chưa cập nhật'}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm">
-                  <div className="bg-indigo-50 p-2 rounded-xl text-indigo-500"><Mail className="size-4" /></div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email</span>
-                    <span className="text-sm font-black text-gray-900">
-                      {dashboardData?.chuNha?.email || 'Chưa cập nhật'}
-                    </span>
-                  </div>
-                </div>
-                {dashboardData?.chuNha?.hoTen && (
-                  <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm">
-                    <div className="bg-emerald-50 p-2 rounded-xl text-emerald-500"><User className="size-4" /></div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Chủ nhà</span>
-                      <span className="text-sm font-black text-gray-900">
-                        {dashboardData.chuNha.hoTen}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Card>
-          </motion.div>
         </div>
       </div>
+
+      {/* Full-width Contact Section below the grid */}
+      <motion.div 
+        variants={itemVariants}
+        className="mt-8"
+      >
+        <Card className="border-none shadow-premium bg-white rounded-[2.5rem] overflow-hidden relative group">
+          {/* Left Decorator - Solid Primary */}
+          <div className="absolute left-0 top-0 h-full w-2.5 bg-primary" />
+          
+          <CardHeader className="p-8 pb-0 pl-12 relative">
+            <div className="flex items-center gap-2">
+              <Headset className="size-5 text-primary" />
+              <CardTitle className="text-xl font-black text-gray-900 tracking-tight">Liên hệ Chủ nhà</CardTitle>
+            </div>
+            <CardDescription className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Hỗ trợ khách thuê & Tư vấn dịch vụ 24/7</CardDescription>
+          </CardHeader>
+
+          <CardContent className="p-8 pt-6 pl-12 flex flex-col md:flex-row items-center gap-8 justify-between relative">
+            {/* Left: Branding & Profile */}
+            <div className="flex items-center gap-6">
+              <div className="relative shrink-0">
+                <div className="size-16 md:size-20 rounded-[2rem] bg-primary text-white flex items-center justify-center text-2xl md:text-3xl font-black shadow-xl shadow-primary/20 ring-[6px] ring-white">
+                  {dashboardData?.chuNha?.hoTen?.charAt(0) || 'A'}
+                </div>
+                <div className="absolute -bottom-1 -right-1 size-7 bg-white rounded-full flex items-center justify-center shadow-lg ring-4 ring-emerald-50">
+                  <div className="size-3 rounded-full bg-emerald-500" />
+                </div>
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-3 mb-2">
+                  <h4 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight leading-none">
+                    {dashboardData?.chuNha?.hoTen || 'Thuy Test'}
+                  </h4>
+                  <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-black px-2.5 py-0.5">QUẢN LÝ TRỰC TIẾP</Badge>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                  <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-2">
+                    <span className="size-1.5 rounded-full bg-emerald-500" /> Phản hồi trong ~15 phút
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Premium Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+              <a 
+                href={`tel:${dashboardData?.chuNha?.soDienThoai}`}
+                className="w-full sm:w-auto group/call"
+              >
+                <Button className="w-full sm:w-auto h-16 px-10 bg-emerald-50 hover:bg-emerald-100/80 text-emerald-700 border-emerald-100/50 rounded-3xl font-black text-sm uppercase tracking-widest flex items-center gap-4 transition-all hover:scale-[1.03] active:scale-95 shadow-md hover:shadow-emerald-100">
+                  <div className="size-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center group-hover/call:rotate-12 transition-transform">
+                    <Phone className="size-4" />
+                  </div>
+                  {dashboardData?.chuNha?.soDienThoai || 'GỌI NGAY'}
+                </Button>
+              </a>
+              <a 
+                href={`mailto:${dashboardData?.chuNha?.email}`}
+                className="w-full sm:w-auto group/mail"
+              >
+                <Button className="w-full sm:w-auto h-16 px-10 bg-indigo-50 hover:bg-indigo-100/80 text-indigo-700 border-indigo-100/50 rounded-3xl font-black text-sm uppercase tracking-widest flex items-center gap-4 transition-all hover:scale-[1.03] active:scale-95 shadow-md hover:shadow-indigo-100">
+                  <div className="size-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center group-hover/mail:-rotate-12 transition-transform">
+                    <Mail className="size-4" />
+                  </div>
+                  Gửi yêu cầu Email
+                </Button>
+              </a>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     </motion.div>
   );
 }

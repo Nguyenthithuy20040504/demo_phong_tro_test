@@ -5,7 +5,6 @@ import dbConnect from "./mongodb";
 import NguoiDung from "@/models/NguoiDung";
 import KhachThue from "@/models/KhachThue";
 import { compare } from "bcryptjs";
-import { UserService } from "@/services/user.service";
 import crypto from "crypto";
 
 export const authOptions: NextAuthOptions = {
@@ -35,8 +34,12 @@ export const authOptions: NextAuthOptions = {
             const ok = await user.comparePassword(matKhau);
             if (!ok) return null;
 
-            // Cập nhật lastLogin qua Service
-            await UserService.updateLastLogin(user._id.toString(), user.vaiTro || user.role);
+            // Cập nhật lastLogin trực tiếp
+            try {
+              await NguoiDung.findByIdAndUpdate(user._id, { lastLogin: new Date() });
+            } catch (e) {
+              console.error("Error updating lastLogin for user:", e);
+            }
 
             return {
               id: user._id.toString(),
@@ -64,8 +67,12 @@ export const authOptions: NextAuthOptions = {
 
           if (!ok) return null;
 
-          // Cập nhật lastLogin cho khách thuê qua Service
-          await UserService.updateLastLogin(client._id.toString(), 'khachThue');
+          // Cập nhật lastLogin cho khách thuê trực tiếp
+          try {
+            await KhachThue.findByIdAndUpdate(client._id, { lastLogin: new Date() });
+          } catch (e) {
+            console.error("Error updating lastLogin for client:", e);
+          }
 
           return {
             id: client._id.toString(),
@@ -155,12 +162,10 @@ export const authOptions: NextAuthOptions = {
             token.goiDichVu = dbUser.goiDichVu;
             token.ngayHetHan = dbUser.ngayHetHan ? dbUser.ngayHetHan.toISOString() : undefined;
             
-            // Cập nhật thời điểm đăng nhập cuối cùng
             try {
-              const userRole = dbUser.vaiTro || dbUser.role || "chuNha";
-              await UserService.updateLastLogin(dbUser._id.toString(), userRole);
+              await NguoiDung.findByIdAndUpdate(dbUser._id, { lastLogin: new Date() });
             } catch (e) {
-              console.error("Error updating last login for OAuth user:", e);
+              console.error("Error updating lastLogin for OAuth user:", e);
             }
           }
         } else {
@@ -205,6 +210,3 @@ export const authOptions: NextAuthOptions = {
 
   secret: process.env.NEXTAUTH_SECRET,
 };
-
-const handler = NextAuth(authOptions);
-export { handler as GET, handler as POST };
