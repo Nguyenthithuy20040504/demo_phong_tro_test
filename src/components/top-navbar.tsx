@@ -127,6 +127,7 @@ export function TopNavbar() {
       items: [
         ...(!isAdmin ? [{ title: "Hợp đồng", url: "/dashboard/hop-dong" }] : []),
         { title: "Hóa đơn", url: "/dashboard/hoa-don" },
+        { title: "Hóa đơn tự động", url: "/dashboard/hoa-don/tu-dong" },
         { title: "Thanh toán", url: "/dashboard/thanh-toan" },
       ],
     });
