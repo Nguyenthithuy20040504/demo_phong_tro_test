@@ -18,7 +18,20 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Receipt, Search, Filter, ArrowUpRight, ChevronLeft, ChevronRight, FileDown, FileSpreadsheet, Check, X } from 'lucide-react';
+import { Receipt, Search, Filter, ArrowUpRight, ChevronLeft, ChevronRight, FileDown, FileSpreadsheet, Check, X, MoreHorizontal, Trash2, CheckCircle2, XCircle, Eye, RefreshCw } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -34,6 +47,7 @@ export default function SaaSInvoicesPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [detailPayment, setDetailPayment] = useState<any>(null);
   const limit = 10;
 
   useEffect(() => {
@@ -89,6 +103,69 @@ export default function SaaSInvoicesPage() {
       }
     } catch (error) {
       toast.error('Lỗi khi cập nhật trạng thái.');
+    }
+  };
+
+  const handleSyncExpiry = async (id: string) => {
+    try {
+      toast.loading('Đang đồng bộ ngày hết hạn...', { id: 'sync' });
+      const res = await fetch('/api/admin/saas/payments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, trangThai: 'daThanhToan' }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        toast.success('Đã đồng bộ ngày hết hạn thành công!', { id: 'sync' });
+        fetchPayments();
+      } else {
+        const err = await res.json();
+        toast.error(err.message || 'Đồng bộ thất bại', { id: 'sync' });
+      }
+    } catch (error) {
+      toast.error('Lỗi kết nối khi đồng bộ.', { id: 'sync' });
+    }
+  };
+
+  const handleSyncAll = async () => {
+    const needSync = payments.filter(p => p.trangThai === 'daThanhToan' && !p.ngayHetHanMoi);
+    if (needSync.length === 0) {
+      toast.info('Không có hóa đơn nào cần đồng bộ.');
+      return;
+    }
+    toast.loading(`Đang đồng bộ ${needSync.length} hóa đơn...`, { id: 'sync-all' });
+    let success = 0;
+    for (const p of needSync) {
+      try {
+        const res = await fetch('/api/admin/saas/payments', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: p._id, trangThai: 'daThanhToan' }),
+        });
+        if (res.ok) success++;
+      } catch (e) { /* skip */ }
+    }
+    toast.success(`Đã đồng bộ ${success}/${needSync.length} hóa đơn thành công!`, { id: 'sync-all' });
+    fetchPayments();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Bạn có chắc muốn xóa hóa đơn này? Hành động này không thể hoàn tác.')) return;
+    try {
+      const res = await fetch('/api/admin/saas/payments', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) {
+        toast.success('Đã xóa hóa đơn thành công');
+        fetchPayments();
+      } else {
+        toast.error('Xóa thất bại');
+      }
+    } catch (error) {
+      toast.error('Lỗi khi xóa hóa đơn.');
     }
   };
 
@@ -291,6 +368,11 @@ export default function SaaSInvoicesPage() {
             />
          </div>
          <div className="flex items-center gap-2">
+            {payments.some(p => p.trangThai === 'daThanhToan' && !p.ngayHetHanMoi) && (
+              <Button variant="default" size="sm" className="gap-2 bg-blue-600 hover:bg-blue-700" onClick={handleSyncAll}>
+                <RefreshCw className="h-4 w-4" /> Đồng bộ tất cả
+              </Button>
+            )}
             <Button variant="outline" size="sm" className="gap-2" onClick={handleExportPDF}>
                 <FileDown className="h-4 w-4" /> Xuất PDF
             </Button>
@@ -311,7 +393,7 @@ export default function SaaSInvoicesPage() {
                 <TableHead>Số tiền</TableHead>
                 <TableHead>Phương thức</TableHead>
                 <TableHead>Trạng thái</TableHead>
-                <TableHead>Hết hạn mới</TableHead>
+                <TableHead>Ngày hết hạn</TableHead>
                 <TableHead>Thao tác</TableHead>
               </TableRow>
             </TableHeader>
@@ -364,28 +446,56 @@ export default function SaaSInvoicesPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {payment.trangThai === 'choDuyet' && (
-                          <div className="flex items-center gap-1">
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                              onClick={() => handleUpdateStatus(payment._id, 'daThanhToan')}
-                              title="Duyệt - Xác nhận đã thanh toán"
-                            >
-                              <Check className="h-4 w-4" />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
                             </Button>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => handleUpdateStatus(payment._id, 'daHuy')}
-                              title="Hủy hóa đơn"
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl">
+                            <DropdownMenuItem
+                              className="gap-2 cursor-pointer"
+                              onClick={() => setDetailPayment(payment)}
                             >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        )}
+                              <Eye className="h-4 w-4 text-blue-500" /> Xem chi tiết
+                            </DropdownMenuItem>
+                            {payment.trangThai === 'choDuyet' && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="gap-2 cursor-pointer text-emerald-600"
+                                  onClick={() => handleUpdateStatus(payment._id, 'daThanhToan')}
+                                >
+                                  <CheckCircle2 className="h-4 w-4" /> Duyệt thanh toán
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="gap-2 cursor-pointer text-orange-600"
+                                  onClick={() => handleUpdateStatus(payment._id, 'daHuy')}
+                                >
+                                  <XCircle className="h-4 w-4" /> Từ chối
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {payment.trangThai === 'daThanhToan' && !payment.ngayHetHanMoi && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="gap-2 cursor-pointer text-blue-600"
+                                  onClick={() => handleSyncExpiry(payment._id)}
+                                >
+                                  <RefreshCw className="h-4 w-4" /> Đồng bộ hạn
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="gap-2 cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50"
+                              onClick={() => handleDelete(payment._id)}
+                            >
+                              <Trash2 className="h-4 w-4" /> Xóa hóa đơn
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -447,6 +557,85 @@ export default function SaaSInvoicesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Detail Dialog */}
+      <Dialog open={!!detailPayment} onOpenChange={(open) => !open && setDetailPayment(null)}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="h-5 w-5 text-teal-600" /> Chi tiết hóa đơn SaaS
+            </DialogTitle>
+          </DialogHeader>
+          {detailPayment && (
+            <div className="space-y-4 py-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium">Chủ nhà</p>
+                  <p className="text-sm font-bold">{detailPayment.chuNha?.name || detailPayment.chuNha?.ten || 'N/A'}</p>
+                  <p className="text-xs text-muted-foreground">{detailPayment.chuNha?.email}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium">Gói cước</p>
+                  <Badge variant="secondary" className="text-sm">{detailPayment.goiDichVu?.ten || 'N/A'}</Badge>
+                </div>
+              </div>
+
+              <div className="h-px bg-border" />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium">Ngày thanh toán</p>
+                  <p className="text-sm font-medium">{new Date(detailPayment.ngayThanhToan).toLocaleString('vi-VN')}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium">Số tiền</p>
+                  <p className="text-sm font-bold text-emerald-600">{detailPayment.soTien?.toLocaleString('vi-VN')} đ</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium">Phương thức</p>
+                  <p className="text-sm font-medium">
+                    {detailPayment.phuongThuc === 'chuyenKhoan' ? 'Chuyển khoản' : detailPayment.phuongThuc === 'tienMat' ? 'Tiền mặt' : 'Ví điện tử'}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium">Trạng thái</p>
+                  <Badge
+                    variant={detailPayment.trangThai === 'daThanhToan' ? 'default' : 'secondary'}
+                    className={detailPayment.trangThai === 'daThanhToan' ? 'bg-emerald-500' : detailPayment.trangThai === 'daHuy' ? 'bg-red-500 text-white' : ''}
+                  >
+                    {detailPayment.trangThai === 'daThanhToan' ? 'Thành công' : detailPayment.trangThai === 'daHuy' ? 'Đã hủy' : 'Chờ duyệt'}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="h-px bg-border" />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium">Mã đơn hàng</p>
+                  <p className="text-sm font-mono">{detailPayment.maDonHang || 'N/A'}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium">Hết hạn mới</p>
+                  <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">
+                    {detailPayment.ngayHetHanMoi ? new Date(detailPayment.ngayHetHanMoi).toLocaleDateString('vi-VN') : 'Đang xử lý...'}
+                  </Badge>
+                </div>
+              </div>
+
+              {detailPayment.createdAt && (
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium">Ngày tạo bản ghi</p>
+                  <p className="text-sm text-muted-foreground">{new Date(detailPayment.createdAt).toLocaleString('vi-VN')}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

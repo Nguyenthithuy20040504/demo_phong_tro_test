@@ -107,8 +107,8 @@ export function TopNavbar() {
   const navItems = React.useMemo(() => {
     const items: any[] = [];
 
-    // Dashboard link
-    items.push({ title: "Trang chủ", url: "/dashboard", icon: Building2 });
+    // Dashboard link - Admin vào SaaS Dashboard, còn lại vào Dashboard tổng quan
+    items.push({ title: "Trang chủ", url: isAdmin ? "/dashboard/admin/saas-dashboard" : "/dashboard", icon: Building2 });
 
     // Quản lý cơ bản
     items.push({
@@ -142,6 +142,18 @@ export function TopNavbar() {
       ],
     });
 
+    // Dịch vụ SaaS (chỉ Admin)
+    if (isAdmin) {
+      items.push({
+        title: "Dịch vụ SaaS",
+        icon: Shield,
+        items: [
+          { title: "Quản lý gói", url: "/dashboard/admin/quan-ly-goi" },
+          { title: "Hóa đơn SaaS", url: "/dashboard/admin/hoa-don-saas" },
+        ],
+      });
+    }
+
     return items;
   }, [isAdmin, isChuNha, isNhanVien]);
 
@@ -164,8 +176,8 @@ export function TopNavbar() {
           </div>
 
           <div className="flex items-center gap-2 md:gap-6 lg:gap-8">
-            {/* Building Selector */}
-            <div className="flex items-center gap-1.5 md:gap-2">
+            {/* Building Selector - Ẩn khi admin */}
+            {!isAdmin && <div className="flex items-center gap-1.5 md:gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Link 
@@ -259,7 +271,7 @@ export function TopNavbar() {
                   </Command>
                 </PopoverContent>
               </Popover>
-            </div>
+            </div>}
 
           <div className="flex items-center gap-2 md:gap-5">
             <NotificationBell />

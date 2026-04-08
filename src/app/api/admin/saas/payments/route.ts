@@ -130,16 +130,22 @@ export async function PATCH(request: NextRequest) {
       const plan = await GoiDichVu.findById(payment.goiDichVu);
       const user = await NguoiDung.findById(payment.chuNha);
 
+      console.log(`[SYNC] Payment ID: ${id}, goiDichVu: ${payment.goiDichVu}, chuNha: ${payment.chuNha}`);
+      console.log(`[SYNC] Plan found: ${!!plan}, User found: ${!!user}`);
+
       if (plan && user) {
-        let userPlanRole: 'mienPhi' | 'coBan' | 'chuyenNghiep' = 'mienPhi';
+        // Xác định loại gói - nếu không khớp pattern cũ thì dùng tên gói từ DB
+        let userPlanRole: string = 'mienPhi';
         if (plan.ten.toLowerCase().includes('cơ bản') || plan.ten.toLowerCase().includes('basic')) userPlanRole = 'coBan';
-        if (plan.ten.toLowerCase().includes('chuyên nghiệp') || plan.ten.toLowerCase().includes('professional')) userPlanRole = 'chuyenNghiep';
+        if (plan.ten.toLowerCase().includes('chuyên nghiệp') || plan.ten.toLowerCase().includes('professional') || plan.ten.toLowerCase().includes('vip') || plan.ten.toLowerCase().includes('pro')) userPlanRole = 'chuyenNghiep';
 
         const currentExpiry = user.ngayHetHan ? new Date(user.ngayHetHan) : new Date();
         const startDate = currentExpiry > new Date() ? currentExpiry : new Date();
         
         const newExpiry = new Date(startDate);
         newExpiry.setMonth(startDate.getMonth() + plan.thoiGian);
+
+        console.log(`[SYNC] ${user.email}: ${plan.ten} (${plan.thoiGian} tháng), startDate=${startDate.toISOString()}, newExpiry=${newExpiry.toISOString()}`);
 
         // Nâng cấp và cộng ngày cho Chủ Nhà
         user.goiDichVu = userPlanRole;
@@ -153,6 +159,8 @@ export async function PATCH(request: NextRequest) {
         );
 
         payment.ngayHetHanMoi = newExpiry;
+      } else {
+        console.error(`[SYNC] Không tìm thấy plan hoặc user! goiDichVu=${payment.goiDichVu}, chuNha=${payment.chuNha}`);
       }
     }
 
@@ -162,6 +170,31 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ success: true, payment });
   } catch (error: any) {
     console.error('Error updating SaaS payment:', error);
+    return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (session?.user?.role !== 'admin') {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
+    }
+
+    const { id } = await request.json();
+    if (!id) {
+      return NextResponse.json({ message: 'Thiếu ID hóa đơn' }, { status: 400 });
+    }
+
+    await dbConnect();
+    const deleted = await SaaSPayment.findByIdAndDelete(id);
+    if (!deleted) {
+      return NextResponse.json({ message: 'Không tìm thấy hóa đơn' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, message: 'Đã xóa hóa đơn thành công' });
+  } catch (error: any) {
+    console.error('Error deleting SaaS payment:', error);
     return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { 
   Card, 
@@ -179,7 +180,9 @@ export default function SaasDashboardPage() {
               <CardTitle>Giao dịch gần đây</CardTitle>
               <CardDescription>Lịch sử nộp tiền mua gói của các Chủ trọ.</CardDescription>
             </div>
-            <Badge variant="secondary" className="cursor-pointer">Xem tất cả</Badge>
+            <Link href="/dashboard/admin/hoa-don-saas">
+              <Badge variant="secondary" className="cursor-pointer hover:bg-primary hover:text-white transition-colors">Xem tất cả</Badge>
+            </Link>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-full w-full">
