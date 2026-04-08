@@ -6,7 +6,7 @@ import NguoiDung from '@/models/NguoiDung';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
@@ -21,48 +21,68 @@ export async function GET() {
 
     await dbConnect();
     
-    let query: any = {};
-    if (session.user.role === 'chuNha') {
-      // Ensure we query by the managed users only
-      // Using mongoose.Types.ObjectId to ensure correct comparison
-      const mongoose = require('mongoose');
-      query.nguoiQuanLy = new mongoose.Types.ObjectId(session.user.id);
+    const { searchParams } = new URL(request.url);
+    const type = searchParams.get('type');
+
+    let users;
+    
+    if (session.user.role === 'admin' && type === 'chuNha') {
+      // Aggregation for Landlords with Building/Room counts
+      users = await NguoiDung.aggregate([
+        { $match: { vaiTro: 'chuNha' } },
+        {
+          $lookup: {
+            from: 'toanhas', // Mongoose collection name is usually lowercased + pluralized
+            localField: '_id',
+            foreignField: 'chuSoHuu',
+            as: 'buildings'
+          }
+        },
+        {
+          $addFields: {
+            totalBuildings: { $size: '$buildings' },
+            totalRooms: { $sum: '$buildings.tongSoPhong' }
+          }
+        },
+        {
+          $project: {
+            matKhau: 0,
+            password: 0,
+            buildings: 0
+          }
+        },
+        { $sort: { createdAt: -1 } }
+      ]);
+    } else {
+      let query: any = {};
+      if (session.user.role === 'chuNha') {
+        const mongoose = require('mongoose');
+        query.nguoiQuanLy = new mongoose.Types.ObjectId(session.user.id);
+        query.role = { $nin: ['admin', 'chuNha'] };
+      }
+      
+      users = await NguoiDung.find(query, { password: 0, matKhau: 0 })
+        .populate('nguoiQuanLy', 'ngayHetHan name ten')
+        .populate('nguoiTao', 'name ten email role')
+        .sort({ createdAt: -1 })
+        .lean();
     }
     
-    // Explicitly exclude any admins or other landlords even if the query might suggest otherwise
-    // (though the nguoiQuanLy filter should handle this, it's a good safety measure)
-    if (session.user.role === 'chuNha') {
-      query.role = { $nin: ['admin', 'chuNha'] };
-    }
-    
-    const users = await NguoiDung.find(query, { password: 0, matKhau: 0 })
-      .populate('nguoiQuanLy', 'ngayHetHan name ten')
-      .populate('nguoiTao', 'name ten email role')
-      .sort({ createdAt: -1 })
-      .lean();
-    
-    // Auto-migrate: Nếu có user nào chưa có ngayHetHan, cập nhật luôn
-    let needsUpdate = false;
     const updatedUsers = [];
     
     for (let user of users as any[]) {
-      // Tính chất DB: Nhân viên LUÔN kế thừa ngày hết hạn của Chủ nhà nếu có Chủ nhà
       const roleStr = user.role || user.vaiTro;
       if (roleStr === 'nhanVien' && user.nguoiQuanLy && user.nguoiQuanLy.ngayHetHan) {
         user.ngayHetHan = user.nguoiQuanLy.ngayHetHan;
       }
 
       if (!user.ngayHetHan) {
-        needsUpdate = true;
         const now = new Date();
         let expiryDate = null;
-        
-        const roleStr = user.role || user.vaiTro;
         
         if (roleStr === 'admin' || roleStr === 'khachThue') {
           expiryDate = new Date(2099, 11, 31);
         } else if (roleStr === 'chuNha') {
-          // Lấy ngày tạo, nếu không có lấy hôm nay
           expiryDate = new Date(user.createdAt || user.ngayTao || now);
           expiryDate.setMonth(expiryDate.getMonth() + 1);
         } else if (roleStr === 'nhanVien') {
@@ -73,11 +93,8 @@ export async function GET() {
              expiryDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
           }
         } else {
-          // Default for any other case
           expiryDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
         }
-
-        console.log(`Migrating user ${user.email} with role ${roleStr} to expiry ${expiryDate}`);
         
         await NguoiDung.collection.updateOne(
           { _id: user._id }, 
@@ -88,13 +105,10 @@ export async function GET() {
             } 
           }
         );
-
-        // Fetch the updated document raw to ensure we have the new fields
-        const updated = await NguoiDung.findById(user._id, { password: 0, matKhau: 0 }).lean();
-        updatedUsers.push(updated);
-      } else {
-        updatedUsers.push(user);
+        user.ngayHetHan = expiryDate;
+        user.goiDichVu = user.goiDichVu || 'mienPhi';
       }
+      updatedUsers.push(user);
     }
 
     return NextResponse.json(updatedUsers);
@@ -118,7 +132,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, email, password, phone, role, tenantId } = body;
+    const { 
+      name, email, password, phone, role, tenantId,
+      cccd, ngaySinh, gioiTinh, queQuan, ngheNghiep, anhCCCD
+    } = body;
 
     // Validation
     if (!name || !email || !password || !role) {
@@ -166,7 +183,14 @@ export async function POST(request: NextRequest) {
       createdAt: new Date(),
       updatedAt: new Date(),
       nguoiQuanLy: session.user.role === 'chuNha' ? session.user.id : null,
-      nguoiTao: session.user.id
+      nguoiTao: session.user.id,
+      // Profile fields
+      cccd: cccd || null,
+      ngaySinh: ngaySinh ? new Date(ngaySinh) : null,
+      gioiTinh: gioiTinh || null,
+      queQuan: queQuan || null,
+      ngheNghiep: ngheNghiep || null,
+      anhCCCD: anhCCCD || { matTruoc: '', matSau: '' }
     });
 
     await newUser.save();

@@ -26,6 +26,15 @@ export interface INguoiDung extends Document {
   nguoiTao?: mongoose.Types.ObjectId;
   goiDichVu: 'mienPhi' | 'coBan' | 'chuyenNghiep';
   ngayHetHan: Date;
+  cccd?: string;
+  ngaySinh?: Date;
+  gioiTinh?: 'nam' | 'nu' | 'khac' | string;
+  queQuan?: string;
+  anhCCCD?: {
+    matTruoc: string;
+    matSau: string;
+  };
+  ngheNghiep?: string;
   thongTinThanhToan?: {
     nganHang: string;
     soTaiKhoan: string;
@@ -139,6 +148,36 @@ const NguoiDungSchema = new Schema<INguoiDung>({
   ngayHetHan: {
     type: Date,
     default: null // Will be populated by pre-save hook
+  },
+  cccd: {
+    type: String,
+    match: [/^[0-9]{12}$/, 'CCCD phải có 12 chữ số'],
+    default: null
+  },
+  ngaySinh: {
+    type: Date,
+    default: null
+  },
+  gioiTinh: {
+    type: String,
+    enum: ['nam', 'nu', 'khac', null],
+    default: null
+  },
+  queQuan: {
+    type: String,
+    trim: true,
+    maxlength: [200, 'Quê quán không được quá 200 ký tự'],
+    default: null
+  },
+  anhCCCD: {
+    matTruoc: { type: String, default: '' },
+    matSau: { type: String, default: '' }
+  },
+  ngheNghiep: {
+    type: String,
+    trim: true,
+    maxlength: [100, 'Nghề nghiệp không được quá 100 ký tự'],
+    default: null
   },
   thongTinThanhToan: {
     nganHang: { type: String, default: '' },

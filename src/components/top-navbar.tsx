@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { 
+import {
   Home,
   Building2,
   Receipt,
@@ -15,6 +15,7 @@ import {
   Bell,
   Check,
   ChevronsUpDown,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -84,7 +85,7 @@ export function TopNavbar() {
       }
     };
     fetchBuildings();
-    
+
     // Sync with local storage if page.tsx uses it
     const cached = localStorage.getItem('selected_building_id');
     if (cached) setSelectedToaNha(cached);
@@ -111,26 +112,30 @@ export function TopNavbar() {
     items.push({ title: "Trang chủ", url: isAdmin ? "/dashboard/admin/saas-dashboard" : "/dashboard", icon: Building2 });
 
     // Quản lý cơ bản
-    items.push({
-      title: "Quản lý cơ bản",
-      icon: Building,
-      items: [
-        { title: "Phòng", url: "/dashboard/phong" },
-        ...(!isAdmin ? [{ title: "Khách thuê", url: "/dashboard/khach-thue" }] : []),
-      ],
-    });
+    if (!isAdmin) {
+      items.push({
+        title: "Quản lý cơ bản",
+        icon: Building,
+        items: [
+          { title: "Phòng", url: "/dashboard/phong" },
+          { title: "Khách thuê", url: "/dashboard/khach-thue" },
+        ],
+      });
+    }
 
     // Tài chính
-    items.push({
-      title: "Tài chính",
-      icon: Receipt,
-      items: [
-        ...(!isAdmin ? [{ title: "Hợp đồng", url: "/dashboard/hop-dong" }] : []),
-        { title: "Hóa đơn", url: "/dashboard/hoa-don" },
-        { title: "Hóa đơn tự động", url: "/dashboard/hoa-don/tu-dong" },
-        { title: "Thanh toán", url: "/dashboard/thanh-toan" },
-      ],
-    });
+    if (!isAdmin) {
+      items.push({
+        title: "Tài chính",
+        icon: Receipt,
+        items: [
+          { title: "Hợp đồng", url: "/dashboard/hop-dong" },
+          { title: "Hóa đơn", url: "/dashboard/hoa-don" },
+          { title: "Hóa đơn tự động", url: "/dashboard/hoa-don/tu-dong" },
+          { title: "Thanh toán", url: "/dashboard/thanh-toan" },
+        ],
+      });
+    }
 
     // Vận hành
     items.push({
@@ -151,6 +156,11 @@ export function TopNavbar() {
           { title: "Quản lý gói", url: "/dashboard/admin/quan-ly-goi" },
           { title: "Hóa đơn SaaS", url: "/dashboard/admin/hoa-don-saas" },
         ],
+      });
+      items.push({
+        title: "Quản lý chủ trọ",
+        url: "/dashboard/admin/quan-ly-chu-nha",
+        icon: Users,
       });
     }
 
@@ -180,16 +190,16 @@ export function TopNavbar() {
             {!isAdmin && <div className="flex items-center gap-1.5 md:gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Link 
-                    href="/dashboard/toa-nha" 
+                  <Link
+                    href="/dashboard/toa-nha"
                     className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-md transition-all text-white shadow-sm"
                   >
                     <Building className="h-4 w-4" />
                     <span className="hidden md:block text-sm font-medium">Tòa nhà:</span>
                   </Link>
                 </TooltipTrigger>
-                <TooltipContent 
-                  side="bottom" 
+                <TooltipContent
+                  side="bottom"
                   sideOffset={8}
                   className="bg-white text-[#006050] border-gray-100 shadow-xl px-3 py-1.5 rounded-lg border"
                 >
@@ -209,18 +219,18 @@ export function TopNavbar() {
                     className="h-8 md:h-9 min-w-[130px] md:min-w-[200px] justify-between bg-white border-none text-gray-900 focus:ring-0 text-xs md:text-sm font-medium rounded-md px-2 md:px-3 shadow-sm hover:bg-white/95 transition-colors"
                   >
                     <span className="truncate max-w-[150px]">
-                      {selectedToaNha === "all" 
-                        ? "Tất cả tòa nhà" 
-                        : (toaNhaList.find((t) => (t._id === selectedToaNha || t.id === selectedToaNha))?.tenToaNha || 
-                           (selectedToaNha !== 'all' ? "Tòa nhà mục tiêu..." : "Chọn tòa nhà..."))}
+                      {selectedToaNha === "all"
+                        ? "Tất cả tòa nhà"
+                        : (toaNhaList.find((t) => (t._id === selectedToaNha || t.id === selectedToaNha))?.tenToaNha ||
+                          (selectedToaNha !== 'all' ? "Tòa nhà mục tiêu..." : "Chọn tòa nhà..."))}
                     </span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[240px] p-0 rounded-xl" align="start">
                   <Command shouldFilter={false}>
-                    <CommandInput 
-                      placeholder="Tìm tòa nhà..." 
+                    <CommandInput
+                      placeholder="Tìm tòa nhà..."
                       value={searchQuery}
                       onValueChange={setSearchQuery}
                     />
@@ -247,25 +257,25 @@ export function TopNavbar() {
                         {toaNhaList
                           .filter((t) => t.tenToaNha.toLowerCase().startsWith(searchQuery.toLowerCase()))
                           .map((t) => (
-                          <CommandItem
-                            key={t._id}
-                            value={t._id!}
-                            onSelect={() => {
-                              handleBuildingChange(t._id!);
-                              setOpenBox(false);
-                              setSearchQuery("");
-                            }}
-                            className="font-medium cursor-pointer"
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                selectedToaNha === t._id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {t.tenToaNha}
-                          </CommandItem>
-                        ))}
+                            <CommandItem
+                              key={t._id}
+                              value={t._id!}
+                              onSelect={() => {
+                                handleBuildingChange(t._id!);
+                                setOpenBox(false);
+                                setSearchQuery("");
+                              }}
+                              className="font-medium cursor-pointer"
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedToaNha === t._id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {t.tenToaNha}
+                            </CommandItem>
+                          ))}
                       </CommandGroup>
                     </CommandList>
                   </Command>
@@ -273,47 +283,47 @@ export function TopNavbar() {
               </Popover>
             </div>}
 
-          <div className="flex items-center gap-2 md:gap-5">
-            <NotificationBell />
-            <NavUser user={userData} hideText />
+            <div className="flex items-center gap-2 md:gap-5">
+              <NotificationBell />
+              <NavUser user={userData} hideText />
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Secondary Header (Navigation Menu) */}
-      <nav className="h-10 md:h-12 bg-white border-b border-gray-100 flex items-center px-2 md:px-8 space-x-0.5 md:space-x-1 overflow-x-auto no-scrollbar">
-        {navItems.map((item, idx) => (
-          <div key={idx} className="h-full flex items-center">
-            {item.items ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-full px-2.5 md:px-4 rounded-none border-b-2 border-transparent data-[state=open]:border-primary data-[state=open]:bg-teal-50/50 transition-all font-medium text-xs md:text-sm text-gray-600 hover:text-primary whitespace-nowrap">
+        {/* Secondary Header (Navigation Menu) */}
+        <nav className="h-10 md:h-12 bg-white border-b border-gray-100 flex items-center px-2 md:px-8 space-x-0.5 md:space-x-1 overflow-x-auto no-scrollbar">
+          {navItems.map((item, idx) => (
+            <div key={idx} className="h-full flex items-center">
+              {item.items ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-full px-2.5 md:px-4 rounded-none border-b-2 border-transparent data-[state=open]:border-primary data-[state=open]:bg-teal-50/50 transition-all font-medium text-xs md:text-sm text-gray-600 hover:text-primary whitespace-nowrap">
+                      <item.icon className="size-3.5 md:size-4 mr-1 md:mr-2 opacity-70" />
+                      {item.title}
+                      <ChevronDown className="ml-1 md:ml-1.5 size-3 md:size-3.5 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-[180px] rounded-xl shadow-xl border-gray-100 p-1.5">
+                    {item.items.map((sub: any, sIdx: number) => (
+                      <DropdownMenuItem key={sIdx} asChild className="rounded-lg cursor-pointer">
+                        <Link href={sub.url} className="w-full flex items-center py-2 px-3 hover:bg-teal-50 transition-colors">
+                          {sub.title}
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button asChild variant="ghost" size="sm" className={`h-full px-2.5 md:px-4 rounded-none border-b-2 transition-all font-medium text-xs md:text-sm whitespace-nowrap ${pathname === item.url ? 'border-primary text-primary bg-teal-50/30' : 'border-transparent text-gray-600 hover:text-primary'}`}>
+                  <Link href={item.url} className="flex items-center">
                     <item.icon className="size-3.5 md:size-4 mr-1 md:mr-2 opacity-70" />
                     {item.title}
-                    <ChevronDown className="ml-1 md:ml-1.5 size-3 md:size-3.5 opacity-50" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="min-w-[180px] rounded-xl shadow-xl border-gray-100 p-1.5">
-                  {item.items.map((sub: any, sIdx: number) => (
-                    <DropdownMenuItem key={sIdx} asChild className="rounded-lg cursor-pointer">
-                      <Link href={sub.url} className="w-full flex items-center py-2 px-3 hover:bg-teal-50 transition-colors">
-                        {sub.title}
-                      </Link>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Button asChild variant="ghost" size="sm" className={`h-full px-2.5 md:px-4 rounded-none border-b-2 transition-all font-medium text-xs md:text-sm whitespace-nowrap ${pathname === item.url ? 'border-primary text-primary bg-teal-50/30' : 'border-transparent text-gray-600 hover:text-primary'}`}>
-                <Link href={item.url} className="flex items-center">
-                  <item.icon className="size-3.5 md:size-4 mr-1 md:mr-2 opacity-70" />
-                  {item.title}
-                </Link>
-              </Button>
-            )}
-          </div>
-        ))}
-      </nav>
+                  </Link>
+                </Button>
+              )}
+            </div>
+          ))}
+        </nav>
       </div>
     </TooltipProvider>
   );

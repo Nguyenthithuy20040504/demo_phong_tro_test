@@ -9,6 +9,7 @@ import {
   Settings,
   Shield,
   Building,
+  Users,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -56,6 +57,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           },
         ],
       })
+      items.push({
+        title: "Quản lý Chủ trọ",
+        url: "/dashboard/admin/quan-ly-chu-nha",
+        icon: Users,
+      })
     } else if (isChuNha) {
       items.push({
         title: "Dịch vụ SaaS",
@@ -89,25 +95,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     })
 
     // 3. Tài chính
-    items.push({
-      title: "Tài chính",
-      url: "#",
-      icon: Receipt,
-      items: [
-        ...(!isAdmin ? [{
-          title: "Hợp đồng",
-          url: "/dashboard/hop-dong",
-        }] : []),
-        {
-          title: "Hóa đơn",
-          url: "/dashboard/hoa-don",
-        },
-        {
-          title: "Thanh toán",
-          url: "/dashboard/thanh-toan",
-        },
-      ],
-    })
+    if (!isAdmin) {
+      items.push({
+        title: "Tài chính",
+        url: "#",
+        icon: Receipt,
+        items: [
+          {
+            title: "Hợp đồng",
+            url: "/dashboard/hop-dong",
+          },
+          {
+            title: "Hóa đơn",
+            url: "/dashboard/hoa-don",
+          },
+          {
+            title: "Thanh toán",
+            url: "/dashboard/thanh-toan",
+          },
+        ],
+      })
+    }
 
     // 4. Vận hành
     if (!isAdmin) {
@@ -129,7 +137,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     }
 
     // 5. Quản trị
-    if (isAdmin || isChuNha) {
+    if (!isAdmin && isChuNha) {
       items.push({
         title: "Quản trị",
         url: "#",

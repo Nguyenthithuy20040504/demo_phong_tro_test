@@ -95,7 +95,7 @@ export function NavUser({
             </div>
           </div>
         </DropdownMenuLabel>
-        
+
         <div className="p-1">
           <DropdownMenuGroup>
             <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
@@ -110,7 +110,7 @@ export function NavUser({
                 <span>Thiết lập tài khoản</span>
               </Link>
             </DropdownMenuItem>
-            {!isNhanVien && (
+            {!isNhanVien && ((session?.user as any)?.role !== 'admin') && (
               <>
                 <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
                   <Link href="/dashboard/gia-han-goi" className="flex items-center w-full px-2 py-2">
@@ -119,7 +119,10 @@ export function NavUser({
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
-                  <Link href="/dashboard/quan-ly-tai-khoan" className="flex items-center w-full px-2 py-2">
+                  <Link 
+                    href="/dashboard/quan-ly-tai-khoan" 
+                    className="flex items-center w-full px-2 py-2"
+                  >
                     <Shield className="mr-2 size-4 opacity-70" />
                     <span>Quản lý tài khoản</span>
                   </Link>
@@ -127,11 +130,11 @@ export function NavUser({
               </>
             )}
           </DropdownMenuGroup>
-          
+
           <DropdownMenuSeparator className="my-1" />
-          
-          <DropdownMenuItem 
-            onClick={handleLogout} 
+
+          <DropdownMenuItem
+            onClick={handleLogout}
             className="rounded-lg cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50 focus:text-red-700 focus:bg-red-50 px-2 py-2"
           >
             <LogOut className="mr-2 size-4 opacity-70" />

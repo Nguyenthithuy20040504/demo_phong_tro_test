@@ -18,7 +18,10 @@ export async function PUT(
 
     const { id } = params;
     const body = await request.json();
-    const { name, email, phone, role, isActive } = body;
+    const { 
+      name, email, phone, role, isActive,
+      cccd, ngaySinh, gioiTinh, queQuan, ngheNghiep, anhCCCD
+    } = body;
 
     if (!ObjectId.isValid(id)) {
       return NextResponse.json({ message: 'ID người dùng không hợp lệ' }, { status: 400 });
@@ -57,7 +60,14 @@ export async function PUT(
       phone,
       role,
       isActive,
-      updatedAt: new Date()
+      updatedAt: new Date(),
+      // Profile fields
+      cccd: cccd !== undefined ? cccd : undefined,
+      ngaySinh: ngaySinh ? new Date(ngaySinh) : undefined,
+      gioiTinh: gioiTinh !== undefined ? gioiTinh : undefined,
+      queQuan: queQuan !== undefined ? queQuan : undefined,
+      ngheNghiep: ngheNghiep !== undefined ? ngheNghiep : undefined,
+      anhCCCD: anhCCCD !== undefined ? anhCCCD : undefined
     };
     
     // Cập nhật email nếu có
@@ -116,15 +126,41 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // Không cho phép xóa tài khoản để đảm bảo tính toàn vẹn dữ liệu
-  // Các hợp đồng, hóa đơn, thanh toán đều liên kết tới tài khoản người dùng
-  // Thay vì xóa, hãy sử dụng chức năng "Khóa tài khoản" để vô hiệu hóa
-  return NextResponse.json(
-    { 
-      message: 'Không cho phép xóa tài khoản người dùng để đảm bảo tính toàn vẹn dữ liệu và lưu log ở các hợp đồng, hóa đơn. Vui lòng sử dụng chức năng "Khóa tài khoản" để vô hiệu hóa tài khoản này.' 
-    }, 
-    { status: 403 }
-  );
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.id || session.user.role !== 'admin') {
+      return NextResponse.json(
+        { 
+          message: 'Chỉ có Quản trị viên tối cao mới được phép xóa tài khoản để đảm bảo an toàn dữ liệu. Vui lòng sử dụng chức năng "Khóa tài khoản" nếu bạn là Chủ nhà.' 
+        }, 
+        { status: 403 }
+      );
+    }
+
+    const { id } = params;
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json({ message: 'ID không hợp lệ' }, { status: 400 });
+    }
+
+    await dbConnect();
+    
+    // Safety: Don't let admin delete themselves
+    if (id === session.user.id) {
+       return NextResponse.json({ message: 'Bạn không thể tự xóa chính mình!' }, { status: 400 });
+    }
+
+    const deletedUser = await NguoiDung.findByIdAndDelete(id);
+    
+    if (!deletedUser) {
+      return NextResponse.json({ message: 'Không tìm thấy người dùng' }, { status: 404 });
+    }
+
+    return NextResponse.json({ message: 'Đã xóa tài khoản thành công' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    return NextResponse.json({ message: 'Lỗi hệ thống khi xóa người dùng' }, { status: 500 });
+  }
 }
 
 export async function PATCH(
