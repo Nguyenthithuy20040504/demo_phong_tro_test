@@ -141,10 +141,8 @@ export async function POST(request: NextRequest) {
 
         // invoiceNumber already defined above for check
 
-        const dueDate = new Date(currentYear, currentMonth - 1, contract.ngayThanhToan);
-        if (dueDate < currentDate) {
-          dueDate.setMonth(dueDate.getMonth() + 1);
-        }
+        // Hạn thanh toán = ngày thanh toán trong hợp đồng + 2 ngày
+        const dueDate = new Date(currentYear, currentMonth - 1, contract.ngayThanhToan + 2);
 
         const newInvoice = new HoaDon({
           maHoaDon: invoiceNumber,
