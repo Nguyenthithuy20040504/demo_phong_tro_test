@@ -266,3 +266,64 @@ export const sendVerificationEmail = async ({
     return false;
   }
 };
+
+export const sendAccountConfirmationLinkEmail = async ({
+  email,
+  khachThueName,
+  confirmLink,
+}: {
+  email: string;
+  khachThueName: string;
+  confirmLink: string;
+}) => {
+  if (!email || !process.env.SMTP_USER) {
+    console.warn('Bỏ qua gửi email: cấu hình SMTP hoặc email không tồn tại.');
+    return false;
+  }
+
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6; border: 1px solid #eaeaea; border-radius: 8px; overflow: hidden; background-color: #ffffff;">
+      <div style="background-color: #3b82f6; padding: 25px 20px; text-align: center;">
+        <h2 style="color: white; margin: 0; font-size: 20px; font-weight: bold; letter-spacing: 0.5px;">Xác Nhận Tài Khoản</h2>
+        <p style="color: #dbeafe; margin: 5px 0 0 0; font-size: 13px;">Hệ Thống Quản Lý Phòng Trọ</p>
+      </div>
+      
+      <div style="padding: 30px 24px;">
+        <p style="margin-top: 0;">Xin chào <strong>${khachThueName}</strong>,</p>
+        <p style="color: #4b5563;">Chủ nhà đã tạo một tài khoản cho bạn trên hệ thống Quản Lý Phòng Trọ. Vui lòng nhấn vào nút bên dưới để xác nhận tài khoản của bạn và có thể đăng nhập vào hệ thống:</p>
+        
+        <div style="margin: 35px 0; text-align: center;">
+          <a href="${confirmLink}" style="background-color: #3b82f6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">Xác Nhận Tài Khoản</a>
+        </div>
+
+        <p style="color: #6b7280; font-size: 14px; margin-bottom: 20px;">Hoặc copy và dán đường link sau vào trình duyệt của bạn:</p>
+        <div style="background-color: #f3f4f6; padding: 12px; border-radius: 6px; word-break: break-all; font-size: 13px; color: #4b5563;">
+          <a href="${confirmLink}" style="color: #3b82f6;">${confirmLink}</a>
+        </div>
+
+        <p style="color: #ef4444; font-size: 13px; margin-top: 25px;">Link xác nhận này sẽ hết hạn sau 24 giờ. Vui lòng không chia sẻ link này cho bất kỳ ai.</p>
+
+        <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+          <p style="margin-bottom: 4px;">Cảm ơn sự hợp tác của bạn!</p>
+          <p style="margin: 0;"><em>Đây là email tự động, vui lòng không phản hồi lại địa chỉ này.</em></p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  try {
+    const transport = getMailTransport();
+
+    const info = await transport.sendMail({
+      from: `"Quản Lý Phòng Trọ" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: `[Hệ Thống Phỏng Trọ] Xác Nhận Tài Khoản của bạn`,
+      html: htmlContent,
+    });
+    console.log(`[Email Success] Đã gửi link xác nhận tới ${email}. MessageId: ${info.messageId}`);
+    return true;
+  } catch (error: any) {
+    console.error(`[Email Error] Lỗi khi gửi link xác nhận tới ${email}:`, error);
+    return false;
+  }
+};

@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import NguoiDung from '@/models/NguoiDung';
 import KhachThue from '@/models/KhachThue';
+import { sendAccountConfirmationLinkEmail } from '@/lib/mail';
+import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,6 +68,9 @@ export async function POST(request: NextRequest) {
       ]
     });
 
+    const token = crypto.randomBytes(32).toString('hex');
+    const hanToken = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+
     // Tạo tài khoản NguoiDung 
     const newUser = new NguoiDung({
       ten: khachThue.hoTen,
@@ -81,9 +86,21 @@ export async function POST(request: NextRequest) {
       isActive: true,
       nguoiQuanLy: session.user.id,
       nguoiTao: session.user.id,
+      daXacMinhEmail: false,
+      maXacNhanEmail: token,
+      hanMaXacNhanEmail: hanToken,
     });
 
     await newUser.save();
+
+    const baseUrl = request.nextUrl.origin;
+    const confirmLink = `${baseUrl}/api/auth/xac-nhan-tai-khoan?token=${token}&email=${encodeURIComponent(emailLower)}`;
+    
+    sendAccountConfirmationLinkEmail({
+      email: emailLower,
+      khachThueName: khachThue.hoTen,
+      confirmLink: confirmLink
+    }).catch(console.error);
 
     return NextResponse.json({
       success: true,

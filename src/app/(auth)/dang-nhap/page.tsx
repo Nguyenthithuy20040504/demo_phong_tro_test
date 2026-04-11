@@ -25,11 +25,24 @@ type LoginForm = z.infer<typeof loginSchema>;
 function LoginFormContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-   const [showPassword, setShowPassword] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedPlan = searchParams.get('plan');
   const { data: session, status } = useSession();
+
+  useEffect(() => {
+    const err = searchParams.get('error');
+    if (err) setError(err);
+    
+    const msg = searchParams.get('message');
+    if (msg === 'verified') {
+      setSuccess('Tài khoản đã được xác minh thành công. Vui lòng đăng nhập!');
+    } else if (msg) {
+      setSuccess(msg);
+    }
+  }, [searchParams]);
 
   // Không tự động redirect khi có session cũ — user phải đăng nhập lại
 
@@ -120,6 +133,17 @@ function LoginFormContent() {
                   >
                     <Alert variant="destructive" className="bg-destructive/10 border-none text-destructive rounded-2xl">
                       <AlertDescription className="text-xs font-medium tracking-wide">{error}</AlertDescription>
+                    </Alert>
+                  </motion.div>
+                )}
+                {success && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                  >
+                    <Alert className="bg-emerald-500/10 border-none text-emerald-600 rounded-2xl">
+                      <AlertDescription className="text-xs font-medium tracking-wide">{success}</AlertDescription>
                     </Alert>
                   </motion.div>
                 )}
