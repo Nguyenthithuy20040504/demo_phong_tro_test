@@ -8,10 +8,12 @@ import { z } from 'zod';
 const thongBaoSchema = z.object({
   tieuDe: z.string().min(1, 'Tiêu đề là bắt buộc'),
   noiDung: z.string().min(1, 'Nội dung là bắt buộc'),
-  loai: z.enum(['chung', 'hoaDon', 'suCo', 'hopDong', 'khac']).optional(),
-  nguoiNhan: z.array(z.string()).min(1, 'Phải có ít nhất 1 người nhận'),
+  loai: z.enum(['chung', 'hoaDon', 'suCo', 'hopDong', 'he_thong', 'thanh_toan_saas', 'khac']).optional(),
+  nguoiNhan: z.array(z.string()).optional(),
   phong: z.array(z.string()).optional(),
   toaNha: z.string().optional(),
+  guiTatCa: z.boolean().optional(),
+  vaiTroNhan: z.enum(['chuNha', 'khachThue', 'admin', 'all']).optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -28,6 +30,18 @@ export async function GET(request: NextRequest) {
     await dbConnect();
 
     const { searchParams } = new URL(request.url);
+    
+    // Nếu có ?id=, trả về trực tiếp thông báo theo ID
+    const notifId = searchParams.get('id');
+    if (notifId) {
+      const thongBao = await ThongBao.findById(notifId)
+        .populate('nguoiGui', 'ten email role vaiTro')
+        .populate('phong', 'maPhong')
+        .populate('toaNha', 'tenToaNha')
+        .lean();
+      return NextResponse.json({ success: true, data: thongBao ? [thongBao] : [] });
+    }
+
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search') || '';
@@ -47,16 +61,24 @@ export async function GET(request: NextRequest) {
     if (userRole === 'khachThue') {
       // Khách thuê chỉ thấy thông báo gửi cho mình
       query.nguoiNhan = userId;
-    } else if (userRole === 'chuTro' || userRole === 'chuNha' || userRole === 'admin') {
-      // Chủ trọ/Admin thấy thông báo mình gửi + thông báo gửi cho mình
+    } else if (userRole === 'admin') {
+      // Admin chỉ thấy: thông báo mình gửi + gửi cho admin + broadcast cho admin
       const mongoose = (await import('mongoose')).default;
       const userObjId = new mongoose.Types.ObjectId(userId);
       query.$or = [
         { nguoiGui: userObjId },
-        { nguoiNhan: userObjId }
+        { guiTatCa: true, vaiTroNhan: { $in: ['admin', 'all'] } },
+      ];
+    } else if (userRole === 'chuTro' || userRole === 'chuNha') {
+      // Chủ trọ thấy: thông báo mình gửi + gửi cho mình + broadcast cho chủ nhà
+      const mongoose = (await import('mongoose')).default;
+      const userObjId = new mongoose.Types.ObjectId(userId);
+      query.$or = [
+        { nguoiGui: userObjId },
+        { nguoiNhan: userObjId },
+        { guiTatCa: true, vaiTroNhan: { $in: ['chuNha', 'all'] } }
       ];
     }
-    // admin/quanLy: không filter → thấy tất cả
     
     if (search) {
       // Nếu đã có $or từ phân quyền, cần dùng $and
@@ -80,7 +102,7 @@ export async function GET(request: NextRequest) {
 
     const [thongBaoList, total] = await Promise.all([
       ThongBao.find(query)
-        .populate('nguoiGui', 'ten email')
+        .populate('nguoiGui', 'ten email role vaiTro')
         .populate('phong', 'maPhong')
         .populate('toaNha', 'tenToaNha')
         .sort({ ngayGui: -1 })
@@ -132,10 +154,15 @@ export async function POST(request: NextRequest) {
       nguoiGui: session.user.id,
       loai: validatedData.loai || 'chung',
       phong: validatedData.phong || [],
+      nguoiNhan: validatedData.nguoiNhan || [],
       daDoc: [],
     };
 
-    if (validatedData.toaNha === 'all') {
+    if (!thongBaoData.guiTatCa && (!thongBaoData.nguoiNhan || thongBaoData.nguoiNhan.length === 0)) {
+       return NextResponse.json({ message: 'Phải có ít nhất 1 người nhận hoặc chọn gửi tất cả' }, { status: 400 });
+    }
+
+    if (validatedData.toaNha === 'all' || !validatedData.toaNha) {
       delete thongBaoData.toaNha;
     }
 
@@ -164,78 +191,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PUT(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session) {
-      return NextResponse.json(
-        { message: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    if (!id) {
-      return NextResponse.json(
-        { message: 'ID thông báo là bắt buộc' },
-        { status: 400 }
-      );
-    }
-
-    const body = await request.json();
-    const validatedData = thongBaoSchema.parse(body);
-
-    await dbConnect();
-
-    const existingThongBao = await ThongBao.findById(id);
-    if (!existingThongBao) {
-      return NextResponse.json(
-        { message: 'Không tìm thấy thông báo' },
-        { status: 404 }
-      );
-    }
-
-    // Chỉ người gửi hoặc admin mới được sửa
-    if (existingThongBao.nguoiGui.toString() !== session.user.id && session.user.role !== 'admin') {
-      return NextResponse.json(
-        { message: 'Bạn không có quyền sửa thông báo này' },
-        { status: 403 }
-      );
-    }
-
-    const updatedThongBao = await ThongBao.findByIdAndUpdate(
-      id,
-      {
-        ...validatedData,
-        loai: validatedData.loai || 'chung',
-        phong: validatedData.phong || [],
-      },
-      { new: true }
-    );
-
-    return NextResponse.json({
-      success: true,
-      data: updatedThongBao,
-      message: 'Cập nhật thông báo thành công',
-    });
-
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { message: error.issues[0].message },
-        { status: 400 }
-      );
-    }
-
-    console.error('Error updating thong bao:', error);
-    return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+// Thông báo đã gửi không được phép chỉnh sửa
+export async function PUT() {
+  return NextResponse.json(
+    { success: false, message: 'Thông báo đã gửi không được phép chỉnh sửa.' },
+    { status: 403 }
+  );
 }
 
 export async function DELETE(request: NextRequest) {

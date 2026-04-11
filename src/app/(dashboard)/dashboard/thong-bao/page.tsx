@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,7 +53,8 @@ import {
   Building2,
   Home,
   RefreshCw,
-  Zap
+  Zap,
+  AlertTriangle
 } from 'lucide-react';
 import { ThongBao, ToaNha, Phong, KhachThue } from '@/types';
 import { toast } from 'sonner';
@@ -90,6 +92,47 @@ export default function ThongBaoPage() {
     const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
     setSelectedBuildingId(saved);
   }, []);
+
+  // Đọc URL params (khi bấm vào thông báo chủ động từ chuông)
+  const searchParams = useSearchParams();
+  const [filterByNotifId, setFilterByNotifId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const notifId = searchParams.get('id');
+    const s = searchParams.get('search');
+
+    if (notifId) {
+      setFilterByNotifId(notifId);
+      window.history.replaceState({}, '', '/dashboard/thong-bao');
+    }
+
+    if (s) {
+      setSearchTerm(s);
+      setCurrentPage(1);
+      window.history.replaceState({}, '', '/dashboard/thong-bao');
+    }
+  }, [searchParams]);
+
+  // Khi có filterByNotifId và thông báo không nằm trong list hiện tại, fetch trực tiếp và inject
+  useEffect(() => {
+    if (filterByNotifId && !loading && thongBaoList.length >= 0) {
+      const found = thongBaoList.find(tb => tb._id === filterByNotifId);
+      if (!found) {
+        // Fetch trực tiếp thông báo đó và thêm vào list
+        fetch(`/api/thong-bao?id=${filterByNotifId}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && data.data) {
+              const notif = Array.isArray(data.data) ? data.data[0] : data.data;
+              if (notif) {
+                setThongBaoList(prev => [notif, ...prev]);
+              }
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  }, [filterByNotifId, loading]);
 
   // Global Building Sync (listen to TopNavbar)
   useEffect(() => {
@@ -221,13 +264,15 @@ export default function ThongBaoPage() {
     }
   };
 
-  const filteredThongBao = thongBaoList.filter(thongBao => {
-    const matchesSearch = thongBao.tieuDe.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         thongBao.noiDung.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = typeFilter === 'all' || thongBao.loai === typeFilter;
-    
-    return matchesSearch && matchesType;
-  });
+  const filteredThongBao = filterByNotifId
+    ? thongBaoList.filter(tb => tb._id === filterByNotifId)
+    : thongBaoList.filter(thongBao => {
+        const matchesSearch = thongBao.tieuDe.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                             thongBao.noiDung.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesType = typeFilter === 'all' || thongBao.loai === typeFilter;
+        
+        return matchesSearch && matchesType;
+      });
 
   // Pagination
   const totalPages = Math.ceil(filteredThongBao.length / pageSize);
@@ -256,6 +301,10 @@ export default function ThongBaoPage() {
         return <Badge variant="destructive">Sự cố</Badge>;
       case 'hopDong':
         return <Badge variant="outline">Hợp đồng</Badge>;
+      case 'he_thong':
+        return <Badge className="bg-red-600 text-white hover:bg-red-700">Hệ thống</Badge>;
+      case 'thanh_toan_saas':
+        return <Badge className="bg-amber-600 text-white hover:bg-amber-700">SaaS Payment</Badge>;
       case 'khac':
         return <Badge variant="outline">Khác</Badge>;
       default:
@@ -290,8 +339,17 @@ export default function ThongBaoPage() {
     return phongNames.join(', ');
   };
 
-  const getKhachThueNames = (khachThues: any[]) => {
-    if (!khachThues || khachThues.length === 0) return isAdmin ? 'Tất cả chủ nhà' : 'Tất cả khách thuê';
+  const getKhachThueNames = (khachThues: any[], thongBao?: any) => {
+    if (!khachThues || khachThues.length === 0) {
+      // Kiểm tra nếu là broadcast notification
+      if (thongBao?.guiTatCa) {
+        if (thongBao.vaiTroNhan === 'chuNha') return 'Tất cả chủ nhà';
+        if (thongBao.vaiTroNhan === 'khachThue') return 'Tất cả khách thuê';
+        if (thongBao.vaiTroNhan === 'admin') return 'Quản trị viên (Admin)';
+        return 'Tất cả người dùng';
+      }
+      return isAdmin ? 'Tất cả chủ nhà' : 'Tất cả khách thuê';
+    }
     const khachThueNames = khachThues.map(k => {
       if (typeof k === 'object') {
         if (k.hoTen) return k.hoTen;
@@ -409,7 +467,7 @@ export default function ThongBaoPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 md:gap-4 lg:gap-6">
+      <div className={`grid grid-cols-2 ${isAdmin ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-1.5 md:gap-4 lg:gap-6`}>
         <Card className="p-2 md:p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -435,27 +493,52 @@ export default function ThongBaoPage() {
         <Card className="p-2 md:p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Hóa đơn</p>
-              <p className="text-base md:text-2xl font-bold text-green-600">
-                {thongBaoList.filter(t => t.loai === 'hoaDon').length}
+              <p className="text-[10px] md:text-xs font-medium text-gray-600">{isAdmin ? 'Hệ thống' : 'Hóa đơn'}</p>
+              <p className={`text-base md:text-2xl font-bold ${isAdmin ? 'text-red-600' : 'text-green-600'}`}>
+                {isAdmin 
+                  ? thongBaoList.filter(t => t.loai === 'he_thong' || t.loai === 'thanh_toan_saas').length
+                  : thongBaoList.filter(t => t.loai === 'hoaDon').length
+                }
               </p>
             </div>
-            <Bell className="h-3 w-3 md:h-4 md:w-4 text-green-600" />
+            <Bell className={`h-3 w-3 md:h-4 md:w-4 ${isAdmin ? 'text-red-600' : 'text-green-600'}`} />
           </div>
         </Card>
 
-        <Card className="p-2 md:p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] md:text-xs font-medium text-gray-600">Sự cố</p>
-              <p className="text-base md:text-2xl font-bold text-red-600">
-                {thongBaoList.filter(t => t.loai === 'suCo').length}
-              </p>
+        {!isAdmin && (
+          <Card className="p-2 md:p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] md:text-xs font-medium text-gray-600">Sự cố</p>
+                <p className="text-base md:text-2xl font-bold text-red-600">
+                  {thongBaoList.filter(t => t.loai === 'suCo').length}
+                </p>
+              </div>
+              <Bell className="h-3 w-3 md:h-4 md:w-4 text-red-600" />
             </div>
-            <Bell className="h-3 w-3 md:h-4 md:w-4 text-red-600" />
-          </div>
-        </Card>
+          </Card>
+        )}
       </div>
+
+      {/* Banner khi đang xem 1 thông báo cụ thể */}
+      {filterByNotifId && (
+        <div className="flex items-center justify-between bg-teal-50 border border-teal-200 rounded-lg px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Bell className="h-4 w-4 text-teal-600" />
+            <span className="text-sm text-teal-800 font-medium">
+              Đang hiển thị 1 thông báo được chọn
+            </span>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setFilterByNotifId(null)}
+            className="text-teal-700 border-teal-300 hover:bg-teal-100"
+          >
+            ← Xem tất cả thông báo
+          </Button>
+        </div>
+      )}
 
       {/* Desktop Table */}
       <Card className="hidden md:block">
@@ -490,6 +573,12 @@ export default function ThongBaoPage() {
                   <SelectItem value="hoaDon">Hóa đơn</SelectItem>
                   <SelectItem value="suCo">Sự cố</SelectItem>
                   <SelectItem value="hopDong">Hợp đồng</SelectItem>
+                  {isAdmin && (
+                    <>
+                      <SelectItem value="he_thong">Hệ thống SaaS</SelectItem>
+                      <SelectItem value="thanh_toan_saas">Thanh toán SaaS</SelectItem>
+                    </>
+                  )}
                   <SelectItem value="khac">Khác</SelectItem>
                 </SelectContent>
               </Select>
@@ -519,7 +608,14 @@ export default function ThongBaoPage() {
                   >
                     <TableCell className="font-medium">
                       <div>
-                        <div className="font-medium">{thongBao.tieuDe}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="font-medium">{thongBao.tieuDe}</div>
+                          {((thongBao.nguoiGui as any)?.role === 'admin' || (thongBao.nguoiGui as any)?.vaiTro === 'admin') && (
+                            <Badge variant="outline" className="text-[10px] h-5 bg-red-50 text-red-600 border-red-100 px-1.5 flex gap-1 items-center">
+                              <AlertTriangle className="size-3" /> Hệ thống
+                            </Badge>
+                          )}
+                        </div>
                         <div className="text-sm text-gray-500 truncate max-w-xs">
                           {thongBao.noiDung}
                         </div>
@@ -528,7 +624,7 @@ export default function ThongBaoPage() {
                     <TableCell>{getTypeBadge(thongBao.loai)}</TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        {getKhachThueNames(thongBao.nguoiNhan)}
+                        {getKhachThueNames(thongBao.nguoiNhan, thongBao)}
                       </div>
                     </TableCell>
                     {!isAdmin && (
@@ -551,9 +647,16 @@ export default function ThongBaoPage() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm">
-                          {new Date(thongBao.ngayGui).toLocaleDateString('vi-VN')}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">
+                            {new Date(thongBao.ngayGui).toLocaleDateString('vi-VN')}
+                          </span>
+                          {(thongBao.nguoiGui as any)?.ten && (
+                            <span className="text-[10px] text-gray-400">
+                              Người gửi: {(thongBao.nguoiGui as any).ten}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -595,21 +698,6 @@ export default function ThongBaoPage() {
                           </TooltipContent>
                         </Tooltip>
 
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleEdit(thongBao)}
-                              className="hover:bg-amber-50 hover:text-amber-600 border-amber-100"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom" className="bg-teal-900/95 text-white border-none shadow-md py-1.5 px-3 text-[11px]">
-                            <p>Chỉnh sửa</p>
-                          </TooltipContent>
-                        </Tooltip>
 
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -739,7 +827,7 @@ export default function ThongBaoPage() {
                     )}
                     <div className="flex items-center gap-2 text-gray-500">
                       <Users className="h-3 w-3" />
-                      <span className="truncate">{getKhachThueNames(thongBao.nguoiNhan)}</span>
+                      <span className="truncate">{getKhachThueNames(thongBao.nguoiNhan, thongBao)}</span>
                     </div>
                   </div>
 
@@ -770,15 +858,7 @@ export default function ThongBaoPage() {
                       <Send className="h-3.5 w-3.5 mr-1" />
                       Gửi
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(thongBao)}
-                      className="flex-1"
-                    >
-                      <Edit className="h-3.5 w-3.5 mr-1" />
-                      Sửa
-                    </Button>
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -882,7 +962,7 @@ export default function ThongBaoPage() {
                       Người nhận ({viewingThongBao.nguoiNhan.length})
                     </h4>
                     <div className="max-h-32 overflow-y-auto bg-white p-2 rounded border border-green-50 text-xs leading-relaxed">
-                      {getKhachThueNames(viewingThongBao.nguoiNhan)}
+                      {getKhachThueNames(viewingThongBao.nguoiNhan, viewingThongBao)}
                     </div>
                   </Card>
                 </div>
@@ -902,13 +982,6 @@ export default function ThongBaoPage() {
 
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>Đóng</Button>
-                <Button onClick={() => {
-                  setIsViewDialogOpen(false);
-                  handleEdit(viewingThongBao);
-                }}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Chỉnh sửa
-                </Button>
               </DialogFooter>
             </div>
           )}
@@ -998,6 +1071,8 @@ function ThongBaoForm({
     nguoiNhan: thongBao?.nguoiNhan || [],
     phong: thongBao?.phong?.map((p: any) => typeof p === 'object' ? p._id : p) || [],
     toaNha: typeof thongBao?.toaNha === 'object' ? (thongBao.toaNha as any)._id : (thongBao?.toaNha || ''),
+    guiTatCa: (thongBao as any)?.guiTatCa || false,
+    vaiTroNhan: (thongBao as any)?.vaiTroNhan || (isAdmin ? 'chuNha' : 'khachThue'),
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1038,7 +1113,7 @@ function ThongBaoForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (formData.nguoiNhan.length === 0) {
+    if (!formData.guiTatCa && formData.nguoiNhan.length === 0) {
       toast.error('Vui lòng chọn ít nhất một người nhận.');
       return;
     }
@@ -1181,12 +1256,53 @@ function ThongBaoForm({
             <SelectItem value="hoaDon" className="text-sm">Hóa đơn</SelectItem>
             <SelectItem value="suCo" className="text-sm">Sự cố</SelectItem>
             <SelectItem value="hopDong" className="text-sm">Hợp đồng</SelectItem>
+            {isAdmin && <SelectItem value="he_thong" className="text-sm">Hệ thống SaaS</SelectItem>}
+            {isAdmin && <SelectItem value="thanh_toan_saas" className="text-sm">Thanh toán SaaS</SelectItem>}
             <SelectItem value="khac" className="text-sm">Khác</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
+      {/* Chủ trọ: Option gửi cho Admin */}
       {!isAdmin && (
+        <div className="bg-purple-50/50 p-3 rounded-md border border-purple-100">
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="guiChoAdmin"
+              checked={formData.guiTatCa && formData.vaiTroNhan === 'admin'}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  setFormData(prev => ({
+                    ...prev,
+                    guiTatCa: true,
+                    vaiTroNhan: 'admin',
+                    nguoiNhan: [],
+                    phong: [],
+                    toaNha: '',
+                  }));
+                } else {
+                  setFormData(prev => ({
+                    ...prev,
+                    guiTatCa: false,
+                    vaiTroNhan: 'khachThue',
+                  }));
+                }
+              }}
+              className="rounded border-gray-300 w-4 h-4 text-purple-600 focus:ring-purple-500"
+            />
+            <Label htmlFor="guiChoAdmin" className="text-sm font-semibold text-purple-800 cursor-pointer">
+              📩 Gửi thông báo cho Quản trị viên (Admin)
+            </Label>
+          </div>
+          <p className="text-[11px] text-purple-600 mt-1 ml-6">
+            Thông báo sẽ được gửi đến tất cả quản trị viên hệ thống. Dùng khi cần hỗ trợ, phản hồi, hoặc báo cáo vấn đề.
+          </p>
+        </div>
+      )}
+
+      {/* Tòa nhà (chỉ hiện cho chủ trọ khi KHÔNG gửi cho admin) */}
+      {!isAdmin && !(formData.guiTatCa && formData.vaiTroNhan === 'admin') && (
         <div className="space-y-2">
           <Label htmlFor="toaNha" className="text-xs md:text-sm">Tòa nhà</Label>
         <Select value={formData.toaNha} onValueChange={handleToaNhaChange}>
@@ -1205,7 +1321,7 @@ function ThongBaoForm({
       </div>
       )}
 
-      {!isAdmin && (
+      {!isAdmin && !(formData.guiTatCa && formData.vaiTroNhan === 'admin') && (
       <div className="space-y-3">
         <div className="flex justify-between items-center">
           <Label className="text-xs md:text-sm font-semibold">Phòng (tùy chọn)</Label>
@@ -1285,9 +1401,34 @@ function ThongBaoForm({
       </div>
       )}
 
+      {isAdmin && (
+        <div className="bg-blue-50/50 p-3 rounded-md border border-blue-100 mb-2">
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="guiTatCa"
+              checked={formData.guiTatCa}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                guiTatCa: e.target.checked,
+                nguoiNhan: e.target.checked ? [] : prev.nguoiNhan
+              }))}
+              className="rounded border-gray-300 w-4 h-4 text-blue-600"
+            />
+            <Label htmlFor="guiTatCa" className="text-sm font-semibold text-blue-800 cursor-pointer">
+              Gửi thông báo này cho tất cả Chủ trọ
+            </Label>
+          </div>
+          <p className="text-[11px] text-blue-600 mt-1 ml-6">
+            Lưu ý: Khi bật tính năng này, thông báo sẽ được hiển thị trên bảng điều khiển của toàn bộ chủ trọ trên hệ thống.
+          </p>
+        </div>
+      )}
+
+      {!formData.guiTatCa && (
       <div className="space-y-3">
         <div className="flex justify-between items-center">
-          <Label className="text-xs md:text-sm font-semibold">Người nhận <span className="text-red-500">*</span></Label>
+          <Label className="text-xs md:text-sm font-semibold">{isAdmin ? 'Chọn Chủ nhà' : 'Người nhận'} <span className="text-red-500">*</span></Label>
           <div className="flex gap-2">
             <Button 
               type="button" 
@@ -1363,6 +1504,7 @@ function ThongBaoForm({
           Đã chọn {formData.nguoiNhan.length} người nhận
         </p>
       </div>
+      )}
 
       <DialogFooter className="flex-col sm:flex-row gap-2 pt-4 border-t">
         <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSubmitting} className="w-full sm:w-auto">

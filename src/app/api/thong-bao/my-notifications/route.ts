@@ -37,11 +37,19 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const page = parseInt(searchParams.get('page') || '1');
 
-    const query = { nguoiNhan: { $in: linkedIds } };
+    const query = { 
+      $or: [
+        { nguoiNhan: { $in: linkedIds } },
+        { 
+          guiTatCa: true, 
+          vaiTroNhan: { $in: [session.user.role, 'all'] } 
+        }
+      ]
+    };
     const total = await ThongBao.countDocuments(query);
 
     const notifications = await ThongBao.find(query)
-      .populate('nguoiGui', 'ten name email')
+      .populate('nguoiGui', 'ten name email role vaiTro')
       .populate({
         path: 'phong',
         select: 'toaNha maPhong',

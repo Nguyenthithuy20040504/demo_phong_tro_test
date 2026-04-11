@@ -36,7 +36,13 @@ export async function GET() {
 
     // Count notifications sent to ANY of the linked IDs that haven't been read by the current session user
     const count = await ThongBao.countDocuments({
-      nguoiNhan: { $in: linkedIds },
+      $or: [
+        { nguoiNhan: { $in: linkedIds } },
+        { 
+          guiTatCa: true, 
+          vaiTroNhan: { $in: [session.user.role, 'all'] } 
+        }
+      ],
       daDoc: { $nin: [sessionObjId] }
     });
 

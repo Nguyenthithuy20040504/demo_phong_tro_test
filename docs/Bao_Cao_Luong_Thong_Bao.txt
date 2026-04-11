@@ -1,0 +1,106 @@
+# Báo Cáo: Luồng Thông Báo Giữa Quản Trị Viên (Admin) và Chủ Trọ
+
+Báo cáo này mô tả chi tiết luồng nghiệp vụ, phân quyền hiển thị, xử lý giao diện và quy tắc bảo mật đối với module thông báo trong hệ thống PiRoom, tập trung vào giao tiếp giữa Admin và Chủ trọ.
+
+---
+
+## 1. Tính năng Gửi Thông Báo
+
+Cả Admin và Chủ trọ đều có thể gửi thông báo qua giao diện Quản lý thông báo (/dashboard/thong-bao).
+
+### 1.1 Chủ trọ gửi Admin
+- Cách gửi: Tại form tạo thông báo mới, Chủ trọ tích chọn checkbox "Gửi thông báo cho Quản trị viên (Admin)".
+- Chuyển đổi UI: Khi tích chọn, hệ thống sẽ tự động ẩn các trường "Tòa nhà", "Phòng", "Người nhận" (khách thuê) vì không còn liên quan.
+- Dữ liệu lưu vào DB:
+  - guiTatCa: true (Gửi theo diện rộng, không chỉ định đích danh từng cá nhân).
+  - vaiTroNhan: 'admin' (Chỉ những người dùng có role là admin mới nhận được).
+  - nguoiNhan: [], phong: [].
+
+### 1.2 Admin gửi Chủ trọ
+- Cách gửi: Admin tích chọn checkbox "Gửi thông báo này cho tất cả Chủ trọ".
+- Chuyển đổi UI: Tương tự Chủ trọ, khi admin broadcast hệ thống sẽ ẩn phần chọn từng cá nhân người nhận. Các field liên quan đến tòa nhà/phòng cũng bị vô hiệu hóa vì không liên quan.
+- Dữ liệu lưu vào DB: 
+  - guiTatCa: true
+  - vaiTroNhan: 'chuNha'
+
+---
+
+## 2. Luồng Nhận & Hiển Thị Thông Báo
+
+Hệ thống phân quyền hiển thị thông báo dựa trên 3 Route chính:
+
+### 2.1 Chuông Thông Báo (Notification Bell) & Unread count
+- API sử dụng: GET /api/thong-bao/my-notifications, GET /api/thong-bao/unread-count.
+- Query Logic: 
+  Lấy các thông báo được chỉ định gửi đích danh cho ID người dùng (nguoiNhan: { $in: userId }) HOẶC những thông báo dạng broadcast hợp lệ:
+  { guiTatCa: true, vaiTroNhan: { $in: [session.user.role, 'all'] } }
+- Kết quả: 
+  - Khi chủ trọ gửi vaiTroNhan: 'admin', chuông thông báo của tất cả admin ngay lập tức có thông báo.
+  - Tương tự khi admin gửi vaiTroNhan: 'chuNha', toàn bộ chủ trọ đều nhận được.
+- Giao diện chuông (UI/UX):
+  - Hiển thị tên người gửi.
+  - Hiển thị Badge định danh nổi bật:
+    - Nếu admin gửi: Badge "Hệ Thống" (màu đỏ).
+    - Nếu chủ trọ gửi: Badge "Chủ trọ" (màu tím).
+
+### 2.2 Trang Quản Lý Thông Báo (Dashboard)
+- API sử dụng: GET /api/thong-bao
+- Quyền hiển thị tại Table Admin:
+  - Admin không còn thấy "tất cả" 416 thông báo trong hệ thống.
+  - Admin chỉ thấy: Các thông báo do Admin đó tự gửi (broadcast đi) VÀ các thông báo gửi đến riêng cho role Admin (từ các chủ trọ).
+  - Bộ lọc (Filter): Admin thấy các cột thống kê: "Tổng số", "Chung" (thông báo thường), và "Hệ thống" (SaaS). Không hiển thị thống kê "Hóa đơn" và "Sự cố" (Vì đây là thông báo nghiệp vụ nội bộ giữa Chủ trọ và Khách thuê, Admin SaaS không can thiệp).
+- Quyền hiển thị tại Table Chủ trọ:
+  - Chủ trọ thấy: Thông báo tự viết gửi khách thuê + Thông báo tự viết gửi Admin + Thông báo được Admin broadcast tới Chủ trọ.
+
+---
+
+## 3. Chuyển Hướng Chi Tiết (Deep linking)
+
+- Cả Admin và Chủ trọ khi nhấn (click) vào thông báo loại chung (hoặc khac) trên Chuông (Bell) hoặc Dashboard đều được chuyển hướng tới trang Quản lý thông báo kèm ID hiển thị:
+  router.push('/dashboard/thong-bao?id=xxx')
+- Tại trang nhận (/dashboard/thong-bao/page.tsx), hệ thống sẽ:
+  - Bắt ?id=xxx từ URL.
+  - Lọc bảng (Table) hoặc các Cards chỉ hiển thị duy nhất thông báo được truy vấn.
+  - Hiển thị Banner phía trên bảng thông báo, cung cấp nút "Xem tất cả thông báo" để xóa params ?id= và reset bảng về mặc định.
+
+---
+
+## 4. Quản Lý Tính Toàn Vẹn Thông Báo (Security Limits)
+
+Để đảm bảo thông báo gửi đi giữ được ý nghĩa nguyên trạng (historical integrity) và tránh giả mạo (ví dụ: gửi xong mới sửa lại để chối cãi), hệ thống áp dụng giới hạn sau:
+
+- Vô hiệu hóa chỉnh sửa: Thông báo một khi đã bấm "Gửi" / "Tạo mới" sẽ không thể được chỉnh sửa lại từ bất kì role nào.
+- Chặn UI: Nút Chỉnh sửa (Edit button) đã bị gỡ bỏ hoàn toàn khỏi:
+  1. Desktop Table.
+  2. Mobile Cards view.
+  3. Dialog Xem chi tiết thông báo.
+- Chặn API (Backend Level): Request tới cổng cập nhật PUT /api/thong-bao đã bị block cứng ở đầu vào, luôn trả về status 403 {"message": "Thông báo đã gửi không được phép chỉnh sửa."}. Chặn dứt điểm mọi hành vi bypass qua POSTMAN/curl.
+
+---
+
+## 5. Cập Nhật Cấu Trúc Database (Schema Changes)
+
+Để hỗ trợ tính năng gửi thông báo cho Admin, cấu trúc Database Model (Mongoose) và Data Validation (Zod Schema) đã được mở rộng:
+
+### 5.1 Mongoose Model (src/models/ThongBao.ts)
+Thuộc tính vaiTroNhan được bổ sung thêm giá trị "admin" vào danh sách enum cho phép, nhằm định danh các thông báo dành riêng cho role quản trị hệ thống.
+
+```typescript
+  vaiTroNhan: {
+    type: String,
+    enum: ['chuNha', 'khachThue', 'admin', 'all'], // Thêm 'admin'
+    default: 'all'
+  }
+```
+
+### 5.2 Zod Validation Schema (src/app/api/thong-bao/route.ts)
+Tương tự, lược đồ xác thực dữ liệu đầu vào (Zod) cũng được đồng bộ để chấp nhận giá trị "admin" khi tạo thông báo mới.
+
+```typescript
+  vaiTroNhan: z.enum(['chuNha', 'khachThue', 'admin', 'all']).optional(),
+```
+
+Việc thêm định danh enum này là thay đổi duy nhất về mặt cấu trúc DB, giúp tận dụng hoàn toàn engine query hiện tại mà không phải đẻ thêm Collection hay cơ chế routing DB trung gian nào khác.
+
+---
+Báo cáo cập nhật ngày 11/04/2026.

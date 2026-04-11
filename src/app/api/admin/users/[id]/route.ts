@@ -3,11 +3,12 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import NguoiDung from '@/models/NguoiDung';
+import ThongBao from '@/models/ThongBao';
 import { ObjectId } from 'mongodb';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -16,11 +17,12 @@ export async function PUT(
       return NextResponse.json({ message: 'Bạn không có quyền thực hiện thao tác này' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { 
       name, email, phone, role, isActive,
-      cccd, ngaySinh, gioiTinh, queQuan, ngheNghiep, anhCCCD
+      cccd, ngaySinh, gioiTinh, queQuan, ngheNghiep, anhCCCD,
+      goiDichVu, ngayHetHan
     } = body;
 
     if (!ObjectId.isValid(id)) {
@@ -70,6 +72,12 @@ export async function PUT(
       anhCCCD: anhCCCD !== undefined ? anhCCCD : undefined
     };
     
+    // Admin only fields (SaaS subscription)
+    if (session.user.role === 'admin') {
+      if (goiDichVu !== undefined) updateData.goiDichVu = goiDichVu;
+      if (ngayHetHan !== undefined) updateData.ngayHetHan = ngayHetHan ? new Date(ngayHetHan) : null;
+    }
+    
     // Cập nhật email nếu có
     if (email !== undefined) {
       updateData.email = email;
@@ -83,6 +91,25 @@ export async function PUT(
     
     if (!updatedUser) {
       return NextResponse.json({ message: 'Không tìm thấy người dùng này' }, { status: 404 });
+    }
+
+    // Gửi thông báo nếu có cập nhật gói dịch vụ hoặc ngày hết hạn (cho Chủ Trọ)
+    if (session.user.role === 'admin' && (goiDichVu !== undefined || ngayHetHan !== undefined)) {
+      const packageName = 
+        updatedUser.goiDichVu === 'chuyenNghiep' ? 'Chuyên nghiệp (Enterprise)' : 
+        updatedUser.goiDichVu === 'coBan' ? 'Cơ bản (Professional)' : 'Miễn phí (Tiêu chuẩn)';
+      
+      const expiryText = updatedUser.ngayHetHan ? new Date(updatedUser.ngayHetHan).toLocaleDateString('vi-VN') : 'Không giới hạn';
+      
+      await ThongBao.create({
+        tieuDe: `⚙️ Quản trị viên đã cập nhật gói dịch vụ của bạn`,
+        noiDung: `Kính gửi ${updatedUser.ten || updatedUser.name},\n\nTài khoản của bạn vừa được cập nhật bởi hệ thống: \n- Gói hiện tại: ${packageName}\n- Thời hạn mới: ${expiryText}\n\nNếu bạn có thắc mắc, vui lòng liên hệ bộ phận hỗ trợ.\n\nTrân trọng.`,
+        loai: 'he_thong',
+        nguoiGui: session.user.id,
+        nguoiNhan: [updatedUser._id],
+        daDoc: [],
+        guiTatCa: false
+      });
     }
 
     // ===== ĐỒNG BỘ DỮ LIỆU VỚI KHÁCH THUÊ =====
@@ -124,7 +151,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -138,7 +165,7 @@ export async function DELETE(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
     if (!ObjectId.isValid(id)) {
       return NextResponse.json({ message: 'ID không hợp lệ' }, { status: 400 });
     }
@@ -165,7 +192,7 @@ export async function DELETE(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -174,7 +201,7 @@ export async function PATCH(
       return NextResponse.json({ message: 'Bạn không có quyền thực hiện thao tác này' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { password } = body;
 

@@ -34,13 +34,22 @@ function LoginFormContent() {
 
   useEffect(() => {
     const err = searchParams.get('error');
-    if (err) setError(err);
+    if (err === 'locked') {
+      setError('Tài khoản của bạn đã bị quản trị viên khóa. Vui lòng liên hệ Admin để được hỗ trợ.');
+    } else if (err) {
+      setError(err);
+    }
     
     const msg = searchParams.get('message');
     if (msg === 'verified') {
       setSuccess('Tài khoản đã được xác minh thành công. Vui lòng đăng nhập!');
     } else if (msg) {
       setSuccess(msg);
+    }
+
+    // Xóa params khỏi URL sau khi đọc xong, tránh hiển thị lại khi F5
+    if (err || msg) {
+      window.history.replaceState({}, '', '/dang-nhap');
     }
   }, [searchParams]);
 
@@ -66,7 +75,12 @@ function LoginFormContent() {
       });
 
       if (result?.error) {
-        setError('Email hoặc mật khẩu không đúng');
+        // NextAuth trả error message từ throw new Error() trong authorize
+        if (result.error.includes('khóa') || result.error.includes('xác minh')) {
+          setError(result.error);
+        } else {
+          setError('Email hoặc mật khẩu không đúng');
+        }
         return;
       }
 
@@ -74,9 +88,9 @@ function LoginFormContent() {
       const role = session?.user?.role;
 
       if (role === 'khachThue') {
-        router.push('/khach-thue/dashboard');
+        window.location.href = '/khach-thue/dashboard';
       } else {
-        router.push('/dashboard');
+        window.location.href = selectedPlan ? `/dashboard?plan=${selectedPlan}` : '/dashboard';
       }
     } catch (error) {
       setError('Đã xảy ra lỗi, vui lòng thử lại');

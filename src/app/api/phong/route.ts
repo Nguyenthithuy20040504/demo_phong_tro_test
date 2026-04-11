@@ -30,7 +30,7 @@ const phongSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    if (!session || !session.user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     await dbConnect();
 
     const { searchParams } = new URL(request.url);
@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    if (!session || !session.user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     const body = await request.json();
     const validatedData = phongSchema.parse(body);
     await dbConnect();

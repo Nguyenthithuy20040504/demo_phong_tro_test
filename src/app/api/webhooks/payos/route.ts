@@ -6,6 +6,7 @@ import SaasPayment from '@/models/SaaSPayment';
 import HoaDon from '@/models/HoaDon';
 import ThanhToan from '@/models/ThanhToan';
 import ToaNha from '@/models/ToaNha';
+import ThongBao from '@/models/ThongBao';
 import payOS from '@/lib/payos';
 
 export async function POST(request: NextRequest) {
@@ -63,6 +64,21 @@ export async function POST(request: NextRequest) {
             { nguoiQuanLy: user._id, $or: [{ vaiTro: 'nhanVien' }, { role: 'nhanVien' }] },
             { $set: { ngayHetHan: newExpiry } }
           );
+
+          // Lấy ID Admin để làm Sender
+          const admin = await NguoiDung.findOne({ $or: [{ vaiTro: 'admin' }, { role: 'admin' }] }).select('_id');
+          const senderId = admin ? admin._id : user._id;
+
+          // Tạo thông báo xác nhận thanh toán
+          await ThongBao.create({
+            tieuDe: `🎉 Xác nhận thanh toán gói ${plan.ten} thành công`,
+            noiDung: `Kính gửi ${user.ten},\n\nKhoản thanh toán qua mã QR (Order: ${orderCode}) cho gói dịch vụ ${plan.ten} của bạn đã được xác nhận tự động. Hệ thống đã gia hạn và kích hoạt các tính năng đến ngày ${newExpiry.toLocaleDateString('vi-VN')}.\n\nCảm ơn bạn đã tin tưởng và sử dụng hệ thống PiRoom!\n\nTrân trọng.`,
+            loai: 'thanh_toan_saas',
+            nguoiGui: senderId,
+            nguoiNhan: [user._id],
+            daDoc: [],
+            guiTatCa: false
+          });
 
           // Chuyển Trạng thái hóa đơn thành Thành công
           payment.trangThai = 'daThanhToan';

@@ -3,12 +3,14 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IThongBao extends Document {
   tieuDe: string;
   noiDung: string;
-  loai: 'chung' | 'hoaDon' | 'suCo' | 'hopDong' | 'khac';
+  loai: 'chung' | 'hoaDon' | 'suCo' | 'hopDong' | 'he_thong' | 'thanh_toan_saas' | 'khac';
   nguoiGui: mongoose.Types.ObjectId;
   nguoiNhan: mongoose.Types.ObjectId[];
   phong?: mongoose.Types.ObjectId[];
   toaNha?: mongoose.Types.ObjectId;
   daDoc: mongoose.Types.ObjectId[];
+  guiTatCa?: boolean;
+  vaiTroNhan?: string;
   ngayGui: Date;
   ngayTao: Date;
 }
@@ -28,7 +30,7 @@ const ThongBaoSchema = new Schema<IThongBao>({
   },
   loai: {
     type: String,
-    enum: ['chung', 'hoaDon', 'suCo', 'hopDong', 'khac'],
+    enum: ['chung', 'hoaDon', 'suCo', 'hopDong', 'he_thong', 'thanh_toan_saas', 'khac'],
     default: 'chung'
   },
   nguoiGui: {
@@ -51,6 +53,15 @@ const ThongBaoSchema = new Schema<IThongBao>({
   daDoc: [{
     type: Schema.Types.ObjectId
   }],
+  guiTatCa: {
+    type: Boolean,
+    default: false
+  },
+  vaiTroNhan: {
+    type: String,
+    enum: ['chuNha', 'khachThue', 'admin', 'all'],
+    default: 'all'
+  },
   ngayGui: {
     type: Date,
     required: [true, 'Ngày gửi là bắt buộc'],

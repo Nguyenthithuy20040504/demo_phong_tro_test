@@ -27,10 +27,14 @@ export const authOptions: NextAuthOptions = {
 
           const user = await NguoiDung.findOne({
             email,
-            trangThai: "hoatDong",
           }).select("+matKhau +daXacMinhEmail");
 
           if (user) {
+            // Kiểm tra tài khoản bị khóa TRƯỚC khi kiểm tra mật khẩu
+            if (user.trangThai === 'khoa' || user.isActive === false) {
+              throw new Error("Tài khoản của bạn đã bị quản trị viên khóa. Vui lòng liên hệ Admin để được hỗ trợ.");
+            }
+
             if (user.daXacMinhEmail === false) {
               throw new Error("Vui lòng xác minh địa chỉ email trước khi đăng nhập. Hãy đăng ký lại nếu mã đã hết hạn.");
             }
@@ -86,6 +90,10 @@ export const authOptions: NextAuthOptions = {
             avatar: undefined,
           };
         } catch (error) {
+          // Re-throw intentional errors (locked, unverified) so NextAuth passes the message to client
+          if (error instanceof Error && (error.message.includes('khóa') || error.message.includes('xác minh'))) {
+            throw error;
+          }
           console.error("Auth error:", error);
           return null;
         }
@@ -180,6 +188,33 @@ export const authOptions: NextAuthOptions = {
           token.goiDichVu = (user as any).goiDichVu;
           token.ngayHetHan = (user as any).ngayHetHan;
         }
+        token.isLocked = false;
+      } else {
+        // Not a new sign-in -> Validate existing token on every check
+        try {
+          await dbConnect();
+          if (token.role !== 'khachThue' && token.id) {
+            const dbUser = await NguoiDung.findById(token.id).select('trangThai isActive');
+            if (!dbUser || dbUser.trangThai === 'khoa' || dbUser.isActive === false) {
+              console.log(`[AUTH] User ${token.id} is LOCKED (trangThai=${dbUser?.trangThai}, isActive=${dbUser?.isActive})`);
+              token.isLocked = true;
+            } else {
+              token.isLocked = false;
+            }
+          } else if (token.role === 'khachThue' && token.id) {
+             // For tenants, check KhachThue model (optional, currently we only focus on Landlord/Admin locks)
+             const KhachThue = (await import('@/models/KhachThue')).default;
+             const tenant = await KhachThue.findById(token.id).select('trangThai');
+             /*
+             // Uncomment if you want to lock tenants dynamically too
+             if (!tenant || tenant.trangThai === 'daKetThuc' || tenant.trangThai === 'choDuyet') {
+               token.isLocked = true;
+             }
+             */
+          }
+        } catch (e) {
+          console.error("Lỗi kiểm tra chặn tài khoản realtime:", e);
+        }
       }
       
       // Handle session update
@@ -192,7 +227,13 @@ export const authOptions: NextAuthOptions = {
     },
 
     async session({ session, token }) {
-      if (session.user) {
+      if (token.isLocked) {
+        session.user = null as any;
+        (session as any).error = "AccountLocked";
+        return session;
+      }
+
+      if (session.user && !token.isLocked) {
         session.user.id = (token.id as string) || token.sub!;
         session.user.role = token.role as string;
         session.user.phone = token.phone as string;

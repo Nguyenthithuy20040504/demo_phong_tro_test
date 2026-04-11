@@ -36,9 +36,18 @@ export async function POST(request: NextRequest) {
     }
 
     if (markAll) {
-      // Mark all linked notifications as read
+      // Mark all linked and broadcast notifications as read
       await ThongBao.updateMany(
-        { nguoiNhan: { $in: linkedIds }, daDoc: { $nin: [userIdObj] } },
+        { 
+          $or: [
+            { nguoiNhan: { $in: linkedIds } },
+            { 
+              guiTatCa: true, 
+              vaiTroNhan: { $in: [session.user.role, 'all'] } 
+            }
+          ],
+          daDoc: { $nin: [userIdObj] } 
+        },
         { $addToSet: { daDoc: userIdObj } }
       );
       return NextResponse.json({ success: true, message: 'Đã đánh dấu tất cả là đã đọc' });
@@ -49,7 +58,16 @@ export async function POST(request: NextRequest) {
     }
 
     await ThongBao.updateOne(
-      { _id: id, nguoiNhan: { $in: linkedIds } },
+      { 
+        _id: id, 
+        $or: [
+          { nguoiNhan: { $in: linkedIds } },
+          { 
+            guiTatCa: true, 
+            vaiTroNhan: { $in: [session.user.role, 'all'] } 
+          }
+        ]
+      },
       { $addToSet: { daDoc: userIdObj } }
     );
 

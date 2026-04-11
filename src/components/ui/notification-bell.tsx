@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Bell, BellRing, CheckCheck, X, Receipt, FileText, AlertTriangle, Info } from 'lucide-react';
+import { Bell, BellRing, CheckCheck, X, Receipt, FileText, AlertTriangle, Info, Shield, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -11,10 +11,10 @@ interface Notification {
   _id: string;
   tieuDe: string;
   noiDung: string;
-  loai: 'chung' | 'hoaDon' | 'suCo' | 'hopDong' | 'khac';
+  loai: 'chung' | 'hoaDon' | 'suCo' | 'hopDong' | 'khac' | 'he_thong' | 'thanh_toan_saas';
   ngayGui: string;
   isRead: boolean;
-  nguoiGui?: { ten?: string; name?: string; email?: string };
+  nguoiGui?: { ten?: string; name?: string; email?: string; role?: string; vaiTro?: string };
   toaNha?: any;
   resolvedMaPhong?: string;
 }
@@ -127,6 +127,8 @@ export function NotificationBell() {
       case 'hoaDon': return <Receipt className="h-4 w-4 text-orange-500" />;
       case 'hopDong': return <FileText className="h-4 w-4 text-blue-500" />;
       case 'suCo': return <AlertTriangle className="h-4 w-4 text-red-500" />;
+      case 'he_thong': return <Shield className="h-4 w-4 text-red-600" />;
+      case 'thanh_toan_saas': return <Zap className="h-4 w-4 text-amber-500" />;
       default: return <Info className="h-4 w-4 text-gray-400" />;
     }
   };
@@ -170,38 +172,49 @@ export function NotificationBell() {
           break;
         case 'suCo': targetUrl = '/dashboard/su-co'; break;
         case 'hopDong': targetUrl = '/dashboard/hop-dong'; break;
-        default: targetUrl = '/dashboard/thong-bao'; break;
+        case 'he_thong':
+        case 'thanh_toan_saas':
+          targetUrl = '/dashboard/gia-han-goi';
+          break;
+        case 'chung':
+        case 'khac':
+        default: 
+          targetUrl = `/dashboard/thong-bao?id=${notif._id}`;
+          break;
       }
       
       // Chuyển tòa nhà nếu thông báo có gắn kèm tòa nhà (dành cho phía admin/chủ nhà)
-      if (notif.toaNha) {
-        const bId = typeof notif.toaNha === 'string' ? notif.toaNha : (notif.toaNha as any)._id || notif.toaNha.toString();
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('selected_building_id', bId);
-          window.dispatchEvent(new Event('buildingChange'));
-          
-          // Gắn thêm params vào targetUrl
-          const params = new URLSearchParams();
-          params.set('toaNhaId', bId);
-          if (searchParamValue) {
-             params.set('search', searchParamValue);
+      // Skip nếu đã có ?id= (dẫn trực tiếp đến thông báo cụ thể)
+      if (!targetUrl.includes('?id=')) {
+        if (notif.toaNha) {
+          const bId = typeof notif.toaNha === 'string' ? notif.toaNha : (notif.toaNha as any)._id || notif.toaNha.toString();
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('selected_building_id', bId);
+            window.dispatchEvent(new Event('buildingChange'));
+            
+            // Gắn thêm params vào targetUrl
+            const params = new URLSearchParams();
+            params.set('toaNhaId', bId);
+            if (searchParamValue) {
+               params.set('search', searchParamValue);
+            }
+            
+            if (targetUrl.includes('?')) {
+              targetUrl += `&${params.toString()}`;
+            } else {
+              targetUrl += `?${params.toString()}`;
+            }
           }
-          
-          if (targetUrl.includes('?')) {
-            targetUrl += `&${params.toString()}`;
-          } else {
-            targetUrl += `?${params.toString()}`;
-          }
-        }
-      } else if (searchParamValue) {
-        // Vẫn gắn search param nếu không có tòa nhà
-        if (typeof window !== 'undefined') {
-          const params = new URLSearchParams();
-          params.set('search', searchParamValue);
-          if (targetUrl.includes('?')) {
-            targetUrl += `&${params.toString()}`;
-          } else {
-            targetUrl += `?${params.toString()}`;
+        } else if (searchParamValue) {
+          // Vẫn gắn search param nếu không có tòa nhà
+          if (typeof window !== 'undefined') {
+            const params = new URLSearchParams();
+            params.set('search', searchParamValue);
+            if (targetUrl.includes('?')) {
+              targetUrl += `&${params.toString()}`;
+            } else {
+              targetUrl += `?${params.toString()}`;
+            }
           }
         }
       }
@@ -304,7 +317,23 @@ export function NotificationBell() {
                     {!notif.isRead && <div className="flex-shrink-0 w-2 h-2 mt-1 bg-blue-500 rounded-full" />}
                   </div>
                   <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">{notif.noiDung}</p>
-                  <p className="text-[10px] text-gray-400 mt-1">{timeAgo(notif.ngayGui)}</p>
+                  <div className="flex justify-between items-center mt-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[10px] text-gray-400">{timeAgo(notif.ngayGui)}</p>
+                      {notif.nguoiGui?.ten && (
+                        <span className="text-[10px] text-gray-400">• {notif.nguoiGui.ten}</span>
+                      )}
+                    </div>
+                    {(notif.nguoiGui?.role === 'admin' || notif.nguoiGui?.vaiTro === 'admin') ? (
+                      <Badge variant="secondary" className="px-1.5 py-0 h-4 text-[9px] bg-red-50 text-red-600 border-red-100 flex items-center gap-1">
+                        <AlertTriangle className="w-2.5 h-2.5" /> Hệ Thống
+                      </Badge>
+                    ) : (notif.nguoiGui?.role === 'chuNha' || notif.nguoiGui?.vaiTro === 'chuNha') ? (
+                      <Badge variant="secondary" className="px-1.5 py-0 h-4 text-[9px] bg-purple-50 text-purple-600 border-purple-100 flex items-center gap-1">
+                        📩 Chủ trọ
+                      </Badge>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             ))}

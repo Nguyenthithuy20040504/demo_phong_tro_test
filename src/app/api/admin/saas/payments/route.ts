@@ -5,6 +5,7 @@ import dbConnect from '@/lib/mongodb';
 import SaaSPayment from '@/models/SaaSPayment';
 import NguoiDung from '@/models/NguoiDung';
 import GoiDichVu from '@/models/GoiDichVu';
+import ThongBao from '@/models/ThongBao';
 
 export const dynamic = 'force-dynamic';
 
@@ -157,6 +158,17 @@ export async function PATCH(request: NextRequest) {
           { nguoiQuanLy: user._id, $or: [{ vaiTro: 'nhanVien' }, { role: 'nhanVien' }] },
           { $set: { ngayHetHan: newExpiry } }
         );
+
+        // Gửi thông báo cho Chủ nhà
+        await ThongBao.create({
+          tieuDe: `🎉 Xác nhận thanh toán gói ${plan.ten} thành công`,
+          noiDung: `Kính gửi ${user.ten},\n\nKhoản thanh toán cho gói dịch vụ ${plan.ten} của bạn đã được duyệt thành công. Hệ thống đã gia hạn và kích hoạt các tính năng đến ngày ${newExpiry.toLocaleDateString('vi-VN')}.\n\nCảm ơn bạn đã tin tưởng và sử dụng PiRoom!\n\nTrân trọng.`,
+          loai: 'thanh_toan_saas',
+          nguoiGui: session.user.id, // Admin id
+          nguoiNhan: [user._id],
+          daDoc: [],
+          guiTatCa: false
+        });
 
         payment.ngayHetHanMoi = newExpiry;
       } else {

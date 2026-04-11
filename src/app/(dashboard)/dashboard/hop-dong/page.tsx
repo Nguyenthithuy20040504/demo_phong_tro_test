@@ -140,6 +140,10 @@ export default function HopDongPage() {
         fetch('/api/toa-nha', { cache: 'no-store' }),
       ]);
 
+      if (hopDongRes.status === 401 || phongRes.status === 401) {
+        return; // Silent block: Session is invalid/locked, Layout will handle redirect
+      }
+
       // Kiểm tra nếu bất kỳ API quan trọng nào lỗi thì không ghi đè cache
       if (!hopDongRes.ok || !phongRes.ok) {
         console.error('Core APIs failed:', { hopDong: hopDongRes.status, phong: phongRes.status });

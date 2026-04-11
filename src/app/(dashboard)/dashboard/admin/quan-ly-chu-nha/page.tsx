@@ -597,6 +597,7 @@ export default function AdminLandlordManagementPage() {
       {/* View Details Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className="sm:max-w-[700px] p-0 rounded-[2.5rem] overflow-hidden border-none shadow-4xl group">
+             <DialogTitle className="sr-only">Chi tiết hồ sơ chủ trọ</DialogTitle>
              <div className="relative h-32 bg-gradient-to-r from-teal-600 to-emerald-600">
                 <div className="absolute -bottom-16 left-8 p-1.5 bg-white rounded-[2.2rem] shadow-xl">
                     <Avatar className="h-32 w-32 rounded-[2rem] border-4 border-white shadow-inner">

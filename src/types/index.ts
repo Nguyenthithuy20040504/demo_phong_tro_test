@@ -257,12 +257,14 @@ export interface ThongBao {
   _id?: string;
   tieuDe: string;
   noiDung: string;
-  loai: 'chung' | 'hoaDon' | 'suCo' | 'hopDong' | 'khac';
+  loai: 'chung' | 'hoaDon' | 'suCo' | 'hopDong' | 'he_thong' | 'thanh_toan_saas' | 'khac';
   nguoiGui: string; // ObjectId ref NguoiDung
   nguoiNhan: string[]; // ObjectId[] ref KhachThue hoặc NguoiDung
   phong?: string[]; // ObjectId[] ref Phong
   toaNha?: string; // ObjectId ref ToaNha
   daDoc: string[]; // ObjectId[] danh sách người đã đọc
+  guiTatCa?: boolean;
+  vaiTroNhan?: 'chuNha' | 'khachThue' | 'all';
   ngayGui: Date;
   ngayTao: Date;
 }
