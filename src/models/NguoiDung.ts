@@ -22,6 +22,9 @@ export interface INguoiDung extends Document {
   updatedAt: Date;
   lastLogin?: Date;
   address?: string;
+  daXacMinhEmail?: boolean;
+  maXacNhanEmail?: string;
+  hanMaXacNhanEmail?: Date;
   nguoiQuanLy?: mongoose.Types.ObjectId;
   nguoiTao?: mongoose.Types.ObjectId;
   goiDichVu: 'mienPhi' | 'coBan' | 'chuyenNghiep';
@@ -129,6 +132,18 @@ const NguoiDungSchema = new Schema<INguoiDung>({
     type: String,
     required: false,
     maxlength: [500, 'Address cannot exceed 500 characters']
+  },
+  daXacMinhEmail: {
+    type: Boolean,
+    default: true // Default true to allow old users to log in
+  },
+  maXacNhanEmail: {
+    type: String,
+    default: null
+  },
+  hanMaXacNhanEmail: {
+    type: Date,
+    default: null
   },
   nguoiQuanLy: {
     type: Schema.Types.ObjectId,

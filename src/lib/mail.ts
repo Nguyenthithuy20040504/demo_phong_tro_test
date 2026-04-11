@@ -210,3 +210,59 @@ export const sendGeneralNotificationEmail = async ({
     return false;
   }
 };
+
+export const sendVerificationEmail = async ({
+  email,
+  khachThueName,
+  code,
+}: {
+  email: string;
+  khachThueName: string;
+  code: string;
+}) => {
+  if (!email || !process.env.SMTP_USER) {
+    console.warn('Bỏ qua gửi email: cấu hình SMTP hoặc email không tồn tại.');
+    return false;
+  }
+
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6; border: 1px solid #eaeaea; border-radius: 8px; overflow: hidden; background-color: #ffffff;">
+      <div style="background-color: #10b981; padding: 25px 20px; text-align: center;">
+        <h2 style="color: white; margin: 0; font-size: 20px; font-weight: bold; letter-spacing: 0.5px;">Xác Thực Tài Khoản</h2>
+        <p style="color: #d1fae5; margin: 5px 0 0 0; font-size: 13px;">Hệ Thống Quản Lý Phòng Trọ</p>
+      </div>
+      
+      <div style="padding: 30px 24px;">
+        <p style="margin-top: 0;">Xin chào <strong>${khachThueName}</strong>,</p>
+        <p style="color: #4b5563;">Để hoàn tất quá trình đăng ký tài khoản, vui lòng nhập mã xác nhận sau:</p>
+        
+        <div style="background-color: #f0fdf4; border: 2px dashed #34d399; padding: 20px; border-radius: 8px; margin: 25px 0; text-align: center;">
+          <h1 style="margin: 0; color: #047857; font-size: 32px; letter-spacing: 4px;">${code}</h1>
+        </div>
+
+        <p style="color: #ef4444; font-size: 13px;">Mã xác nhận này sẽ hết hạn sau 10 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai.</p>
+
+        <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+          <p style="margin-bottom: 4px;">Cảm ơn sự hợp tác của bạn!</p>
+          <p style="margin: 0;"><em>Đây là email tự động, vui lòng không phản hồi lại địa chỉ này.</em></p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  try {
+    const transport = getMailTransport();
+
+    const info = await transport.sendMail({
+      from: `"Quản Lý Phòng Trọ" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: `[Xác Thực] Mã OTP của bạn là ${code}`,
+      html: htmlContent,
+    });
+    console.log(`[Email Success] Đã gửi mã xác nhận tới ${email}. MessageId: ${info.messageId}`);
+    return true;
+  } catch (error: any) {
+    console.error(`[Email Error] Lỗi khi gửi mã xác nhận tới ${email}:`, error);
+    return false;
+  }
+};

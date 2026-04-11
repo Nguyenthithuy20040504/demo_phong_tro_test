@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import NguoiDung from '@/models/NguoiDung';
 import { z } from 'zod';
+import { sendVerificationEmail } from '@/lib/mail';
 
 const registerSchema = z.object({
   ten: z.string().min(2, 'Tên phải có ít nhất 2 ký tự'),
@@ -29,12 +30,24 @@ export async function POST(request: NextRequest) {
     });
     
     if (existingUser) {
+      if (!existingUser.daXacMinhEmail) {
+        // If exists but not verified, could resend code or ask to resend, but let's just say it's already used
+        return NextResponse.json(
+          { message: 'Email hoặc số điện thoại đã được đăng ký nhưng chưa xác minh. Vui lòng kiểm tra email hoặc đăng nhập.' },
+          { status: 400 }
+        );
+      }
       return NextResponse.json(
         { message: 'Email hoặc số điện thoại đã được sử dụng' },
         { status: 400 }
       );
     }
     
+    // Generate 6-digit OTP
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiryTime = new Date();
+    expiryTime.setMinutes(expiryTime.getMinutes() + 10); // 10 minutes from now
+
     // Create new user with both Vietnamese and English fields for compatibility
     const newUser = new NguoiDung({
       ten: validatedData.ten,
@@ -48,12 +61,26 @@ export async function POST(request: NextRequest) {
       role: validatedData.vaiTro,
       trangThai: 'hoatDong',
       isActive: true,
+      daXacMinhEmail: false,
+      maXacNhanEmail: otpCode,
+      hanMaXacNhanEmail: expiryTime,
     });
     
     await newUser.save();
     
+    // Send verification email
+    await sendVerificationEmail({
+      email: newUser.email,
+      khachThueName: newUser.ten,
+      code: otpCode,
+    });
+    
     return NextResponse.json(
-      { message: 'Đăng ký thành công' },
+      { 
+        message: 'Đăng ký thành công, vui lòng kiểm tra email',
+        requireVerification: true,
+        email: newUser.email 
+      },
       { status: 201 }
     );
     

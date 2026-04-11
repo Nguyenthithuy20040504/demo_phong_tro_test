@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
-import dns from 'dns';
+import dns from 'node:dns/promises';
 
 // Fix for "querySrv ECONNREFUSED" caused by blocked DNS on local networks
-dns.setServers(['8.8.8.8', '8.8.4.4']);
+dns.setServers(['1.1.1.1']);
 
 declare global {
   var mongoose: {

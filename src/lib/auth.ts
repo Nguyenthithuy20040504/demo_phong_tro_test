@@ -28,9 +28,12 @@ export const authOptions: NextAuthOptions = {
           const user = await NguoiDung.findOne({
             email,
             trangThai: "hoatDong",
-          }).select("+matKhau");
+          }).select("+matKhau +daXacMinhEmail");
 
           if (user) {
+            if (user.daXacMinhEmail === false) {
+              throw new Error("Vui lòng xác minh địa chỉ email trước khi đăng nhập. Hãy đăng ký lại nếu mã đã hết hạn.");
+            }
             const ok = await user.comparePassword(matKhau);
             if (!ok) return null;
 
