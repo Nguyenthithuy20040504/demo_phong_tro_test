@@ -220,6 +220,23 @@ const createColumns = (props: HoaDonTableProps & { setHoaDonToDelete: (h: HoaDon
     enableHiding: false,
   },
   {
+    accessorKey: "ngayTao",
+    header: "Ngày tạo hóa đơn",
+    cell: ({ row }) => {
+      const date = new Date(row.original.ngayTao);
+      return (
+        <div className="text-sm font-medium">
+          <div className="text-gray-900">
+            {date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+          </div>
+          <div className="text-xs text-gray-500">
+            {date.toLocaleDateString('vi-VN')}
+          </div>
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: "phong",
     header: "Phòng",
     cell: ({ row }) => (
@@ -524,6 +541,7 @@ export function HoaDonDataTable(props: HoaDonDataTableProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="active" className="text-teal-600 font-medium">Đang hoạt động</SelectItem>
               <SelectItem value="chuaThanhToan">Chưa thanh toán</SelectItem>
               <SelectItem value="daThanhToanMotPhan">Một phần</SelectItem>
               <SelectItem value="daThanhToan">Đã thanh toán</SelectItem>

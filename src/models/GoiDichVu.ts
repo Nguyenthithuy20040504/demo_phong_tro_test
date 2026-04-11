@@ -9,6 +9,7 @@ export interface IGoiDichVu extends Document {
   features: string[];
   isPopular: boolean;
   isActive: boolean;
+  trangThai: 'hoatDong' | 'daHuy';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -49,6 +50,11 @@ const GoiDichVuSchema = new Schema<IGoiDichVu>({
   isActive: {
     type: Boolean,
     default: true
+  },
+  trangThai: {
+    type: String,
+    enum: ['hoatDong', 'daHuy'],
+    default: 'hoatDong'
   }
 }, {
   timestamps: true

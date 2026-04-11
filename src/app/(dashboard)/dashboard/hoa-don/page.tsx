@@ -204,10 +204,14 @@ export default function HoaDonPage() {
     }
   };
 
-  // Đồng bộ từ URL param (khi click từ thông báo)
+  // Đồng bộ từ URL param (khi click từ thông báo hoặc dashboard)
   useEffect(() => {
     const bId = searchParams.get('toaNhaId');
     const s = searchParams.get('search');
+    const filterParam = searchParams.get('filter');
+    const statusParam = searchParams.get('status');
+    const monthParam = searchParams.get('month');
+    const yearParam = searchParams.get('year');
     
     if (bId) {
       localStorage.setItem('selected_building_id', bId);
@@ -217,6 +221,20 @@ export default function HoaDonPage() {
     
     if (s) {
       setSearchTerm(s);
+    }
+
+    if (filterParam === 'active') {
+      setStatusFilter('active');
+    } else if (statusParam) {
+      setStatusFilter(statusParam);
+    }
+
+    if (monthParam) {
+      setMonthFilter(monthParam);
+    }
+
+    if (yearParam) {
+      setYearFilter(yearParam);
     }
   }, [searchParams]);
 
@@ -251,7 +269,12 @@ export default function HoaDonPage() {
                          maPhong.toLowerCase().includes(searchLower) ||
                          tenKhach.toLowerCase().includes(searchLower) ||
                          (hoaDon.ghiChu || "").toLowerCase().includes(searchLower);
-    const matchesStatus = statusFilter === 'all' || hoaDon.trangThai === statusFilter;
+    
+    const matchesStatus = statusFilter === 'all' || 
+                         (statusFilter === 'active' 
+                           ? ['chuaThanhToan', 'daThanhToanMotPhan', 'choDuyet'].includes(hoaDon.trangThai)
+                           : hoaDon.trangThai === statusFilter);
+                           
     const matchesMonth = monthFilter === 'all' || hoaDon.thang.toString() === monthFilter;
     const matchesYear = yearFilter === 'all' || hoaDon.nam.toString() === yearFilter;
     

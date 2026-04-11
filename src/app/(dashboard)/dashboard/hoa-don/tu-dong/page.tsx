@@ -313,7 +313,10 @@ export default function HoaDonTuDongPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
         {/* Hợp đồng hoạt động */}
-        <Card className="relative overflow-hidden">
+        <Card 
+          className="relative overflow-hidden cursor-pointer hover:shadow-md transition-all"
+          onClick={() => router.push('/dashboard/hoa-don?filter=active')}
+        >
           <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-blue-100/30"></div>
           <CardContent className="relative p-4 md:p-5">
             <div className="flex items-start justify-between">
@@ -334,7 +337,10 @@ export default function HoaDonTuDongPage() {
         </Card>
 
         {/* Đã tạo tháng này */}
-        <Card className="relative overflow-hidden">
+        <Card 
+          className="relative overflow-hidden cursor-pointer hover:shadow-md transition-all"
+          onClick={() => router.push(`/dashboard/hoa-don?month=${status?.currentMonth}&year=${status?.currentYear}`)}
+        >
           <div className="absolute inset-0 bg-gradient-to-br from-green-50 to-green-100/30"></div>
           <CardContent className="relative p-4 md:p-5">
             <div className="flex items-start justify-between">
@@ -355,7 +361,10 @@ export default function HoaDonTuDongPage() {
         </Card>
 
         {/* Chưa có chỉ số */}
-        <Card className="relative overflow-hidden">
+        <Card 
+          className="relative overflow-hidden cursor-pointer hover:shadow-md transition-all"
+          onClick={() => router.push('/dashboard/hoa-don')}
+        >
           <div className={`absolute inset-0 bg-gradient-to-br ${(status?.contractsWithoutReadingsCount ?? 0) > 0
               ? 'from-amber-50 to-amber-100/30'
               : 'from-gray-50 to-gray-100/30'

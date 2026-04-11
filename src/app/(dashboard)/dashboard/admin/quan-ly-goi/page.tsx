@@ -19,8 +19,17 @@ import {
   Settings2,
   Package,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Search,
+  X
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Table, 
   TableBody, 
@@ -53,8 +62,11 @@ export default function ManagePlansPage() {
     maxPhong: -1,
     features: [],
     isPopular: false,
-    isActive: true
+    isActive: true,
+    trangThai: 'hoatDong'
   });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [priceFilter, setPriceFilter] = useState<string>('all');
 
   useEffect(() => {
     fetchPlans();
@@ -101,8 +113,40 @@ export default function ManagePlansPage() {
     }
   };
 
+  const handleCancelPlan = async (plan: any) => {
+    if (!confirm(`Bạn có chắc muốn hủy gói "${plan.ten}" không?`)) return;
+    
+    try {
+      // Tách _id ra khỏi dữ liệu cập nhật
+      const { _id, ...updateData } = plan;
+      
+      const res = await fetch(`/api/admin/saas/plans/${_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          ...updateData, 
+          trangThai: 'daHuy',
+          isActive: false // Đồng bộ isActive
+        })
+      });
+
+      if (res.ok) {
+        toast.success('Đã hủy gói dịch vụ thành công!');
+        fetchPlans();
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.message || 'Có lỗi xảy ra khi hủy gói.');
+      }
+    } catch (error) {
+      toast.error('Lỗi kết nối.');
+    }
+  };
+
   const openEditDialog = (plan: any) => {
-    setCurrentPlan(plan);
+    setCurrentPlan({
+      ...plan,
+      trangThai: plan.trangThai || (plan.isActive ? 'hoatDong' : 'daHuy')
+    });
     setIsDialogOpen(true);
   };
 
@@ -115,7 +159,8 @@ export default function ManagePlansPage() {
       maxPhong: -1,
       features: [],
       isPopular: false,
-      isActive: true
+      isActive: true,
+      trangThai: 'hoatDong'
     });
     setIsDialogOpen(true);
   };
@@ -138,7 +183,43 @@ export default function ManagePlansPage() {
                <Package className="h-5 w-5 text-blue-500" />
                <CardTitle>Danh sách gói cước</CardTitle>
            </div>
-           <CardDescription>Cấu hình bảng giá hiển thị ngoài trang chủ.</CardDescription>
+            <CardDescription>Cấu hình bảng giá hiển thị ngoài trang chủ.</CardDescription>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <div className="relative w-full md:w-64">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Tìm theo tên gói..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <div className="w-full md:w-48">
+                <Select value={priceFilter} onValueChange={setPriceFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Khoảng giá" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả giá</SelectItem>
+                    <SelectItem value="1000000">Giá từ 1tr</SelectItem>
+                    <SelectItem value="4000000">Giá từ 4tr</SelectItem>
+                    <SelectItem value="10000000">Giá từ 10tr</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {(searchTerm !== '' || priceFilter !== 'all') && (
+                <Button 
+                  variant="ghost" 
+                  onClick={() => {
+                    setSearchTerm('');
+                    setPriceFilter('all');
+                  }}
+                  className="w-fit text-xs text-muted-foreground hover:text-red-500"
+                >
+                  <X className="mr-1 h-3 w-3" /> Xóa bộ lọc
+                </Button>
+              )}
+            </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -164,7 +245,13 @@ export default function ManagePlansPage() {
                 </TableRow>
               ) : (
                 <>
-                  {Array.isArray(plans) && plans.map((plan) => (
+                  {Array.isArray(plans) && plans
+                    .filter(plan => {
+                      const matchesName = plan.ten.toLowerCase().includes(searchTerm.toLowerCase());
+                      const matchesPrice = priceFilter === 'all' || plan.gia >= Number(priceFilter);
+                      return matchesName && matchesPrice;
+                    })
+                    .map((plan) => (
                     <TableRow key={plan._id}>
                       <TableCell>
                         <div className="flex flex-col">
@@ -180,13 +267,13 @@ export default function ManagePlansPage() {
                         {plan.maxPhong === -1 ? 'Không giới hạn' : `${plan.maxPhong} phòng`}
                       </TableCell>
                       <TableCell>
-                        {plan.isActive ? (
-                            <div className="flex items-center text-emerald-600 gap-1 text-sm font-medium">
-                                 <CheckCircle2 className="h-4 w-4" /> Hiển thị
+                        {(plan.trangThai === 'daHuy' || (!plan.trangThai && !plan.isActive)) ? (
+                            <div className="flex items-center text-red-500 gap-1 text-sm font-medium">
+                                 <XCircle className="h-4 w-4" /> Đã hủy
                             </div>
                         ) : (
-                            <div className="flex items-center text-red-500 gap-1 text-sm font-medium">
-                                 <XCircle className="h-4 w-4" /> Ẩn
+                            <div className="flex items-center text-emerald-600 gap-1 text-sm font-medium">
+                                 <CheckCircle2 className="h-4 w-4" /> Hiển thị
                             </div>
                         )}
                       </TableCell>
@@ -194,7 +281,13 @@ export default function ManagePlansPage() {
                         <Button variant="ghost" size="icon" onClick={() => openEditDialog(plan)}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-red-500">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleCancelPlan(plan)}
+                          disabled={plan.trangThai === 'daHuy'}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -316,6 +409,26 @@ export default function ManagePlansPage() {
                    checked={currentPlan.isPopular}
                    onCheckedChange={(val) => setCurrentPlan({...currentPlan, isPopular: val})}
                 />
+            </div>
+            
+            <div className="grid gap-2 mt-2">
+              <Label htmlFor="trangThai">Trạng thái gói</Label>
+               <Select 
+                 value={currentPlan.trangThai || 'hoatDong'} 
+                 onValueChange={(val) => setCurrentPlan({
+                   ...currentPlan, 
+                   trangThai: val,
+                   isActive: val === 'hoatDong'
+                 })}
+               >
+                 <SelectTrigger id="trangThai">
+                   <SelectValue placeholder="Chọn trạng thái" />
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="hoatDong">Hiển thị</SelectItem>
+                   <SelectItem value="daHuy">Đã hủy</SelectItem>
+                 </SelectContent>
+               </Select>
             </div>
           </div>
           <DialogFooter>
