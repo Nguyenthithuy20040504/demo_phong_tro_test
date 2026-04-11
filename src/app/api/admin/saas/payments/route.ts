@@ -171,6 +171,7 @@ export async function PATCH(request: NextRequest) {
         });
 
         payment.ngayHetHanMoi = newExpiry;
+        payment.soTienDaChuyen = payment.soTien;
       } else {
         console.error(`[SYNC] Không tìm thấy plan hoặc user! goiDichVu=${payment.goiDichVu}, chuNha=${payment.chuNha}`);
       }

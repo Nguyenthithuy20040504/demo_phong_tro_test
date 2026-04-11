@@ -31,11 +31,23 @@ export async function POST(request: NextRequest) {
       // Tìm kiếm hóa đơn khớp với OrderCode (có thể đang chờ duyệt hoặc đã thanh toán nhưng chưa gia hạn)
       const payment = await SaasPayment.findOne({ 
         maDonHang: Number(orderCode), 
-        $or: [{ trangThai: 'choDuyet' }, { trangThai: 'daThanhToan', ngayHetHanMoi: null }] 
+        $or: [{ trangThai: 'choDuyet' }, { trangThai: 'chuaThanhToanHet' }, { trangThai: 'daThanhToan', ngayHetHanMoi: null }] 
       });
       
       if (payment) {
-        // Xử lý tự động gia hạn tương tự như kịch bản trước đây
+        // Cộng dồn tiền khách vừa chuyển
+        const amountPaid = webhookData.amount || 0;
+        payment.soTienDaChuyen = (payment.soTienDaChuyen || 0) + amountPaid;
+
+        if (payment.soTienDaChuyen < payment.soTien) {
+          // Khách chưa chuyển đủ tiền -> Chỉ cập nhật trạng thái
+          payment.trangThai = 'chuaThanhToanHet';
+          await payment.save();
+          console.log(`[PAYOS SAAS] Chủ trọ thanh toán 1 phần (${payment.soTienDaChuyen}/${payment.soTien}) cho Order ${orderCode}`);
+          return NextResponse.json({ success: true, message: 'Partial payment received' });
+        }
+
+        // Đã gửi đủ tiền -> Xử lý tự động gia hạn tương tự như kịch bản trước đây
         const plan = await GoiDichVu.findById(payment.goiDichVu);
         const user = await NguoiDung.findById(payment.chuNha);
         
@@ -44,7 +56,7 @@ export async function POST(request: NextRequest) {
           if (plan.ten.toLowerCase().includes('cơ bản') || plan.ten.toLowerCase().includes('basic')) {
              userPlanRole = 'coBan';
           }
-          if (plan.ten.toLowerCase().includes('chuyên nghiệp') || plan.ten.toLowerCase().includes('professional')) {
+          if (plan.ten.toLowerCase().includes('chuyên nghiệp') || plan.ten.toLowerCase().includes('professional') || plan.ten.toLowerCase().includes('vip') || plan.ten.toLowerCase().includes('pro')) {
              userPlanRole = 'chuyenNghiep';
           }
 

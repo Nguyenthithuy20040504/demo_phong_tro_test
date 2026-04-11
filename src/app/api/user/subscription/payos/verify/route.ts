@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
       if (plan && user) {
         let userPlanRole: 'mienPhi' | 'coBan' | 'chuyenNghiep' = 'mienPhi';
         if (plan.ten.toLowerCase().includes('cơ bản') || plan.ten.toLowerCase().includes('basic')) userPlanRole = 'coBan';
-        if (plan.ten.toLowerCase().includes('chuyên nghiệp') || plan.ten.toLowerCase().includes('professional')) userPlanRole = 'chuyenNghiep';
+        if (plan.ten.toLowerCase().includes('chuyên nghiệp') || plan.ten.toLowerCase().includes('professional') || plan.ten.toLowerCase().includes('vip') || plan.ten.toLowerCase().includes('pro')) userPlanRole = 'chuyenNghiep';
 
         const currentExpiry = user.ngayHetHan ? new Date(user.ngayHetHan) : new Date();
         const startDate = currentExpiry > new Date() ? currentExpiry : new Date();
@@ -74,6 +74,11 @@ export async function GET(request: NextRequest) {
         console.log(`[PAYOS API POLLING] Vừa tự động gia hạn an toàn do gọi bù cho Webhook ở Local!`);
       }
       return NextResponse.json({ status: 'PAID' });
+    } else if (paymentInfo.status === 'CANCELLED') {
+      payment.trangThai = 'daHuy';
+      await payment.save();
+      console.log(`[PAYOS API POLLING] Hóa đơn ${orderCode} đã bị khách hàng hủy thanh toán.`);
+      return NextResponse.json({ status: 'CANCELLED' });
     }
 
     return NextResponse.json({ status: paymentInfo.status });

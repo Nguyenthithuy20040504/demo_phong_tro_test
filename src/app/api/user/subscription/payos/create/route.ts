@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       goiDichVu: planId,
       maDonHang: orderCode,
       soTien: plan.gia,
-      trangThai: 'daThanhToan',
+      trangThai: 'choDuyet',
       phuongThuc: 'chuyenKhoan',
       ngayThanhToan: new Date(),
       ngayHetHanMoi: null

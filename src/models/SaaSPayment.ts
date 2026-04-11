@@ -5,8 +5,9 @@ export interface ISaaSPayment extends Document {
   goiDichVu: mongoose.Types.ObjectId;
   maDonHang?: number;
   soTien: number;
+  soTienDaChuyen: number;
   ngayThanhToan: Date;
-  trangThai: 'choDuyet' | 'daThanhToan' | 'daHuy';
+  trangThai: 'choDuyet' | 'chuaThanhToanHet' | 'daThanhToan' | 'daHuy';
   phuongThuc: 'tienMat' | 'chuyenKhoan' | 'viDienTu';
   anhBienLai?: string;
   ghiChu?: string;
@@ -35,6 +36,11 @@ const SaaSPaymentSchema = new Schema<ISaaSPayment>({
     required: [true, 'Số tiền là bắt buộc'],
     min: [0, 'Số tiền phải lớn hơn 0']
   },
+  soTienDaChuyen: {
+    type: Number,
+    default: 0,
+    min: [0, 'Số tiền đã chuyển không được âm']
+  },
   ngayThanhToan: {
     type: Date,
     required: [true, 'Ngày thanh toán là bắt buộc'],
@@ -42,7 +48,7 @@ const SaaSPaymentSchema = new Schema<ISaaSPayment>({
   },
   trangThai: {
     type: String,
-    enum: ['choDuyet', 'daThanhToan', 'daHuy'],
+    enum: ['choDuyet', 'chuaThanhToanHet', 'daThanhToan', 'daHuy'],
     default: 'daThanhToan'
   },
   phuongThuc: {

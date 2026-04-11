@@ -17,8 +17,18 @@ import {
   Users,
   Calendar,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  History,
+  ArrowUpRight
 } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { toast } from 'sonner';
 
 interface Plan {
@@ -40,11 +50,13 @@ export default function SubscriptionPage() {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [currentSubs, setCurrentSubs] = useState<{ goiDichVu: string, ngayHetHan: string | null } | null>(null);
+  const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
 
   useEffect(() => {
     document.title = 'Gia hạn gói dịch vụ';
     fetchPlans();
     fetchCurrentStatus();
+    fetchPaymentHistory();
 
     const urlParams = new URLSearchParams(window.location.search);
     const isSuccess = urlParams.get('success');
@@ -85,6 +97,18 @@ export default function SubscriptionPage() {
       }
     } catch (error) {
       console.error('Failed to fetch actual user status');
+    }
+  };
+
+  const fetchPaymentHistory = async () => {
+    try {
+      const res = await fetch('/api/user/subscription/payments', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        setPaymentHistory(data.payments || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch payment history');
     }
   };
 
@@ -181,12 +205,17 @@ export default function SubscriptionPage() {
                 <span className="flex items-center gap-2 font-medium">
                   <RefreshCw className="h-4 w-4 animate-spin" /> Đang đồng bộ ngày tháng...
                 </span>
-              ) : isExpired ? (
+               ) : isExpired ? (
                 <span className="flex items-center gap-2 text-red-200 font-bold">
                   <AlertCircle size={18} /> Gói của bạn đã hết hạn
                 </span>
               ) : (
-                <>Ngày hết hạn: {userExpiry ? userExpiry.toLocaleDateString('vi-VN') : 'Lỗi đồng bộ (Vui lòng đăng nhập lại)'}</>
+                <div className="flex flex-col gap-1.5">
+                  <span>Ngày hết hạn: {userExpiry ? userExpiry.toLocaleDateString('vi-VN') : 'Lỗi đồng bộ (Vui lòng đăng nhập lại)'}</span>
+                  <span className="text-sm font-normal text-teal-100 flex items-start gap-1.5 mt-1 border-t border-teal-500/50 pt-2 w-fit">
+                     Lưu ý: Bạn chỉ có thể cộng dồn ngày gia hạn cho gói hiện tại. Các tính năng nâng/hạ cấp <br className="hidden sm:block"/> sang gói khác sẽ được mở khóa tự động sau khi gói hiện tại hết hạn.
+                  </span>
+                </div>
               )}
            </CardDescription>
         </CardHeader>
@@ -277,29 +306,59 @@ export default function SubscriptionPage() {
             </CardContent>
             
             <CardFooter>
-              {plan.ten.toLowerCase().includes('miễn phí') || plan.ten.toLowerCase().includes('free') ? (
+              {(() => {
+                const getPlanRole = (ten: string) => {
+                  const t = ten.toLowerCase();
+                  if (t.includes('chuyên nghiệp') || t.includes('professional') || t.includes('vip')) return 'chuyenNghiep';
+                  if (t.includes('cơ bản') || t.includes('basic')) return 'coBan';
+                  return 'mienPhi';
+                };
+                
+                const planRole = getPlanRole(plan.ten);
+                const isFreePlan = planRole === 'mienPhi';
+                const isLocked = !isExpired && userGoiDichVu !== 'mienPhi' && userGoiDichVu !== planRole;
+
+                if (isFreePlan) {
+                  return (
+                    <Button 
+                      disabled 
+                      className="w-full group h-12 text-[11px] sm:text-sm font-bold uppercase tracking-wider bg-gray-200 text-gray-500 cursor-not-allowed"
+                    >
+                      Đã sử dụng
+                    </Button>
+                  );
+                }
+
+                if (isLocked) {
+                  return (
+                    <Button 
+                      disabled 
+                      variant="outline"
+                      className="w-full group h-12 text-[11px] sm:text-sm font-bold uppercase tracking-wider bg-slate-50 text-slate-500 border-slate-200 cursor-not-allowed"
+                    >
+                      Đang dùng gói khác
+                    </Button>
+                  );
+                }
+
+                // If not locked and not free plan -> allow extend/purchase
+                return (
                   <Button 
-                    disabled 
-                    className="w-full group h-12 text-[11px] sm:text-sm font-bold uppercase tracking-wider bg-gray-200 text-gray-500 cursor-not-allowed cursor-not-allowed"
+                    className={`w-full group h-12 text-sm font-bold uppercase tracking-wider transition-all duration-300 bg-teal-600 hover:bg-teal-700 shadow-lg shadow-teal-100 text-white`}
+                    onClick={() => handleExtend(plan)}
+                    disabled={extending === plan._id}
                   >
-                     Đã sử dụng
-                  </Button>
-              ) : (
-                <Button 
-                  className={`w-full group h-12 text-sm font-bold uppercase tracking-wider transition-all duration-300 bg-teal-600 hover:bg-teal-700 shadow-lg shadow-teal-100 text-white`}
-                  onClick={() => handleExtend(plan)}
-                  disabled={extending === plan._id}
-                >
-                  {extending === plan._id ? (
-                     <RefreshCw className="h-5 w-5 animate-spin" />
-                  ) : (
-                     <>
+                    {extending === plan._id ? (
+                      <RefreshCw className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <>
                         <CreditCard className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
                         Gia hạn ngay
-                     </>
-                  )}
-                </Button>
-              )}
+                      </>
+                    )}
+                  </Button>
+                );
+              })()}
             </CardFooter>
           </Card>
         ))}
@@ -317,7 +376,74 @@ export default function SubscriptionPage() {
         </div>
       </div>
 
-
+      {/* Payment History Section */}
+      <div className="mt-12 space-y-4">
+        <div className="flex items-center gap-2">
+          <History className="h-6 w-6 text-teal-600" />
+          <h2 className="text-2xl font-bold">Lịch sử giao dịch của bạn</h2>
+        </div>
+        <Card className="border shadow-sm overflow-hidden">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader className="bg-slate-50">
+                <TableRow>
+                  <TableHead className="w-[150px]">Mã đơn</TableHead>
+                  <TableHead>Ngày GD</TableHead>
+                  <TableHead>Gói cước</TableHead>
+                  <TableHead>Số tiền nộp</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paymentHistory.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      Chưa có lịch sử giao dịch nào.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paymentHistory.map((payment) => (
+                    <TableRow key={payment._id}>
+                      <TableCell className="font-mono text-xs font-medium text-slate-500">
+                        {payment.maDonHang || '...'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-0.5 text-sm">
+                          <span className="font-medium text-slate-700">{new Date(payment.createdAt).toLocaleDateString('vi-VN')}</span>
+                          <span className="text-xs text-muted-foreground">{new Date(payment.createdAt).toLocaleTimeString('vi-VN')}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="bg-slate-100">{payment.goiDichVu?.ten || 'Không rõ'}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {(payment.trangThai === 'daThanhToan' ? (payment.soTienDaChuyen || payment.soTien) : (payment.soTienDaChuyen || 0)) === payment.soTien ? (
+                          <span className="font-bold text-emerald-600">{(payment.trangThai === 'daThanhToan' ? (payment.soTienDaChuyen || payment.soTien) : payment.soTienDaChuyen)?.toLocaleString('vi-VN')} đ</span>
+                        ) : payment.trangThai === 'chuaThanhToanHet' ? (
+                          <div className="flex flex-col">
+                            <span className="text-orange-600 font-bold">{payment.soTienDaChuyen?.toLocaleString('vi-VN')} đ</span>
+                            <span className="text-xs text-muted-foreground">/ {payment.soTien?.toLocaleString('vi-VN')} đ (tổng)</span>
+                          </div>
+                        ) : (
+                          <span className="font-bold text-slate-500">{(payment.soTienDaChuyen || 0)?.toLocaleString('vi-VN')} đ</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                         <Badge 
+                           variant={payment.trangThai === 'daThanhToan' ? 'default' : payment.trangThai === 'chuaThanhToanHet' ? 'outline' : 'secondary'}
+                           className={payment.trangThai === 'daThanhToan' ? 'bg-emerald-500' : payment.trangThai === 'chuaThanhToanHet' ? 'text-orange-600 border-orange-200 bg-orange-50' : payment.trangThai === 'daHuy' ? 'bg-red-500 text-white' : ''}
+                         >
+                           {payment.trangThai === 'daThanhToan' ? 'Thành công' : payment.trangThai === 'chuaThanhToanHet' ? 'Chưa thanh toán đủ' : payment.trangThai === 'daHuy' ? 'Đã hủy' : 'Đang chờ duyệt'}
+                         </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
 
     </div>
   );

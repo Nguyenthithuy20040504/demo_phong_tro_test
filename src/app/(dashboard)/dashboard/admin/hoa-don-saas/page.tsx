@@ -59,12 +59,19 @@ export default function SaaSInvoicesPage() {
   }, [searchTerm]);
 
   useEffect(() => {
-    fetchPayments();
+    fetchPayments(true);
+    
+    // Auto-refresh (Polling) every 10 seconds for real-time updates
+    const interval = setInterval(() => {
+      fetchPayments(false); // background refresh without loading indicator
+    }, 10000);
+    
+    return () => clearInterval(interval);
   }, [currentPage, debouncedSearch]);
 
-  const fetchPayments = async () => {
+  const fetchPayments = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const res = await fetch(`/api/admin/saas/payments?page=${currentPage}&limit=${limit}&q=${debouncedSearch}`);
       if (!res.ok) throw new Error('Fetch failed');
       const data = await res.json();
@@ -80,7 +87,7 @@ export default function SaaSInvoicesPage() {
       toast.error('Lỗi khi tải lịch sử hóa đơn.');
       setPayments([]);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -187,9 +194,10 @@ export default function SaaSInvoicesPage() {
         'Email': p.chuNha?.email || 'N/A',
         'Gói cước': p.goiDichVu?.ten || 'N/A',
         'Ngày thanh toán': new Date(p.ngayThanhToan).toLocaleDateString('vi-VN'),
-        'Số tiền': p.soTien,
+        'Số tiền (Gói)': p.soTien,
+        'Thực nhận': p.trangThai === 'daThanhToan' ? (p.soTienDaChuyen || p.soTien) : (p.soTienDaChuyen || 0),
         'Phương thức': p.phuongThuc === 'chuyenKhoan' ? 'Chuyển khoản' : p.phuongThuc === 'tienMat' ? 'Tiền mặt' : 'Ví điện tử',
-        'Trạng thái': p.trangThai === 'daThanhToan' ? 'Thành công' : 'Chờ duyệt',
+        'Trạng thái': p.trangThai === 'daThanhToan' ? 'Thành công' : p.trangThai === 'chuaThanhToanHet' ? 'Chưa chuyển hết' : p.trangThai === 'daHuy' ? 'Đã hủy' : 'Chờ duyệt',
         'Hết hạn mới': p.ngayHetHanMoi ? new Date(p.ngayHetHanMoi).toLocaleDateString('vi-VN') : 'Đang xử lý...'
       }));
 
@@ -202,6 +210,7 @@ export default function SaaSInvoicesPage() {
         { wch: 15 }, // Gói cước
         { wch: 15 }, // Ngày thanh toán
         { wch: 15 }, // Số tiền
+        { wch: 15 }, // Thực nhận
         { wch: 15 }, // Phương thức
         { wch: 15 }, // Trạng thái
         { wch: 15 }  // Hết hạn mới
@@ -279,7 +288,8 @@ export default function SaaSInvoicesPage() {
                 <th>Chủ nhà</th>
                 <th>Gói cước</th>
                 <th>Ngày thanh toán</th>
-                <th>Số tiền</th>
+                <th>Giá gói</th>
+                <th>Thực nhận</th>
                 <th>Trạng thái</th>
               </tr>
             </thead>
@@ -293,7 +303,8 @@ export default function SaaSInvoicesPage() {
                   <td>${p.goiDichVu?.ten || 'N/A'}</td>
                   <td>${new Date(p.ngayThanhToan).toLocaleDateString('vi-VN')}</td>
                   <td class="amount">${p.soTien.toLocaleString('vi-VN')} đ</td>
-                  <td>${p.trangThai === 'daThanhToan' ? 'Thành công' : 'Chờ duyệt'}</td>
+                  <td class="amount" style="color: #ea580c;">${(p.trangThai === 'daThanhToan' ? (p.soTienDaChuyen || p.soTien) : (p.soTienDaChuyen || 0)).toLocaleString('vi-VN')} đ</td>
+                  <td>${p.trangThai === 'daThanhToan' ? 'Thành công' : p.trangThai === 'chuaThanhToanHet' ? 'Chưa chuyển hết' : p.trangThai === 'daHuy' ? 'Đã hủy' : 'Chờ duyệt'}</td>
                   <td>${p.ngayHetHanMoi ? new Date(p.ngayHetHanMoi).toLocaleDateString('vi-VN') : 'Đang xử lý...'}</td>
                 </tr>
               `).join('')}
@@ -390,7 +401,8 @@ export default function SaaSInvoicesPage() {
                 <TableHead>Chủ nhà</TableHead>
                 <TableHead>Gói cước</TableHead>
                 <TableHead>Ngày thanh toán</TableHead>
-                <TableHead>Số tiền</TableHead>
+                <TableHead>Giá gói</TableHead>
+                <TableHead>Đã chuyển</TableHead>
                 <TableHead>Phương thức</TableHead>
                 <TableHead>Trạng thái</TableHead>
                 <TableHead>Ngày hết hạn</TableHead>
@@ -400,7 +412,7 @@ export default function SaaSInvoicesPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10">
+                  <TableCell colSpan={9} className="text-center py-10">
                     <div className="flex justify-center items-center gap-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                       Đang tải dữ liệu...
@@ -423,8 +435,13 @@ export default function SaaSInvoicesPage() {
                       <TableCell>
                         {new Date(payment.ngayThanhToan).toLocaleDateString('vi-VN')}
                       </TableCell>
-                      <TableCell className="font-bold text-emerald-600">
+                      <TableCell className="font-bold text-slate-700">
                         {payment.soTien?.toLocaleString('vi-VN')} đ
+                      </TableCell>
+                      <TableCell className="font-bold">
+                        <span className={(payment.trangThai === 'daThanhToan' ? (payment.soTienDaChuyen || payment.soTien) : (payment.soTienDaChuyen || 0)) >= payment.soTien ? 'text-emerald-600' : payment.soTienDaChuyen > 0 ? 'text-orange-600' : 'text-slate-400'}>
+                          {(payment.trangThai === 'daThanhToan' ? (payment.soTienDaChuyen || payment.soTien) : (payment.soTienDaChuyen || 0)).toLocaleString('vi-VN')} đ
+                        </span>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -434,10 +451,10 @@ export default function SaaSInvoicesPage() {
                       </TableCell>
                       <TableCell>
                         <Badge 
-                          variant={payment.trangThai === 'daThanhToan' ? 'default' : 'secondary'}
-                          className={payment.trangThai === 'daThanhToan' ? 'bg-emerald-500 hover:bg-emerald-600' : ''}
+                          variant={payment.trangThai === 'daThanhToan' ? 'default' : payment.trangThai === 'chuaThanhToanHet' ? 'outline' : 'secondary'}
+                          className={payment.trangThai === 'daThanhToan' ? 'bg-emerald-500 hover:bg-emerald-600' : payment.trangThai === 'chuaThanhToanHet' ? 'text-orange-600 border-orange-200 bg-orange-50' : ''}
                         >
-                          {payment.trangThai === 'daThanhToan' ? 'Thành công' : 'Chờ duyệt'}
+                          {payment.trangThai === 'daThanhToan' ? 'Thành công' : payment.trangThai === 'chuaThanhToanHet' ? 'Chưa chuyển hết' : payment.trangThai === 'daHuy' ? 'Đã hủy' : 'Chờ duyệt'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -501,7 +518,7 @@ export default function SaaSInvoicesPage() {
                   ))}
                   {payments.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                      <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
                         Không có lịch sử giao dịch nào được tìm thấy.
                       </TableCell>
                     </TableRow>
@@ -588,8 +605,18 @@ export default function SaaSInvoicesPage() {
                   <p className="text-sm font-medium">{new Date(detailPayment.ngayThanhToan).toLocaleString('vi-VN')}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground font-medium">Số tiền</p>
-                  <p className="text-sm font-bold text-emerald-600">{detailPayment.soTien?.toLocaleString('vi-VN')} đ</p>
+                  <p className="text-xs text-muted-foreground font-medium">Giá gói</p>
+                  <p className="text-sm font-bold text-slate-700">
+                    {detailPayment.soTien?.toLocaleString('vi-VN')} đ
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium">Đã chuyển (Thực nhận)</p>
+                  <p className="text-sm font-bold">
+                    <span className={(detailPayment.trangThai === 'daThanhToan' ? (detailPayment.soTienDaChuyen || detailPayment.soTien) : (detailPayment.soTienDaChuyen || 0)) >= detailPayment.soTien ? 'text-emerald-600' : detailPayment.soTienDaChuyen > 0 ? 'text-orange-600' : 'text-slate-400'}>
+                        {(detailPayment.trangThai === 'daThanhToan' ? (detailPayment.soTienDaChuyen || detailPayment.soTien) : (detailPayment.soTienDaChuyen || 0)).toLocaleString('vi-VN')} đ
+                    </span>
+                  </p>
                 </div>
               </div>
 
@@ -603,10 +630,10 @@ export default function SaaSInvoicesPage() {
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground font-medium">Trạng thái</p>
                   <Badge
-                    variant={detailPayment.trangThai === 'daThanhToan' ? 'default' : 'secondary'}
-                    className={detailPayment.trangThai === 'daThanhToan' ? 'bg-emerald-500' : detailPayment.trangThai === 'daHuy' ? 'bg-red-500 text-white' : ''}
+                    variant={detailPayment.trangThai === 'daThanhToan' ? 'default' : detailPayment.trangThai === 'chuaThanhToanHet' ? 'outline' : 'secondary'}
+                    className={detailPayment.trangThai === 'daThanhToan' ? 'bg-emerald-500' : detailPayment.trangThai === 'chuaThanhToanHet' ? 'text-orange-600 border-orange-200 bg-orange-50' : detailPayment.trangThai === 'daHuy' ? 'bg-red-500 text-white' : ''}
                   >
-                    {detailPayment.trangThai === 'daThanhToan' ? 'Thành công' : detailPayment.trangThai === 'daHuy' ? 'Đã hủy' : 'Chờ duyệt'}
+                    {detailPayment.trangThai === 'daThanhToan' ? 'Thành công' : detailPayment.trangThai === 'chuaThanhToanHet' ? 'Chưa chuyển hết' : detailPayment.trangThai === 'daHuy' ? 'Đã hủy' : 'Chờ duyệt'}
                   </Badge>
                 </div>
               </div>

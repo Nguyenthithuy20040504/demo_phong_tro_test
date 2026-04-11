@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     let userPlanRole: 'mienPhi' | 'coBan' | 'chuyenNghiep' = 'mienPhi';
     if (plan.ten.toLowerCase().includes('cơ bản') || plan.ten.toLowerCase().includes('basic')) {
       userPlanRole = 'coBan';
-    } else if (plan.ten.toLowerCase().includes('chuyên nghiệp') || plan.ten.toLowerCase().includes('professional')) {
+    } else if (plan.ten.toLowerCase().includes('chuyên nghiệp') || plan.ten.toLowerCase().includes('professional') || plan.ten.toLowerCase().includes('vip') || plan.ten.toLowerCase().includes('pro')) {
       userPlanRole = 'chuyenNghiep';
     }
 
