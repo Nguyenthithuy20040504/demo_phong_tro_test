@@ -148,7 +148,7 @@ export async function GET(request: NextRequest) {
       hanThanhToan: { $lt: now },
     })
       .sort({ hanThanhToan: 1 })
-      .limit(5)
+      .limit(10)
       .populate({ path: 'khachThue', select: 'hoTen' })
       .populate({ path: 'phong', select: 'maPhong' })
       .lean();
