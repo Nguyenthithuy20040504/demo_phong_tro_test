@@ -33,6 +33,12 @@ export async function GET(request: NextRequest) {
 
     await dbConnect();
 
+    // Ensure models are registered for populate
+    const KhachThueModel = mongoose.models.KhachThue || mongoose.model('KhachThue', (KhachThue as any).schema);
+    const PhongModel = mongoose.models.Phong || (await import('@/models/Phong')).default;
+    const ToaNhaModel = mongoose.models.ToaNha || mongoose.model('ToaNha', (ToaNha as any).schema);
+    const ThongBaoModel = mongoose.models.ThongBao || mongoose.model('ThongBao', (ThongBao as any).schema);
+
     const today = new Date();
     const currentDay = today.getDate();
     const currentMonth = today.getMonth() + 1;

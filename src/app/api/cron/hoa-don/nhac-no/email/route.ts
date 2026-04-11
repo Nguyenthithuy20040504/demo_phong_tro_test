@@ -22,6 +22,9 @@ export async function GET(request: NextRequest) {
 
     const KhachThueModel = mongoose.models.KhachThue || mongoose.model('KhachThue', (KhachThue as any).schema);
     const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung', (NguoiDung as any).schema);
+    const PhongModel = mongoose.models.Phong || mongoose.model('Phong', (Phong as any).schema);
+    const ToaNhaModel = mongoose.models.ToaNha || mongoose.model('ToaNha', (ToaNha as any).schema);
+    const HopDongModel = mongoose.models.HopDong || mongoose.model('HopDong', (HopDong as any).schema);
 
     // Lấy cài đặt nhắc nợ Email từ tất cả Chủ nhà
     const allLandlords = await NguoiDungModel.find({ 
