@@ -209,7 +209,7 @@ export interface HoaDon {
   tongTien: number;
   daThanhToan: number;
   conLai: number;
-  trangThai: 'chuaThanhToan' | 'daThanhToanMotPhan' | 'daThanhToan' | 'quaHan' | 'choDuyet' | 'tuChoi';
+  trangThai: 'chuaThanhToan' | 'daThanhToanMotPhan' | 'daThanhToan' | 'quaHan' | 'choDuyet' | 'tuChoi' | 'daHuy';
   hanThanhToan: Date;
   ghiChu?: string;
   checkoutUrl?: string;

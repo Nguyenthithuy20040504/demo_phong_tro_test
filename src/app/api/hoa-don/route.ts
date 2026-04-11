@@ -905,16 +905,17 @@ export async function DELETE(request: NextRequest) {
     const hasAccess = await isToaNhaAccessible(session.user, toaNhaId);
     if (!hasAccess) {
       return NextResponse.json(
-        { message: 'Bạn không có quyền xóa hóa đơn của tòa nhà này' },
+        { message: 'Bạn không có quyền thao tác với hóa đơn của tòa nhà này' },
         { status: 403 }
       );
     }
 
-    await HoaDon.findByIdAndDelete(id);
+    // UPDATE instead of DELETE
+    await HoaDon.findByIdAndUpdate(id, { trangThai: 'daHuy' });
 
     return NextResponse.json({
       success: true,
-      message: 'Xóa hóa đơn thành công'
+      message: 'Hủy hóa đơn thành công'
     });
   } catch (error) {
     console.error('Error deleting hoa don:', error);

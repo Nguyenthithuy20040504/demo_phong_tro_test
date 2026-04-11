@@ -56,13 +56,26 @@ export async function GET(request: NextRequest) {
     }
     if (trangThai) query.trangThai = trangThai;
 
-    const phongList = await Phong.find(query).populate('toaNha').sort({ tang: 1, maPhong: 1 }).skip((page-1)*limit).limit(limit);
-    await Promise.all(phongList.map(phong => updatePhongStatus(phong._id.toString())));
+    const action = searchParams.get('action');
 
-    const [updatedPhongList, total] = await Promise.all([
-      Phong.find(query).populate('toaNha').sort({ tang: 1, maPhong: 1 }).skip((page-1)*limit).limit(limit),
+    const [phongList, total] = await Promise.all([
+      Phong.find(query).populate('toaNha').sort({ tang: 1, maPhong: 1 }).skip((page-1)*limit).limit(limit).lean(),
       Phong.countDocuments(query)
     ]);
+
+    if (action === 'basic') {
+      return NextResponse.json({ 
+        success: true, 
+        data: phongList, 
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } 
+      });
+    }
+
+    // Full mapping for non-basic request
+    await Promise.all(phongList.map((phong: any) => updatePhongStatus(phong._id.toString())));
+    
+    // Query again since status might have changed
+    const updatedPhongList = await Phong.find(query).populate('toaNha').sort({ tang: 1, maPhong: 1 }).skip((page-1)*limit).limit(limit);
 
     const phongListWithContracts = await Promise.all(
       updatedPhongList.map(async (phongDoc) => {

@@ -23,7 +23,7 @@ export interface IHoaDon extends Document {
   tongTien: number;
   daThanhToan: number;
   conLai: number;
-  trangThai: 'chuaThanhToan' | 'daThanhToanMotPhan' | 'daThanhToan' | 'quaHan' | 'choDuyet' | 'tuChoi';
+  trangThai: 'chuaThanhToan' | 'daThanhToanMotPhan' | 'daThanhToan' | 'quaHan' | 'choDuyet' | 'tuChoi' | 'daHuy';
   hanThanhToan: Date;
   ghiChu?: string;
   checkoutUrl?: string;
@@ -150,7 +150,7 @@ const HoaDonSchema = new Schema<IHoaDon>({
   },
   trangThai: {
     type: String,
-    enum: ['chuaThanhToan', 'daThanhToanMotPhan', 'daThanhToan', 'quaHan', 'choDuyet', 'tuChoi'],
+    enum: ['chuaThanhToan', 'daThanhToanMotPhan', 'daThanhToan', 'quaHan', 'choDuyet', 'tuChoi', 'daHuy'],
     default: 'chuaThanhToan'
   },
   hanThanhToan: {

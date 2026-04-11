@@ -21,7 +21,8 @@ import {
   Search,
   MessageCircle,
   AlertCircle,
-  Mail
+  Mail,
+  Ban
 } from "lucide-react"
 import {
   ColumnDef,
@@ -128,6 +129,13 @@ const getStatusBadge = (status: string) => {
         <Badge variant="destructive" className="gap-1 bg-red-600">
           <AlertCircle className="h-3 w-3" />
           Từ chối
+        </Badge>
+      )
+    case 'daHuy':
+      return (
+        <Badge variant="secondary" className="gap-1 bg-gray-500 text-white hover:bg-gray-600">
+          <Ban className="h-3 w-3" />
+          Đã hủy
         </Badge>
       )
     default:
@@ -338,13 +346,15 @@ const createColumns = (props: HoaDonTableProps & { setHoaDonToDelete: (h: HoaDon
             <Eye className="mr-2 h-4 w-4" />
             Xem chi tiết
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={(e) => {
-            e.stopPropagation();
-            props.onEdit(row.original);
-          }}>
-            <Edit className="mr-2 h-4 w-4" />
-            Chỉnh sửa
-          </DropdownMenuItem>
+          {row.original.trangThai !== 'choDuyet' && row.original.trangThai !== 'daThanhToan' && row.original.trangThai !== 'daHuy' && (
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              props.onEdit(row.original);
+            }}>
+              <Edit className="mr-2 h-4 w-4" />
+              Chỉnh sửa
+            </DropdownMenuItem>
+          )}
           {row.original.conLai > 0 && (
             <DropdownMenuItem onClick={(e) => {
               e.stopPropagation();
@@ -394,10 +404,10 @@ const createColumns = (props: HoaDonTableProps & { setHoaDonToDelete: (h: HoaDon
             <Download className="mr-2 h-4 w-4" />
             Tải HTML
           </DropdownMenuItem>
-          {props.canDelete !== false && (
+          {props.canDelete !== false && row.original.trangThai !== 'daHuy' && row.original.trangThai !== 'daThanhToan' && (
             <DropdownMenuSeparator />
           )}
-          {props.canDelete !== false && (
+          {props.canDelete !== false && row.original.trangThai !== 'daHuy' && row.original.trangThai !== 'daThanhToan' && (
             <DropdownMenuItem 
               className="text-destructive"
               onClick={(e) => {
@@ -406,8 +416,8 @@ const createColumns = (props: HoaDonTableProps & { setHoaDonToDelete: (h: HoaDon
                 props.setIsDeleteDialogOpen(true);
               }}
             >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Xóa
+              <Ban className="mr-2 h-4 w-4" />
+              Hủy hóa đơn
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
@@ -528,7 +538,7 @@ export function HoaDonDataTable(props: HoaDonDataTableProps) {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Tìm kiếm theo mã hóa đơn, số phòng..."
+                placeholder="Tìm mã HĐ, phòng, tên khách..."
                 value={searchTerm || ''}
                 onChange={(e) => onSearchChange?.(e.target.value)}
                 className="pl-10"
@@ -536,25 +546,27 @@ export function HoaDonDataTable(props: HoaDonDataTableProps) {
             </div>
           </div>
           <Select value={statusFilter} onValueChange={onStatusChange}>
-            <SelectTrigger className="w-full sm:w-[140px]">
+            <SelectTrigger className="w-full sm:w-[160px]">
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả</SelectItem>
-              <SelectItem value="active" className="text-teal-600 font-medium">Đang hoạt động</SelectItem>
+              <SelectItem value="all">Tất cả trạng thái</SelectItem>
+              <SelectItem value=" active" className="text-teal-600 font-medium">Đang hoạt động</SelectItem>
               <SelectItem value="chuaThanhToan">Chưa thanh toán</SelectItem>
               <SelectItem value="daThanhToanMotPhan">Một phần</SelectItem>
               <SelectItem value="daThanhToan">Đã thanh toán</SelectItem>
+              <SelectItem value="choDuyet">Chờ duyệt</SelectItem>
               <SelectItem value="quaHan">Quá hạn</SelectItem>
+              <SelectItem value="daHuy">Đã hủy</SelectItem>
               <SelectItem value="tuChoi">Từ chối</SelectItem>
             </SelectContent>
           </Select>
           <Select value={monthFilter} onValueChange={onMonthChange}>
-            <SelectTrigger className="w-full sm:w-[120px]">
+            <SelectTrigger className="w-full sm:w-[130px]">
               <SelectValue placeholder="Tháng" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="all">Tất cả tháng</SelectItem>
               {getMonthOptions?.().map((month) => (
                 <SelectItem key={month} value={month.toString()}>
                   Tháng {month}
@@ -563,14 +575,14 @@ export function HoaDonDataTable(props: HoaDonDataTableProps) {
             </SelectContent>
           </Select>
           <Select value={yearFilter} onValueChange={onYearChange}>
-            <SelectTrigger className="w-full sm:w-[100px]">
+            <SelectTrigger className="w-full sm:w-[120px]">
               <SelectValue placeholder="Năm" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="all">Tất cả năm</SelectItem>
               {getYearOptions?.().map((year) => (
                 <SelectItem key={year} value={year.toString()}>
-                  {year}
+                  Năm {year}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -597,8 +609,8 @@ export function HoaDonDataTable(props: HoaDonDataTableProps) {
                 size="sm"
                 onClick={handleBulkDelete}
               >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Xóa {selectedCount}
+                <Ban className="mr-2 h-4 w-4" />
+                Hủy {selectedCount}
               </Button>
             </>
           )}
@@ -684,9 +696,9 @@ export function HoaDonDataTable(props: HoaDonDataTableProps) {
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Xác nhận xóa</DialogTitle>
+            <DialogTitle>Xác nhận hủy hóa đơn</DialogTitle>
             <DialogDescription>
-              Bạn có chắc chắn muốn xóa hóa đơn <strong>{hoaDonToDelete?.maHoaDon}</strong>? Hành động này không thể hoàn tác.
+              Bạn có chắc chắn muốn hủy hóa đơn <strong>{hoaDonToDelete?.maHoaDon}</strong>? Hành động này sẽ thay đổi trạng thái thành "Đã hủy".
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
@@ -706,7 +718,7 @@ export function HoaDonDataTable(props: HoaDonDataTableProps) {
                 }
               }}
             >
-              Xác nhận xóa
+              Xác nhận hủy
             </Button>
           </DialogFooter>
         </DialogContent>

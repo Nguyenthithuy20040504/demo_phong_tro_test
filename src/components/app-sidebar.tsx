@@ -117,8 +117,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       })
     }
 
-    // 4. Vận hành
-    if (!isAdmin) {
+    // 4. Vận hành / Thông báo
+    if (isAdmin) {
+      items.push({
+        title: "Thông báo",
+        url: "/dashboard/thong-bao",
+        icon: AlertTriangle,
+      })
+    } else {
       items.push({
         title: "Vận hành",
         url: "#",

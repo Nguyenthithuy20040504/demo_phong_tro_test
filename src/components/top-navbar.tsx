@@ -137,15 +137,23 @@ export function TopNavbar() {
       });
     }
 
-    // Vận hành
-    items.push({
-      title: "Vận hành",
-      icon: TriangleAlert,
-      items: [
-        { title: "Sự cố", url: "/dashboard/su-co" },
-        { title: "Thông báo", url: "/dashboard/thong-bao" },
-      ],
-    });
+    // Vận hành / Thông báo
+    if (isAdmin) {
+      items.push({
+        title: "Thông báo",
+        url: "/dashboard/thong-bao",
+        icon: TriangleAlert,
+      });
+    } else {
+      items.push({
+        title: "Vận hành",
+        icon: TriangleAlert,
+        items: [
+          { title: "Sự cố", url: "/dashboard/su-co" },
+          { title: "Thông báo", url: "/dashboard/thong-bao" },
+        ],
+      });
+    }
 
     // Dịch vụ SaaS (chỉ Admin)
     if (isAdmin) {

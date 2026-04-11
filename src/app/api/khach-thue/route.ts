@@ -140,6 +140,19 @@ export async function GET(request: NextRequest) {
 
     // Get trangThai from searchParams again for pipeline filtering
     const trangThaiFilter = searchParams.get('trangThai');
+    const action = searchParams.get('action');
+
+    if (action === 'basic') {
+      const metadata = [{ total: await KhachThue.countDocuments(matchQuery) }];
+      const rawData = await KhachThue.find(matchQuery).sort({ hoTen: 1 }).skip((page - 1) * limit).limit(limit).lean();
+      return NextResponse.json({
+        success: true,
+        data: rawData,
+        pagination: {
+          page, limit, total: metadata[0].total, totalPages: Math.ceil(metadata[0].total/limit)
+        }
+      });
+    }
 
     // === AGGREGATION PIPELINE (Refactored to handle account filtering before skip/limit) ===
     const pipeline: any[] = [

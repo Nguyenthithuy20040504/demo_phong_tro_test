@@ -293,6 +293,8 @@ export default function HoaDonPage() {
         return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">Chờ duyệt</Badge>;
       case 'quaHan':
         return <Badge variant="outline">Quá hạn</Badge>;
+      case 'daHuy':
+        return <Badge variant="secondary" className="bg-gray-500 text-white">Đã hủy</Badge>;
       case 'tuChoi':
         return <Badge variant="destructive" className="bg-red-600">Từ chối</Badge>;
       default:
@@ -322,11 +324,12 @@ export default function HoaDonPage() {
 
       if (response.ok) {
         cache.clearCache();
-        setHoaDonList(prev => prev.filter(hoaDon => hoaDon._id !== id));
-        toast.success('Đã xóa hóa đơn thành công khỏi hệ thống!');
+        // Cập nhật trạng thái thành 'daHuy' thay vì xóa khỏi list
+        setHoaDonList(prev => prev.map(hoaDon => hoaDon._id === id ? { ...hoaDon, trangThai: 'daHuy' } : hoaDon));
+        toast.success('Đã hủy hóa đơn thành công!');
       } else {
         const errorData = await response.json();
-        toast.error('Ồ, chưa xóa được hóa đơn này. ' + (errorData.message || 'Bạn thử lại sau nhé!'));
+        toast.error('Ồ, chưa hủy được hóa đơn này. ' + (errorData.message || 'Bạn thử lại sau nhé!'));
       }
     } catch (error) {
       toast.error('Lỗi kết nối rồi. Bạn kiểm tra lại mạng nhé!');
@@ -346,13 +349,14 @@ export default function HoaDonPage() {
       
       if (failedDeletes.length === 0) {
         cache.clearCache();
-        setHoaDonList(prev => prev.filter(hoaDon => !ids.includes(hoaDon._id!)));
-        toast.success(`Tuyệt vời! Đã dọn dẹp xong ${ids.length} hóa đơn.`);
+        // Cập nhật trạng thái thành 'daHuy'
+        setHoaDonList(prev => prev.map(hoaDon => ids.includes(hoaDon._id!) ? { ...hoaDon, trangThai: 'daHuy' } : hoaDon));
+        toast.success(`Thành công! Đã hủy ${ids.length} hóa đơn.`);
       } else {
-        toast.error(`Có ${failedDeletes.length} hóa đơn chưa xóa được. Bạn kiểm tra lại nhé!`);
+        toast.error(`Có ${failedDeletes.length} hóa đơn chưa hủy được. Bạn kiểm tra lại nhé!`);
       }
     } catch (error) {
-      toast.error('Có lỗi xảy ra khi kết nối. Một số hóa đơn có thể chưa được xóa.');
+      toast.error('Có lỗi xảy ra khi kết nối. Một số hóa đơn có thể chưa được hủy.');
     }
   };
 
@@ -825,7 +829,7 @@ export default function HoaDonPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Tìm kiếm hóa đơn..."
+              placeholder="Tìm mã HĐ, phòng, tên khách..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 text-sm"
@@ -837,12 +841,13 @@ export default function HoaDonPage() {
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" className="text-sm">Tất cả</SelectItem>
+                <SelectItem value="all" className="text-sm">Theo trạng thái</SelectItem>
                 <SelectItem value="chuaThanhToan" className="text-sm">Chưa thanh toán</SelectItem>
                 <SelectItem value="daThanhToan" className="text-sm">Đã thanh toán</SelectItem>
                 <SelectItem value="choDuyet" className="text-sm">Chờ duyệt</SelectItem>
-                <SelectItem value="thanhToanMotPhan" className="text-sm">Thanh toán 1 phần</SelectItem>
+                <SelectItem value="thanhToanMotPhan" className="text-sm">Một phần</SelectItem>
                 <SelectItem value="quaHan" className="text-sm">Quá hạn</SelectItem>
+                <SelectItem value="daHuy" className="text-sm">Đã hủy</SelectItem>
                 <SelectItem value="tuChoi" className="text-sm">Từ chối</SelectItem>
               </SelectContent>
             </Select>
@@ -851,7 +856,7 @@ export default function HoaDonPage() {
                 <SelectValue placeholder="Tháng" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" className="text-sm">Tất cả</SelectItem>
+                <SelectItem value="all" className="text-sm">Theo tháng</SelectItem>
                 {getMonthOptions().map(month => (
                   <SelectItem key={month} value={month.toString()} className="text-sm">
                     Tháng {month}
@@ -864,10 +869,10 @@ export default function HoaDonPage() {
                 <SelectValue placeholder="Năm" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" className="text-sm">Tất cả</SelectItem>
+                <SelectItem value="all" className="text-sm">Theo năm</SelectItem>
                 {getYearOptions().map(year => (
                   <SelectItem key={year} value={year.toString()} className="text-sm">
-                    {year}
+                    Năm {year}
                   </SelectItem>
                 ))}
               </SelectContent>

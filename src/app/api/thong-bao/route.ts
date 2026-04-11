@@ -47,8 +47,8 @@ export async function GET(request: NextRequest) {
     if (userRole === 'khachThue') {
       // Khách thuê chỉ thấy thông báo gửi cho mình
       query.nguoiNhan = userId;
-    } else if (userRole === 'chuTro' || userRole === 'chuNha') {
-      // Chủ trọ thấy thông báo mình gửi + thông báo gửi cho mình
+    } else if (userRole === 'chuTro' || userRole === 'chuNha' || userRole === 'admin') {
+      // Chủ trọ/Admin thấy thông báo mình gửi + thông báo gửi cho mình
       const mongoose = (await import('mongoose')).default;
       const userObjId = new mongoose.Types.ObjectId(userId);
       query.$or = [
@@ -85,7 +85,8 @@ export async function GET(request: NextRequest) {
         .populate('toaNha', 'tenToaNha')
         .sort({ ngayGui: -1 })
         .skip((page - 1) * limit)
-        .limit(limit),
+        .limit(limit)
+        .lean(),
       ThongBao.countDocuments(query)
     ]);
 

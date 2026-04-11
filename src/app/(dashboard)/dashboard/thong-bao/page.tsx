@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -58,6 +59,9 @@ import { toast } from 'sonner';
 import { useCache } from '@/hooks/use-cache';
 
 export default function ThongBaoPage() {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === 'admin';
+
   const cache = useCache<{
     thongBaoList: ThongBao[];
     toaNhaList: ToaNha[];
@@ -120,38 +124,64 @@ export default function ThongBaoPage() {
       
       // Fetch all data in parallel
       const limitQuery = '?limit=2000';
-      const buildingFilterQuery = selectedBuildingId !== 'all' ? `&toaNhaId=${selectedBuildingId}` : '';
       
-      const [thongBaoResponse, toaNhaResponse, phongResponse, khachThueResponse] = await Promise.all([
-        fetch(`/api/thong-bao${limitQuery}${buildingFilterQuery}`),
-        fetch('/api/toa-nha'),
-        fetch(`/api/phong${limitQuery}`),
-        fetch(`/api/khach-thue${limitQuery}`)
-      ]);
+      if (isAdmin) {
+        const [thongBaoResponse, chuNhaResponse] = await Promise.all([
+          fetch(`/api/thong-bao${limitQuery}`),
+          fetch('/api/admin/users?type=chuNha')
+        ]);
+        
+        const thongBaoData = await thongBaoResponse.json();
+        const chuNhaData = await chuNhaResponse.json();
+        
+        const thongBaos = thongBaoData.success ? thongBaoData.data : [];
+        const mappedChuNha = Array.isArray(chuNhaData) ? chuNhaData.map((u: any) => ({ _id: u._id, hoTen: u.ten || u.name })) : [];
+        
+        setThongBaoList(thongBaos);
+        setToaNhaList([]);
+        setPhongList([]);
+        setKhachThueList(mappedChuNha as any);
+        
+        cache.setCache({
+          thongBaoList: thongBaos,
+          toaNhaList: [],
+          phongList: [],
+          khachThueList: mappedChuNha as any,
+        });
+      } else {
+        const buildingFilterQuery = selectedBuildingId !== 'all' ? `&toaNhaId=${selectedBuildingId}` : '';
+        
+        const [thongBaoResponse, toaNhaResponse, phongResponse, khachThueResponse] = await Promise.all([
+          fetch(`/api/thong-bao${limitQuery}${buildingFilterQuery}`),
+          fetch('/api/toa-nha'),
+          fetch(`/api/phong${limitQuery}&action=basic`),
+          fetch(`/api/khach-thue${limitQuery}&action=basic`)
+        ]);
 
-      const [thongBaoData, toaNhaData, phongData, khachThueData] = await Promise.all([
-        thongBaoResponse.ok ? thongBaoResponse.json() : { data: [] },
-        toaNhaResponse.ok ? toaNhaResponse.json() : { data: [] },
-        phongResponse.ok ? phongResponse.json() : { data: [] },
-        khachThueResponse.ok ? khachThueResponse.json() : { data: [] }
-      ]);
+        const [thongBaoData, toaNhaData, phongData, khachThueData] = await Promise.all([
+          thongBaoResponse.ok ? thongBaoResponse.json() : { data: [] },
+          toaNhaResponse.ok ? toaNhaResponse.json() : { data: [] },
+          phongResponse.ok ? phongResponse.json() : { data: [] },
+          khachThueResponse.ok ? khachThueResponse.json() : { data: [] }
+        ]);
 
-      const thongBaos = thongBaoData.success ? thongBaoData.data : [];
-      const toaNhas = toaNhaData.success ? toaNhaData.data : [];
-      const phongs = phongData.success ? phongData.data : [];
-      const khachThues = khachThueData.success ? khachThueData.data : [];
+        const thongBaos = thongBaoData.success ? thongBaoData.data : [];
+        const toaNhas = toaNhaData.success ? toaNhaData.data : [];
+        const phongs = phongData.success ? phongData.data : [];
+        const khachThues = khachThueData.success ? khachThueData.data : [];
 
-      setThongBaoList(thongBaos);
-      setToaNhaList(toaNhas);
-      setPhongList(phongs);
-      setKhachThueList(khachThues);
-      
-      cache.setCache({
-        thongBaoList: thongBaos,
-        toaNhaList: toaNhas,
-        phongList: phongs,
-        khachThueList: khachThues,
-      });
+        setThongBaoList(thongBaos);
+        setToaNhaList(toaNhas);
+        setPhongList(phongs);
+        setKhachThueList(khachThues);
+        
+        cache.setCache({
+          thongBaoList: thongBaos,
+          toaNhaList: toaNhas,
+          phongList: phongs,
+          khachThueList: khachThues,
+        });
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
       setThongBaoList([]);
@@ -261,7 +291,7 @@ export default function ThongBaoPage() {
   };
 
   const getKhachThueNames = (khachThues: any[]) => {
-    if (!khachThues || khachThues.length === 0) return 'Tất cả khách thuê';
+    if (!khachThues || khachThues.length === 0) return isAdmin ? 'Tất cả chủ nhà' : 'Tất cả khách thuê';
     const khachThueNames = khachThues.map(k => {
       if (typeof k === 'object') {
         if (k.hoTen) return k.hoTen;
@@ -269,7 +299,7 @@ export default function ThongBaoPage() {
         return found?.hoTen || 'Không xác định';
       }
       const ktId = String(k);
-      const found = khachThueList.find(kt => kt._id === ktId);
+      const found = khachThueList.find(kt => kt._id === ktId || (kt as any).userId === ktId);
       return found?.hoTen || 'Không xác định';
     });
     return khachThueNames.join(', ');
@@ -473,8 +503,8 @@ export default function ThongBaoPage() {
                   <TableHead>Tiêu đề</TableHead>
                   <TableHead>Loại</TableHead>
                   <TableHead>Người nhận</TableHead>
-                  <TableHead>Phòng</TableHead>
-                  <TableHead>Tòa nhà</TableHead>
+                  {!isAdmin && <TableHead>Phòng</TableHead>}
+                  {!isAdmin && <TableHead>Tòa nhà</TableHead>}
                   <TableHead>Ngày gửi</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead className="text-right">Thao tác</TableHead>
@@ -501,19 +531,23 @@ export default function ThongBaoPage() {
                         {getKhachThueNames(thongBao.nguoiNhan)}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        {getPhongNames(thongBao.phong || [])}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm">
-                          {getToaNhaName(thongBao.toaNha)}
-                        </span>
-                      </div>
-                    </TableCell>
+                    {!isAdmin && (
+                      <TableCell>
+                        <div className="text-sm">
+                          {getPhongNames(thongBao.phong || [])}
+                        </div>
+                      </TableCell>
+                    )}
+                    {!isAdmin && (
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm">
+                            {getToaNhaName(thongBao.toaNha)}
+                          </span>
+                        </div>
+                      </TableCell>
+                    )}
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-gray-400" />
@@ -954,6 +988,9 @@ function ThongBaoForm({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === 'admin';
+
   const [formData, setFormData] = useState({
     tieuDe: thongBao?.tieuDe || '',
     noiDung: thongBao?.noiDung || '',
@@ -1149,8 +1186,9 @@ function ThongBaoForm({
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="toaNha" className="text-xs md:text-sm">Tòa nhà</Label>
+      {!isAdmin && (
+        <div className="space-y-2">
+          <Label htmlFor="toaNha" className="text-xs md:text-sm">Tòa nhà</Label>
         <Select value={formData.toaNha} onValueChange={handleToaNhaChange}>
           <SelectTrigger className="text-sm">
             <SelectValue placeholder="Chọn tòa nhà (tùy chọn)" />
@@ -1165,7 +1203,9 @@ function ThongBaoForm({
           </SelectContent>
         </Select>
       </div>
+      )}
 
+      {!isAdmin && (
       <div className="space-y-3">
         <div className="flex justify-between items-center">
           <Label className="text-xs md:text-sm font-semibold">Phòng (tùy chọn)</Label>
@@ -1243,6 +1283,7 @@ function ThongBaoForm({
           )}
         </div>
       </div>
+      )}
 
       <div className="space-y-3">
         <div className="flex justify-between items-center">
@@ -1314,7 +1355,7 @@ function ThongBaoForm({
           ))}
           {filteredTenants.length === 0 && (
             <p className="col-span-full text-center py-4 text-xs text-gray-400 italic">
-              Không tìm thấy khách thuê nào phù hợp
+              {isAdmin ? 'Không tìm thấy chủ nhà nào phù hợp' : 'Không tìm thấy khách thuê nào phù hợp'}
             </p>
           )}
         </div>
