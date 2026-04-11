@@ -327,3 +327,59 @@ export const sendAccountConfirmationLinkEmail = async ({
     return false;
   }
 };
+
+export const sendForgotPasswordEmail = async ({
+  email,
+  khachThueName,
+  code,
+}: {
+  email: string;
+  khachThueName: string;
+  code: string;
+}) => {
+  if (!email || !process.env.SMTP_USER) {
+    console.warn('Bỏ qua gửi email: cấu hình SMTP hoặc email không tồn tại.');
+    return false;
+  }
+
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6; border: 1px solid #eaeaea; border-radius: 8px; overflow: hidden; background-color: #ffffff;">
+      <div style="background-color: #ef4444; padding: 25px 20px; text-align: center;">
+        <h2 style="color: white; margin: 0; font-size: 20px; font-weight: bold; letter-spacing: 0.5px;">Khôi Phục Mật Khẩu</h2>
+        <p style="color: #fee2e2; margin: 5px 0 0 0; font-size: 13px;">Hệ Thống Quản Lý Phòng Trọ</p>
+      </div>
+      
+      <div style="padding: 30px 24px;">
+        <p style="margin-top: 0;">Xin chào <strong>${khachThueName}</strong>,</p>
+        <p style="color: #4b5563;">Hệ thống nhận được yêu cầu khôi phục mật khẩu từ tài khoản của bạn. Vui lòng nhập mã OTP sau để tiến hành đặt lại mật khẩu:</p>
+        
+        <div style="background-color: #fef2f2; border: 2px dashed #f87171; padding: 20px; border-radius: 8px; margin: 25px 0; text-align: center;">
+          <h1 style="margin: 0; color: #b91c1c; font-size: 32px; letter-spacing: 4px;">${code}</h1>
+        </div>
+
+        <p style="color: #ef4444; font-size: 13px;">Mã OTP này sẽ hết hạn sau 10 phút. Nếu bạn không yêu cầu khôi phục mật khẩu, vui lòng bỏ qua email này.</p>
+
+        <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+          <p style="margin-bottom: 4px;">Cảm ơn sự hợp tác của bạn!</p>
+          <p style="margin: 0;"><em>Đây là email tự động, vui lòng không phản hồi lại địa chỉ này.</em></p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  try {
+    const transport = getMailTransport();
+
+    const info = await transport.sendMail({
+      from: `"Quản Lý Phòng Trọ" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: `[Bảo Mật] Mã OTP khôi phục mật khẩu là ${code}`,
+      html: htmlContent,
+    });
+    console.log(`[Email Success] Đã gửi mã khôi phục tới ${email}. MessageId: ${info.messageId}`);
+    return true;
+  } catch (error: any) {
+    console.error(`[Email Error] Lỗi khi gửi mã khôi phục tới ${email}:`, error);
+    return false;
+  }
+};

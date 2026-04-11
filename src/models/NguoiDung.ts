@@ -25,6 +25,8 @@ export interface INguoiDung extends Document {
   daXacMinhEmail?: boolean;
   maXacNhanEmail?: string;
   hanMaXacNhanEmail?: Date;
+  maKhoiPhucMatKhau?: string;
+  hanMaKhoiPhucMatKhau?: Date;
   nguoiQuanLy?: mongoose.Types.ObjectId;
   nguoiTao?: mongoose.Types.ObjectId;
   goiDichVu: 'mienPhi' | 'coBan' | 'chuyenNghiep';
@@ -142,6 +144,14 @@ const NguoiDungSchema = new Schema<INguoiDung>({
     default: null
   },
   hanMaXacNhanEmail: {
+    type: Date,
+    default: null
+  },
+  maKhoiPhucMatKhau: {
+    type: String,
+    default: null
+  },
+  hanMaKhoiPhucMatKhau: {
     type: Date,
     default: null
   },

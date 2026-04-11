@@ -170,6 +170,9 @@ function LoginFormContent() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center px-1">
                     <Label htmlFor="matKhau" className="text-xs font-semibold text-muted-foreground ml-1">Mật khẩu</Label>
+                    <Link href="/quen-mat-khau" className="text-[10px] uppercase font-bold text-primary hover:underline">
+                      Quên mật khẩu?
+                    </Link>
                   </div>
                   <div className="relative group">
                     <Input
