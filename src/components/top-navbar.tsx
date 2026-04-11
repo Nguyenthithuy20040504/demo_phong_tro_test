@@ -293,7 +293,7 @@ export function TopNavbar() {
 
             <div className="flex items-center gap-2 md:gap-5">
               <NotificationBell />
-              <NavUser user={userData} hideText />
+              <NavUser user={userData} hideText={!isAdmin} />
             </div>
           </div>
         </header>

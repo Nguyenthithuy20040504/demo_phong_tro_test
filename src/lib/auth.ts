@@ -102,6 +102,13 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          prompt: "consent select_account",
+          access_type: "offline",
+          response_type: "code"
+        }
+      }
     }),
   ],
 
@@ -117,6 +124,11 @@ export const authOptions: NextAuthOptions = {
           console.log("Google sign-in attempt for:", user.email);
           await dbConnect();
           const existingUser = await NguoiDung.findOne({ email: user.email });
+
+          if (existingUser && (existingUser.trangThai === 'khoa' || existingUser.isActive === false)) {
+            console.log("Blocked Google sign-in attempts for banned user:", user.email);
+            return "/dang-nhap?error=locked";
+          }
 
           if (!existingUser) {
             console.log("Creating new Google user:", user.email);

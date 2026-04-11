@@ -113,12 +113,12 @@ function LoginFormContent() {
         transition={{ duration: 0.6, ease: [0.21, 0.47, 0.32, 0.98] }}
         className="w-full max-w-[480px] relative z-10"
       >
-        <div className="text-center mb-10">
+        <div className="text-center mb-8">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 border border-primary/10 text-[10px] font-bold uppercase tracking-[0.2em] text-primary mb-6"
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 border border-primary/10 text-[10px] font-bold uppercase tracking-[0.2em] text-primary mb-5"
           >
             <ShieldCheck className="size-3" /> Secure Gate
           </motion.div>
@@ -136,8 +136,8 @@ function LoginFormContent() {
         </div>
 
         <Card className="border-none bg-white/40 dark:bg-black/40 backdrop-blur-3xl shadow-premium rounded-[2.5rem] overflow-hidden">
-          <CardContent className="p-8 md:p-12">
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <CardContent className="p-8 md:p-10">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               <AnimatePresence mode="wait">
                 {error && (
                   <motion.div
@@ -161,7 +161,7 @@ function LoginFormContent() {
                     </Alert>
                   </motion.div>
                 )}
-              </AnimatePresence>
+               </AnimatePresence>
 
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -234,12 +234,12 @@ function LoginFormContent() {
               </div>
             </div>
 
-            <div className="mt-8">
+            <div className="mt-6 flex flex-col md:flex-row gap-3">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => signIn('google', { callbackUrl: selectedPlan ? `/dashboard?plan=${selectedPlan}` : '/dashboard' })}
-                className="w-full h-14 rounded-2xl border-muted/20 hover:bg-white dark:hover:bg-white/5 transition-all font-semibold flex gap-3 shadow-sm"
+                className="flex-1 h-12 md:h-14 rounded-2xl border-muted/20 hover:bg-white dark:hover:bg-white/5 transition-all font-semibold flex gap-2 shadow-sm"
               >
                 <svg className="size-5" viewBox="0 0 24 24">
                   <path
@@ -262,15 +262,14 @@ function LoginFormContent() {
                 </svg>
                 Google
               </Button>
-            </div>
-
-            <div className="mt-8 text-center">
-              <p className="text-xs text-muted-foreground/60 font-medium">
-                Chưa có tài khoản?{' '}
-                <Link href="/dang-ky" className="text-primary hover:underline font-bold">
-                  Đăng ký ngay
-                </Link>
-              </p>
+              <Button
+                type="button"
+                variant="outline"
+                asChild
+                className="flex-1 h-12 md:h-14 rounded-2xl border-primary/20 text-primary hover:bg-primary/5 transition-all font-bold shadow-sm"
+              >
+                <Link href="/dang-ky">Đăng ký mới</Link>
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -279,7 +278,7 @@ function LoginFormContent() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="mt-12 flex items-center justify-center gap-8 opacity-20"
+          className="mt-6 flex items-center justify-center gap-8 opacity-20"
         >
           <Building2 className="size-5" />
           <div className="w-1 h-1 rounded-full bg-foreground" />

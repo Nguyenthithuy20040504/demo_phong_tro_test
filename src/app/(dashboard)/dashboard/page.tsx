@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import {
@@ -211,7 +211,14 @@ export default function DashboardPage() {
   const [toaNhaList, setToaNhaList] = useState<ToaNha[]>([]);
 
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { data: session, status } = useSession();
+
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user?.role === 'admin') {
+      router.replace('/dashboard/admin/saas-dashboard');
+    }
+  }, [status, session, router]);
 
   // Filters
   const [selectedToaNha, setSelectedToaNha] = useState<string>(() => {

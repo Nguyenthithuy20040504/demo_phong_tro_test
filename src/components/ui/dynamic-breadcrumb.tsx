@@ -31,6 +31,11 @@ const routeNameMap: Record<string, string> = {
   "them-moi": "Thêm mới",
   "tu-dong": "Hóa đơn tự động",
   "gia-han-goi": "Gia hạn gói",
+  "admin": "Quản lý Admin",
+  "quan-ly-goi": "Quản lý gói SaaS",
+  "hoa-don-saas": "Hóa đơn dịch vụ",
+  "saas-dashboard": "Tổng quan SaaS",
+  "quan-ly-chu-nha": "Quản lý chủ trọ",
 }
 
 export function DynamicBreadcrumb() {

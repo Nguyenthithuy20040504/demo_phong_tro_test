@@ -338,17 +338,9 @@ export default function AdminLandlordManagementPage() {
     <div className="space-y-6 pb-10">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 mb-8">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-teal-600 fill-teal-100/50" />
-            <span className="text-xs font-black uppercase tracking-[0.2em] text-teal-700/60">Admin Dashboard</span>
-          </div>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight font-heading">
-            Quản lý <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-emerald-600">Chủ trọ</span>
-          </h1>
-          <p className="text-sm text-muted-foreground font-medium max-w-xl leading-relaxed">
-            Hệ thống quản trị tài khoản SaaS dành cho các chủ đầu tư, theo dõi quy mô tòa nhà, phòng trọ và thời hạn sử dụng dịch vụ.
-          </p>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-bold tracking-tight">Quản lý Chủ trọ</h1>
+          <p className="text-muted-foreground">Hệ thống quản trị tài khoản SaaS dành cho các chủ đầu tư, theo dõi quy mô tòa nhà, phòng trọ và thời hạn sử dụng dịch vụ.</p>
         </div>
         <div className="flex items-center gap-3">
           <Button 
