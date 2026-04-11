@@ -78,17 +78,32 @@ export function TopNavbar() {
         const res = await fetch('/api/toa-nha?limit=100', { cache: 'no-store' });
         if (res.ok) {
           const result = await res.json();
-          if (result.success) setToaNhaList(result.data);
+          if (result.success) {
+            const buildings = result.data;
+            setToaNhaList(buildings);
+
+            // Kiểm tra tính hợp lệ của building đã cache
+            const cached = localStorage.getItem('selected_building_id');
+            if (cached && cached !== 'all') {
+              const exists = buildings.some((b: any) => b._id === cached || b.id === cached);
+              if (!exists) {
+                console.log("Cached building no longer exists, resetting to 'all'");
+                setSelectedToaNha('all');
+                localStorage.setItem('selected_building_id', 'all');
+                window.dispatchEvent(new Event('buildingChange'));
+              } else {
+                setSelectedToaNha(cached);
+              }
+            } else {
+              setSelectedToaNha('all');
+            }
+          }
         }
       } catch (error) {
         console.error('Error fetching buildings:', error);
       }
     };
     fetchBuildings();
-
-    // Sync with local storage if page.tsx uses it
-    const cached = localStorage.getItem('selected_building_id');
-    if (cached) setSelectedToaNha(cached);
 
     const handleSyncBuilding = () => {
       const current = localStorage.getItem('selected_building_id');
