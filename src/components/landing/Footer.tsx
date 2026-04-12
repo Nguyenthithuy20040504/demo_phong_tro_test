@@ -31,7 +31,7 @@ export function Footer({ showContactInfo = true }: { showContactInfo?: boolean }
                 </div>
                 <div className="flex items-center gap-3 justify-center md:justify-start">
                   <Mail className="h-5 w-5 text-[#14B8A6] shrink-0" />
-                  <span className="text-sm underline">piroom@gmail.com</span>
+                  <a href="mailto:piroom@gmail.com" className="text-sm underline hover:text-[#14B8A6] transition-colors">piroom@gmail.com</a>
                 </div>
               </div>
             </div>
@@ -40,10 +40,12 @@ export function Footer({ showContactInfo = true }: { showContactInfo?: boolean }
             <div className="flex flex-col items-center">
               <h3 className="text-xl font-bold font-josefin text-[#134E4A] mb-6">Hotline</h3>
               <a 
-                href="tel:0888888888" 
+                href="https://zalo.me/0888888888" 
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-full bg-[#14B8A6] hover:bg-[#119A8B] text-white py-6 px-4 rounded-xl flex items-center justify-center gap-4 transition-all hover:scale-105 shadow-lg shadow-[#14B8A6]/30 cursor-pointer"
               >
-                <Phone className="h-8 w-8" />
+                <div className="h-8 w-8 bg-white text-[#14B8A6] rounded-lg flex items-center justify-center font-bold text-xl">Z</div>
                 <span className="text-2xl font-bold font-josefin">0888.888.888</span>
               </a>
             </div>
@@ -53,6 +55,8 @@ export function Footer({ showContactInfo = true }: { showContactInfo?: boolean }
               <h3 className="text-xl font-bold font-josefin text-[#134E4A] mb-6">Gửi email</h3>
               <a 
                 href="mailto:piroom@gmail.com" 
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-full bg-[#0369A1] hover:bg-[#025a8a] text-white py-6 px-4 rounded-xl flex items-center justify-center gap-4 transition-all hover:scale-105 shadow-lg shadow-[#0369A1]/30 cursor-pointer"
               >
                 <Mail className="h-8 w-8" />
@@ -97,8 +101,8 @@ export function Footer({ showContactInfo = true }: { showContactInfo?: boolean }
                 Pháp Lý
               </h4>
               <ul className="space-y-2 text-sm text-[#F0FDFA]/80">
-                <li><Link href="#" className="hover:text-white transition-colors cursor-pointer">Điều khoản</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors cursor-pointer">Bảo mật</Link></li>
+                <li><Link href="/dieu-khoan" className="hover:text-white transition-colors cursor-pointer">Điều khoản</Link></li>
+                <li><Link href="/bao-mat" className="hover:text-white transition-colors cursor-pointer">Bảo mật</Link></li>
               </ul>
             </div>
 
@@ -107,12 +111,14 @@ export function Footer({ showContactInfo = true }: { showContactInfo?: boolean }
                 Theo Dõi
               </h4>
               <div className="flex gap-4">
-                <div className="p-2 bg-white/5 hover:bg-[#14B8A6] rounded-lg transition-all cursor-pointer">
-                  <Facebook size={18} />
-                </div>
-                <div className="p-2 bg-white/5 hover:bg-[#14B8A6] rounded-lg transition-all cursor-pointer">
-                  <Instagram size={18} />
-                </div>
+                <a 
+                  href="https://www.facebook.com/profile.php?id=61556548539899" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="p-3 bg-white/10 hover:bg-[#1877F2] rounded-xl transition-all cursor-pointer text-white flex items-center justify-center group"
+                >
+                  <Facebook size={24} className="group-hover:scale-110 transition-transform fill-white" />
+                </a>
               </div>
             </div>
           </div>

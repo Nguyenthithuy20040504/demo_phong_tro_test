@@ -39,7 +39,7 @@ function LoginFormContent() {
     } else if (err) {
       setError(err);
     }
-    
+
     const msg = searchParams.get('message');
     if (msg === 'verified') {
       setSuccess('Tài khoản đã được xác minh thành công. Vui lòng đăng nhập!');
@@ -161,7 +161,7 @@ function LoginFormContent() {
                     </Alert>
                   </motion.div>
                 )}
-               </AnimatePresence>
+              </AnimatePresence>
 
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -170,7 +170,7 @@ function LoginFormContent() {
                     <Input
                       id="email"
                       type="email"
-                      placeholder="name@example.com"
+                      placeholder="Nhập email tại đây"
                       {...register('email')}
                       className={`h-14 bg-secondary/10 border-transparent rounded-2xl focus:bg-background transition-all px-6 font-light tracking-wide ${errors.email ? 'border-destructive/50' : ''}`}
                     />

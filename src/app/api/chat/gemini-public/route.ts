@@ -18,16 +18,22 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.GEMINI_API_KEY;
     const extractUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     
-    let searchArea = { district: '', street: '', landmark: '' };
+    let searchArea = { district: '', street: '', landmark: '', maxPrice: 0, amenities: [] as string[] };
     try {
       const extractResponse = await fetch(extractUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
-            parts: [{ text: `Dựa vào tin nhắn sau: "${message}", hãy bóc tách thông tin địa điểm tìm kiếm. 
-            Nếu không có thông tin cụ thể, hãy để trống. 
-            Trả về CHỈ DUY NHẤT một chuỗi JSON theo định dạng sau: {"district": "tên quận/huyện chuẩn", "street": "tên đường chuẩn", "landmark": "địa danh nổi tiếng nếu có"}` }]
+            parts: [{ text: `Dựa vào tin nhắn của khách hàng: "${message}", hãy phân tích ý định tìm kiếm phòng trọ. 
+            Bóc tách các thông tin sau:
+            - Quận/Huyện (district)
+            - Tên đường/Phố (street) 
+            - Địa danh/Trường học/Landmark (landmark)
+            - Mức giá mong muốn (maxPrice - chỉ lấy số)
+            - Tiện nghi yêu cầu (amenities - mảng chuỗi)
+
+            Trả về CHỈ DUY NHẤT một chuỗi JSON theo định dạng: {"district": "string", "street": "string", "landmark": "string", "maxPrice": number, "amenities": ["string"]}` }]
           }],
           generationConfig: { response_mime_type: "application/json" }
         })
@@ -43,20 +49,37 @@ export async function POST(request: NextRequest) {
     // --- BƯỚC 2: TRUY VẤN DATABASE THÔNG MINH ---
     let query: any = { trangThai: 'trong' };
     
-    // Nếu AI bóc tách được Quận hoặc Đường, chúng ta sẽ ưu tiên tìm đúng nơi đó
-    if (searchArea.district || searchArea.street) {
-      const searchTerms: any = {};
-      if (searchArea.district) searchTerms['diaChi.quan'] = searchArea.district;
-      if (searchArea.street) searchTerms['diaChi.duong'] = searchArea.street;
-      
-      const matchingToaNhas = await ToaNha.find(searchTerms)
-        .collation({ locale: 'vi', strength: 1 }) // Sức mạnh 1: Bỏ qua dấu và hoa thường (giang vo = Giảng Võ)
-        .select('_id');
-      
+    // Tìm kiếm đa điều kiện dựa trên bóc tách của AI
+    const searchConditions: any[] = [];
+    
+    if (searchArea.district) {
+      searchConditions.push({ 'diaChi.quan': { $regex: searchArea.district, $options: 'i' } });
+    }
+    if (searchArea.street) {
+      searchConditions.push({ 'diaChi.duong': { $regex: searchArea.street, $options: 'i' } });
+    }
+    if (searchArea.landmark) {
+      searchConditions.push({ 'tenToaNha': { $regex: searchArea.landmark, $options: 'i' } });
+      searchConditions.push({ 'diaChi.duong': { $regex: searchArea.landmark, $options: 'i' } });
+      searchConditions.push({ 'diaChi.phuong': { $regex: searchArea.landmark, $options: 'i' } });
+    }
+
+    if (searchConditions.length > 0) {
+      const matchingToaNhas = await ToaNha.find({ $or: searchConditions }).select('_id');
       const toaNhaIds = matchingToaNhas.map(t => t._id);
       if (toaNhaIds.length > 0) {
         query.toaNha = { $in: toaNhaIds };
       }
+    }
+
+    // Lọc theo giá nếu có
+    if (searchArea.maxPrice && searchArea.maxPrice > 0) {
+      query.giaThue = { $lte: searchArea.maxPrice };
+    }
+    
+    // Lọc theo tiện nghi (nếu có yêu cầu cụ thể)
+    if (searchArea.amenities && searchArea.amenities.length > 0) {
+      query.tienNghi = { $all: searchArea.amenities.map((a: string) => new RegExp(a, 'i')) };
     }
 
     // Lấy tối đa 100 phòng liên quan nhất
@@ -98,18 +121,26 @@ export async function POST(request: NextRequest) {
     });
 
     const systemPrompt = `
- Bạn là một trợ lý ảo thông minh của hệ thống PiRoom.
- Hãy giúp khách tìm phòng dựa trên dữ liệu thật sau:
+ Bạn là **PiRoom Expert** - Chuyên gia tư vấn bất động sản cho thuê chuyên nghiệp, nhiệt tình và cực kỳ am hiểu địa lý Hà Nội/HCM.
+ 
+ CÔNG VIỆC CỦA BẠN:
+ 1. Phân tích yêu cầu khách thuê và ĐỀ XUẤT các phòng phù hợp nhất từ danh sách dữ liệu thật được cung cấp bên dưới.
+ 2. Luôn giữ thái độ thân thiện, chuyên nghiệp, sử dụng icon phù hợp.
+ 3. Nếu không có phòng đúng khu vực yêu cầu, hãy thông báo lịch sự và ĐỀ XUẤT các phòng ở khu vực lân cận hoặc các phòng "hot" nhất hiện nay.
+ 
+ DỮ LIỆU PHÒNG TRỐNG HIỆN TẠI:
  ${JSON.stringify(roomsInfo, null, 2)}
  
- HƯỚNG DẪN TRẢ LỜI:
- 1. LUÔN dùng bảng Markdown với các cột: | Mã Phòng | Tòa Nhà | Địa Chỉ | Giá Thuê | Diện Tích | Liên Hệ |
- 2. Cột "Liên Hệ" cực kỳ quan trọng, hãy lấy số điện thoại từ trường "lienHe".
- 3. Định dạng giá thuê (VD: 3.500.000 VNĐ).
- 4. THÔNG MINH ĐỊA LÝ: 
-    - Nếu có phòng phù hợp chính xác với khu vực người dùng hỏi (Quận/Đường), hãy hiển thị chúng lên đầu.
-    - Nếu không có phòng đúng chính xác khu vực đó, hãy thông báo "Hiện chưa có phòng ở [Khu vực], bạn có thể tham khảo các phòng lân cận sau:" và hiển thị các phòng khác có trong dữ liệu.
-    - Bạn có kiến thức về địa lý để hiểu "Trường ĐH Bách Khoa" gần "Quận Hai Bà Trưng" hay "Phố Vọng", hãy tận dụng điều đó để tư vấn phòng phù hợp nhất từ danh sách.
+ QUY TẮC TRÌNH BÀY:
+ - Luôn bắt đầu bằng một câu chào hoặc phản hồi ngắn gọn về yêu cầu của khách.
+ - Trình bày danh sách phòng dưới dạng bảng Markdown:
+   | Mã Phòng | Tòa Nhà | Địa Chỉ | Giá | Diện Tích | Tiện Nghi | Liên Hệ |
+   |:---|:---|:---|:---|:---|:---|:---|
+ - Định dạng giá thuê rõ ràng (VD: 4.5 TR hoặc 4.500.000đ).
+ - Sau bảng, hãy đưa ra 1-2 lời khuyên chuyên gia về các phòng này (VD: "Phòng A gần điểm dừng xe buýt, rất tiện cho các bạn sinh viên Bách Khoa...").
+ - Cuối cùng, nhắc khách liên hệ theo số điện thoại trong cột "Liên Hệ".
+ 
+ LỜI KHUYÊN: Hãy thông minh hơn! Nếu khách hỏi "Phòng cho sinh viên Thủy Lợi", bạn phải hiểu là ở khu vực "Đống Đa" hoặc gần "Chùa Bộc" để lọc ra những phòng phù hợp từ danh sách.
  `;
 
     // Dùng cùng một apiKey đã khai báo ở trên cho bước phản hồi cuối cùng
