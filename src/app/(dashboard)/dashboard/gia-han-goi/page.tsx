@@ -49,7 +49,7 @@ export default function SubscriptionPage() {
   const [extending, setExtending] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
-  const [currentSubs, setCurrentSubs] = useState<{ goiDichVu: string, ngayHetHan: string | null } | null>(null);
+  const [currentSubs, setCurrentSubs] = useState<{ goiDichVu: string, ngayHetHan: string | null, goiDichVuTiepTheo?: string | null } | null>(null);
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
 
   useEffect(() => {
@@ -212,8 +212,17 @@ export default function SubscriptionPage() {
               ) : (
                 <div className="flex flex-col gap-1.5">
                   <span>Ngày hết hạn: {userExpiry ? userExpiry.toLocaleDateString('vi-VN') : 'Lỗi đồng bộ (Vui lòng đăng nhập lại)'}</span>
-                  <span className="text-sm font-normal text-teal-100 flex items-start gap-1.5 mt-1 border-t border-teal-500/50 pt-2 w-fit">
-                     Lưu ý: Bạn chỉ có thể cộng dồn ngày gia hạn cho gói hiện tại. Các tính năng nâng/hạ cấp <br className="hidden sm:block"/> sang gói khác sẽ được mở khóa tự động sau khi gói hiện tại hết hạn.
+                  <span className="text-sm font-normal text-teal-100 flex flex-col gap-2 mt-1 border-t border-teal-500/50 pt-2 w-fit">
+                     <span>Lưu ý: Bạn chỉ có thể cộng dồn ngày gia hạn cho gói hiện tại. Các tính năng nâng/hạ cấp sang gói khác sẽ được mở khóa tự động sau khi gói hiện tại hết hạn.</span>
+                     {currentSubs?.goiDichVuTiepTheo && (
+                       <Badge className="w-fit bg-amber-400 text-amber-900 border-none hover:bg-amber-400 flex gap-1 items-center animate-pulse">
+                         <Zap className="h-3 w-3" />
+                         Gói tiếp theo đang đợi: {
+                           currentSubs.goiDichVuTiepTheo === 'chuyenNghiep' ? 'Chuyên nghiệp' : 
+                           currentSubs.goiDichVuTiepTheo === 'coBan' ? 'Cơ bản' : 'Miễn phí'
+                         }
+                       </Badge>
+                     )}
                   </span>
                 </div>
               )}
@@ -316,7 +325,8 @@ export default function SubscriptionPage() {
                 
                 const planRole = getPlanRole(plan.ten);
                 const isFreePlan = planRole === 'mienPhi';
-                const isLocked = !isExpired && userGoiDichVu !== 'mienPhi' && userGoiDichVu !== planRole;
+                const isCurrentPlan = userGoiDichVu === planRole;
+                const isNextInQueue = currentSubs?.goiDichVuTiepTheo === planRole;
 
                 if (isFreePlan) {
                   return (
@@ -329,22 +339,22 @@ export default function SubscriptionPage() {
                   );
                 }
 
-                if (isLocked) {
+                if (isNextInQueue) {
                   return (
                     <Button 
                       disabled 
                       variant="outline"
-                      className="w-full group h-12 text-[11px] sm:text-sm font-bold uppercase tracking-wider bg-slate-50 text-slate-500 border-slate-200 cursor-not-allowed"
+                      className="w-full group h-12 text-[11px] sm:text-sm font-bold uppercase tracking-wider bg-amber-50 text-amber-600 border-amber-200 cursor-not-allowed"
                     >
-                      Đang dùng gói khác
+                      Đã xếp hàng đợi
                     </Button>
                   );
                 }
 
-                // If not locked and not free plan -> allow extend/purchase
+                // If not free plan -> allow extend/purchase
                 return (
                   <Button 
-                    className={`w-full group h-12 text-sm font-bold uppercase tracking-wider transition-all duration-300 bg-teal-600 hover:bg-teal-700 shadow-lg shadow-teal-100 text-white`}
+                    className={`w-full group h-12 text-sm font-bold uppercase tracking-wider transition-all duration-300 ${isCurrentPlan ? 'bg-teal-600' : 'bg-orange-600'} hover:opacity-90 shadow-lg shadow-teal-100 text-white`}
                     onClick={() => handleExtend(plan)}
                     disabled={extending === plan._id}
                   >
@@ -353,7 +363,7 @@ export default function SubscriptionPage() {
                     ) : (
                       <>
                         <CreditCard className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
-                        Gia hạn ngay
+                        {isCurrentPlan ? 'Gia hạn ngay' : 'Mua ngay (Chờ kích hoạt)'}
                       </>
                     )}
                   </Button>

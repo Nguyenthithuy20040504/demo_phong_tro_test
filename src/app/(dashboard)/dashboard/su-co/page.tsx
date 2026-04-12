@@ -353,8 +353,8 @@ export default function SuCoPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">Quản lý sự cố</h1>
-          <p className="text-xs md:text-sm text-gray-600">Theo dõi và xử lý các sự cố từ khách thuê</p>
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-extrabold font-heading text-foreground drop-shadow-sm">Quản lý sự cố</h1>
+          <p className="text-xs md:text-sm text-gray-600">Theo dõi và xử lý các vấn đề từ khách thuê</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -362,14 +362,14 @@ export default function SuCoPage() {
             size="sm"
             onClick={handleRefresh}
             disabled={cache.isRefreshing}
-            className="flex-1 sm:flex-none"
+            className="flex-1 sm:flex-none h-10"
           >
             <RefreshCw className={`h-4 w-4 sm:mr-2 ${cache.isRefreshing ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">{cache.isRefreshing ? 'Đang tải...' : 'Tải mới'}</span>
           </Button>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" onClick={() => setSelectedSuCo(null)} className="flex-1 sm:flex-none">
+              <Button size="sm" onClick={() => setSelectedSuCo(null)} className="flex-1 sm:flex-none h-10">
                 <Plus className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Báo cáo sự cố</span>
                 <span className="sm:hidden">Báo cáo</span>
@@ -410,7 +410,7 @@ export default function SuCoPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] md:text-xs font-medium text-gray-600">Tổng sự cố</p>
-              <p className="text-base md:text-2xl font-bold">{suCoList.length}</p>
+              <p className="text-base md:text-2xl font-bold">{filteredSuCo.length}</p>
             </div>
             <AlertTriangle className="h-3 w-3 md:h-4 md:w-4 text-gray-500" />
           </div>
@@ -421,7 +421,7 @@ export default function SuCoPage() {
             <div>
               <p className="text-[10px] md:text-xs font-medium text-gray-600">Mới</p>
               <p className="text-base md:text-2xl font-bold text-red-600">
-                {suCoList.filter(s => s.trangThai === 'moi').length}
+                {filteredSuCo.filter(s => s.trangThai === 'moi').length}
               </p>
             </div>
             <AlertTriangle className="h-3 w-3 md:h-4 md:w-4 text-red-600" />
@@ -433,7 +433,7 @@ export default function SuCoPage() {
             <div>
               <p className="text-[10px] md:text-xs font-medium text-gray-600">Đang xử lý</p>
               <p className="text-base md:text-2xl font-bold text-orange-600">
-                {suCoList.filter(s => s.trangThai === 'dangXuLy').length}
+                {filteredSuCo.filter(s => s.trangThai === 'dangXuLy').length}
               </p>
             </div>
             <Clock className="h-3 w-3 md:h-4 md:w-4 text-orange-600" />
@@ -445,7 +445,7 @@ export default function SuCoPage() {
             <div>
               <p className="text-[10px] md:text-xs font-medium text-gray-600">Đã xong</p>
               <p className="text-base md:text-2xl font-bold text-green-600">
-                {suCoList.filter(s => s.trangThai === 'daXong').length}
+                {filteredSuCo.filter(s => s.trangThai === 'daXong').length}
               </p>
             </div>
             <CheckCircle className="h-3 w-3 md:h-4 md:w-4 text-green-600" />
@@ -509,16 +509,16 @@ export default function SuCoPage() {
               placeholder="Tìm kiếm sự cố..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 text-sm"
+              className="pl-10 text-sm h-10"
             />
           </div>
           <div className="grid grid-cols-3 gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="text-sm">
+              <SelectTrigger className="text-sm h-10">
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" className="text-sm">Tất cả</SelectItem>
+                <SelectItem value="all" className="text-sm">Tất cả trạng thái</SelectItem>
                 <SelectItem value="moi" className="text-sm">Mới</SelectItem>
                 <SelectItem value="dangXuLy" className="text-sm">Đang xử lý</SelectItem>
                 <SelectItem value="daXong" className="text-sm">Đã xong</SelectItem>
@@ -530,7 +530,7 @@ export default function SuCoPage() {
                 <SelectValue placeholder="Loại" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" className="text-sm">Tất cả</SelectItem>
+                <SelectItem value="all" className="text-sm">Tất cả loại sự cố</SelectItem>
                 <SelectItem value="dienNuoc" className="text-sm">Điện nước</SelectItem>
                 <SelectItem value="noiThat" className="text-sm">Nội thất</SelectItem>
                 <SelectItem value="vesinh" className="text-sm">Vệ sinh</SelectItem>
@@ -543,7 +543,7 @@ export default function SuCoPage() {
                 <SelectValue placeholder="Ưu tiên" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" className="text-sm">Tất cả</SelectItem>
+                <SelectItem value="all" className="text-sm">Tất cả mức độ</SelectItem>
                 <SelectItem value="thap" className="text-sm">Thấp</SelectItem>
                 <SelectItem value="trungBinh" className="text-sm">Trung bình</SelectItem>
                 <SelectItem value="cao" className="text-sm">Cao</SelectItem>

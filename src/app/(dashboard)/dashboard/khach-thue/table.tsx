@@ -442,7 +442,7 @@ export function KhachThueDataTable(props: KhachThueDataTableProps) {
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="all">Tất cả trạng thái</SelectItem>
               <SelectItem value="dangThue">Đang thuê</SelectItem>
               <SelectItem value="daTraPhong">Đã trả phòng</SelectItem>
               <SelectItem value="chuaThue">Chưa thuê</SelectItem>

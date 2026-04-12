@@ -10,6 +10,7 @@ import mongoose from 'mongoose';
 import { sendDebtNotificationEmail, isValidEmail } from '@/lib/mail';
 import { isToaNhaAccessible } from '@/lib/auth-utils';
 import { getOwnerByHoaDon, getVietQrUrl } from '@/lib/payment-utils';
+import ThongBao from '@/models/ThongBao';
 
 export async function POST(request: NextRequest) {
   try {
@@ -115,10 +116,22 @@ export async function POST(request: NextRequest) {
 
       if (success) {
         sentCount++;
-        // Cập nhật trạng thái bằng findByIdAndUpdate để tránh lỗi validation không đáng có
         await HoaDon.findByIdAndUpdate(hoaDon._id, {
           $inc: { lanGuiEmailNhacNo: 1 },
           $set: { ngayGuiEmailNhacNoCuoi: new Date(), soLanGuiEmailNhacNoThatBai: 0 }
+        });
+
+        // 5. Create System Notification
+        await ThongBao.create({
+          tieuDe: `🔔 Thông báo nhắc nợ hóa đơn ${hoaDon.maHoaDon}`,
+          noiDung: `Chào ${khachThueName}, bạn có khoản thanh toán hóa đơn tháng ${hoaDon.thang}/${hoaDon.nam} cho phòng ${hoaDon.phong?.maPhong || 'N/A'} vẫn đang chờ xử lý. Số tiền: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(hoaDon.conLai)}. Vui lòng kiểm tra và thanh toán sớm.`,
+          loai: 'hoaDon',
+          nguoiGui: session.user.id,
+          nguoiNhan: [hoaDon.khachThue],
+          phong: [hoaDon.phong._id],
+          daDoc: [],
+          guiTatCa: false,
+          vaiTroNhan: 'khachThue'
         });
       } else {
         failedCount++;

@@ -449,7 +449,7 @@ export function HopDongDataTable(props: HopDongDataTableProps) {
           {(!props.globalBuildingId || props.globalBuildingId === 'all') && allToaNhaList && (
             <Select value={toaNhaFilter} onValueChange={onToaNhaChange}>
               <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Tất cả tòa nhà" />
+                <SelectValue placeholder="Tòa nhà" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả tòa nhà</SelectItem>

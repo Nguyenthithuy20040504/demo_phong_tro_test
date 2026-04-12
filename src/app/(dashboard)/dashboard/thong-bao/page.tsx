@@ -434,7 +434,7 @@ export default function ThongBaoPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">Quản lý thông báo</h1>
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-extrabold font-heading text-foreground drop-shadow-sm">Quản lý thông báo</h1>
           <p className="text-xs md:text-sm text-gray-600">Gửi và quản lý thông báo đến khách thuê</p>
         </div>
         <div className="flex gap-2">
@@ -472,7 +472,7 @@ export default function ThongBaoPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] md:text-xs font-medium text-gray-600">Tổng thông báo</p>
-              <p className="text-base md:text-2xl font-bold">{thongBaoList.length}</p>
+              <p className="text-base md:text-2xl font-bold">{filteredThongBao.length}</p>
             </div>
             <Bell className="h-3 w-3 md:h-4 md:w-4 text-gray-500" />
           </div>
@@ -483,7 +483,7 @@ export default function ThongBaoPage() {
             <div>
               <p className="text-[10px] md:text-xs font-medium text-gray-600">Chung</p>
               <p className="text-base md:text-2xl font-bold text-blue-600">
-                {thongBaoList.filter(t => t.loai === 'chung').length}
+                {filteredThongBao.filter(t => t.loai === 'chung').length}
               </p>
             </div>
             <Bell className="h-3 w-3 md:h-4 md:w-4 text-blue-600" />
@@ -496,8 +496,8 @@ export default function ThongBaoPage() {
               <p className="text-[10px] md:text-xs font-medium text-gray-600">{isAdmin ? 'Hệ thống' : 'Hóa đơn'}</p>
               <p className={`text-base md:text-2xl font-bold ${isAdmin ? 'text-red-600' : 'text-green-600'}`}>
                 {isAdmin 
-                  ? thongBaoList.filter(t => t.loai === 'he_thong' || t.loai === 'thanh_toan_saas').length
-                  : thongBaoList.filter(t => t.loai === 'hoaDon').length
+                  ? filteredThongBao.filter(t => t.loai === 'he_thong' || t.loai === 'thanh_toan_saas').length
+                  : filteredThongBao.filter(t => t.loai === 'hoaDon').length
                 }
               </p>
             </div>
@@ -511,7 +511,7 @@ export default function ThongBaoPage() {
               <div>
                 <p className="text-[10px] md:text-xs font-medium text-gray-600">Sự cố</p>
                 <p className="text-base md:text-2xl font-bold text-red-600">
-                  {thongBaoList.filter(t => t.loai === 'suCo').length}
+                  {filteredThongBao.filter(t => t.loai === 'suCo').length}
                 </p>
               </div>
               <Bell className="h-3 w-3 md:h-4 md:w-4 text-red-600" />
@@ -559,16 +559,16 @@ export default function ThongBaoPage() {
                     placeholder="Tìm kiếm theo tiêu đề, nội dung..."
                     value={searchTerm}
                     onChange={(e) => handleSearchChange(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 h-10"
                   />
                 </div>
               </div>
               <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
-                <SelectTrigger className="w-full sm:w-[160px]">
+                <SelectTrigger className="w-full sm:w-[160px] h-10">
                   <SelectValue placeholder="Loại" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
+                  <SelectItem value="all">Tất cả loại thông báo</SelectItem>
                   <SelectItem value="chung">Chung</SelectItem>
                   <SelectItem value="hoaDon">Hóa đơn</SelectItem>
                   <SelectItem value="suCo">Sự cố</SelectItem>
@@ -762,21 +762,21 @@ export default function ThongBaoPage() {
         
         {/* Mobile Filters */}
         <div className="space-y-2 mb-4">
-          <div className="relative">
+          <div className="relative mb-2">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Tìm kiếm thông báo..."
               value={searchTerm}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-10 text-sm"
+              className="pl-10 text-sm h-10"
             />
           </div>
           <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
-            <SelectTrigger className="text-sm">
+            <SelectTrigger className="text-sm h-9">
               <SelectValue placeholder="Loại thông báo" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all" className="text-sm">Tất cả</SelectItem>
+              <SelectItem value="all" className="text-sm">Tất cả loại thông báo</SelectItem>
               <SelectItem value="chung" className="text-sm">Chung</SelectItem>
               <SelectItem value="hoaDon" className="text-sm">Hóa đơn</SelectItem>
               <SelectItem value="suCo" className="text-sm">Sự cố</SelectItem>

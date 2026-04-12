@@ -424,7 +424,29 @@ export default function DashboardPage() {
     return new Intl.NumberFormat('vi-VN').format(amount) + ' ₫';
   };
 
-  // Building name for display
+  const handleSendReminder = async (hoaDonId: string) => {
+    try {
+      const toastId = toast.loading('Đang gửi thông báo nhắc nợ...');
+      const response = await fetch('/api/hoa-don/gui-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ hoaDonIds: [hoaDonId] })
+      });
+      
+      const data = await response.json();
+      if (response.ok) {
+        toast.success(data.message || 'Đã gửi nhắc nợ thành công!', { id: toastId });
+      } else {
+        toast.error(data.message || 'Gửi nhắc nợ thất bại', { id: toastId });
+      }
+    } catch (error) {
+      console.error('Error sending reminder:', error);
+      toast.error('Lỗi kết nối khi gửi nhắc nợ');
+    }
+  };
+
   const buildingLabel = useMemo(() => {
     if (selectedToaNha === 'all') return 'Tất cả tòa nhà';
     return toaNhaList.find(t => t._id === selectedToaNha)?.tenToaNha || '';
@@ -723,7 +745,10 @@ export default function DashboardPage() {
                             </span>
                           </td>
                           <td className="py-4 px-6 text-right">
-                            <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-[11px] font-bold text-gray-700 hover:bg-teal-50 hover:border-teal-200 hover:text-teal-700 transition-all shadow-sm active:scale-95">
+                            <button 
+                              onClick={() => handleSendReminder(item._id)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-[11px] font-bold text-gray-700 hover:bg-teal-50 hover:border-teal-200 hover:text-teal-700 transition-all shadow-sm active:scale-95"
+                            >
                               <MessageSquare className="h-3 w-3" />
                               Nhắc nợ
                             </button>
@@ -809,15 +834,14 @@ export default function DashboardPage() {
               {/* Advice note */}
               {(stats.hopDongSapHetHanList && stats.hopDongSapHetHanList.length > 0) && (
                 <div className="p-5 mt-auto">
-                  <div className="p-4 bg-teal-900 text-white rounded-xl shadow-lg relative overflow-hidden group">
-                    <div className="absolute -right-4 -bottom-4 bg-white/10 rounded-full h-24 w-24 translate-x-4 translate-y-4 group-hover:scale-110 transition-transform duration-500" />
+                  <div className="px-4 py-3 bg-teal-50/50 border border-teal-100/50 text-teal-900 rounded-xl relative overflow-hidden group">
                     <div className="flex items-start gap-3 relative z-10">
-                      <div className="bg-primary/20 p-2 rounded-lg">
-                        <Lightbulb className="h-4 w-4 text-primary" />
+                      <div className="bg-teal-100 p-1.5 rounded-lg shrink-0">
+                        <Lightbulb className="h-3.5 w-3.5 text-teal-600" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-wider mb-1 opacity-70">Gợi ý vận hành</p>
-                        <p className="text-xs leading-relaxed opacity-90">
+                        <p className="text-[10px] font-bold uppercase tracking-widest mb-0.5 text-teal-600/70">Gợi ý vận hành</p>
+                        <p className="text-xs leading-relaxed text-teal-800/80 font-medium">
                           Liên hệ khách hàng trước 15 ngày để gia hạn hoặc tìm khách mới, tránh phòng bị bỏ trống gây thất thoát doanh thu.
                         </p>
                       </div>

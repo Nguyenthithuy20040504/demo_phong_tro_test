@@ -491,16 +491,16 @@ export function SuCoDataTable(props: SuCoDataTableProps) {
                 placeholder="Tìm kiếm tiêu đề, mô tả..."
                 value={searchTerm || ''}
                 onChange={(e) => onSearchChange?.(e.target.value)}
-                className="pl-10"
+                className="pl-10 h-10"
               />
             </div>
           </div>
           <Select value={statusFilter} onValueChange={onStatusFilterChange}>
-            <SelectTrigger className="w-full sm:w-[130px]">
+            <SelectTrigger className="w-full sm:w-[160px] h-10">
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="all">Tất cả trạng thái</SelectItem>
               <SelectItem value="moi">Mới</SelectItem>
               <SelectItem value="dangXuLy">Đang xử lý</SelectItem>
               <SelectItem value="daXong">Đã xong</SelectItem>
@@ -508,11 +508,11 @@ export function SuCoDataTable(props: SuCoDataTableProps) {
             </SelectContent>
           </Select>
           <Select value={typeFilter} onValueChange={onTypeChange}>
-            <SelectTrigger className="w-full sm:w-[130px]">
+            <SelectTrigger className="w-full sm:w-[160px] h-10">
               <SelectValue placeholder="Loại" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="all">Tất cả loại sự cố</SelectItem>
               <SelectItem value="dienNuoc">Điện nước</SelectItem>
               <SelectItem value="noiThat">Nội thất</SelectItem>
               <SelectItem value="vesinh">Vệ sinh</SelectItem>
@@ -521,11 +521,11 @@ export function SuCoDataTable(props: SuCoDataTableProps) {
             </SelectContent>
           </Select>
           <Select value={priorityFilter} onValueChange={onPriorityChange}>
-            <SelectTrigger className="w-full sm:w-[130px]">
+            <SelectTrigger className="w-full sm:w-[160px] h-10">
               <SelectValue placeholder="Ưu tiên" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="all">Tất cả mức độ</SelectItem>
               <SelectItem value="thap">Thấp</SelectItem>
               <SelectItem value="trungBinh">Trung bình</SelectItem>
               <SelectItem value="cao">Cao</SelectItem>

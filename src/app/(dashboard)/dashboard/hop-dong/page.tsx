@@ -1485,7 +1485,7 @@ export default function HopDongPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Tổng hợp đồng</p>
-              <p className="text-base md:text-2xl font-bold">{hopDongList.length}</p>
+              <p className="text-base md:text-2xl font-bold">{filteredHopDong.length}</p>
             </div>
             <FileText className="h-3 w-3 md:h-4 md:w-4 text-gray-500" />
           </div>
@@ -1496,7 +1496,7 @@ export default function HopDongPage() {
             <div>
               <p className="text-[10px] md:text-xs font-medium text-amber-600 uppercase tracking-wider">Chờ duyệt</p>
               <p className="text-base md:text-2xl font-bold text-amber-600">
-                {hopDongList.filter(h => h.trangThai === 'choDuyet').length}
+                {filteredHopDong.filter(h => h.trangThai === 'choDuyet').length}
               </p>
             </div>
             <FileText className="h-3 w-3 md:h-4 md:w-4 text-amber-500" />
@@ -1508,7 +1508,7 @@ export default function HopDongPage() {
             <div>
               <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Hoạt động</p>
               <p className="text-base md:text-2xl font-bold text-green-600">
-                {hopDongList.filter(h => h.trangThai === 'hoatDong').length}
+                {filteredHopDong.filter(h => h.trangThai === 'hoatDong').length}
               </p>
             </div>
             <FileText className="h-3 w-3 md:h-4 md:w-4 text-green-600" />
@@ -1520,7 +1520,7 @@ export default function HopDongPage() {
             <div>
               <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Sắp hết hạn</p>
               <p className="text-base md:text-2xl font-bold text-orange-600">
-                {hopDongList.filter(h => isExpiringSoon(h.ngayKetThuc)).length}
+                {filteredHopDong.filter(h => isExpiringSoon(h.ngayKetThuc)).length}
               </p>
             </div>
             <Calendar className="h-3 w-3 md:h-4 md:w-4 text-orange-600" />
@@ -1532,7 +1532,7 @@ export default function HopDongPage() {
             <div>
               <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Đã hết hạn</p>
               <p className="text-base md:text-2xl font-bold text-red-600">
-                {hopDongList.filter(h => isExpired(h.ngayKetThuc)).length}
+                {filteredHopDong.filter(h => isExpired(h.ngayKetThuc)).length}
               </p>
             </div>
             <Calendar className="h-3 w-3 md:h-4 md:w-4 text-red-600" />

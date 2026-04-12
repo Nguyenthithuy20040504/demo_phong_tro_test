@@ -198,7 +198,13 @@ export default function SaaSInvoicesPage() {
         'Thực nhận': p.trangThai === 'daThanhToan' ? (p.soTienDaChuyen || p.soTien) : (p.soTienDaChuyen || 0),
         'Phương thức': p.phuongThuc === 'chuyenKhoan' ? 'Chuyển khoản' : p.phuongThuc === 'tienMat' ? 'Tiền mặt' : 'Ví điện tử',
         'Trạng thái': p.trangThai === 'daThanhToan' ? 'Thành công' : p.trangThai === 'chuaThanhToanHet' ? 'Chưa chuyển hết' : p.trangThai === 'daHuy' ? 'Đã hủy' : 'Chờ duyệt',
-        'Hết hạn mới': p.ngayHetHanMoi ? new Date(p.ngayHetHanMoi).toLocaleDateString('vi-VN') : 'Đang xử lý...'
+        'Hết hạn mới': p.ngayHetHanMoi 
+          ? new Date(p.ngayHetHanMoi).toLocaleDateString('vi-VN') 
+          : p.trangThai === 'daThanhToan' 
+            ? 'Chờ đồng bộ' 
+            : p.trangThai === 'daHuy' 
+              ? '---' 
+              : 'Chờ thanh toán'
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(excelData);
@@ -305,7 +311,13 @@ export default function SaaSInvoicesPage() {
                   <td class="amount">${p.soTien.toLocaleString('vi-VN')} đ</td>
                   <td class="amount" style="color: #ea580c;">${(p.trangThai === 'daThanhToan' ? (p.soTienDaChuyen || p.soTien) : (p.soTienDaChuyen || 0)).toLocaleString('vi-VN')} đ</td>
                   <td>${p.trangThai === 'daThanhToan' ? 'Thành công' : p.trangThai === 'chuaThanhToanHet' ? 'Chưa chuyển hết' : p.trangThai === 'daHuy' ? 'Đã hủy' : 'Chờ duyệt'}</td>
-                  <td>${p.ngayHetHanMoi ? new Date(p.ngayHetHanMoi).toLocaleDateString('vi-VN') : 'Đang xử lý...'}</td>
+                  <td>${p.ngayHetHanMoi 
+                    ? new Date(p.ngayHetHanMoi).toLocaleDateString('vi-VN') 
+                    : p.trangThai === 'daThanhToan' 
+                      ? 'Chờ đồng bộ' 
+                      : p.trangThai === 'daHuy' 
+                        ? '---' 
+                        : 'Chờ thanh toán'}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -458,8 +470,25 @@ export default function SaaSInvoicesPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50 font-medium">
-                            {payment.ngayHetHanMoi ? new Date(payment.ngayHetHanMoi).toLocaleDateString('vi-VN') : 'Đang xử lý...'}
+                        <Badge 
+                          variant="outline" 
+                          className={`font-medium ${
+                            !payment.ngayHetHanMoi 
+                              ? payment.trangThai === 'daThanhToan'
+                                ? 'text-blue-600 border-blue-200 bg-blue-50' 
+                                : payment.trangThai === 'daHuy'
+                                  ? 'text-muted-foreground border-gray-200 bg-gray-50'
+                                  : 'text-amber-600 border-amber-200 bg-amber-50'
+                              : 'text-emerald-600 border-emerald-200 bg-emerald-50'
+                          }`}
+                        >
+                            {payment.ngayHetHanMoi 
+                              ? new Date(payment.ngayHetHanMoi).toLocaleDateString('vi-VN') 
+                              : payment.trangThai === 'daThanhToan' 
+                                ? 'Chờ đồng bộ' 
+                                : payment.trangThai === 'daHuy' 
+                                  ? '---' 
+                                  : 'Chờ thanh toán'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -647,8 +676,25 @@ export default function SaaSInvoicesPage() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground font-medium">Hết hạn mới</p>
-                  <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">
-                    {detailPayment.ngayHetHanMoi ? new Date(detailPayment.ngayHetHanMoi).toLocaleDateString('vi-VN') : 'Đang xử lý...'}
+                  <Badge 
+                    variant="outline" 
+                    className={`font-medium ${
+                      !detailPayment.ngayHetHanMoi 
+                        ? detailPayment.trangThai === 'daThanhToan'
+                          ? 'text-blue-600 border-blue-200 bg-blue-50' 
+                          : detailPayment.trangThai === 'daHuy'
+                            ? 'text-muted-foreground border-gray-200 bg-gray-50'
+                            : 'text-amber-600 border-amber-200 bg-amber-50'
+                        : 'text-emerald-600 border-emerald-200 bg-emerald-50'
+                    }`}
+                  >
+                    {detailPayment.ngayHetHanMoi 
+                      ? new Date(detailPayment.ngayHetHanMoi).toLocaleDateString('vi-VN') 
+                      : detailPayment.trangThai === 'daThanhToan' 
+                        ? 'Chờ đồng bộ' 
+                        : detailPayment.trangThai === 'daHuy' 
+                          ? '---' 
+                          : 'Chờ thanh toán'}
                   </Badge>
                 </div>
               </div>

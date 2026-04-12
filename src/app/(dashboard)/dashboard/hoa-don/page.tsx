@@ -723,7 +723,7 @@ export default function HoaDonPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Tổng hóa đơn</p>
-              <p className="text-base md:text-2xl font-bold">{hoaDonList.length}</p>
+              <p className="text-base md:text-2xl font-bold">{filteredHoaDon.length}</p>
             </div>
             <Receipt className="h-3 w-3 md:h-4 md:w-4 text-gray-500" />
           </div>
@@ -734,7 +734,7 @@ export default function HoaDonPage() {
             <div>
               <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Chưa thanh toán</p>
               <p className="text-base md:text-2xl font-bold text-red-600">
-                {hoaDonList.filter(h => h.trangThai === 'chuaThanhToan').length}
+                {filteredHoaDon.filter(h => h.trangThai === 'chuaThanhToan').length}
               </p>
             </div>
             <Receipt className="h-3 w-3 md:h-4 md:w-4 text-red-600" />
@@ -746,7 +746,7 @@ export default function HoaDonPage() {
             <div>
               <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Quá hạn</p>
               <p className="text-base md:text-2xl font-bold text-orange-600">
-                {hoaDonList.filter(h => h.trangThai !== 'daThanhToan' && new Date(h.hanThanhToan).setHours(0,0,0,0) < new Date().setHours(0,0,0,0)).length}
+                {filteredHoaDon.filter(h => h.trangThai !== 'daThanhToan' && new Date(h.hanThanhToan).setHours(0,0,0,0) < new Date().setHours(0,0,0,0)).length}
               </p>
             </div>
             <AlertCircle className="h-3 w-3 md:h-4 md:w-4 text-orange-600" />
@@ -758,7 +758,7 @@ export default function HoaDonPage() {
             <div className="min-w-0">
               <p className="text-[10px] md:text-xs font-medium text-gray-600 uppercase tracking-wider">Doanh thu</p>
               <p className="text-xs md:text-2xl font-bold text-green-600 truncate">
-                {formatCurrency(hoaDonList.reduce((sum, h) => sum + h.daThanhToan, 0))}
+                {formatCurrency(filteredHoaDon.reduce((sum, h) => sum + h.daThanhToan, 0))}
               </p>
             </div>
             <Receipt className="h-3 w-3 md:h-4 md:w-4 text-green-600 flex-shrink-0" />
@@ -841,7 +841,7 @@ export default function HoaDonPage() {
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" className="text-sm">Theo trạng thái</SelectItem>
+                <SelectItem value="all" className="text-sm">Tất cả trạng thái</SelectItem>
                 <SelectItem value="chuaThanhToan" className="text-sm">Chưa thanh toán</SelectItem>
                 <SelectItem value="daThanhToan" className="text-sm">Đã thanh toán</SelectItem>
                 <SelectItem value="choDuyet" className="text-sm">Chờ duyệt</SelectItem>
@@ -856,7 +856,7 @@ export default function HoaDonPage() {
                 <SelectValue placeholder="Tháng" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" className="text-sm">Theo tháng</SelectItem>
+                <SelectItem value="all" className="text-sm">Tất cả các tháng</SelectItem>
                 {getMonthOptions().map(month => (
                   <SelectItem key={month} value={month.toString()} className="text-sm">
                     Tháng {month}
@@ -869,7 +869,7 @@ export default function HoaDonPage() {
                 <SelectValue placeholder="Năm" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" className="text-sm">Theo năm</SelectItem>
+                <SelectItem value="all" className="text-sm">Tất cả các năm</SelectItem>
                 {getYearOptions().map(year => (
                   <SelectItem key={year} value={year.toString()} className="text-sm">
                     Năm {year}

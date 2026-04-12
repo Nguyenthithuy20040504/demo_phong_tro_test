@@ -14,7 +14,7 @@ export async function GET() {
     }
 
     await dbConnect();
-    const user = await NguoiDung.findById(session.user.id).populate('nguoiQuanLy', 'ngayHetHan goiDichVu').lean();
+    const user = await NguoiDung.findById(session.user.id).populate('nguoiQuanLy', 'ngayHetHan goiDichVu').lean() as any;
     
     if (!user) {
       console.log('API Status: User not found for id', session.user.id);
@@ -26,16 +26,38 @@ export async function GET() {
     let finalNgayHetHan = user.ngayHetHan;
     
     const roleStr = user.role || user.vaiTro;
+
+    // TỰ ĐỘNG KÍCH HOẠT GÓI ĐỢI (QUEUE SYSTEM)
+    // Nếu hôm nay > ngày hết hạn và có gói tiếp theo đang đợi
+    if (roleStr === 'chuNha' && user.ngayHetHan && new Date(user.ngayHetHan) < new Date() && (user as any).goiDichVuTiepTheo) {
+       console.log('API Status: Activating queued plan for user', session.user.id);
+       const updatedUser = await NguoiDung.findByIdAndUpdate(
+         session.user.id,
+         { 
+           goiDichVu: (user as any).goiDichVuTiepTheo,
+           goiDichVuTiepTheo: null 
+         },
+         { new: true }
+       ).lean();
+       
+       if (updatedUser) {
+         user.goiDichVu = updatedUser.goiDichVu;
+         user.goiDichVuTiepTheo = null;
+         finalGoiDichVu = updatedUser.goiDichVu;
+       }
+    }
+
     if (roleStr === 'nhanVien' && user.nguoiQuanLy && (user.nguoiQuanLy as any).ngayHetHan) {
       const nguoiQuanLy = user.nguoiQuanLy as any;
       finalGoiDichVu = nguoiQuanLy.goiDichVu || finalGoiDichVu;
       finalNgayHetHan = nguoiQuanLy.ngayHetHan;
     }
 
-    console.log('API Status: Returning', { goiDichVu: finalGoiDichVu, ngayHetHan: finalNgayHetHan });
+    console.log('API Status: Returning', { goiDichVu: finalGoiDichVu, ngayHetHan: finalNgayHetHan, goiDichVuTiepTheo: (user as any).goiDichVuTiepTheo });
     return NextResponse.json({
       goiDichVu: finalGoiDichVu,
-      ngayHetHan: finalNgayHetHan
+      ngayHetHan: finalNgayHetHan,
+      goiDichVuTiepTheo: (user as any).goiDichVuTiepTheo
     });
   } catch (error) {
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });

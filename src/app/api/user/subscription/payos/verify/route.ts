@@ -53,12 +53,25 @@ export async function GET(request: NextRequest) {
         if (plan.ten.toLowerCase().includes('chuyên nghiệp') || plan.ten.toLowerCase().includes('professional') || plan.ten.toLowerCase().includes('vip') || plan.ten.toLowerCase().includes('pro')) userPlanRole = 'chuyenNghiep';
 
         const currentExpiry = user.ngayHetHan ? new Date(user.ngayHetHan) : new Date();
-        const startDate = currentExpiry > new Date() ? currentExpiry : new Date();
-        
+        const now = new Date();
+        const isCurrentlyActive = currentExpiry > now;
+        const isSamePlan = user.goiDichVu === userPlanRole;
+
+        const startDate = isCurrentlyActive ? currentExpiry : now;
         const newExpiry = new Date(startDate);
         newExpiry.setMonth(startDate.getMonth() + plan.thoiGian);
 
-        user.goiDichVu = userPlanRole;
+        if (isCurrentlyActive && !isSamePlan) {
+          // Đang có gói cũ còn hạn và mua gói KHÁC -> Cho vào hàng đợi
+          user.goiDichVuTiepTheo = userPlanRole;
+          console.log(`[SUBSCRIPTION] Queued plan ${userPlanRole} for user ${user._id}`);
+        } else {
+          // Đã hết hạn HOẶC mua gói CÙNG loại -> Nâng cấp/Gia hạn ngay
+          user.goiDichVu = userPlanRole;
+          user.goiDichVuTiepTheo = null; // Xóa hàng đợi nếu có (vì đã gia hạn/nâng cấp thẳng)
+          console.log(`[SUBSCRIPTION] Renewed/Upgraded plan ${userPlanRole} for user ${user._id}`);
+        }
+        
         user.ngayHetHan = newExpiry;
         await user.save();
 

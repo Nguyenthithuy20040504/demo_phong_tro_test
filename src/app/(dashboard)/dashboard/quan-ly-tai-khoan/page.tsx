@@ -94,6 +94,8 @@ export default function AccountManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
@@ -352,10 +354,22 @@ export default function AccountManagementPage() {
   const getUserAvatar = (user: User) => user.avatar || user.anhDaiDien || '';
   const getUserIsActive = (user: User) => user.isActive !== undefined ? user.isActive : (user.trangThai === 'hoatDong');
 
-  const filteredUsers = users.filter(user =>
-    (user.name || user.ten || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.email || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users.filter(user => {
+    // Search filter
+    const searchMatch = (user.name || user.ten || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        (user.email || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Role filter
+    const roleMatch = roleFilter === 'all' || getUserRole(user) === roleFilter;
+    
+    // Status filter
+    const active = getUserIsActive(user);
+    const statusMatch = statusFilter === 'all' || 
+                        (statusFilter === 'true' && active) || 
+                        (statusFilter === 'false' && !active);
+    
+    return searchMatch && roleMatch && statusMatch;
+  });
 
   if (((session?.user as any)?.role) !== 'admin' && ((session?.user as any)?.role) !== 'chuNha') {
     return (
@@ -620,7 +634,7 @@ export default function AccountManagementPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase tracking-tight">Tổng người dùng</p>
-              <p className="text-base md:text-2xl font-bold">{users.length}</p>
+              <p className="text-base md:text-2xl font-bold">{filteredUsers.length}</p>
             </div>
             <div className="p-2 bg-blue-50 rounded-full">
                <Users className="h-3 w-3 md:h-4 md:w-4 text-blue-600" />
@@ -633,7 +647,7 @@ export default function AccountManagementPage() {
             <div>
               <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase tracking-tight">Quản trị viên</p>
               <p className="text-base md:text-2xl font-bold text-red-600">
-                {users.filter(u => getUserRole(u) === 'admin').length}
+                {filteredUsers.filter(u => getUserRole(u) === 'admin').length}
               </p>
             </div>
             <div className="p-2 bg-red-50 rounded-full">
@@ -647,7 +661,7 @@ export default function AccountManagementPage() {
             <div>
               <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase tracking-tight">Chủ nhà</p>
               <p className="text-base md:text-2xl font-bold text-blue-600">
-                {users.filter(u => getUserRole(u) === 'chuNha').length}
+                {filteredUsers.filter(u => getUserRole(u) === 'chuNha').length}
               </p>
             </div>
             <div className="p-2 bg-blue-50 rounded-full">
@@ -661,7 +675,7 @@ export default function AccountManagementPage() {
             <div>
               <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase tracking-tight">Nhân viên</p>
               <p className="text-base md:text-2xl font-bold text-emerald-600">
-                {users.filter(u => getUserRole(u) === 'nhanVien').length}
+                {filteredUsers.filter(u => getUserRole(u) === 'nhanVien').length}
               </p>
             </div>
             <div className="p-2 bg-emerald-50 rounded-full">
@@ -675,7 +689,7 @@ export default function AccountManagementPage() {
             <div>
               <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase tracking-tight">Khách thuê</p>
               <p className="text-base md:text-2xl font-bold text-orange-500">
-                {users.filter(u => getUserRole(u) === 'khachThue').length}
+                {filteredUsers.filter(u => getUserRole(u) === 'khachThue').length}
               </p>
             </div>
             <div className="p-2 bg-orange-50 rounded-full">
@@ -710,6 +724,10 @@ export default function AccountManagementPage() {
             currentUserId={((session?.user as any)?.id)}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
+            roleFilter={roleFilter}
+            onRoleChange={setRoleFilter}
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
           />
         </CardContent>
       </Card>
@@ -729,9 +747,36 @@ export default function AccountManagementPage() {
               placeholder="Tìm kiếm..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 text-sm"
+              className="pl-10 text-sm h-10"
             />
           </div>
+        </div>
+
+        {/* Mobile Filter Grid */}
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <SelectTrigger className="w-full text-xs h-9">
+              <SelectValue placeholder="Vai trò" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả vai trò</SelectItem>
+              <SelectItem value="admin">Quản trị viên</SelectItem>
+              <SelectItem value="chuNha">Chủ nhà</SelectItem>
+              <SelectItem value="nhanVien">Nhân viên</SelectItem>
+              <SelectItem value="khachThue">Khách thuê</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full text-xs h-9">
+              <SelectValue placeholder="Trạng thái" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả trạng thái</SelectItem>
+              <SelectItem value="true">Hoạt động</SelectItem>
+              <SelectItem value="false">Tạm khóa</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Mobile Card List */}

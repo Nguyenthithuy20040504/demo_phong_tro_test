@@ -68,11 +68,13 @@ export async function GET(request: NextRequest) {
     
     let hoaDonSuCoQuery: any = { phong: { $in: phongIds } };
     
-    const hopDongs = await HopDong.find({ phong: { $in: phongIds } }).select('_id');
-    const hopDongIds = hopDongs.map(hd => hd._id);
-    const hoaDonsForThanhToan = await HoaDon.find({ hopDong: { $in: hopDongIds } }).select('_id');
-    const hoaDonIds = hoaDonsForThanhToan.map(hd => hd._id);
+    // Tìm tất cả hóa đơn thuộc về các phòng này để tính toán doanh thu/công nợ
+    const allHoaDons = await HoaDon.find({ phong: { $in: phongIds } }).select('_id hopDong');
+    const hoaDonIds = allHoaDons.map(hd => hd._id);
+    const hopDongIds = Array.from(new Set(allHoaDons.map(hd => hd.hopDong).filter(Boolean)));
+
     let thanhToanQuery: any = { hoaDon: { $in: hoaDonIds } };
+    let hopDongQuery: any = { phong: { $in: phongIds } };
 
     // Set time range for revenue
     const now = new Date();
@@ -131,8 +133,9 @@ export async function GET(request: NextRequest) {
     
     // Count overdue invoices
     const soHoaDonQuaHanPromise = HoaDon.countDocuments({
-      hopDong: { $in: hopDongIds },
-      trangThai: 'quaHan',
+      phong: { $in: phongIds },
+      trangThai: { $in: ['quaHan', 'chuaThanhToan', 'daThanhToanMotPhan'] },
+      hanThanhToan: { $lt: now },
     });
 
     // ===== NEW: Revenue change percentage (vs last month) =====
@@ -143,8 +146,8 @@ export async function GET(request: NextRequest) {
     // ===== NEW: Top 5 overdue invoices with details =====
     const KhachThue = (await import('@/models/KhachThue')).default;
     const hoaDonQuaHanRawPromise = HoaDon.find({
-      hopDong: { $in: hopDongIds },
-      trangThai: { $in: ['quaHan', 'chuaThanhToan'] },
+      phong: { $in: phongIds },
+      trangThai: { $in: ['quaHan', 'chuaThanhToan', 'daThanhToanMotPhan'] },
       hanThanhToan: { $lt: now },
     })
       .sort({ hanThanhToan: 1 })
@@ -187,7 +190,7 @@ export async function GET(request: NextRequest) {
       }),
       HopDong.countDocuments({
         ...hoaDonSuCoQuery,
-        ngayKetThuc: { $lte: nextMonth },
+        ngayKetThuc: { $gte: now, $lte: nextMonth },
         trangThai: 'hoatDong'
       }),
       ThanhToan.aggregate([
@@ -200,11 +203,11 @@ export async function GET(request: NextRequest) {
         { $group: { _id: { month: { $month: '$ngayThanhToan' }, year: { $year: '$ngayThanhToan' } }, total: { $sum: '$soTien' } } }
       ]),
       HoaDon.aggregate([
-        { $match: { hopDong: { $in: hopDongIds }, trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan', 'quaHan'] } } },
+        { $match: { phong: { $in: phongIds }, trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan', 'quaHan'] } } },
         { $group: { _id: { month: { $month: '$hanThanhToan' }, year: { $year: '$hanThanhToan' } }, total: { $sum: '$conLai' } } }
       ]),
       HoaDon.aggregate([
-        { $match: { hopDong: { $in: hopDongIds }, trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan', 'quaHan'] } } },
+        { $match: { phong: { $in: phongIds }, trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan', 'quaHan'] } } },
         { $group: { _id: null, total: { $sum: '$conLai' } } }
       ]),
       soHoaDonQuaHanPromise,
@@ -273,13 +276,22 @@ export async function GET(request: NextRequest) {
       .populate({ path: 'nguoiDaiDien', select: 'hoTen' })
       .lean();
 
-    const hopDongSapHetHanList = hopDongSapHetHanRaw.map((hd: any) => ({
-      _id: hd._id.toString(),
-      tenKhach: hd.nguoiDaiDien?.hoTen || 'N/A',
-      maPhong: hd.phong?.maPhong || 'N/A',
-      ngayHetHan: new Date(hd.ngayKetThuc).toLocaleDateString('vi-VN'),
-      soNgayConLai: Math.max(0, Math.ceil((new Date(hd.ngayKetThuc).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))),
-    }));
+    const hopDongSapHetHanList = hopDongSapHetHanRaw.map((hd: any) => {
+      // Fallback logic for guest name
+      let tenKhach = hd.nguoiDaiDien?.hoTen;
+      if (!tenKhach && hd.snapshotKhachThue && hd.snapshotKhachThue.length > 0) {
+        const primary = hd.snapshotKhachThue.find((s: any) => s.laNoiDaiDien);
+        tenKhach = primary?.hoTen || hd.snapshotKhachThue[0].hoTen;
+      }
+
+      return {
+        _id: hd._id.toString(),
+        tenKhach: tenKhach || 'N/A',
+        maPhong: hd.phong?.maPhong || 'N/A',
+        ngayHetHan: new Date(hd.ngayKetThuc).toLocaleDateString('vi-VN'),
+        soNgayConLai: Math.max(0, Math.ceil((new Date(hd.ngayKetThuc).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))),
+      };
+    });
 
     const stats = {
       tongSoPhong: totalPhong,

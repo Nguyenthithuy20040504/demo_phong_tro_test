@@ -287,7 +287,7 @@ export default function KhachThuePage() {
             <div>
               <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Tổng khách thuê</p>
               <div className="flex items-baseline gap-1">
-                <span className="text-xl md:text-3xl font-black text-gray-900">{khachThueList.length}</span>
+                <span className="text-xl md:text-3xl font-black text-gray-900">{filteredKhachThue.length}</span>
                 <span className="text-[10px] text-gray-400 font-bold">người</span>
               </div>
             </div>
@@ -303,7 +303,7 @@ export default function KhachThuePage() {
               <p className="text-[10px] md:text-xs font-bold text-emerald-600 uppercase tracking-widest mb-1">Đã có tài khoản</p>
               <div className="flex items-baseline gap-1">
                 <span className="text-xl md:text-3xl font-black text-emerald-700">
-                  {khachThueList.filter((k: KhachThue) => !!(k as any).matKhau).length}
+                  {filteredKhachThue.filter((k: KhachThue) => !!(k as any).matKhau).length}
                 </span>
                 <span className="text-[10px] text-emerald-500 font-bold">người</span>
               </div>
@@ -320,7 +320,7 @@ export default function KhachThuePage() {
               <p className="text-[10px] md:text-xs font-bold text-amber-600 uppercase tracking-widest mb-1">Chưa có tài khoản</p>
               <div className="flex items-baseline gap-1">
                 <span className="text-xl md:text-3xl font-black text-amber-700">
-                  {khachThueList.filter((k: KhachThue) => !(k as any).matKhau).length}
+                  {filteredKhachThue.filter((k: KhachThue) => !(k as any).matKhau).length}
                 </span>
                 <span className="text-[10px] text-amber-500 font-bold">người</span>
               </div>

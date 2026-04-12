@@ -551,7 +551,7 @@ export function HoaDonDataTable(props: HoaDonDataTableProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả trạng thái</SelectItem>
-              <SelectItem value=" active" className="text-teal-600 font-medium">Đang hoạt động</SelectItem>
+              <SelectItem value="active" className="text-teal-600 font-medium">Đang hoạt động</SelectItem>
               <SelectItem value="chuaThanhToan">Chưa thanh toán</SelectItem>
               <SelectItem value="daThanhToanMotPhan">Một phần</SelectItem>
               <SelectItem value="daThanhToan">Đã thanh toán</SelectItem>

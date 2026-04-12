@@ -422,10 +422,20 @@ type UserDataTableProps = UserTableProps & {
   data: User[]
   searchTerm?: string
   onSearchChange?: (value: string) => void
+  roleFilter?: string
+  onRoleChange?: (value: string) => void
+  statusFilter?: string
+  onStatusChange?: (value: string) => void
 }
 
 export function UserDataTable(props: UserDataTableProps) {
-  const { data: initialData, searchTerm, onSearchChange, ...tableProps } = props
+  const { 
+    data: initialData, 
+    searchTerm, onSearchChange, 
+    roleFilter, onRoleChange,
+    statusFilter, onStatusChange,
+    ...tableProps 
+  } = props
   const [data, setData] = React.useState(() => initialData)
 
   const [rowSelection, setRowSelection] = React.useState({})
@@ -485,10 +495,42 @@ export function UserDataTable(props: UserDataTableProps) {
               placeholder="Tìm kiếm theo tên, email..."
               value={searchTerm || ''}
               onChange={(e) => onSearchChange?.(e.target.value)}
-              className="pl-10"
+              className="pl-10 h-10"
             />
           </div>
         </div>
+
+        {/* Bộ lọc Vai trò */}
+        <Select
+          value={roleFilter || "all"}
+          onValueChange={(value) => onRoleChange?.(value)}
+        >
+          <SelectTrigger className="w-[160px] h-10">
+            <SelectValue placeholder="Vai trò" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả vai trò</SelectItem>
+            <SelectItem value="admin">Quản trị viên</SelectItem>
+            <SelectItem value="chuNha">Chủ nhà</SelectItem>
+            <SelectItem value="nhanVien">Nhân viên</SelectItem>
+            <SelectItem value="khachThue">Khách thuê</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Bộ lọc Trạng thái */}
+        <Select
+          value={statusFilter || "all"}
+          onValueChange={(value) => onStatusChange?.(value)}
+        >
+          <SelectTrigger className="w-[160px] h-10">
+            <SelectValue placeholder="Trạng thái" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả trạng thái</SelectItem>
+            <SelectItem value="true">Đang hoạt động</SelectItem>
+            <SelectItem value="false">Tạm khóa</SelectItem>
+          </SelectContent>
+        </Select>
 
         {/* Tùy chỉnh cột bên phải */}
         <div className="flex items-center gap-2">
