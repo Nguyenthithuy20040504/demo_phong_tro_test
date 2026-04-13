@@ -199,7 +199,11 @@ export default function AccountManagementPage() {
       });
 
       if (response.ok) {
-        toast.success('Tuyệt vời! Tài khoản mới đã được tạo thành công.');
+        const successMessage = createUserData.role === 'khachThue' 
+          ? 'Tuyệt vời! Tài khoản mới đã được tạo. Một email xác minh mã OTP đã được gửi tới khách thuê.'
+          : 'Tuyệt vời! Tài khoản mới đã được tạo thành công.';
+        
+        toast.success(successMessage);
         setIsCreateDialogOpen(false);
         setCreateUserData({
           name: '',

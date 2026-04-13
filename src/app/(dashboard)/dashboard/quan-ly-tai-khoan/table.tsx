@@ -20,8 +20,10 @@ import {
   Search,
   RefreshCw,
   Clock,
-  LockKeyhole
+  LockKeyhole,
+  Check
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -186,6 +188,36 @@ const createColumns = (props: UserTableProps): ColumnDef<User>[] => [
         <span className="text-sm">{row.original.email}</span>
       </div>
     ),
+  },
+  {
+    accessorKey: "daXacMinhEmail",
+    header: "Xác minh",
+    cell: ({ row }) => {
+      const isVerified = row.original.daXacMinhEmail
+      return (
+        <Badge 
+          variant="outline" 
+          className={cn(
+            "gap-1",
+            isVerified 
+              ? "text-emerald-700 bg-emerald-50 border-emerald-200" 
+              : "text-amber-700 bg-amber-50 border-amber-200"
+          )}
+        >
+          {isVerified ? (
+            <>
+              <Check className="h-3 w-3" />
+              Đã xác minh
+            </>
+          ) : (
+            <>
+              <Clock className="h-3 w-3" />
+              Chờ xác nhận
+            </>
+          )}
+        </Badge>
+      )
+    },
   },
   {
     accessorKey: "phone",

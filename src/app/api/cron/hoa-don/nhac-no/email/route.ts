@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
     const allOverdue = await HoaDon.find({
       conLai: { $gt: 0 },
-      hanThanhToan: { $lt: now },
+      hanThanhToan: { $lte: now },
       $or: [
         { soLanGuiEmailNhacNoThatBai: { $exists: false } },
         { soLanGuiEmailNhacNoThatBai: { $lt: 3 } }

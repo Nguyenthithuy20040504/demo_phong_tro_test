@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       let qrUrl = '';
       let additionalContent = '';
 
-      // Nếu là thông báo hóa đơn, tìm hóa đơn nợ gần nhất của người này
+      // Chỉ tạo QR khi là thông báo hóa đơn
       if (thongBao.loai === 'hoaDon') {
         const latestInvoice = await HoaDon.findOne({
           khachThue: { $in: [
@@ -81,13 +81,11 @@ export async function POST(request: NextRequest) {
           qrUrl = await getVietQrUrl(latestInvoice.conLai, latestInvoice.maHoaDon, ownerPaymentInfo);
           additionalContent = `\n(Thông tin hóa đơn: ${latestInvoice.maHoaDon}, Số dư nợ: ${latestInvoice.conLai.toLocaleString('vi-VN')}đ)`;
         } else if (ownerPaymentInfo) {
-          // Nếu không tìm thấy hóa đơn cụ thể, vẫn hiện QR của chủ nhà với số tiền 0 (tùy nhập)
+          // Nếu không tìm thấy hóa đơn cụ thể, hiện QR với số tiền 0
           qrUrl = await getVietQrUrl(0, 'THANH TOAN', ownerPaymentInfo);
         }
-      } else if (ownerPaymentInfo) {
-        // Thông báo chung cũng có thể hiện QR nếu chủ nhà muốn
-        qrUrl = await getVietQrUrl(0, 'THANH TOAN', ownerPaymentInfo);
       }
+      // Thông báo chung/sự cố/hợp đồng/hệ thống: KHÔNG hiển thị QR
 
       const success = await sendGeneralNotificationEmail({
         email: recipient.email!,

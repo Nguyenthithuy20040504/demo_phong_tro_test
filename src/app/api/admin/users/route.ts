@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import NguoiDung from '@/models/NguoiDung';
+import { sendAccountConfirmationLinkEmail } from '@/lib/mail';
+import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -163,6 +165,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Email này đã được sử dụng. Vui lòng nhập một Email khác!' }, { status: 400 });
     }
 
+    // Generate confirmation token for tenants
+    let verifyToken = null;
+    let otpExpiry = null;
+    let verificationRequired = false;
+
+    if (role === 'khachThue') {
+      verifyToken = crypto.randomBytes(32).toString('hex');
+      otpExpiry = new Date();
+      otpExpiry.setHours(otpExpiry.getHours() + 24); // 24 hours link expiry
+      verificationRequired = true;
+    }
+
     // Create user (password will be hashed by the model's pre-save hook)
     const mongoose = require('mongoose');
     const newUser = new NguoiDung({
@@ -173,7 +187,7 @@ export async function POST(request: NextRequest) {
       matKhau: password,
       soDienThoai: phone,
       vaiTro: role,
-      trangThai: 'hoatDong',
+      trangThai: verificationRequired ? 'hoatDong' : 'hoatDong', // Always hoatDong but limited by verification
       // English fields
       name,
       password: password,
@@ -190,10 +204,33 @@ export async function POST(request: NextRequest) {
       gioiTinh: gioiTinh || null,
       queQuan: queQuan || null,
       ngheNghiep: ngheNghiep || null,
-      anhCCCD: anhCCCD || { matTruoc: '', matSau: '' }
+      anhCCCD: anhCCCD || { matTruoc: '', matSau: '' },
+      // Verification fields
+      daXacMinhEmail: !verificationRequired,
+      maXacNhanEmail: verifyToken,
+      hanMaXacNhanEmail: otpExpiry
     });
 
     await newUser.save();
+
+    // Send confirmation link email asynchronously
+    if (verificationRequired && verifyToken) {
+      (async () => {
+        try {
+          const origin = request.nextUrl.origin;
+          const confirmLink = `${origin}/api/auth/verify-link?email=${encodeURIComponent(newUser.email)}&token=${verifyToken}`;
+          
+          await sendAccountConfirmationLinkEmail({
+            email: newUser.email,
+            khachThueName: newUser.ten,
+            confirmLink: confirmLink,
+          });
+          console.log(`[Admin User API] Confirmation link sent to ${newUser.email}`);
+        } catch (mailErr) {
+          console.error(`[Admin User API] Failed to send confirmation email:`, mailErr);
+        }
+      })();
+    }
 
     // Return user without password
     const { password: _, ...userWithoutPassword } = newUser.toObject();

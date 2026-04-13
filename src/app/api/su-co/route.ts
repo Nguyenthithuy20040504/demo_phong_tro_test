@@ -10,6 +10,7 @@ import ToaNha from '@/models/ToaNha';
 import { getAccessibleToaNhaIds } from '@/lib/auth-utils';
 import { z } from 'zod';
 import mongoose from 'mongoose';
+import { sendGeneralNotificationEmail, isValidEmail } from '@/lib/mail';
 
 const suCoSchema = z.object({
   phong: z.string().min(1, 'Phòng là bắt buộc'),
@@ -281,14 +282,14 @@ export async function POST(request: NextRequest) {
         const senderId = session.user.id;
         const isSenderKhachThue = session.user.role === 'khachThue';
         
-        // 1) Thông báo cho Chủ nhà & Quản lý (nếu người gửi là khách thuê hoặc quản lý khác)
+        // 1) Thông báo cho Chủ nhà & Quản lý (nếu người gửi là khách thuê)
         const landlords = [
           toaNhaDetails.chuSoHuu,
           ...(toaNhaDetails.nguoiQuanLy || [])
         ].filter(Boolean);
 
         const landlordReceiverIds = Array.from(new Set(
-          landlords.map(r => r.toString())
+          landlords.map((r: any) => r.toString())
         )).filter(id => id !== senderId)
           .map(id => new mongoose.Types.ObjectId(id));
 
@@ -296,10 +297,12 @@ export async function POST(request: NextRequest) {
           const senderName = session.user.name || 'Khách thuê';
           const maPhong = roomInfo.maPhong || '';
           const tenToaNha = toaNhaDetails.tenToaNha || '';
+          const notifTieuDe = `🚀 Sự cố mới: ${validatedData.tieuDe}`;
+          const notifNoiDung = `Khách thuê ${senderName} (phòng ${maPhong} - ${tenToaNha}) vừa báo cáo sự cố mới: ${validatedData.tieuDe}.\n\nMô tả: ${validatedData.moTa}`;
 
           await ThongBao.create({
-            tieuDe: `🚀 Sự cố mới: ${validatedData.tieuDe}`,
-            noiDung: `Khách thuê ${senderName} (phòng ${maPhong} - ${tenToaNha}) vừa báo cáo sự cố mới: ${validatedData.tieuDe}.\n\nMô tả: ${validatedData.moTa}`,
+            tieuDe: notifTieuDe,
+            noiDung: notifNoiDung,
             loai: 'suCo',
             nguoiGui: new mongoose.Types.ObjectId(senderId),
             nguoiNhan: landlordReceiverIds,
@@ -307,15 +310,44 @@ export async function POST(request: NextRequest) {
             toaNha: toaNhaDetails._id,
             daDoc: [],
           });
+
+          // --- Gửi email đến chủ nhà / quản lý (fire-and-forget) ---
+          const emailBody = `Khách thuê ${senderName} (phòng ${maPhong} - ${tenToaNha}) vừa báo cáo sự cố mới.\n\n📌 Tiêu đề: ${validatedData.tieuDe}\n📝 Mô tả: ${validatedData.moTa}\n🏠 Phòng: ${maPhong} - ${tenToaNha}`;
+          ;(async () => {
+            try {
+              const NguoiDung = (await import('@/models/NguoiDung')).default;
+              const landlordUsers = await NguoiDung.find({
+                _id: { $in: landlordReceiverIds }
+              }).select('ten name email').lean() as any[];
+
+              for (const user of landlordUsers) {
+                const email = user.email;
+                const name = user.ten || user.name || 'Chủ nhà';
+                if (email && isValidEmail(email)) {
+                  await sendGeneralNotificationEmail({
+                    email,
+                    khachThueName: name,
+                    tieuDe: notifTieuDe,
+                    noiDung: emailBody,
+                    ccEmail: '',
+                  }).catch((err: any) => console.error('[SuCo Email] Lỗi gửi email tới chủ nhà', email, err?.message));
+                  console.log(`[SuCo Email] Đã gửi email báo sự cố tới chủ nhà/quản lý: ${email}`);
+                }
+              }
+            } catch (emailErr: any) {
+              console.error('[SuCo Email] Lỗi khi gửi email cho chủ nhà:', emailErr?.message);
+            }
+          })();
         }
 
         // 2) Thông báo cho Khách thuê (nếu người gửi là Quản lý/Chủ nhà)
         if (!isSenderKhachThue && validatedData.khachThue) {
           const tenantIdStr = validatedData.khachThue.toString();
           if (tenantIdStr !== senderId) {
+            const notifContent = `Quản lý vừa báo cáo sự cố mới cho phòng của bạn: ${validatedData.tieuDe}.\n\nTrạng thái: ${validatedData.trangThai === 'dangXuLy' ? 'Đang được xử lý' : 'Chờ xử lý'}.\nMô tả: ${validatedData.moTa}`;
             await ThongBao.create({
               tieuDe: `🚩 Thông báo sự cố: ${validatedData.tieuDe}`,
-              noiDung: `Quản lý vừa báo cáo sự cố mới cho phòng của bạn: ${validatedData.tieuDe}.\n\nTrạng thái: ${validatedData.trangThai === 'dangXuLy' ? 'Đang được xử lý' : 'Chờ xử lý'}.\nMô tả: ${validatedData.moTa}`,
+              noiDung: notifContent,
               loai: 'suCo',
               nguoiGui: new mongoose.Types.ObjectId(senderId),
               nguoiNhan: [new mongoose.Types.ObjectId(tenantIdStr)],
@@ -324,6 +356,40 @@ export async function POST(request: NextRequest) {
               daDoc: [],
             });
             console.log(`[SuCo Notification] Đã gửi thông báo cho khách thuê ${tenantIdStr}`);
+
+            // --- Gửi email đến khách thuê (fire-and-forget) ---
+            ;(async () => {
+              try {
+                const NguoiDung = (await import('@/models/NguoiDung')).default;
+                let tenantEmail: string | null = null;
+                let tenantName = 'Khách thuê';
+
+                const ktRecord = await KhachThue.findById(tenantIdStr).select('hoTen email').lean() as any;
+                if (ktRecord?.email && isValidEmail(ktRecord.email)) {
+                  tenantEmail = ktRecord.email;
+                  tenantName = ktRecord.hoTen || 'Khách thuê';
+                } else {
+                  const ndRecord = await NguoiDung.findById(tenantIdStr).select('ten name email').lean() as any;
+                  if (ndRecord?.email && isValidEmail(ndRecord.email)) {
+                    tenantEmail = ndRecord.email;
+                    tenantName = ndRecord.ten || ndRecord.name || 'Khách thuê';
+                  }
+                }
+
+                if (tenantEmail) {
+                  await sendGeneralNotificationEmail({
+                    email: tenantEmail,
+                    khachThueName: tenantName,
+                    tieuDe: `🚩 Thông báo sự cố: ${validatedData.tieuDe}`,
+                    noiDung: notifContent,
+                    ccEmail: '',
+                  }).catch((err: any) => console.error('[SuCo Email] Lỗi gửi email tới khách thuê', tenantEmail, err?.message));
+                  console.log(`[SuCo Email] Đã gửi email báo sự cố tới khách thuê: ${tenantEmail}`);
+                }
+              } catch (emailErr: any) {
+                console.error('[SuCo Email] Lỗi khi gửi email cho khách thuê:', emailErr?.message);
+              }
+            })();
           }
         }
       }
