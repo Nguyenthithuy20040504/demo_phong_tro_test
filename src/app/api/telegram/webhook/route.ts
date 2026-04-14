@@ -7,6 +7,17 @@ import ToaNha from '@/models/ToaNha';
 import HoaDon from '@/models/HoaDon';
 import ThanhToan from '@/models/ThanhToan';
 
+const mainMenuKeyboard = {
+  reply_markup: {
+    keyboard: [
+      [{ text: '🏠 Xem phòng' }, { text: '💰 Báo cáo' }],
+      [{ text: '💵 Thu tiền mặt' }, { text: '⚙️ Trợ giúp' }]
+    ],
+    resize_keyboard: true,
+    is_persistent: true
+  }
+};
+
 if (bot) {
   // Lệnh /start để chào mừng hoặc liên kết tài khoản
   bot.command('start', async (ctx) => {
@@ -47,7 +58,7 @@ if (bot) {
           `Từ giờ tôi sẽ tự động gửi thông báo (nhắc nợ, sự cố) đến đây. Bạn cũng có thể dùng các lệnh sau để tra cứu nhanh:\n\n` +
           `🏠 /phong - Xem tình trạng phòng\n` +
           `💰 /baocao - Xem báo cáo tổng quan`,
-          { parse_mode: 'Markdown' }
+          { parse_mode: 'Markdown', ...mainMenuKeyboard }
         );
 
       } catch (error) {
@@ -63,12 +74,23 @@ if (bot) {
       `1. Truy cập vào trang web, phần **Cài đặt -> Hồ sơ -> Thông báo**.\n` +
       `2. Nhấn nút "Kết nối Telegram" để lấy **Mã liên kết 6 số**.\n` +
       `3. Quay lại đây và nhập lệnh: \`/start MÃ_SỐ\` (ví dụ: \`/start 123456\`).`,
-      { parse_mode: 'Markdown' }
+      { parse_mode: 'Markdown', ...mainMenuKeyboard }
     );
   });
 
-  // Lệnh /phong: Tóm tắt tình trạng số lượng phòng
-  bot.command('phong', async (ctx) => {
+  bot.hears('⚙️ Trợ giúp', (ctx) => {
+    ctx.reply(
+      `🤖 *TRỢ LÝ PIROOM*\n\n` +
+      `Bạn có thể sử dụng các nút Menu bên dưới thay cho việc gõ lệnh.\n` +
+      `• *🏠 Xem phòng*: Báo cáo số lượng phòng trống, đang thuê.\n` +
+      `• *💰 Báo cáo*: Tính toán doanh thu, nợ đọng tháng hiện tại.\n` +
+      `• *💵 Thu tiền mặt*: Hướng dẫn cách xác nhận thu tiền nhanh.\n\n` +
+      `Nếu có lỗi, gõ /start để kết nối lại.`,
+      { parse_mode: 'Markdown', ...mainMenuKeyboard }
+    );
+  });
+
+  const handlePhong = async (ctx: any) => {
     try {
       await dbConnect();
       const chatId = ctx.chat.id.toString();
@@ -114,16 +136,18 @@ if (bot) {
         }
       }
 
-      ctx.reply(msg, { parse_mode: 'Markdown' });
+      ctx.reply(msg, { parse_mode: 'Markdown', ...mainMenuKeyboard });
 
     } catch (error) {
       console.error('Lỗi khi tra cứu phòng qua telegram:', error);
-      ctx.reply('⚠ Có lỗi xảy ra khi tra cứu thông tin phòng.');
+      ctx.reply('⚠ Có lỗi xảy ra khi tra cứu thông tin phòng.', mainMenuKeyboard);
     }
-  });
+  };
 
-  // Lệnh /baocao: Báo cáo tài chính nhanh
-  bot.command('baocao', async (ctx) => {
+  bot.command('phong', handlePhong);
+  bot.hears('🏠 Xem phòng', handlePhong);
+
+  const handleBaocao = async (ctx: any) => {
     try {
       await dbConnect();
       const chatId = ctx.chat.id.toString();
@@ -160,14 +184,27 @@ if (bot) {
       msg += `🔴 Còn nợ: *${formatter.format(debt)}*\n\n`;
       
       msg += `📊 Tình trạng thanh toán:\n`;
-      msg += `• Đã trả đủ: ${invoices.filter(i => i.trangThai === 'daThanhToan').length}\n`;
-      msg += `• Chưa trả: ${invoices.filter(i => i.trangThai === 'chuaThanhToan' || i.trangThai === 'quaHan').length}\n`;
+      msg += `• Đã trả đủ: ${invoices.filter((i: any) => i.trangThai === 'daThanhToan').length}\n`;
+      msg += `• Chưa trả: ${invoices.filter((i: any) => i.trangThai === 'chuaThanhToan' || i.trangThai === 'quaHan').length}\n`;
 
-      ctx.reply(msg, { parse_mode: 'Markdown' });
+      ctx.reply(msg, { parse_mode: 'Markdown', ...mainMenuKeyboard });
     } catch (error) {
       console.error('Lỗi báo cáo Telegram:', error);
-      ctx.reply('⚠ Lỗi khi tính toán báo cáo.');
+      ctx.reply('⚠ Lỗi khi tính toán báo cáo.', mainMenuKeyboard);
     }
+  };
+
+  bot.command('baocao', handleBaocao);
+  bot.hears('💰 Báo cáo', handleBaocao);
+
+  bot.hears('💵 Thu tiền mặt', (ctx) => {
+    ctx.reply(
+      `Để ghi nhận thu tiền mặt nhanh mà không cần mở Web, bạn hãy gõ lệnh theo cú pháp sau:\n\n` +
+      `👉 \`/thutien [Mã Vận Đơn/Hóa Đơn]\`\n\n` +
+      `*Ví dụ:* \`/thutien HD00123\`\n\n` +
+      `Hệ thống sẽ tự động chuyển hóa đơn đó thành Đã Thanh Toán.`,
+      { parse_mode: 'Markdown', ...mainMenuKeyboard }
+    );
   });
 
   // Lệnh /thutien [maHoaDon]: Xác nhận thu tiền mặt nhanh
