@@ -4,6 +4,7 @@ import dbConnect from '@/lib/mongodb';
 import NguoiDung from '@/models/NguoiDung';
 import Phong from '@/models/Phong';
 import ToaNha from '@/models/ToaNha';
+import HoaDon from '@/models/HoaDon';
 
 if (bot) {
   // Lệnh /start để chào mừng hoặc liên kết tài khoản
@@ -103,7 +104,7 @@ if (bot) {
         msg += `\n✨ *Danh sách phòng trống:*\n`;
         // Hiển thị tối đa 7 phòng để tin nhắn không quá dài
         emptyRooms.slice(0, 7).forEach((p: any) => {
-          msg += `• P.${p.tenPhong} - ${(p.toaNha as any)?.tenToaNha || 'Trống'}\n`;
+          msg += `• P.${p.maPhong} - ${(p.toaNha as any)?.tenToaNha || 'Trống'}\n`;
         });
         if (emptyRooms.length > 7) {
           msg += `_... và ${emptyRooms.length - 7} phòng khác_\n`;
@@ -118,9 +119,52 @@ if (bot) {
     }
   });
 
-  // Lệnh /baocao (Sẽ cập nhật chi tiết logic tính doanh thu sau)
+  // Lệnh /baocao: Báo cáo tài chính nhanh
   bot.command('baocao', async (ctx) => {
-    ctx.reply('🚧 Tính năng báo cáo nhanh đang được phát triển. Bạn vui lòng quay lại sau nhé!');
+    try {
+      await dbConnect();
+      const chatId = ctx.chat.id.toString();
+      const user = await NguoiDung.findOne({ 'caiDatThongBao.telegramChatId': chatId });
+      if (!user) return ctx.reply('❌ Bạn chưa liên kết tài khoản.');
+
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+
+      // Đảm bảo các model được load
+      await ToaNha.countDocuments();
+      await HoaDon.countDocuments();
+
+      const buildings = await ToaNha.find({ chuSoHuu: user._id });
+      const buildingIds = buildings.map(b => b._id);
+
+      const invoices = await HoaDon.find({
+        phong: { $in: await Phong.find({ toaNha: { $in: buildingIds } }).distinct('_id') },
+        thang: currentMonth,
+        nam: currentYear
+      });
+
+      const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.tongTien || 0), 0);
+      const collected = invoices.reduce((sum, inv) => sum + (inv.daThanhToan || 0), 0);
+      const debt = invoices.reduce((sum, inv) => sum + (inv.conLai || 0), 0);
+
+      const formatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
+
+      let msg = `💰 *BÁO CÁO THÁNG ${currentMonth}/${currentYear}*\n`;
+      msg += `━━━━━━━━━━━━━━\n`;
+      msg += `💵 Dự kiến thu: *${formatter.format(totalRevenue)}*\n`;
+      msg += `✅ Thực thu: *${formatter.format(collected)}*\n`;
+      msg += `🔴 Còn nợ: *${formatter.format(debt)}*\n\n`;
+      
+      msg += `📊 Tình trạng thanh toán:\n`;
+      msg += `• Đã trả đủ: ${invoices.filter(i => i.trangThai === 'daThanhToan').length}\n`;
+      msg += `• Chưa trả: ${invoices.filter(i => i.trangThai === 'chuaThanhToan' || i.trangThai === 'quaHan').length}\n`;
+
+      ctx.reply(msg, { parse_mode: 'Markdown' });
+    } catch (error) {
+      console.error('Lỗi báo cáo Telegram:', error);
+      ctx.reply('⚠ Lỗi khi tính toán báo cáo.');
+    }
   });
 }
 
