@@ -89,15 +89,17 @@ if (bot) {
       const phongs = await Phong.find({ toaNha: { $in: toaNhaIds } }).populate('toaNha', 'tenToaNha');
       
       const emptyCount = phongs.filter((p: any) => p.trangThai === 'trong').length;
-      const rentedCount = phongs.filter((p: any) => p.trangThai === 'daThue').length;
+      const rentedCount = phongs.filter((p: any) => p.trangThai === 'dangThue').length;
+      const bookedCount = phongs.filter((p: any) => p.trangThai === 'daDat').length;
       const maintainingCount = phongs.filter((p: any) => p.trangThai === 'baoTri').length;
 
       let msg = `📊 *TỔNG QUAN PHÒNG TRỌ*\n`;
       msg += `━━━━━━━━━━━━━━\n`;
       msg += `🏢 Tổng số phòng: **${phongs.length}**\n`;
       msg += `🟢 Đang cho thuê: ${rentedCount}\n`;
+      msg += `🟡 Đã đặt cọc: ${bookedCount}\n`;
       msg += `⚪ Phòng trống: ${emptyCount}\n`;
-      if (maintainingCount > 0) msg += `🔴 Đang bảo trì: ${maintainingCount}\n`;
+      if (maintainingCount > 0) msg += `🛠 Đang bảo trì: ${maintainingCount}\n`;
       
       // Danh sách một vài phòng trống
       const emptyRooms = phongs.filter((p: any) => p.trangThai === 'trong');
