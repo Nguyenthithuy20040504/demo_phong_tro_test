@@ -53,7 +53,11 @@ export interface INguoiDung extends Document {
     thoiGianNhacNoSMS?: number;
     ngayGuiThongBaoCuoi?: Date;
     ngayGuiThongBaoSMSCuoi?: Date;
+    tuDongNhacNoTelegram?: boolean;
+    telegramChatId?: string;
   };
+  maLienKetTelegram?: string;
+  hanMaLienKetTelegram?: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -221,8 +225,12 @@ const NguoiDungSchema = new Schema<INguoiDung>({
     tuDongNhacNoSMS: { type: Boolean, default: false }, // Cho SMS
     thoiGianNhacNoSMS: { type: Number, default: 1440 },
     ngayGuiThongBaoCuoi: { type: Date, default: null }, // Email cuối
-    ngayGuiThongBaoSMSCuoi: { type: Date, default: null } // SMS cuối
-  }
+    ngayGuiThongBaoSMSCuoi: { type: Date, default: null }, // SMS cuối
+    tuDongNhacNoTelegram: { type: Boolean, default: false },
+    telegramChatId: { type: String, default: null }
+  },
+  maLienKetTelegram: { type: String, default: null },
+  hanMaLienKetTelegram: { type: Date, default: null }
 }, {
   timestamps: true // Mongoose tự tạo createdAt và updatedAt
 });

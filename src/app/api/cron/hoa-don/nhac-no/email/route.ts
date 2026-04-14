@@ -10,6 +10,7 @@ import ThongBao from '@/models/ThongBao';
 import mongoose from 'mongoose';
 import { sendDebtNotificationEmail, isValidEmail } from '@/lib/mail';
 import { getOwnerByHoaDon, getVietQrUrl } from '@/lib/payment-utils';
+import { bot } from '@/lib/telegram';
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,19 +27,27 @@ export async function GET(request: NextRequest) {
     const ToaNhaModel = mongoose.models.ToaNha || mongoose.model('ToaNha', (ToaNha as any).schema);
     const HopDongModel = mongoose.models.HopDong || mongoose.model('HopDong', (HopDong as any).schema);
 
-    // Lấy cài đặt nhắc nợ Email từ tất cả Chủ nhà
+    // Lấy cài đặt nhắc nợ Email và Telegram từ tất cả Chủ nhà
     const allLandlords = await NguoiDungModel.find({ 
         vaiTro: 'chuNha',
-        'caiDatThongBao.tuDongNhacNo': true 
+        $or: [
+          { 'caiDatThongBao.tuDongNhacNo': true },
+          { 'caiDatThongBao.tuDongNhacNoTelegram': true }
+        ]
     }).lean();
     
     const mapLandlordSettings = new Map();
     for (const landlord of allLandlords as any) {
         mapLandlordSettings.set(landlord._id.toString(), {
             cooldown: landlord.caiDatThongBao?.thoiGianNhacNoEmail ?? 1440,
-            enabled: landlord.caiDatThongBao?.tuDongNhacNo ?? false
+            enabled: landlord.caiDatThongBao?.tuDongNhacNo ?? false,
+            telegramEnabled: landlord.caiDatThongBao?.tuDongNhacNoTelegram ?? false,
+            telegramChatId: landlord.caiDatThongBao?.telegramChatId || null,
+            name: landlord.ten || landlord.name || 'Chủ nhà'
         });
     }
+
+    const telegramNotifications = new Map<string, any>();
 
     const now = new Date();
     const globalCooldownMinutes = parseInt(process.env.EMAIL_RESEND_COOLDOWN_MINUTES || '1440', 10);
@@ -66,6 +75,10 @@ export async function GET(request: NextRequest) {
       try {
         let cdMinutes = globalCooldownMinutes;
         let isAutoEnabled = false;
+        let isTelegramEnabled = false;
+        let ownerChatId = null;
+        let ownerName = 'Chủ nhà';
+        let ownerIdForTele = null;
 
         const rPhong = hoaDon.phong as any;
         if (rPhong && rPhong.toaNha && rPhong.toaNha.chuSoHuu) {
@@ -74,10 +87,15 @@ export async function GET(request: NextRequest) {
               const settings = mapLandlordSettings.get(ownerIdStr);
               cdMinutes = settings.cooldown;
               isAutoEnabled = settings.enabled;
+              isTelegramEnabled = settings.telegramEnabled;
+              ownerChatId = settings.telegramChatId;
+              ownerName = settings.name;
+              ownerIdForTele = ownerIdStr;
            }
         }
 
-        if (!isAutoEnabled) {
+        // Bỏ qua nếu cả 2 phương thức đều tắt
+        if (!isAutoEnabled && !isTelegramEnabled) {
            skippedCount++;
            continue;
         }
@@ -87,6 +105,29 @@ export async function GET(request: NextRequest) {
            if (new Date(hoaDon.ngayGuiEmailNhacNoCuoi).getTime() >= minAllowedTime.getTime()) {
                continue;
            }
+        }
+
+        // Tổng hợp cho Telegram
+        if (isTelegramEnabled && ownerChatId && ownerIdForTele) {
+           if (!telegramNotifications.has(ownerIdForTele)) {
+               telegramNotifications.set(ownerIdForTele, {
+                   chatId: ownerChatId,
+                   name: ownerName,
+                   invoices: []
+               });
+           }
+           telegramNotifications.get(ownerIdForTele).invoices.push(hoaDon);
+        }
+
+        // Nếu Email không bật, ta cập nhật lại timestamp để tránh Telegram lặp liên tục, rồi skip phần Email
+        if (!isAutoEnabled) {
+           if (isTelegramEnabled && ownerChatId) {
+               await HoaDon.findByIdAndUpdate(hoaDon._id, {
+                 $set: { ngayGuiEmailNhacNoCuoi: new Date() }
+               });
+           }
+           skippedCount++; // Tính vào skipped vì phần email không chạy
+           continue;
         }
 
         let emailToSend = '';
@@ -171,6 +212,22 @@ export async function GET(request: NextRequest) {
            await HoaDon.findByIdAndUpdate(hoaDon._id, { $inc: { soLanGuiEmailNhacNoThatBai: 1 } });
         }
       }
+    }
+
+    // Gửi thông báo tổng hợp quá hạn qua Telegram
+    if (telegramNotifications.size > 0 && bot) {
+        for (const [ownerId, data] of telegramNotifications.entries()) {
+           if (data.chatId && data.invoices.length > 0) {
+              const items = data.invoices.slice(0, 10).map((hd: any) => `• P.${hd.phong?.tenPhong || 'Trống'}: ${new Intl.NumberFormat('vi-VN').format(hd.conLai)} đ`).join('\n');
+              const excess = data.invoices.length > 10 ? `\n_... và ${data.invoices.length - 10} hóa đơn khác._` : '';
+              const msg = `🚨 *THÔNG BÁO QUÁ HẠN*\nChào ${data.name}, bạn có *${data.invoices.length} phòng* đang quá hạn thanh toán:\n\n${items}${excess}\n\nVui lòng kiểm tra lại trạng thái thu tiền trên hệ thống Web.`;
+              try {
+                 await bot.telegram.sendMessage(data.chatId, msg, { parse_mode: 'Markdown' });
+              } catch (e: any) {
+                 console.error('Lỗi khi gửi Telegram Push Notification cho', ownerId, e.message);
+              }
+           }
+        }
     }
 
     return NextResponse.json({

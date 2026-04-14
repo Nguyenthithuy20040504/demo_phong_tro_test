@@ -34,7 +34,8 @@ import {
   Check,
   ChevronsUpDown,
   Search,
-  Loader2
+  Loader2,
+  MessageSquare
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/ui/image-upload';
@@ -72,6 +73,8 @@ interface UserProfile {
     tuDongNhacNo?: boolean;
     thoiGianNhacNoEmail?: number;
     ngayGuiThongBaoCuoi?: string;
+    telegramChatId?: string;
+    tuDongNhacNoTelegram?: boolean;
   };
 }
 
@@ -82,6 +85,8 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [telegramCode, setTelegramCode] = useState<string | null>(null);
+  const [generatingCode, setGeneratingCode] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -99,7 +104,9 @@ export default function ProfilePage() {
     caiDatThongBao: {
       tuDongNhacNo: false,
       thoiGianNhacNoEmail: 1440,
-      ngayGuiThongBaoCuoi: null as string | null
+      ngayGuiThongBaoCuoi: null as string | null,
+      tuDongNhacNoTelegram: false,
+      telegramChatId: null as string | null
     }
   });
 
@@ -142,6 +149,26 @@ export default function ProfilePage() {
       toast.error('Lỗi khi tra cứu thông tin ngân hàng');
     } finally {
       setIsSearchingBank(false);
+    }
+  };
+
+  const handleGenerateTelegramCode = async () => {
+    setGeneratingCode(true);
+    try {
+      const response = await fetch('/api/telegram/generate-code', {
+        method: 'POST',
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setTelegramCode(data.code);
+        toast.success(data.message);
+      } else {
+        toast.error(data.error || 'Lỗi khi tạo mã liên kết.');
+      }
+    } catch (error) {
+      toast.error('Lỗi kết nối khi tạo mã liên kết Telegram.');
+    } finally {
+      setGeneratingCode(false);
     }
   };
 
@@ -198,7 +225,9 @@ export default function ProfilePage() {
           caiDatThongBao: { 
             tuDongNhacNo: data.caiDatThongBao?.tuDongNhacNo ?? false,
             thoiGianNhacNoEmail: data.caiDatThongBao?.thoiGianNhacNoEmail ?? 1440,
-            ngayGuiThongBaoCuoi: data.caiDatThongBao?.ngayGuiThongBaoCuoi || null
+            ngayGuiThongBaoCuoi: data.caiDatThongBao?.ngayGuiThongBaoCuoi || null,
+            tuDongNhacNoTelegram: data.caiDatThongBao?.tuDongNhacNoTelegram ?? false,
+            telegramChatId: data.caiDatThongBao?.telegramChatId || null
           }
         });
       }
@@ -821,6 +850,78 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent className="p-4 md:p-6 space-y-8">
               
+              {/* Telegram Assistant Section */}
+              <div className="p-4 md:p-5 rounded-xl border border-blue-100 bg-blue-50/40">
+                <div className="flex items-center gap-2 mb-2 text-blue-700 font-bold">
+                  <MessageSquare className="h-5 w-5" />
+                  <span className="text-base md:text-lg">Trợ lý Telegram (@PiRoomTeleBot)</span>
+                </div>
+                <p className="text-xs md:text-sm text-gray-600 mb-4 max-w-2xl">
+                  Kết nối tài khoản của bạn với Telegram để nhận thông báo tức thời, xem nhanh tình trạng phòng trống và doanh thu hàng tháng từ ứng dụng Chat.
+                </p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 md:p-4 bg-white rounded-lg border border-gray-200 gap-4">
+                  <div>
+                    <Label className="font-bold text-gray-900 block mb-1 text-sm md:text-base">
+                      Trạng thái: {formData.caiDatThongBao.telegramChatId ? <span className="text-green-600">✅ Đã liên kết</span> : <span className="text-gray-500">Chưa liên kết</span>}
+                    </Label>
+                    {!formData.caiDatThongBao.telegramChatId && (
+                      <p className="text-xs text-gray-500">
+                        Bạn chưa kết nối với Bot. Hãy bấm tạo mã để bắt đầu.
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    {telegramCode ? (
+                      <div className="text-center sm:text-right">
+                        <span className="inline-block text-xl md:text-2xl font-mono text-blue-600 tracking-[0.2em] font-bold bg-blue-50 px-4 py-2 rounded-lg border border-blue-100">{telegramCode}</span>
+                        <p className="text-[10px] md:text-xs text-gray-500 mt-2">Mã bảo mật có hiệu lực 30 phút.</p>
+                      </div>
+                    ) : (
+                      <Button onClick={handleGenerateTelegramCode} disabled={generatingCode} variant="outline" size="sm" className="w-full sm:w-auto border-blue-200 hover:bg-blue-50 text-blue-700 bg-white">
+                        {generatingCode ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <MessageSquare className="h-4 w-4 mr-2" />}
+                        Tạo mã liên kết
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {telegramCode && (
+                  <div className="mt-4 p-3 md:p-4 bg-white rounded-lg border border-dashed border-blue-200">
+                    <p className="text-sm font-semibold text-gray-800 mb-2">🚀 Hướng dẫn kích hoạt:</p>
+                    <ol className="list-decimal pl-5 text-xs md:text-sm text-gray-600 space-y-1.5 font-medium">
+                      <li>Mở ứng dụng Telegram trên điện thoại/máy tính.</li>
+                      <li>Tìm User <strong>@PiRoomTeleBot</strong> <a href="https://t.me/PiRoomTeleBot" target="_blank" rel="noreferrer" className="text-blue-500 underline ml-1 font-normal">(Mở link)</a>.</li>
+                      <li>Copy & dán chính xác lệnh sau vào khung chat để kích hoạt: <br/><code className="inline-block mt-2 bg-slate-100 px-3 py-1.5 rounded-md text-blue-700 font-mono text-sm shadow-sm select-all">/start {telegramCode}</code></li>
+                    </ol>
+                  </div>
+                )}
+                
+                {formData.caiDatThongBao.telegramChatId && (
+                  <div className="mt-4 flex items-center justify-between p-3 md:p-4 bg-white rounded-lg border border-gray-200">
+                    <div className="space-y-1">
+                      <Label className="text-sm font-semibold text-gray-900">Bật thông báo qua Telegram</Label>
+                      <p className="text-xs text-gray-500">Bot sẽ Push tin nhắn cho bạn khi có sự kiện (VD: phòng quá hạn, báo lỗi).</p>
+                    </div>
+                    {isEditing ? (
+                      <Switch
+                        checked={formData.caiDatThongBao.tuDongNhacNoTelegram}
+                        onCheckedChange={(checked) => setFormData({
+                          ...formData,
+                          caiDatThongBao: { ...formData.caiDatThongBao, tuDongNhacNoTelegram: checked }
+                        })}
+                        className="data-[state=checked]:bg-blue-600"
+                      />
+                    ) : (
+                      <Badge variant={formData.caiDatThongBao.tuDongNhacNoTelegram ? "default" : "secondary"} className={formData.caiDatThongBao.tuDongNhacNoTelegram ? "bg-green-500" : ""}>
+                        {formData.caiDatThongBao.tuDongNhacNoTelegram ? 'Đang bật' : 'Đang tắt'}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              <div className="hidden border-b border-gray-100 -mx-6 mb-8 mt-2" />
+
               {/* Main Toggle Section */}
               <div className={cn(
                 "flex items-center justify-between p-4 rounded-xl border transition-all duration-200",
