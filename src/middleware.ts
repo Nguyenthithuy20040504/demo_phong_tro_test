@@ -14,9 +14,9 @@ export default withAuth(
         // Luôn cho phép các route của NextAuth (bao gồm callback)
         if (pathname.startsWith('/api/auth')) return true;
         
-        // Bảo vệ dashboard và các api khác (trừ các route public kết thúc bằng -public hoặc cron)
+        // Bảo vệ dashboard và các api khác (trừ các route public kết thúc bằng -public hoặc cron/telegram)
         if (pathname.startsWith('/dashboard') || 
-           (pathname.startsWith('/api') && !pathname.includes('-public') && !pathname.startsWith('/api/cron/'))) {
+           (pathname.startsWith('/api') && !pathname.includes('-public') && !pathname.startsWith('/api/cron/') && !pathname.startsWith('/api/telegram/'))) {
           return !!token;
         }
         return true;
