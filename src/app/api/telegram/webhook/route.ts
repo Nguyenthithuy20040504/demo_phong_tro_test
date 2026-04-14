@@ -5,6 +5,7 @@ import NguoiDung from '@/models/NguoiDung';
 import Phong from '@/models/Phong';
 import ToaNha from '@/models/ToaNha';
 import HoaDon from '@/models/HoaDon';
+import ThanhToan from '@/models/ThanhToan';
 
 if (bot) {
   // Lệnh /start để chào mừng hoặc liên kết tài khoản
@@ -164,6 +165,68 @@ if (bot) {
     } catch (error) {
       console.error('Lỗi báo cáo Telegram:', error);
       ctx.reply('⚠ Lỗi khi tính toán báo cáo.');
+    }
+  });
+
+  // Lệnh /thutien [maHoaDon]: Xác nhận thu tiền mặt nhanh
+  bot.command('thutien', async (ctx) => {
+    try {
+      await dbConnect();
+      const chatId = ctx.chat.id.toString();
+      const user = await NguoiDung.findOne({ 'caiDatThongBao.telegramChatId': chatId });
+      if (!user) return ctx.reply('❌ Bạn chưa liên kết tài khoản.');
+
+      // Lấy mã hóa đơn từ tin nhắn (ví dụ: "/thutien HD001" -> "HD001")
+      const text = ctx.message.text;
+      const maHoaDon = text.split(' ')[1]?.toUpperCase();
+
+      if (!maHoaDon) {
+        return ctx.reply('📝 Vui lòng nhập mã hóa đơn. Ví dụ: `/thutien HD12345`', { parse_mode: 'Markdown' });
+      }
+
+      // Tìm hóa đơn
+      const hoaDon = await HoaDon.findOne({ maHoaDon }).populate({
+        path: 'phong',
+        populate: { path: 'toaNha' }
+      });
+
+      if (!hoaDon) {
+        return ctx.reply(`❌ Không tìm thấy hóa đơn mã *${maHoaDon}*.`, { parse_mode: 'Markdown' });
+      }
+
+      // Kiểm tra quyền sở hữu
+      const rPhong = hoaDon.phong as any;
+      if (rPhong?.toaNha?.chuSoHuu?.toString() !== user._id.toString()) {
+        return ctx.reply('🚫 Bạn không có quyền xử lý hóa đơn này.');
+      }
+
+      if (hoaDon.trangThai === 'daThanhToan') {
+        return ctx.reply('✅ Hóa đơn này đã được thanh toán từ trước đó.');
+      }
+
+      const soTienThu = hoaDon.conLai;
+
+      // 1. Cập nhật hóa đơn
+      hoaDon.daThanhToan = hoaDon.tongTien;
+      // Pre-save hook của HoaDon sẽ tự tính conLai = 0 và trangThai = 'daThanhToan'
+      await hoaDon.save();
+
+      // 2. Tạo bản ghi ThanhToan
+      await new ThanhToan({
+        hoaDon: hoaDon._id,
+        soTien: soTienThu,
+        phuongThuc: 'tienMat',
+        nguoiNhan: user._id,
+        trangThai: 'daDuyet',
+        ghiChu: 'Thu tiền mặt nhanh qua Telegram'
+      }).save();
+
+      const formatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
+      ctx.reply(`✅ *THU TIỀN THÀNH CÔNG*\n\n📋 Hóa đơn: *${maHoaDon}*\n🏠 Phòng: *${rPhong.maPhong}*\n💰 Số tiền vừa thu: *${formatter.format(soTienThu)}*\n\nTrạng thái hóa đơn đã được cập nhật thành *Đã thanh toán* trên hệ thống Web.`, { parse_mode: 'Markdown' });
+
+    } catch (error: any) {
+      console.error('Lỗi thu tiền Telegram:', error);
+      ctx.reply('⚠ Lỗi khi xử lý thu tiền: ' + error.message);
     }
   });
 }
