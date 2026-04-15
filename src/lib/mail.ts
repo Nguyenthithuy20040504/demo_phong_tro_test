@@ -290,7 +290,7 @@ export const sendAccountConfirmationLinkEmail = async ({
       
       <div style="padding: 30px 24px;">
         <p style="margin-top: 0;">Xin chào <strong>${khachThueName}</strong>,</p>
-        <p style="color: #4b5563;">Chủ nhà đã tạo một tài khoản cho bạn trên hệ thống Quản Lý Phòng Trọ. Vui lòng nhấn vào nút bên dưới để xác nhận tài khoản của bạn và có thể đăng nhập vào hệ thống:</p>
+        <p style="color: #4b5563;">Quản trị viên đã tạo một tài khoản cho bạn trên hệ thống Quản Lý Phòng Trọ PiRoom. Vui lòng nhấn vào nút bên dưới để xác nhận tài khoản của bạn và có thể đăng nhập vào hệ thống:</p>
         
         <div style="margin: 35px 0; text-align: center;">
           <a href="${confirmLink}" style="background-color: #3b82f6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">Xác Nhận Tài Khoản</a>

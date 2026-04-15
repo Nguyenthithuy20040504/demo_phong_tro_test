@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { 
-  Users, 
-  Plus, 
-  Shield, 
+import {
+  Users,
+  Plus,
+  Shield,
   RefreshCw,
   UserCheck,
   UserX,
@@ -72,14 +72,14 @@ export default function AdminLandlordManagementPage() {
       .slice(0, 2);
   };
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  
+
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditProfileDialogOpen, setIsEditProfileDialogOpen] = useState(false);
   const [isEditPlanDialogOpen, setIsEditPlanDialogOpen] = useState(false);
   const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
-  
+
   // Creation state
   const [createData, setCreateData] = useState({
     name: '',
@@ -143,7 +143,7 @@ export default function AdminLandlordManagementPage() {
     if (!createData.name || !createData.email || !createData.password) {
       return toast.error('Vui lòng điền đầy đủ thông tin bắt buộc');
     }
-    
+
     setActionLoading('create');
     try {
       const response = await fetch('/api/admin/users', {
@@ -153,9 +153,9 @@ export default function AdminLandlordManagementPage() {
       });
 
       if (response.ok) {
-        toast.success('Đã tạo tài khoản chủ trọ mới thành công');
+        toast.success('Đã gửi email tới tài khoản vừa tạo', { duration: 5000 });
         setIsCreateDialogOpen(false);
-        setCreateData({ 
+        setCreateData({
           name: '', email: '', phone: '', password: '', role: 'chuNha', goiDichVu: 'mienPhi',
           cccd: '', ngaySinh: '', gioiTinh: 'nam', queQuan: '', ngheNghiep: ''
         });
@@ -224,7 +224,7 @@ export default function AdminLandlordManagementPage() {
     try {
       const currentStatus = landlord.isActive !== undefined ? landlord.isActive : (landlord.trangThai === 'hoatDong');
       const newStatus = !currentStatus;
-      
+
       const response = await fetch(`/api/admin/users/${landlord._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -290,6 +290,28 @@ export default function AdminLandlordManagementPage() {
     }
   };
 
+  const handleResendVerification = async (landlord: Landlord) => {
+    setActionLoading(`resend-${landlord._id}`);
+    try {
+      const response = await fetch('/api/admin/users/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: landlord._id }),
+      });
+
+      if (response.ok) {
+        toast.success(`📧 Đã gửi lại email xác nhận đến ${landlord.email}`);
+      } else {
+        const err = await response.json();
+        toast.error(err.message || 'Không thể gửi lại email xác nhận');
+      }
+    } catch (error) {
+      toast.error('Lỗi kết nối');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const openViewDialog = (landlord: Landlord) => {
     setSelectedLandlord(landlord);
     setIsViewDialogOpen(true);
@@ -320,7 +342,7 @@ export default function AdminLandlordManagementPage() {
     setIsEditPlanDialogOpen(true);
   };
 
-  const filteredLandlords = landlords.filter(l => 
+  const filteredLandlords = landlords.filter(l =>
     (l.name || l.ten || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     l.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (l.phone || l.soDienThoai || '').includes(searchTerm) ||
@@ -343,17 +365,17 @@ export default function AdminLandlordManagementPage() {
           <p className="text-muted-foreground">Hệ thống quản trị tài khoản SaaS dành cho các chủ đầu tư, theo dõi quy mô tòa nhà, phòng trọ và thời hạn sử dụng dịch vụ.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => fetchLandlords()}
             className={cn("size-11 rounded-2xl bg-white border border-gray-100 shadow-sm transition-all hover:rotate-180", loading && "animate-spin")}
           >
             <RefreshCw className="h-5 w-5 text-gray-600" />
           </Button>
-          <Button 
-            size="lg" 
-            onClick={() => setIsCreateDialogOpen(true)} 
+          <Button
+            size="lg"
+            onClick={() => setIsCreateDialogOpen(true)}
             className="h-12 px-6 rounded-2xl bg-teal-600 hover:bg-teal-700 shadow-lg shadow-teal-100 transition-all active:scale-95 group font-bold"
           >
             <Plus className="h-5 w-5 mr-2 transition-transform group-hover:rotate-90" />
@@ -378,14 +400,14 @@ export default function AdminLandlordManagementPage() {
                   <item.icon className={cn("h-6 w-6 uppercase", item.text)} />
                 </div>
                 <div className="text-right">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">{item.label}</p>
-                    <p className="text-xs text-gray-500 font-bold">{item.desc}</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">{item.label}</p>
+                  <p className="text-xs text-gray-500 font-bold">{item.desc}</p>
                 </div>
               </div>
               <div className="flex items-end justify-between">
                 <h3 className="text-4xl font-black text-gray-900 tracking-tighter">{item.value}</h3>
                 <div className={cn("flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg", item.bg, item.text)}>
-                   <span>+2.5%</span>
+                  <span>+2.5%</span>
                 </div>
               </div>
             </CardContent>
@@ -396,8 +418,8 @@ export default function AdminLandlordManagementPage() {
       {/* Table Section */}
       <Card className="border-none shadow-2xl overflow-hidden rounded-[2.5rem] bg-white/40 backdrop-blur-xl">
         <CardContent className="p-2 sm:p-4">
-          <LandlordTable 
-            data={filteredLandlords} 
+          <LandlordTable
+            data={filteredLandlords}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             onView={openViewDialog}
@@ -410,6 +432,7 @@ export default function AdminLandlordManagementPage() {
               setIsResetPasswordDialogOpen(true);
             }}
             onDelete={handleDelete}
+            onResendVerification={handleResendVerification}
             actionLoading={actionLoading}
           />
         </CardContent>
@@ -420,24 +443,24 @@ export default function AdminLandlordManagementPage() {
         <DialogContent className="sm:max-w-[600px] p-0 rounded-[2rem] overflow-hidden border-none shadow-3xl">
           <DialogHeader className="p-8 pb-4 bg-gray-50/50">
             <div className="flex items-center gap-4 mb-2">
-               <div className="p-3 bg-teal-600 rounded-2xl shadow-lg shadow-teal-100">
-                  <UserPlus className="h-6 w-6 text-white" />
-               </div>
-               <div>
-                  <DialogTitle className="text-2xl font-black tracking-tight font-heading">Thêm Chủ trọ mới</DialogTitle>
-                  <DialogDescription className="font-medium text-gray-500">Khởi tạo hệ thống cho đối tác vận hành mới</DialogDescription>
-               </div>
+              <div className="p-3 bg-teal-600 rounded-2xl shadow-lg shadow-teal-100">
+                <UserPlus className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-2xl font-black tracking-tight font-heading">Thêm Chủ trọ mới</DialogTitle>
+                <DialogDescription className="font-medium text-gray-500">Khởi tạo hệ thống cho đối tác vận hành mới</DialogDescription>
+              </div>
             </div>
           </DialogHeader>
-          
+
           <Tabs defaultValue="account" className="w-full">
             <div className="px-8 mb-4">
               <TabsList className="grid w-full grid-cols-2 h-12 rounded-2xl bg-gray-100 p-1.5">
                 <TabsTrigger value="account" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-widest">
-                   Tài khoản & Dịch vụ
+                  Tài khoản & Dịch vụ
                 </TabsTrigger>
                 <TabsTrigger value="profile" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-widest">
-                   Hồ sơ cá nhân
+                  Hồ sơ cá nhân
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -447,125 +470,125 @@ export default function AdminLandlordManagementPage() {
                 <div className="grid gap-5">
                   <div className="grid gap-2">
                     <Label className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Họ và tên bắt buộc</Label>
-                    <Input 
-                      placeholder="Nguyễn Văn A" 
+                    <Input
+                      placeholder="Nguyễn Văn A"
                       className="h-12 rounded-2xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
                       value={createData.name}
-                      onChange={(e) => setCreateData({...createData, name: e.target.value})}
+                      onChange={(e) => setCreateData({ ...createData, name: e.target.value })}
                     />
                   </div>
                   <div className="grid gap-2">
                     <Label className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Email đăng nhập</Label>
-                    <Input 
+                    <Input
                       type="email"
-                      placeholder="partner@example.com" 
+                      placeholder="partner@example.com"
                       className="h-12 rounded-2xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
                       value={createData.email}
-                      onChange={(e) => setCreateData({...createData, email: e.target.value})}
+                      onChange={(e) => setCreateData({ ...createData, email: e.target.value })}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-5">
                     <div className="grid gap-2">
-                       <Label className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Mật khẩu</Label>
-                        <Input 
-                          type="password"
-                          placeholder="••••••••" 
-                          className="h-12 rounded-2xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
-                          value={createData.password}
-                          onChange={(e) => setCreateData({...createData, password: e.target.value})}
-                        />
+                      <Label className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Mật khẩu</Label>
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        className="h-12 rounded-2xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
+                        value={createData.password}
+                        onChange={(e) => setCreateData({ ...createData, password: e.target.value })}
+                      />
                     </div>
                     <div className="grid gap-2">
-                       <Label className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Gói dịch vụ</Label>
-                       <Select value={createData.goiDichVu} onValueChange={(v) => setCreateData({...createData, goiDichVu: v})}>
-                          <SelectTrigger className="h-12 rounded-2xl bg-gray-50/50 border-gray-100 focus:ring-teal-600">
-                             <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-2xl shadow-2xl">
-                             <SelectItem value="mienPhi" className="rounded-xl">Miễn phí (1 tháng)</SelectItem>
-                             <SelectItem value="coBan" className="rounded-xl">Cơ bản (3 tháng)</SelectItem>
-                             <SelectItem value="chuyenNghiep" className="rounded-xl">Chuyên nghiệp (6 tháng)</SelectItem>
-                          </SelectContent>
-                       </Select>
+                      <Label className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Gói dịch vụ</Label>
+                      <Select value={createData.goiDichVu} onValueChange={(v) => setCreateData({ ...createData, goiDichVu: v })}>
+                        <SelectTrigger className="h-12 rounded-2xl bg-gray-50/50 border-gray-100 focus:ring-teal-600">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-2xl shadow-2xl">
+                          <SelectItem value="mienPhi" className="rounded-xl">Miễn phí (1 tháng)</SelectItem>
+                          <SelectItem value="coBan" className="rounded-xl">Cơ bản (3 tháng)</SelectItem>
+                          <SelectItem value="chuyenNghiep" className="rounded-xl">Chuyên nghiệp (6 tháng)</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   <div className="p-5 bg-teal-50/50 rounded-3xl border border-teal-100/50 flex items-start gap-4">
-                     <div className="p-2 bg-white rounded-xl shadow-sm">
-                        <Zap className="h-5 w-5 text-teal-600" />
-                     </div>
-                     <div className="flex-1">
-                        <p className="text-sm font-bold text-teal-900 mb-0.5">Thời hạn mặc định</p>
-                        <p className="text-xs text-teal-700 leading-relaxed font-medium">Hệ thống sẽ tự động thiết lập ngày hết hạn căn cứ theo gói dịch vụ bạn đã chọn ở trên.</p>
-                     </div>
+                    <div className="p-2 bg-white rounded-xl shadow-sm">
+                      <Zap className="h-5 w-5 text-teal-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-teal-900 mb-0.5">Thời hạn mặc định</p>
+                      <p className="text-xs text-teal-700 leading-relaxed font-medium">Hệ thống sẽ tự động thiết lập ngày hết hạn căn cứ theo gói dịch vụ bạn đã chọn ở trên.</p>
+                    </div>
                   </div>
                 </div>
               </TabsContent>
 
               <TabsContent value="profile" className="mt-0 space-y-6">
-                 <div className="grid gap-5">
-                    <div className="grid grid-cols-2 gap-5">
-                      <div className="grid gap-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Số điện thoại</Label>
-                        <Input 
-                          placeholder="09xxx" 
-                          className="h-12 rounded-2xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
-                          value={createData.phone}
-                          onChange={(e) => setCreateData({...createData, phone: e.target.value})}
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Số CCCD</Label>
-                        <Input 
-                          placeholder="12 chữ số" 
-                          className="h-12 rounded-2xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
-                          value={createData.cccd}
-                          onChange={(e) => setCreateData({...createData, cccd: e.target.value})}
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-5">
-                      <div className="grid gap-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Ngày sinh</Label>
-                        <Input 
-                          type="date"
-                          className="h-12 rounded-2xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
-                          value={createData.ngaySinh}
-                          onChange={(e) => setCreateData({...createData, ngaySinh: e.target.value})}
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Giới tính</Label>
-                        <Select value={createData.gioiTinh} onValueChange={(v) => setCreateData({...createData, gioiTinh: v})}>
-                          <SelectTrigger className="h-12 rounded-2xl bg-gray-50/50 border-gray-100 focus:ring-teal-600">
-                             <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-2xl shadow-2xl">
-                             <SelectItem value="nam" className="rounded-xl">Nam</SelectItem>
-                             <SelectItem value="nu" className="rounded-xl">Nữ</SelectItem>
-                             <SelectItem value="khac" className="rounded-xl">Khác</SelectItem>
-                          </SelectContent>
-                       </Select>
-                      </div>
-                    </div>
+                <div className="grid gap-5">
+                  <div className="grid grid-cols-2 gap-5">
                     <div className="grid gap-2">
-                      <Label className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Quê quán</Label>
-                      <Input 
-                        placeholder="Nhập địa chỉ quê quán" 
+                      <Label className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Số điện thoại</Label>
+                      <Input
+                        placeholder="09xxx"
                         className="h-12 rounded-2xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
-                        value={createData.queQuan}
-                        onChange={(e) => setCreateData({...createData, queQuan: e.target.value})}
+                        value={createData.phone}
+                        onChange={(e) => setCreateData({ ...createData, phone: e.target.value })}
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Nghề nghiệp</Label>
-                      <Input 
-                        placeholder="VD: Kinh doanh tự do" 
+                      <Label className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Số CCCD</Label>
+                      <Input
+                        placeholder="12 chữ số"
                         className="h-12 rounded-2xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
-                        value={createData.ngheNghiep}
-                        onChange={(e) => setCreateData({...createData, ngheNghiep: e.target.value})}
+                        value={createData.cccd}
+                        onChange={(e) => setCreateData({ ...createData, cccd: e.target.value })}
                       />
                     </div>
-                 </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-5">
+                    <div className="grid gap-2">
+                      <Label className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Ngày sinh</Label>
+                      <Input
+                        type="date"
+                        className="h-12 rounded-2xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
+                        value={createData.ngaySinh}
+                        onChange={(e) => setCreateData({ ...createData, ngaySinh: e.target.value })}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Giới tính</Label>
+                      <Select value={createData.gioiTinh} onValueChange={(v) => setCreateData({ ...createData, gioiTinh: v })}>
+                        <SelectTrigger className="h-12 rounded-2xl bg-gray-50/50 border-gray-100 focus:ring-teal-600">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-2xl shadow-2xl">
+                          <SelectItem value="nam" className="rounded-xl">Nam</SelectItem>
+                          <SelectItem value="nu" className="rounded-xl">Nữ</SelectItem>
+                          <SelectItem value="khac" className="rounded-xl">Khác</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Quê quán</Label>
+                    <Input
+                      placeholder="Nhập địa chỉ quê quán"
+                      className="h-12 rounded-2xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
+                      value={createData.queQuan}
+                      onChange={(e) => setCreateData({ ...createData, queQuan: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Nghề nghiệp</Label>
+                    <Input
+                      placeholder="VD: Kinh doanh tự do"
+                      className="h-12 rounded-2xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
+                      value={createData.ngheNghiep}
+                      onChange={(e) => setCreateData({ ...createData, ngheNghiep: e.target.value })}
+                    />
+                  </div>
+                </div>
               </TabsContent>
             </ScrollArea>
 
@@ -573,8 +596,8 @@ export default function AdminLandlordManagementPage() {
               <Button variant="ghost" onClick={() => setIsCreateDialogOpen(false)} className="flex-1 h-12 rounded-2xl font-bold order-2 sm:order-1 transition-all active:scale-95">
                 Hủy bỏ
               </Button>
-              <Button 
-                onClick={handleCreate} 
+              <Button
+                onClick={handleCreate}
                 disabled={actionLoading === 'create'}
                 className="flex-1 h-12 rounded-2xl bg-teal-600 hover:bg-teal-700 font-bold shadow-lg shadow-teal-100 order-1 sm:order-2 transition-all active:scale-95"
               >
@@ -589,125 +612,125 @@ export default function AdminLandlordManagementPage() {
       {/* View Details Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className="sm:max-w-[700px] p-0 rounded-[2.5rem] overflow-hidden border-none shadow-4xl group">
-             <DialogTitle className="sr-only">Chi tiết hồ sơ chủ trọ</DialogTitle>
-             <div className="relative h-32 bg-gradient-to-r from-teal-600 to-emerald-600">
-                <div className="absolute -bottom-16 left-8 p-1.5 bg-white rounded-[2.2rem] shadow-xl">
-                    <Avatar className="h-32 w-32 rounded-[2rem] border-4 border-white shadow-inner">
-                        <AvatarImage src={selectedLandlord?.avatar || selectedLandlord?.anhDaiDien} />
-                        <AvatarFallback className="bg-teal-50 text-teal-700 text-3xl font-black">{selectedLandlord ? getInitials(selectedLandlord.name || selectedLandlord.ten || '') : ''}</AvatarFallback>
-                    </Avatar>
+          <DialogTitle className="sr-only">Chi tiết hồ sơ chủ trọ</DialogTitle>
+          <div className="relative h-32 bg-gradient-to-r from-teal-600 to-emerald-600">
+            <div className="absolute -bottom-16 left-8 p-1.5 bg-white rounded-[2.2rem] shadow-xl">
+              <Avatar className="h-32 w-32 rounded-[2rem] border-4 border-white shadow-inner">
+                <AvatarImage src={selectedLandlord?.avatar || selectedLandlord?.anhDaiDien} />
+                <AvatarFallback className="bg-teal-50 text-teal-700 text-3xl font-black">{selectedLandlord ? getInitials(selectedLandlord.name || selectedLandlord.ten || '') : ''}</AvatarFallback>
+              </Avatar>
+            </div>
+            <div className="absolute top-6 right-8">
+              <Badge className="bg-white/20 backdrop-blur-md text-white border-white/20 px-4 py-1.5 rounded-full font-bold text-xs uppercase tracking-[0.2em]">Profile Overview</Badge>
+            </div>
+          </div>
+
+          <div className="pt-20 px-8 pb-8 space-y-8">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-6">
+              <div className="space-y-1">
+                <h2 className="text-3xl font-black text-gray-900 tracking-tight font-heading">{selectedLandlord?.name || selectedLandlord?.ten}</h2>
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-teal-50 text-teal-700 border-teal-100 font-bold uppercase py-0.5 tracking-tighter">Chủ nhà hệ thống</Badge>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    {selectedLandlord?.isActive ? 'Đang hoạt động' : 'Tạm khóa'}
+                  </div>
                 </div>
-                <div className="absolute top-6 right-8">
-                   <Badge className="bg-white/20 backdrop-blur-md text-white border-white/20 px-4 py-1.5 rounded-full font-bold text-xs uppercase tracking-[0.2em]">Profile Overview</Badge>
-                </div>
-             </div>
-             
-             <div className="pt-20 px-8 pb-8 space-y-8">
-                <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-6">
-                   <div className="space-y-1">
-                      <h2 className="text-3xl font-black text-gray-900 tracking-tight font-heading">{selectedLandlord?.name || selectedLandlord?.ten}</h2>
-                      <div className="flex items-center gap-3">
-                         <Badge className="bg-teal-50 text-teal-700 border-teal-100 font-bold uppercase py-0.5 tracking-tighter">Chủ nhà hệ thống</Badge>
-                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-bold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                            {selectedLandlord?.isActive ? 'Đang hoạt động' : 'Tạm khóa'}
-                         </div>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="rounded-xl h-10 border-gray-100 text-xs font-bold uppercase tracking-widest px-4 hover:bg-gray-50" onClick={() => {
+                  setIsViewDialogOpen(false);
+                  openEditProfileDialog(selectedLandlord!);
+                }}>
+                  Edit Profile
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 border-b pb-2">Thông tin liên hệ</h4>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4">
+                      <div className="p-2.5 bg-gray-50 rounded-xl">
+                        <Phone className="h-4 w-4 text-gray-500" />
                       </div>
-                   </div>
-                   <div className="flex gap-2">
-                       <Button variant="outline" className="rounded-xl h-10 border-gray-100 text-xs font-bold uppercase tracking-widest px-4 hover:bg-gray-50" onClick={() => {
-                           setIsViewDialogOpen(false);
-                           openEditProfileDialog(selectedLandlord!);
-                       }}>
-                          Edit Profile
-                       </Button>
-                   </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider uppercase">Số điện thoại</p>
+                        <p className="text-sm font-bold text-gray-900 leading-none mt-1">{selectedLandlord?.phone || selectedLandlord?.soDienThoai || 'Chưa cập nhật'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="p-2.5 bg-gray-50 rounded-xl">
+                        <Mail className="h-4 w-4 text-gray-500" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest uppercase">Email đăng nhập</p>
+                        <p className="text-sm font-bold text-gray-900 leading-none mt-1 truncate">{selectedLandlord?.email}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
-                   <div className="space-y-6">
-                      <div className="space-y-4">
-                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 border-b pb-2">Thông tin liên hệ</h4>
-                        <div className="space-y-4">
-                           <div className="flex items-center gap-4">
-                              <div className="p-2.5 bg-gray-50 rounded-xl">
-                                 <Phone className="h-4 w-4 text-gray-500" />
-                              </div>
-                              <div>
-                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider uppercase">Số điện thoại</p>
-                                 <p className="text-sm font-bold text-gray-900 leading-none mt-1">{selectedLandlord?.phone || selectedLandlord?.soDienThoai || 'Chưa cập nhật'}</p>
-                              </div>
-                           </div>
-                           <div className="flex items-center gap-4">
-                              <div className="p-2.5 bg-gray-50 rounded-xl">
-                                 <Mail className="h-4 w-4 text-gray-500" />
-                              </div>
-                              <div className="min-w-0">
-                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest uppercase">Email đăng nhập</p>
-                                 <p className="text-sm font-bold text-gray-900 leading-none mt-1 truncate">{selectedLandlord?.email}</p>
-                              </div>
-                           </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400 border-b pb-2">Trạng thái dịch vụ</h4>
-                        <div className="p-5 rounded-[1.5rem] bg-gray-50 border border-gray-100/50 space-y-4">
-                           <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Gói hiện tại</span>
-                              {selectedLandlord?.goiDichVu && (
-                                <Badge className={cn("rounded-lg font-black text-[10px] uppercase", 
-                                  selectedLandlord.goiDichVu === 'chuyenNghiep' ? "bg-amber-100 text-amber-700 border-amber-200" :
-                                  selectedLandlord.goiDichVu === 'coBan' ? "bg-blue-100 text-blue-700 border-blue-200" :
-                                  "bg-gray-200 text-gray-700"
-                                )}>
-                                  {selectedLandlord.goiDichVu === 'chuyenNghiep' ? 'Chuyên nghiệp' : 
-                                   selectedLandlord.goiDichVu === 'coBan' ? 'Cơ bản' : 'Miễn phí'}
-                                </Badge>
-                              )}
-                           </div>
-                           <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Hết hạn vào</span>
-                              <span className="text-xs font-black text-gray-800">
-                                {selectedLandlord?.ngayHetHan ? new Date(selectedLandlord.ngayHetHan).toLocaleDateString('vi-VN') : 'Không giới hạn'}
-                              </span>
-                           </div>
-                        </div>
-                      </div>
-                   </div>
-
-                   <div className="space-y-6">
-                      <div className="space-y-4">
-                        <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400 border-b pb-2">Hồ sơ cá nhân</h4>
-                        <div className="grid grid-cols-2 gap-4">
-                           <div className="p-4 bg-teal-50/30 rounded-2xl border border-teal-100/50">
-                              <p className="text-[9px] font-black text-teal-600/60 uppercase tracking-widest mb-1 leading-none">Căn cước công dân</p>
-                              <p className="text-sm font-black text-teal-900">{selectedLandlord?.cccd || '---'}</p>
-                           </div>
-                           <div className="p-4 bg-blue-50/30 rounded-2xl border border-blue-100/50">
-                              <p className="text-[9px] font-black text-blue-600/60 uppercase tracking-widest mb-1 leading-none">Ngày sinh</p>
-                              <p className="text-sm font-black text-blue-900">{selectedLandlord?.ngaySinh ? new Date(selectedLandlord.ngaySinh).toLocaleDateString('vi-VN') : '---'}</p>
-                           </div>
-                           <div className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
-                              <p className="text-[9px] font-black text-amber-600/60 uppercase tracking-widest mb-1 leading-none">Giới tính</p>
-                              <p className="text-sm font-black text-amber-900 capitalize">{selectedLandlord?.gioiTinh || '---'}</p>
-                           </div>
-                           <div className="p-4 bg-purple-50/30 rounded-2xl border border-purple-100/50">
-                              <p className="text-[9px] font-black text-purple-600/60 uppercase tracking-widest mb-1 leading-none">Tòa nhà vận hành</p>
-                              <p className="text-sm font-black text-purple-900">{selectedLandlord?.totalBuildings || 0} tòa</p>
-                           </div>
-                        </div>
-                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                           <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 leading-none">Địa chỉ thường trú / Quê quán</p>
-                           <div className="flex items-start gap-2">
-                              <MapPin className="h-3 w-3 text-gray-400 mt-0.5" />
-                              <p className="text-xs font-bold text-gray-700 leading-normal">{selectedLandlord?.queQuan || 'Chưa cập nhật thông tin địa chỉ.'}</p>
-                           </div>
-                        </div>
-                      </div>
-                   </div>
+                <div className="space-y-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400 border-b pb-2">Trạng thái dịch vụ</h4>
+                  <div className="p-5 rounded-[1.5rem] bg-gray-50 border border-gray-100/50 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Gói hiện tại</span>
+                      {selectedLandlord?.goiDichVu && (
+                        <Badge className={cn("rounded-lg font-black text-[10px] uppercase",
+                          selectedLandlord.goiDichVu === 'chuyenNghiep' ? "bg-amber-100 text-amber-700 border-amber-200" :
+                            selectedLandlord.goiDichVu === 'coBan' ? "bg-blue-100 text-blue-700 border-blue-200" :
+                              "bg-gray-200 text-gray-700"
+                        )}>
+                          {selectedLandlord.goiDichVu === 'chuyenNghiep' ? 'Chuyên nghiệp' :
+                            selectedLandlord.goiDichVu === 'coBan' ? 'Cơ bản' : 'Miễn phí'}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Hết hạn vào</span>
+                      <span className="text-xs font-black text-gray-800">
+                        {selectedLandlord?.ngayHetHan ? new Date(selectedLandlord.ngayHetHan).toLocaleDateString('vi-VN') : 'Không giới hạn'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-             </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400 border-b pb-2">Hồ sơ cá nhân</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-teal-50/30 rounded-2xl border border-teal-100/50">
+                      <p className="text-[9px] font-black text-teal-600/60 uppercase tracking-widest mb-1 leading-none">Căn cước công dân</p>
+                      <p className="text-sm font-black text-teal-900">{selectedLandlord?.cccd || '---'}</p>
+                    </div>
+                    <div className="p-4 bg-blue-50/30 rounded-2xl border border-blue-100/50">
+                      <p className="text-[9px] font-black text-blue-600/60 uppercase tracking-widest mb-1 leading-none">Ngày sinh</p>
+                      <p className="text-sm font-black text-blue-900">{selectedLandlord?.ngaySinh ? new Date(selectedLandlord.ngaySinh).toLocaleDateString('vi-VN') : '---'}</p>
+                    </div>
+                    <div className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
+                      <p className="text-[9px] font-black text-amber-600/60 uppercase tracking-widest mb-1 leading-none">Giới tính</p>
+                      <p className="text-sm font-black text-amber-900 capitalize">{selectedLandlord?.gioiTinh || '---'}</p>
+                    </div>
+                    <div className="p-4 bg-purple-50/30 rounded-2xl border border-purple-100/50">
+                      <p className="text-[9px] font-black text-purple-600/60 uppercase tracking-widest mb-1 leading-none">Tòa nhà vận hành</p>
+                      <p className="text-sm font-black text-purple-900">{selectedLandlord?.totalBuildings || 0} tòa</p>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 leading-none">Địa chỉ thường trú / Quê quán</p>
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-3 w-3 text-gray-400 mt-0.5" />
+                      <p className="text-xs font-bold text-gray-700 leading-normal">{selectedLandlord?.queQuan || 'Chưa cập nhật thông tin địa chỉ.'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -716,102 +739,102 @@ export default function AdminLandlordManagementPage() {
         <DialogContent className="sm:max-w-[550px] p-0 rounded-[2rem] overflow-hidden border-none shadow-3xl">
           <DialogHeader className="p-8 pb-4 bg-teal-50/50">
             <div className="flex items-center gap-4">
-               <div className="p-3 bg-white rounded-2xl shadow-sm border border-teal-100">
-                  <Edit2 className="h-6 w-6 text-teal-600" />
-               </div>
-               <div>
-                  <DialogTitle className="text-xl font-black tracking-tight">Cập nhật hồ sơ chủ trọ</DialogTitle>
-                  <DialogDescription className="font-medium text-teal-700/60">Thay đổi thông tin hành chính của tài khoản</DialogDescription>
-               </div>
+              <div className="p-3 bg-white rounded-2xl shadow-sm border border-teal-100">
+                <Edit2 className="h-6 w-6 text-teal-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-black tracking-tight">Cập nhật hồ sơ chủ trọ</DialogTitle>
+                <DialogDescription className="font-medium text-teal-700/60">Thay đổi thông tin hành chính của tài khoản</DialogDescription>
+              </div>
             </div>
           </DialogHeader>
-          
+
           <ScrollArea className="h-[450px] px-8 py-6">
-             <div className="space-y-6">
-                <div className="grid gap-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Họ và tên</Label>
-                  <Input 
-                    placeholder="Nguyễn Văn A" 
-                    className="h-11 rounded-xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600 font-medium"
-                    value={editProfileData.name}
-                    onChange={(e) => setEditProfileData({...editProfileData, name: e.target.value})}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-5">
-                  <div className="grid gap-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Số điện thoại</Label>
-                    <Input 
-                      placeholder="09xxx" 
-                      className="h-11 rounded-xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
-                      value={editProfileData.phone}
-                      onChange={(e) => setEditProfileData({...editProfileData, phone: e.target.value})}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Số CCCD</Label>
-                    <Input 
-                      placeholder="12 chữ số" 
-                      className="h-11 rounded-xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
-                      value={editProfileData.cccd}
-                      onChange={(e) => setEditProfileData({...editProfileData, cccd: e.target.value})}
-                    />
-                  </div>
-                </div>
+            <div className="space-y-6">
+              <div className="grid gap-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Họ và tên</Label>
+                <Input
+                  placeholder="Nguyễn Văn A"
+                  className="h-11 rounded-xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600 font-medium"
+                  value={editProfileData.name}
+                  onChange={(e) => setEditProfileData({ ...editProfileData, name: e.target.value })}
+                />
+              </div>
 
-                <div className="grid grid-cols-2 gap-5">
-                   <div className="grid gap-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Ngày sinh</Label>
-                    <Input 
-                      type="date"
-                      className="h-11 rounded-xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
-                      value={editProfileData.ngaySinh}
-                      onChange={(e) => setEditProfileData({...editProfileData, ngaySinh: e.target.value})}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Giới tính</Label>
-                    <Select value={editProfileData.gioiTinh} onValueChange={(v) => setEditProfileData({...editProfileData, gioiTinh: v})}>
-                      <SelectTrigger className="h-11 rounded-xl bg-gray-50/50 border-gray-100 focus:ring-teal-600 font-medium">
-                         <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl shadow-xl">
-                         <SelectItem value="nam" className="rounded-lg">Nam</SelectItem>
-                         <SelectItem value="nu" className="rounded-lg">Nữ</SelectItem>
-                         <SelectItem value="khac" className="rounded-lg">Khác</SelectItem>
-                      </SelectContent>
-                   </Select>
-                  </div>
-                </div>
-
+              <div className="grid grid-cols-2 gap-5">
                 <div className="grid gap-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Quê quán</Label>
-                  <Input 
-                    placeholder="Địa chỉ thường trú" 
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Số điện thoại</Label>
+                  <Input
+                    placeholder="09xxx"
                     className="h-11 rounded-xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
-                    value={editProfileData.queQuan}
-                    onChange={(e) => setEditProfileData({...editProfileData, queQuan: e.target.value})}
+                    value={editProfileData.phone}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, phone: e.target.value })}
                   />
                 </div>
-
                 <div className="grid gap-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Nghề nghiệp</Label>
-                  <Input 
-                    placeholder="VD: Kinh doanh tự do" 
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Số CCCD</Label>
+                  <Input
+                    placeholder="12 chữ số"
                     className="h-11 rounded-xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
-                    value={editProfileData.ngheNghiep}
-                    onChange={(e) => setEditProfileData({...editProfileData, ngheNghiep: e.target.value})}
+                    value={editProfileData.cccd}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, cccd: e.target.value })}
                   />
                 </div>
-             </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-5">
+                <div className="grid gap-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Ngày sinh</Label>
+                  <Input
+                    type="date"
+                    className="h-11 rounded-xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
+                    value={editProfileData.ngaySinh}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, ngaySinh: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Giới tính</Label>
+                  <Select value={editProfileData.gioiTinh} onValueChange={(v) => setEditProfileData({ ...editProfileData, gioiTinh: v })}>
+                    <SelectTrigger className="h-11 rounded-xl bg-gray-50/50 border-gray-100 focus:ring-teal-600 font-medium">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl shadow-xl">
+                      <SelectItem value="nam" className="rounded-lg">Nam</SelectItem>
+                      <SelectItem value="nu" className="rounded-lg">Nữ</SelectItem>
+                      <SelectItem value="khac" className="rounded-lg">Khác</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Quê quán</Label>
+                <Input
+                  placeholder="Địa chỉ thường trú"
+                  className="h-11 rounded-xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
+                  value={editProfileData.queQuan}
+                  onChange={(e) => setEditProfileData({ ...editProfileData, queQuan: e.target.value })}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Nghề nghiệp</Label>
+                <Input
+                  placeholder="VD: Kinh doanh tự do"
+                  className="h-11 rounded-xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
+                  value={editProfileData.ngheNghiep}
+                  onChange={(e) => setEditProfileData({ ...editProfileData, ngheNghiep: e.target.value })}
+                />
+              </div>
+            </div>
           </ScrollArea>
 
           <DialogFooter className="p-8 pt-4 bg-gray-50/30 flex-col sm:flex-row gap-3">
             <Button variant="ghost" onClick={() => setIsEditProfileDialogOpen(false)} className="flex-1 h-11 rounded-xl font-bold order-2 sm:order-1 transition-all active:scale-95">
               Hủy bỏ
             </Button>
-            <Button 
-              onClick={handleEditProfile} 
+            <Button
+              onClick={handleEditProfile}
               disabled={actionLoading === 'edit-profile'}
               className="flex-1 h-11 rounded-xl bg-teal-600 hover:bg-teal-700 font-bold shadow-lg shadow-teal-100 order-1 sm:order-2 transition-all active:scale-95"
             >
@@ -826,81 +849,81 @@ export default function AdminLandlordManagementPage() {
       <Dialog open={isEditPlanDialogOpen} onOpenChange={setIsEditPlanDialogOpen}>
         <DialogContent className="sm:max-w-[450px] p-0 rounded-[2rem] overflow-hidden border-none shadow-4xl animate-in zoom-in-95">
           <DialogHeader className="p-8 pb-4 bg-blue-50/50">
-             <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-100">
-                    <CreditCard className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                   <DialogTitle className="text-xl font-black tracking-tight">Sửa gói & Gia hạn</DialogTitle>
-                   <DialogDescription className="font-medium text-blue-700/60 leading-tight">Cập nhật quyền lợi sử dụng hệ thống</DialogDescription>
-                </div>
-             </div>
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-100">
+                <CreditCard className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-black tracking-tight">Sửa gói & Gia hạn</DialogTitle>
+                <DialogDescription className="font-medium text-blue-700/60 leading-tight">Cập nhật quyền lợi sử dụng hệ thống</DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
 
           <div className="p-8 space-y-6">
-             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                <div>
-                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Đang chỉnh sửa cho</p>
-                   <p className="text-sm font-bold text-gray-800 leading-none">{selectedLandlord?.name || selectedLandlord?.ten}</p>
-                </div>
-                <Badge className="bg-white border-blue-100 text-blue-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm">{selectedLandlord?.email}</Badge>
-             </div>
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Đang chỉnh sửa cho</p>
+                <p className="text-sm font-bold text-gray-800 leading-none">{selectedLandlord?.name || selectedLandlord?.ten}</p>
+              </div>
+              <Badge className="bg-white border-blue-100 text-blue-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm">{selectedLandlord?.email}</Badge>
+            </div>
 
-             <div className="grid gap-6">
-                <div className="grid gap-3">
-                   <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Gói dịch vụ Premium</Label>
-                   <Select value={editPlanData.goiDichVu} onValueChange={(v) => setEditPlanData({...editPlanData, goiDichVu: v})}>
-                        <SelectTrigger className="h-12 rounded-2xl bg-gray-50 border-gray-100 focus:ring-blue-600 font-bold">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl shadow-3xl">
-                            <SelectItem value="mienPhi" className="rounded-xl">Miễn phí (Tiêu chuẩn)</SelectItem>
-                            <SelectItem value="coBan" className="rounded-xl">Cơ bản (Professional)</SelectItem>
-                            <SelectItem value="chuyenNghiep" className="rounded-xl">Chuyên nghiệp (Enterprise)</SelectItem>
-                        </SelectContent>
-                   </Select>
-                </div>
+            <div className="grid gap-6">
+              <div className="grid gap-3">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Gói dịch vụ Premium</Label>
+                <Select value={editPlanData.goiDichVu} onValueChange={(v) => setEditPlanData({ ...editPlanData, goiDichVu: v })}>
+                  <SelectTrigger className="h-12 rounded-2xl bg-gray-50 border-gray-100 focus:ring-blue-600 font-bold">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl shadow-3xl">
+                    <SelectItem value="mienPhi" className="rounded-xl">Miễn phí (Tiêu chuẩn)</SelectItem>
+                    <SelectItem value="coBan" className="rounded-xl">Cơ bản (Professional)</SelectItem>
+                    <SelectItem value="chuyenNghiep" className="rounded-xl">Chuyên nghiệp (Enterprise)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                <div className="grid gap-3">
-                   <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Thời hạn sử dụng mới</Label>
-                   <div className="relative group">
-                     <Calendar className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-blue-600" />
-                     <Input 
-                        id="edit-expiry" 
-                        type="date" 
-                        value={editPlanData.ngayHetHan} 
-                        onChange={(e) => setEditPlanData({...editPlanData, ngayHetHan: e.target.value})} 
-                        className="h-12 pl-12 rounded-2xl bg-gray-50 border-gray-100 focus-visible:ring-blue-600 font-bold"
-                     />
-                   </div>
+              <div className="grid gap-3">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Thời hạn sử dụng mới</Label>
+                <div className="relative group">
+                  <Calendar className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-blue-600" />
+                  <Input
+                    id="edit-expiry"
+                    type="date"
+                    value={editPlanData.ngayHetHan}
+                    onChange={(e) => setEditPlanData({ ...editPlanData, ngayHetHan: e.target.value })}
+                    className="h-12 pl-12 rounded-2xl bg-gray-50 border-gray-100 focus-visible:ring-blue-600 font-bold"
+                  />
                 </div>
-                
-                <div className="flex items-center space-x-2 p-1 pt-2">
-                   <div 
-                     className={cn("p-1.5 rounded-lg transition-all", editPlanData.isActive ? "bg-emerald-100" : "bg-orange-100")}
-                     onClick={() => setEditPlanData({...editPlanData, isActive: !editPlanData.isActive})}
-                   >
-                      {editPlanData.isActive ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <X className="h-4 w-4 text-orange-600" />}
-                   </div>
-                   <Label className="text-xs font-black uppercase tracking-widest text-gray-700 cursor-pointer" onClick={() => setEditPlanData({...editPlanData, isActive: !editPlanData.isActive})}>
-                      Trạng thái: <span className={cn(editPlanData.isActive ? "text-emerald-600" : "text-orange-600")}>{editPlanData.isActive ? 'Cho phép truy cập' : 'Ngắt kết nối / Khóa'}</span>
-                   </Label>
+              </div>
+
+              <div className="flex items-center space-x-2 p-1 pt-2">
+                <div
+                  className={cn("p-1.5 rounded-lg transition-all", editPlanData.isActive ? "bg-emerald-100" : "bg-orange-100")}
+                  onClick={() => setEditPlanData({ ...editPlanData, isActive: !editPlanData.isActive })}
+                >
+                  {editPlanData.isActive ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <X className="h-4 w-4 text-orange-600" />}
                 </div>
-             </div>
+                <Label className="text-xs font-black uppercase tracking-widest text-gray-700 cursor-pointer" onClick={() => setEditPlanData({ ...editPlanData, isActive: !editPlanData.isActive })}>
+                  Trạng thái: <span className={cn(editPlanData.isActive ? "text-emerald-600" : "text-orange-600")}>{editPlanData.isActive ? 'Cho phép truy cập' : 'Ngắt kết nối / Khóa'}</span>
+                </Label>
+              </div>
+            </div>
           </div>
 
           <DialogFooter className="p-8 pt-4 bg-gray-50/50 flex-col sm:flex-row gap-3">
-             <Button variant="ghost" onClick={() => setIsEditPlanDialogOpen(false)} className="flex-1 h-12 rounded-2xl font-bold order-2 sm:order-1 transition-shadow hover:bg-gray-100">
-                Bỏ qua
-             </Button>
-             <Button 
-                onClick={handleEditPlan} 
-                className="flex-1 h-12 rounded-2xl bg-blue-600 hover:bg-blue-700 font-bold shadow-lg shadow-blue-100 order-1 sm:order-2 transition-all active:scale-95"
-                disabled={actionLoading === 'edit-plan'}
-             >
-                {actionLoading === 'edit-plan' ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
-                Xác nhận gia hạn
-             </Button>
+            <Button variant="ghost" onClick={() => setIsEditPlanDialogOpen(false)} className="flex-1 h-12 rounded-2xl font-bold order-2 sm:order-1 transition-shadow hover:bg-gray-100">
+              Bỏ qua
+            </Button>
+            <Button
+              onClick={handleEditPlan}
+              className="flex-1 h-12 rounded-2xl bg-blue-600 hover:bg-blue-700 font-bold shadow-lg shadow-blue-100 order-1 sm:order-2 transition-all active:scale-95"
+              disabled={actionLoading === 'edit-plan'}
+            >
+              {actionLoading === 'edit-plan' ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
+              Xác nhận gia hạn
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -909,40 +932,40 @@ export default function AdminLandlordManagementPage() {
       <Dialog open={isResetPasswordDialogOpen} onOpenChange={setIsResetPasswordDialogOpen}>
         <DialogContent className="sm:max-w-[400px] p-0 rounded-[2rem] overflow-hidden border-none shadow-4xl">
           <DialogHeader className="p-8 pb-4 bg-rose-50/50">
-             <div className="flex items-center gap-4">
-                <div className="p-3 bg-rose-600 rounded-2xl shadow-lg shadow-rose-100">
-                    <LockKeyhole className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                   <DialogTitle className="text-xl font-black tracking-tight">Cấp lại mật khẩu</DialogTitle>
-                </div>
-             </div>
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-rose-600 rounded-2xl shadow-lg shadow-rose-100">
+                <LockKeyhole className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-black tracking-tight">Cấp lại mật khẩu</DialogTitle>
+              </div>
+            </div>
           </DialogHeader>
           <div className="p-8 space-y-6">
             <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Tài khoản</p>
-                <p className="text-sm font-bold text-gray-800 break-all leading-tight">{selectedLandlord?.email}</p>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Tài khoản</p>
+              <p className="text-sm font-bold text-gray-800 break-all leading-tight">{selectedLandlord?.email}</p>
             </div>
             <div className="space-y-3">
-               <Label htmlFor="new-pass" className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Mật khẩu mới</Label>
-               <Input 
-                 id="new-pass" 
-                 type="password" 
-                 placeholder="Lớn hơn 6 ký tự"
-                 value={newPassword} 
-                 onChange={(e) => setNewPassword(e.target.value)} 
-                 className="h-12 rounded-2xl bg-gray-50 border-gray-100 focus-visible:ring-rose-500" 
-               />
-               <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl border border-amber-100">
-                  <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                  <p className="text-[10px] font-medium text-amber-800 leading-normal">Mật khẩu sẽ có hiệu lực ngay lập tức. Hãy đảm bảo bạn đã thông báo cho chủ trọ mật khẩu này.</p>
-               </div>
+              <Label htmlFor="new-pass" className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Mật khẩu mới</Label>
+              <Input
+                id="new-pass"
+                type="password"
+                placeholder="Lớn hơn 6 ký tự"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="h-12 rounded-2xl bg-gray-50 border-gray-100 focus-visible:ring-rose-500"
+              />
+              <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl border border-amber-100">
+                <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-[10px] font-medium text-amber-800 leading-normal">Mật khẩu sẽ có hiệu lực ngay lập tức. Hãy đảm bảo bạn đã thông báo cho chủ trọ mật khẩu này.</p>
+              </div>
             </div>
           </div>
           <DialogFooter className="p-8 pt-4 bg-gray-50/50 flex-col sm:flex-row gap-3">
             <Button variant="ghost" onClick={() => setIsResetPasswordDialogOpen(false)} className="flex-1 h-12 rounded-2xl font-bold order-2 sm:order-1 capitalize">Hủy bỏ</Button>
-            <Button 
-              onClick={handleResetPassword} 
+            <Button
+              onClick={handleResetPassword}
               className="flex-1 h-12 rounded-2xl bg-rose-600 hover:bg-rose-700 font-bold shadow-lg shadow-rose-100 order-1 sm:order-2 transition-all active:scale-95"
               disabled={actionLoading === 'reset-pw' || !newPassword}
             >

@@ -27,11 +27,11 @@ export function Footer({ showContactInfo = true }: { showContactInfo?: boolean }
                 </div>
                 <div className="flex items-center gap-3 justify-center md:justify-start">
                   <Phone className="h-5 w-5 text-[#14B8A6] shrink-0" />
-                  <span className="text-sm">0888.888.888</span>
+                  <span className="text-sm">0392.537.324</span>
                 </div>
                 <div className="flex items-center gap-3 justify-center md:justify-start">
                   <Mail className="h-5 w-5 text-[#14B8A6] shrink-0" />
-                  <a href="mailto:piroom@gmail.com" className="text-sm underline hover:text-[#14B8A6] transition-colors">piroom@gmail.com</a>
+                  <a href="mailto:25A4042227@hvnh.edu.vn" className="text-sm underline hover:text-[#14B8A6] transition-colors">25A4042227@hvnh.edu.vn</a>
                 </div>
               </div>
             </div>
@@ -39,28 +39,28 @@ export function Footer({ showContactInfo = true }: { showContactInfo?: boolean }
             {/* Column 2: Hotline Button */}
             <div className="flex flex-col items-center">
               <h3 className="text-xl font-bold font-josefin text-[#134E4A] mb-6">Hotline</h3>
-              <a 
-                href="https://zalo.me/0888888888" 
+              <a
+                href="https://zalo.me/0392537324"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full bg-[#14B8A6] hover:bg-[#119A8B] text-white py-6 px-4 rounded-xl flex items-center justify-center gap-4 transition-all hover:scale-105 shadow-lg shadow-[#14B8A6]/30 cursor-pointer"
               >
                 <div className="h-8 w-8 bg-white text-[#14B8A6] rounded-lg flex items-center justify-center font-bold text-xl">Z</div>
-                <span className="text-2xl font-bold font-josefin">0888.888.888</span>
+                <span className="text-2xl font-bold font-josefin">0392.537.324</span>
               </a>
             </div>
 
             {/* Column 3: Email Button */}
             <div className="flex flex-col items-center">
               <h3 className="text-xl font-bold font-josefin text-[#134E4A] mb-6">Gửi email</h3>
-              <a 
-                href="mailto:piroom@gmail.com" 
+              <a
+                href="mailto:25A4042227@hvnh.edu.vn"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full bg-[#0369A1] hover:bg-[#025a8a] text-white py-6 px-4 rounded-xl flex items-center justify-center gap-4 transition-all hover:scale-105 shadow-lg shadow-[#0369A1]/30 cursor-pointer"
               >
                 <Mail className="h-8 w-8" />
-                <span className="text-lg font-bold font-josefin break-all">piroom@gmail.com</span>
+                <span className="text-lg font-bold font-josefin break-all">25A4042227@hvnh.edu.vn</span>
               </a>
             </div>
           </div>
@@ -111,9 +111,9 @@ export function Footer({ showContactInfo = true }: { showContactInfo?: boolean }
                 Theo Dõi
               </h4>
               <div className="flex gap-4">
-                <a 
-                  href="https://www.facebook.com/profile.php?id=61556548539899" 
-                  target="_blank" 
+                <a
+                  href="https://www.facebook.com/profile.php?id=61556548539899"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="p-3 bg-white/10 hover:bg-[#1877F2] rounded-xl transition-all cursor-pointer text-white flex items-center justify-center group"
                 >

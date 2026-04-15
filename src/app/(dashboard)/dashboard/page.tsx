@@ -345,7 +345,7 @@ export default function DashboardPage() {
   // Restore Plan Selection Logic
   useEffect(() => {
     const planKey = searchParams.get('plan');
-    if (planKey && ['basic', 'professional'].includes(planKey) && status === 'authenticated') {
+    if (planKey && status === 'authenticated') {
       const handleSelectedPlan = async () => {
         try {
           const currentPlan = (session?.user as any)?.goiDichVu;
@@ -366,6 +366,7 @@ export default function DashboardPage() {
           const allPlans = await resPlans.json();
 
           const targetPlan = allPlans.find((p: any) =>
+            p._id === planKey ||
             (planKey === 'basic' && (p.ten.toLowerCase().includes('cơ bản') || p.ten.toLowerCase().includes('basic'))) ||
             (planKey === 'professional' && (p.ten.toLowerCase().includes('chuyên nghiệp') || p.ten.toLowerCase().includes('professional')))
           );

@@ -155,11 +155,62 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = phongSchema.parse(body);
     await dbConnect();
+    
+    // Check Subscription and Limits
+    const landlord = await NguoiDung.findById(session.user.id);
+    if (!landlord) return NextResponse.json({ message: 'User not found' }, { status: 404 });
+
+    // 1. Check Expiration
+    if (landlord.role === 'chuNha' && landlord.ngayHetHan && new Date(landlord.ngayHetHan) < new Date()) {
+      return NextResponse.json({ 
+        message: 'Gói dịch vụ của bạn đã hết hạn. Vui lòng gia hạn để tiếp tục sử dụng.' 
+      }, { status: 403 });
+    }
+
+    // 2. Check Room Limit
+    const GoiDichVu = (await import('@/models/GoiDichVu')).default;
+    let maxRooms = -1; // Default to unlimited for non-landlords or special cases
+
+    if (landlord.role === 'chuNha') {
+      let plan = null;
+      if (landlord.goiDichVuId) {
+        plan = await GoiDichVu.findById(landlord.goiDichVuId);
+      } else {
+        // Fallback for old users: try to find by string label
+        plan = await GoiDichVu.findOne({ ten: { $regex: landlord.goiDichVu, $options: 'i' } });
+      }
+
+      if (plan) {
+        maxRooms = plan.maxPhong;
+      } else {
+        // Default limits if plan not found
+        if (landlord.goiDichVu === 'mienPhi') maxRooms = 10;
+        else if (landlord.goiDichVu === 'coBan') maxRooms = 20;
+      }
+
+      if (maxRooms !== -1) {
+        // Count all rooms owned by this landlord
+        const userBuildings = await ToaNha.find({ chuSoHuu: landlord._id }).select('_id');
+        const buildingIds = userBuildings.map(b => b._id);
+        const currentRoomCount = await Phong.countDocuments({ toaNha: { $in: buildingIds } });
+
+        if (currentRoomCount >= maxRooms) {
+          return NextResponse.json({ 
+            message: `Bạn đã đạt giới hạn tối đa ${maxRooms} phòng của gói dịch vụ hiện tại. Vui lòng nâng cấp gói để thêm phòng.` 
+          }, { status: 403 });
+        }
+      }
+    }
+
     const hasAccess = await isToaNhaAccessible(session.user, validatedData.toaNha);
     if (!hasAccess) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+
     const newPhong = new Phong({ ...validatedData, anhPhong: validatedData.anhPhong || [], trangThai: 'trong' });
     await newPhong.save();
-    await updatePhongStatus(newPhong._id.toString());
+
+    // Update ToaNha tongSoPhong cache
+    await ToaNha.findByIdAndUpdate(validatedData.toaNha, { $inc: { tongSoPhong: 1 } });
+
     return NextResponse.json({ success: true, data: newPhong }, { status: 201 });
   } catch (error) {
     console.error('Error creating phong:', error);

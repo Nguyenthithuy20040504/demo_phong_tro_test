@@ -18,7 +18,7 @@ export function Navbar() {
   ];
 
   return (
-    <motion.nav 
+    <motion.nav
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       className="sticky top-0 z-50 w-full border-b border-gray-100 bg-white/95 backdrop-blur-md transition-all duration-300 shadow-sm"
@@ -42,9 +42,9 @@ export function Navbar() {
         {/* Desktop Nav */}
         <div className="hidden lg:flex items-center gap-8 font-heading">
           {navLinks.map((link) => (
-            <Link 
-              key={link.href} 
-              href={link.href} 
+            <Link
+              key={link.href}
+              href={link.href}
               className="text-gray-600 hover:text-primary font-bold text-xs uppercase tracking-widest transition-colors"
             >
               {link.label}
@@ -57,16 +57,16 @@ export function Navbar() {
           <Link href="/dang-nhap" prefetch={true} className="hidden md:block text-gray-500 hover:text-primary font-bold text-xs uppercase tracking-widest transition-colors font-heading">
             Đăng nhập
           </Link>
-          <a 
-            href="tel:0888888888" 
+          <a
+            href="tel:0392537324"
             className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-full shadow-lg shadow-primary/30 transition-all hover:scale-105 active:scale-95"
           >
             <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4 fill-white" />
-            <span className="font-bold text-sm sm:text-base font-heading">0888.888.888</span>
+            <span className="font-bold text-sm sm:text-base font-heading">0392.537.324</span>
           </a>
 
           {/* Mobile Menu Trigger */}
-          <button 
+          <button
             className="lg:hidden p-2 text-secondary hover:bg-gray-100 rounded-lg transition-colors"
             onClick={() => setIsOpen(!isOpen)}
           >
@@ -86,9 +86,9 @@ export function Navbar() {
           >
             <div className="container mx-auto px-6 py-8 flex flex-col gap-6 font-heading">
               {navLinks.map((link) => (
-                <Link 
-                  key={link.href} 
-                  href={link.href} 
+                <Link
+                  key={link.href}
+                  href={link.href}
                   className="text-lg font-bold text-secondary hover:text-primary transition-colors"
                   onClick={() => setIsOpen(false)}
                 >
@@ -96,8 +96,8 @@ export function Navbar() {
                 </Link>
               ))}
               <div className="pt-4 border-t border-gray-100 flex flex-col gap-4">
-                <Link 
-                  href="/dang-nhap" 
+                <Link
+                  href="/dang-nhap"
                   prefetch={true}
                   className="text-lg font-bold text-gray-500"
                   onClick={() => setIsOpen(false)}

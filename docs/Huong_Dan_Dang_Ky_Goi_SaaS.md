@@ -409,8 +409,8 @@ Nếu bạn gặp khó khăn trong quá trình đăng ký hoặc thanh toán, h�
 | Kênh | Thông tin |
 |---|---|
 | 📍 **Địa chỉ** | 12 Chùa Bộc, Quang Trung, Đống Đa, Hà Nội |
-| 📞 **Hotline (Zalo)** | 0888.888.888 |
-| ✉️ **Email** | piroom@gmail.com |
+| 📞 **Hotline (Zalo)** | 0392.537.324 |
+| ✉️ **Email** | 25A4042227@hvnh.edu.vn |
 
 ---
 

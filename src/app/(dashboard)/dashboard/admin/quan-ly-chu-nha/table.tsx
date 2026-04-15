@@ -30,7 +30,9 @@ import {
   UserX,
   UserCheck,
   LockKeyhole,
-  AlertTriangle
+  AlertTriangle,
+  MailCheck,
+  MailX
 } from "lucide-react"
 import {
   ColumnDef,
@@ -114,6 +116,8 @@ export interface Landlord {
     matTruoc: string
     matSau: string
   }
+  // Email verification
+  daXacMinhEmail?: boolean
 }
 
 const getPlanBadge = (plan: string) => {
@@ -162,6 +166,7 @@ type LandlordTableProps = {
   onToggleStatus: (landlord: Landlord) => void
   onResetPassword: (landlord: Landlord) => void
   onDelete: (id: string) => void
+  onResendVerification: (landlord: Landlord) => void
   actionLoading: string | null
 }
 
@@ -199,18 +204,27 @@ const createColumns = (props: LandlordTableProps & { setLandlordToDelete: (l: La
   {
     accessorKey: "contact",
     header: "Liên hệ",
-    cell: ({ row }) => (
-      <div className="flex flex-col gap-1 min-w-40">
-        <div className="flex items-center gap-2 text-sm text-gray-700">
-          <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="font-medium">{row.original.phone || row.original.soDienThoai}</span>
+    cell: ({ row }) => {
+      const emailVerified = row.original.daXacMinhEmail !== false;
+      return (
+        <div className="flex flex-col gap-1 min-w-40">
+          <div className="flex items-center gap-2 text-sm text-gray-700">
+            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="font-medium">{row.original.phone || row.original.soDienThoai}</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Mail className="h-3.5 w-3.5 opacity-70" />
+            <span className="truncate max-w-[150px]">{row.original.email}</span>
+          </div>
+          {!emailVerified && (
+            <Badge variant="outline" className="gap-1 w-fit text-[10px] py-0 h-4 bg-amber-50 text-amber-700 border-amber-200">
+              <MailX className="h-3 w-3" />
+              Chưa xác nhận email
+            </Badge>
+          )}
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Mail className="h-3.5 w-3.5 opacity-70" />
-          <span className="truncate max-w-[150px]">{row.original.email}</span>
-        </div>
-      </div>
-    ),
+      );
+    },
   },
   {
     accessorKey: "goiDichVu",
@@ -283,6 +297,7 @@ const createColumns = (props: LandlordTableProps & { setLandlordToDelete: (l: La
     cell: ({ row }) => {
       const landlord = row.original
       const isActive = landlord.isActive !== undefined ? landlord.isActive : (landlord.trangThai === 'hoatDong')
+      const emailVerified = landlord.daXacMinhEmail !== false;
       
       return (
         <DropdownMenu>
@@ -348,6 +363,19 @@ const createColumns = (props: LandlordTableProps & { setLandlordToDelete: (l: La
               <LockKeyhole className="mr-3 h-4 w-4 opacity-70" />
               <span className="font-medium text-sm">Đặt lại mật khẩu</span>
             </DropdownMenuItem>
+
+            {!emailVerified && (
+              <>
+                <DropdownMenuSeparator className="my-1" />
+                <DropdownMenuItem className="rounded-lg py-2 cursor-pointer" onClick={(e) => {
+                  e.stopPropagation();
+                  props.onResendVerification(landlord);
+                }}>
+                  <MailX className="mr-3 h-4 w-4 text-amber-500 opacity-70" />
+                  <span className="font-medium text-sm text-amber-700">Gửi lại email xác nhận</span>
+                </DropdownMenuItem>
+              </>
+            )}
 
             <DropdownMenuSeparator className="my-1" />
 

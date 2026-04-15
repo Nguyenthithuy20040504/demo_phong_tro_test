@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     await user.save();
 
     // Redirect to login with success message
-    return NextResponse.redirect(new URL('/dang-nhap?verified=true', request.url));
+    return NextResponse.redirect(new URL('/dang-nhap?message=verified', request.url));
     
   } catch (error) {
     console.error('[Verify Link Error]:', error);

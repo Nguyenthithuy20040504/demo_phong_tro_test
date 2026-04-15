@@ -61,15 +61,20 @@ export async function GET(request: NextRequest) {
         const newExpiry = new Date(startDate);
         newExpiry.setMonth(startDate.getMonth() + plan.thoiGian);
 
-        if (isCurrentlyActive && !isSamePlan) {
-          // Đang có gói cũ còn hạn và mua gói KHÁC -> Cho vào hàng đợi
+        const roleTiers = { 'mienPhi': 0, 'coBan': 1, 'chuyenNghiep': 2 };
+        const currentTier = roleTiers[user.goiDichVu as keyof typeof roleTiers] || 0;
+        const newTier = roleTiers[userPlanRole] || 0;
+
+        if (isCurrentlyActive && newTier < currentTier) {
+          // Chỉ cho vào hàng đợi nếu nạp gói THẤP hơn gói đang dùng và còn hạn
           user.goiDichVuTiepTheo = userPlanRole;
-          console.log(`[SUBSCRIPTION] Queued plan ${userPlanRole} for user ${user._id}`);
+          console.log(`[SUBSCRIPTION] Queued lower tier plan ${userPlanRole} for user ${user._id}`);
         } else {
-          // Đã hết hạn HOẶC mua gói CÙNG loại -> Nâng cấp/Gia hạn ngay
+          // Nâng cấp (Upgrade), Gia hạn (Renew) hoặc Đã hết hạn -> Kích hoạt ngay
           user.goiDichVu = userPlanRole;
-          user.goiDichVuTiepTheo = null; // Xóa hàng đợi nếu có (vì đã gia hạn/nâng cấp thẳng)
-          console.log(`[SUBSCRIPTION] Renewed/Upgraded plan ${userPlanRole} for user ${user._id}`);
+          user.goiDichVuId = plan._id;
+          user.goiDichVuTiepTheo = null;
+          console.log(`[SUBSCRIPTION] Activated/Renewed plan ${userPlanRole} for user ${user._id}`);
         }
         
         user.ngayHetHan = newExpiry;

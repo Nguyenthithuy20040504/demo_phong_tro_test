@@ -28,9 +28,18 @@ export async function GET() {
     const roleStr = user.role || user.vaiTro;
 
     // TỰ ĐỘNG KÍCH HOẠT GÓI ĐỢI (QUEUE SYSTEM)
-    // Nếu hôm nay > ngày hết hạn và có gói tiếp theo đang đợi
-    if (roleStr === 'chuNha' && user.ngayHetHan && new Date(user.ngayHetHan) < new Date() && (user as any).goiDichVuTiepTheo) {
-       console.log('API Status: Activating queued plan for user', session.user.id);
+    // Kích hoạt nếu: 1. Đã hết hạn; HOẶC 2. Gói trong hàng đợi là gói NÂNG CẤP (Tier cao hơn)
+    const roleTiers = { 'mienPhi': 0, 'coBan': 1, 'chuyenNghiep': 2 };
+    const currentTier = roleTiers[user.goiDichVu as keyof typeof roleTiers] || 0;
+    const queuedTier = user.goiDichVuTiepTheo ? roleTiers[user.goiDichVuTiepTheo as keyof typeof roleTiers] || 0 : -1;
+
+    const shouldActivateQueue = roleStr === 'chuNha' && user.goiDichVuTiepTheo && (
+      (user.ngayHetHan && new Date(user.ngayHetHan) < new Date()) || // Đã hết hạn
+      (queuedTier > currentTier) // Là gói nâng cấp
+    );
+
+    if (shouldActivateQueue) {
+       console.log('API Status: Activating queued upgrade/expired plan for user', session.user.id);
        const updatedUser = await NguoiDung.findByIdAndUpdate(
          session.user.id,
          { 
@@ -56,6 +65,7 @@ export async function GET() {
     console.log('API Status: Returning', { goiDichVu: finalGoiDichVu, ngayHetHan: finalNgayHetHan, goiDichVuTiepTheo: (user as any).goiDichVuTiepTheo });
     return NextResponse.json({
       goiDichVu: finalGoiDichVu,
+      goiDichVuId: user.goiDichVuId,
       ngayHetHan: finalNgayHetHan,
       goiDichVuTiepTheo: (user as any).goiDichVuTiepTheo
     });

@@ -30,6 +30,7 @@ export interface INguoiDung extends Document {
   nguoiQuanLy?: mongoose.Types.ObjectId;
   nguoiTao?: mongoose.Types.ObjectId;
   goiDichVu: 'mienPhi' | 'coBan' | 'chuyenNghiep';
+  goiDichVuId?: mongoose.Types.ObjectId;
   goiDichVuTiepTheo?: 'mienPhi' | 'coBan' | 'chuyenNghiep' | null;
   ngayHetHan: Date;
   cccd?: string;
@@ -174,6 +175,11 @@ const NguoiDungSchema = new Schema<INguoiDung>({
     type: String,
     enum: ['mienPhi', 'coBan', 'chuyenNghiep'],
     default: 'mienPhi'
+  },
+  goiDichVuId: {
+    type: Schema.Types.ObjectId,
+    ref: 'GoiDichVu',
+    default: null
   },
   goiDichVuTiepTheo: {
     type: String,

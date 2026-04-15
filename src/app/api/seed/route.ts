@@ -19,12 +19,12 @@ export async function POST(request: NextRequest) {
       ten: 'Admin',
       email: 'demo_dev@example.com',
       matKhau: '123456',
-      soDienThoai: '0888888888',
+      soDienThoai: '0392537324',
       vaiTro: 'admin',
       trangThai: 'hoatDong',
       name: 'Admin',
       password: '123456',
-      phone: '0888888888',
+      phone: '0392537324',
       role: 'admin',
       isActive: true,
       goiDichVu: 'mienPhi',
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
       ngayHetHan: new Date(2099, 11, 31)
     });
     await tenant.save();
-   
+
     return NextResponse.json({
       success: true,
       message: 'Seed data đã được tạo thành công, bao gồm các Gói dịch vụ.',

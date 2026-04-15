@@ -165,12 +165,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Email này đã được sử dụng. Vui lòng nhập một Email khác!' }, { status: 400 });
     }
 
-    // Generate confirmation token for tenants
+    // Generate confirmation token for accounts created by admin/chuNha
     let verifyToken = null;
     let otpExpiry = null;
     let verificationRequired = false;
 
-    if (role === 'khachThue') {
+    if (role === 'khachThue' || role === 'chuNha') {
       verifyToken = crypto.randomBytes(32).toString('hex');
       otpExpiry = new Date();
       otpExpiry.setHours(otpExpiry.getHours() + 24); // 24 hours link expiry
