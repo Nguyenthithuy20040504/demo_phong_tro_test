@@ -68,6 +68,7 @@ export async function GET(request: NextRequest) {
       const userObjId = new mongoose.Types.ObjectId(userId);
       query.$or = [
         { nguoiGui: userObjId },
+        { nguoiNhan: userObjId },
         { guiTatCa: true, vaiTroNhan: { $in: ['admin', 'all'] } },
       ];
     } else if (userRole === 'chuTro' || userRole === 'chuNha') {

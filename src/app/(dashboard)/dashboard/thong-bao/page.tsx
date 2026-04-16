@@ -570,9 +570,13 @@ export default function ThongBaoPage() {
                 <SelectContent>
                   <SelectItem value="all">Tất cả loại thông báo</SelectItem>
                   <SelectItem value="chung">Chung</SelectItem>
-                  <SelectItem value="hoaDon">Hóa đơn</SelectItem>
-                  <SelectItem value="suCo">Sự cố</SelectItem>
-                  <SelectItem value="hopDong">Hợp đồng</SelectItem>
+                  {!isAdmin && (
+                    <>
+                      <SelectItem value="hoaDon">Hóa đơn</SelectItem>
+                      <SelectItem value="suCo">Sự cố</SelectItem>
+                      <SelectItem value="hopDong">Hợp đồng</SelectItem>
+                    </>
+                  )}
                   {isAdmin && (
                     <>
                       <SelectItem value="he_thong">Hệ thống SaaS</SelectItem>
@@ -1253,11 +1257,19 @@ function ThongBaoForm({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="chung" className="text-sm">Chung</SelectItem>
-            <SelectItem value="hoaDon" className="text-sm">Hóa đơn</SelectItem>
-            <SelectItem value="suCo" className="text-sm">Sự cố</SelectItem>
-            <SelectItem value="hopDong" className="text-sm">Hợp đồng</SelectItem>
-            {isAdmin && <SelectItem value="he_thong" className="text-sm">Hệ thống SaaS</SelectItem>}
-            {isAdmin && <SelectItem value="thanh_toan_saas" className="text-sm">Thanh toán SaaS</SelectItem>}
+            {!isAdmin && (
+              <>
+                <SelectItem value="hoaDon" className="text-sm">Hóa đơn</SelectItem>
+                <SelectItem value="suCo" className="text-sm">Sự cố</SelectItem>
+                <SelectItem value="hopDong" className="text-sm">Hợp đồng</SelectItem>
+              </>
+            )}
+            {isAdmin && (
+              <>
+                <SelectItem value="he_thong" className="text-sm">Hệ thống SaaS</SelectItem>
+                <SelectItem value="thanh_toan_saas" className="text-sm">Thanh toán SaaS</SelectItem>
+              </>
+            )}
             <SelectItem value="khac" className="text-sm">Khác</SelectItem>
           </SelectContent>
         </Select>

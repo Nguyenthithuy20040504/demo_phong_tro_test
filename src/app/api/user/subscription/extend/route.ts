@@ -6,6 +6,7 @@ import dbConnect from '@/lib/mongodb';
 import NguoiDung from '@/models/NguoiDung';
 import GoiDichVu from '@/models/GoiDichVu';
 import SaasPayment from '@/models/SaaSPayment';
+import ThongBao from '@/models/ThongBao';
 
 export async function POST(request: NextRequest) {
   try {
@@ -77,6 +78,20 @@ export async function POST(request: NextRequest) {
     });
 
     await payment.save();
+
+    // Gửi thông báo cho Admin
+    const admin = await NguoiDung.findOne({ $or: [{ vaiTro: 'admin' }, { role: 'admin' }] }).select('_id');
+    if (admin) {
+      await ThongBao.create({
+        tieuDe: `💰 Gia hạn thủ công: ${user.ten} gia hạn SaaS`,
+        noiDung: `Chủ trọ ${user.ten} (${user.email || ''}) vừa gia hạn trực tiếp gói dịch vụ ${plan.ten} (Phương thức: ${paymentMethod || 'chuyenKhoan'}).\nHệ thống đã lưu lại hóa đơn trị giá ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(plan.gia)} và gia hạn thành công đến ngày ${newExpiry.toLocaleDateString('vi-VN')}.`,
+        loai: 'thanh_toan_saas',
+        nguoiGui: user._id,
+        nguoiNhan: [admin._id],
+        daDoc: [],
+        guiTatCa: false
+      });
+    }
 
     return NextResponse.json({
       message: 'Gia hạn gói dịch vụ thành công!',

@@ -92,6 +92,19 @@ export async function POST(request: NextRequest) {
             guiTatCa: false
           });
 
+          // Gửi thông báo cho Admin
+          if (admin) {
+            await ThongBao.create({
+              tieuDe: `💰 Biến động số dư: ${user.ten} gia hạn SaaS`,
+              noiDung: `Chủ trọ ${user.ten} (${user.email || ''}) vừa thanh toán thành công qua mã QR PayOS (Order: ${orderCode}) cho gói dịch vụ ${plan.ten}.\nKhoản tiền ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(webhookData.amount || plan.gia)} đã được cộng vào tài khoản.\nHệ thống đã tự động gia hạn thành công đến ngày ${newExpiry.toLocaleDateString('vi-VN')}.`,
+              loai: 'thanh_toan_saas',
+              nguoiGui: user._id,
+              nguoiNhan: [admin._id],
+              daDoc: [],
+              guiTatCa: false
+            });
+          }
+
           // Chuyển Trạng thái hóa đơn thành Thành công
           payment.trangThai = 'daThanhToan';
           payment.ngayHetHanMoi = newExpiry;
