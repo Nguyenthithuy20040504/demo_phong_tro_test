@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
           nguoiGui: sender,
           nguoiNhan: landlord._id,
           loai: 'he_thong',
-          tieuDe: { $regex: 'hết hạn gói' }
+          tieuDe: { $regex: 'Gói dịch vụ.*sắp hết hạn', $options: 'i' }
         });
         if (existingNotif) continue;
 
