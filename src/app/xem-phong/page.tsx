@@ -472,51 +472,46 @@ function XemPhongContent() {
                       <CardTitle className="text-base md:text-lg font-bold bg-gradient-to-r from-green-700 to-emerald-600 bg-clip-text text-transparent italic">Liên hệ thuê</CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 md:p-6 pt-0 flex-1 flex flex-col justify-between">
-                      {typeof selectedPhong.toaNha === 'object' && (selectedPhong.toaNha as any).chuSoHuu && (
-                        <div className="flex items-center gap-3 p-3 bg-white/60 backdrop-blur-md rounded-2xl border border-emerald-100 shadow-sm mb-4">
-                          <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shadow-inner overflow-hidden shrink-0">
-                            {((selectedPhong.toaNha as any).chuSoHuu as any).anhDaiDien ? (
-                              <img
-                                src={((selectedPhong.toaNha as any).chuSoHuu as any).anhDaiDien}
-                                className="w-full h-full object-cover"
-                                alt="Chủ nhà"
-                              />
-                            ) : (
-                              <User className="h-5 w-5" />
-                            )}
+                      {typeof selectedPhong.toaNha === 'object' && (selectedPhong.toaNha as any).chuSoHuu ? (
+                        <>
+                          <div className="flex items-center gap-3 p-3 bg-white/60 backdrop-blur-md rounded-2xl border border-emerald-100 shadow-sm mb-4">
+                            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shadow-inner overflow-hidden shrink-0">
+                              {((selectedPhong.toaNha as any).chuSoHuu as any).anhDaiDien ? (
+                                <img
+                                  src={((selectedPhong.toaNha as any).chuSoHuu as any).anhDaiDien}
+                                  className="w-full h-full object-cover"
+                                  alt="Chủ nhà"
+                                />
+                              ) : (
+                                <User className="h-5 w-5" />
+                              )}
+                            </div>
+                            <div className="overflow-hidden">
+                              <p className="text-[10px] font-black uppercase text-emerald-600 truncate leading-none mb-1">Chủ nhà</p>
+                              <p className="text-sm font-black text-slate-800 truncate leading-none">
+                                {((selectedPhong.toaNha as any).chuSoHuu as any).ten}
+                              </p>
+                            </div>
                           </div>
-                          <div className="overflow-hidden">
-                            <p className="text-[10px] font-black uppercase text-emerald-600 truncate leading-none mb-1">Chủ nhà</p>
-                            <p className="text-sm font-black text-slate-800 truncate leading-none">
-                              {((selectedPhong.toaNha as any).chuSoHuu as any).ten}
-                            </p>
+
+                          <div className="space-y-3">
+                            <Button
+                              className="w-full h-12 bg-[#0068ff] hover:bg-[#0052cc] border-0 shadow-md font-black text-xs rounded-xl text-white flex items-center justify-center gap-2 active:scale-95"
+                              onClick={() => {
+                                const phone = ((selectedPhong.toaNha as any).chuSoHuu as any).soDienThoai?.replace(/[^\d]/g, '');
+                                window.open(`https://zalo.me/${phone}`, '_blank');
+                              }}
+                            >
+                              <div className="h-5 w-5 bg-white text-[#0068ff] rounded flex items-center justify-center font-bold text-xs">Z</div>
+                              LIÊN HỆ QUA ZALO
+                            </Button>
                           </div>
+                        </>
+                      ) : (
+                        <div className="text-center py-4">
+                          <p className="text-xs text-gray-500 italic"> Đang cập nhật thông tin liên hệ chủ nhà... </p>
                         </div>
                       )}
-
-                      <div className="space-y-3">
-                        <Button
-                          className="w-full h-12 bg-[#14B8A6] hover:bg-[#0D9488] border-0 shadow-md font-black text-xs rounded-xl flex items-center justify-center gap-2 active:scale-95"
-                          onClick={() => {
-                            const phone = ((selectedPhong.toaNha as any).chuSoHuu as any).soDienThoai?.replace(/\s/g, '');
-                            window.location.href = `tel:${phone}`;
-                          }}
-                        >
-                          <Phone className="h-4 w-4" />
-                          GỌI ĐIỆN
-                        </Button>
-
-                        <Button
-                          className="w-full h-12 bg-[#0068ff] hover:bg-[#0052cc] border-0 shadow-md font-black text-xs rounded-xl text-white flex items-center justify-center gap-2 active:scale-95"
-                          onClick={() => {
-                            const phone = ((selectedPhong.toaNha as any).chuSoHuu as any).soDienThoai?.replace(/\s/g, '');
-                            window.open(`https://zalo.me/${phone}`, '_blank');
-                          }}
-                        >
-                          <span className="text-white text-xs font-black">Z</span>
-                          NHẮN ZALO
-                        </Button>
-                      </div>
                     </CardContent>
                   </Card>
                 ) : (
@@ -783,7 +778,15 @@ function XemPhongContent() {
                           </div>
                           <div className="overflow-hidden">
                             <p className="text-[11px] font-black text-emerald-700 truncate leading-tight">
-                              {((phong.toaNha as any).chuSoHuu as any).ten} • <span className="text-[9px] font-medium text-emerald-600/70">{((phong.toaNha as any).chuSoHuu as any).soDienThoai}</span>
+                              {((phong.toaNha as any).chuSoHuu as any).ten} • <a 
+                                href={`https://zalo.me/${((phong.toaNha as any).chuSoHuu as any).soDienThoai?.replace(/[^\d]/g, '')}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="text-[9px] font-medium text-emerald-600/70 hover:text-emerald-500 underline decoration-dotted"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {((phong.toaNha as any).chuSoHuu as any).soDienThoai}
+                              </a>
                             </p>
                           </div>
                         </div>

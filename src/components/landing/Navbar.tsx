@@ -58,10 +58,12 @@ export function Navbar() {
             Đăng nhập
           </Link>
           <a
-            href="tel:0392537324"
-            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-full shadow-lg shadow-primary/30 transition-all hover:scale-105 active:scale-95"
+            href="https://zalo.me/0392537324"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden sm:flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-full shadow-lg shadow-primary/30 transition-all hover:scale-105 active:scale-95"
           >
-            <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4 fill-white" />
+            <div className="h-4 w-4 bg-white text-primary rounded flex items-center justify-center font-bold text-[10px]">Z</div>
             <span className="font-bold text-sm sm:text-base font-heading">0392.537.324</span>
           </a>
 
@@ -104,8 +106,21 @@ export function Navbar() {
                 >
                   Đăng nhập
                 </Link>
+                
+                <div className="flex flex-col gap-3">
+                  <a
+                    href="https://zalo.me/0392537324"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 bg-primary text-white h-12 rounded-xl font-bold text-sm"
+                  >
+                    <div className="h-5 w-5 bg-white text-primary rounded flex items-center justify-center font-bold text-xs">Z</div>
+                    LIÊN HỆ ZALO: 0392.537.324
+                  </a>
+                </div>
+
                 <Link href="/dang-ky" prefetch={true} onClick={() => setIsOpen(false)}>
-                  <Button className="w-full bg-primary h-12 rounded-xl font-bold text-lg">
+                  <Button className="w-full bg-secondary h-12 rounded-xl font-bold text-lg">
                     Đăng ký ngay
                   </Button>
                 </Link>

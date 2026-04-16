@@ -26,12 +26,12 @@ export function Footer({ showContactInfo = true }: { showContactInfo?: boolean }
                   <span className="text-sm">12 Chùa Bộc, Quang Trung, Đống Đa, Hà Nội</span>
                 </div>
                 <div className="flex items-center gap-3 justify-center md:justify-start">
-                  <Phone className="h-5 w-5 text-[#14B8A6] shrink-0" />
-                  <span className="text-sm">0392.537.324</span>
+                  <div className="h-5 w-5 bg-[#14B8A6] text-white rounded flex items-center justify-center font-bold text-[10px]">Z</div>
+                  <a href="https://zalo.me/0392537324" target="_blank" rel="noopener noreferrer" className="text-sm hover:text-[#14B8A6] transition-colors">0392.537.324</a>
                 </div>
                 <div className="flex items-center gap-3 justify-center md:justify-start">
                   <Mail className="h-5 w-5 text-[#14B8A6] shrink-0" />
-                  <a href="mailto:25A4042227@hvnh.edu.vn" className="text-sm underline hover:text-[#14B8A6] transition-colors">25A4042227@hvnh.edu.vn</a>
+                  <a href="https://mail.google.com/mail/?view=cm&fs=1&to=25A4042227@hvnh.edu.vn" target="_blank" rel="noopener noreferrer" className="text-sm underline hover:text-[#14B8A6] transition-colors">25A4042227@hvnh.edu.vn</a>
                 </div>
               </div>
             </div>
@@ -54,7 +54,7 @@ export function Footer({ showContactInfo = true }: { showContactInfo?: boolean }
             <div className="flex flex-col items-center">
               <h3 className="text-xl font-bold font-josefin text-[#134E4A] mb-6">Gửi email</h3>
               <a
-                href="mailto:25A4042227@hvnh.edu.vn"
+                href="https://mail.google.com/mail/?view=cm&fs=1&to=25A4042227@hvnh.edu.vn"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full bg-[#0369A1] hover:bg-[#025a8a] text-white py-6 px-4 rounded-xl flex items-center justify-center gap-4 transition-all hover:scale-105 shadow-lg shadow-[#0369A1]/30 cursor-pointer"
