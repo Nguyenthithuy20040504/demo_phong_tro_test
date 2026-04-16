@@ -455,6 +455,7 @@ export default function SubscriptionPage() {
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="font-bold text-slate-600 uppercase text-[10px] tracking-widest pl-6">Mã GD</TableHead>
                       <TableHead className="font-bold text-slate-600 uppercase text-[10px] tracking-widest">Thời gian</TableHead>
+                      <TableHead className="font-bold text-slate-600 uppercase text-[10px] tracking-widest">Kích hoạt</TableHead>
                       <TableHead className="font-bold text-slate-600 uppercase text-[10px] tracking-widest">Gói cước</TableHead>
                       <TableHead className="font-bold text-slate-600 uppercase text-[10px] tracking-widest">Thời hạn</TableHead>
                       <TableHead className="font-bold text-slate-600 uppercase text-[10px] tracking-widest text-right">Số tiền</TableHead>
@@ -473,6 +474,11 @@ export default function SubscriptionPage() {
                         </TableCell>
                         <TableCell className="py-4">
                           <span className="text-[9px] uppercase font-bold tracking-widest text-amber-500">Hàng đợi</span>
+                        </TableCell>
+                        <TableCell className="py-4">
+                          <span className="font-semibold text-amber-800 text-sm">
+                            {userExpiry ? userExpiry.toLocaleDateString('vi-VN') : 'Sau khi gói hiện tại hết hạn'}
+                          </span>
                         </TableCell>
                         <TableCell className="py-4">
                           <span className="font-extrabold text-amber-900">{nextPlanDetails.ten}</span>
@@ -508,6 +514,25 @@ export default function SubscriptionPage() {
                         <span className="text-[9px] uppercase font-bold tracking-widest text-emerald-500">Đang hoạt động</span>
                       </TableCell>
                       <TableCell className="py-4">
+                        {(() => {
+                          const isFree = !currentPlanDetails || currentPlanDetails.gia === 0 || userGoiDichVu === 'mienPhi';
+                          if (isFree) {
+                            // Gói miễn phí: kích hoạt khi gói trả phí cuối cùng hết hạn
+                            if (isExpired && userExpiry) {
+                              return <span className="font-semibold text-emerald-800 text-sm">{userExpiry.toLocaleDateString('vi-VN')}</span>;
+                            }
+                            return <span className="text-slate-400 text-sm">—</span>;
+                          }
+                          // Gói trả phí: kích hoạt = ngày hết hạn - thời hạn gói
+                          if (userExpiry && currentPlanDetails?.thoiGian) {
+                            const startDate = new Date(userExpiry);
+                            startDate.setMonth(startDate.getMonth() - currentPlanDetails.thoiGian);
+                            return <span className="font-semibold text-emerald-800 text-sm">{startDate.toLocaleDateString('vi-VN')}</span>;
+                          }
+                          return <span className="text-slate-400 text-sm">—</span>;
+                        })()}
+                      </TableCell>
+                      <TableCell className="py-4">
                         <span className="font-extrabold text-emerald-900">
                           {currentPlanDetails?.ten || (userGoiDichVu === 'chuyenNghiep' ? 'Chuyên nghiệp' : userGoiDichVu === 'coBan' ? 'Cơ bản' : 'Miễn phí')}
                         </span>
@@ -534,14 +559,14 @@ export default function SubscriptionPage() {
 
                     {/* Divider label */}
                     <TableRow className="hover:bg-transparent">
-                      <TableCell colSpan={7} className="py-2 px-6 bg-slate-100/50">
+                      <TableCell colSpan={8} className="py-2 px-6 bg-slate-100/50">
                         <span className="text-[9px] uppercase font-bold tracking-widest text-slate-400">Lịch sử giao dịch</span>
                       </TableCell>
                     </TableRow>
 
                     {paymentHistory.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-16">
+                        <TableCell colSpan={8} className="text-center py-16">
                           <div className="flex flex-col items-center gap-2 opacity-40">
                             <History size={48} className="text-slate-300" />
                             <p className="text-lg font-medium text-slate-400">Bạn chưa có giao dịch nào</p>
@@ -574,7 +599,17 @@ export default function SubscriptionPage() {
                           const priA = getPriority(a);
                           const priB = getPriority(b);
                           if (priA !== priB) return priA - priB;
-                          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                          // Cùng nhóm: sắp xếp theo thời gian kích hoạt tăng dần (kích hoạt sớm nhất lên trước)
+                          const getActivationTime = (p: any) => {
+                            if (p.ngayHetHanMoi) {
+                              const d = new Date(p.ngayHetHanMoi);
+                              d.setMonth(d.getMonth() - (p.goiDichVu?.thoiGian || 1));
+                              return d.getTime();
+                            }
+                            // Fallback: ngayThanhToan → createdAt
+                            return new Date(p.ngayThanhToan || p.createdAt).getTime();
+                          };
+                          return getActivationTime(a) - getActivationTime(b);
                         });
 
                         return sorted.map((payment, idx) => {
@@ -606,6 +641,31 @@ export default function SubscriptionPage() {
                                 <div className="flex flex-col">
                                   <span className="font-semibold text-slate-700 text-sm">{new Date(payment.createdAt).toLocaleDateString('vi-VN')}</span>
                                   <span className="text-[10px] text-muted-foreground">{new Date(payment.createdAt).toLocaleTimeString('vi-VN')}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="py-5">
+                                <div className="flex flex-col">
+                                  {payment.trangThai === 'daThanhToan' ? (
+                                    (() => {
+                                      if (payment.ngayHetHanMoi) {
+                                        const duration = payment.goiDichVu?.thoiGian || 1;
+                                        const activationDate = new Date(payment.ngayHetHanMoi);
+                                        activationDate.setMonth(activationDate.getMonth() - duration);
+                                        return (
+                                          <span className="font-semibold text-slate-700 text-sm">{activationDate.toLocaleDateString('vi-VN')}</span>
+                                        );
+                                      }
+                                      // Fallback: dùng ngayThanhToan nếu ngayHetHanMoi chưa được đồng bộ
+                                      if (payment.ngayThanhToan) {
+                                        return (
+                                          <span className="font-semibold text-slate-700 text-sm">{new Date(payment.ngayThanhToan).toLocaleDateString('vi-VN')}</span>
+                                        );
+                                      }
+                                      return <span className="text-slate-400 text-sm">—</span>;
+                                    })()
+                                  ) : (
+                                    <span className="text-slate-400 text-sm">—</span>
+                                  )}
                                 </div>
                               </TableCell>
                               <TableCell className="py-5">

@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const userId = new mongoose.Types.ObjectId(session.user.id);
     
     const payments = await SaaSPayment.find({ chuNha: userId })
-      .populate('goiDichVu', 'ten')
+      .populate('goiDichVu', 'ten thoiGian maxPhong gia')
       .sort({ createdAt: -1 })
       .limit(20);
 

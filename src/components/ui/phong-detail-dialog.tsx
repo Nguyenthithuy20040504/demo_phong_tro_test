@@ -263,7 +263,7 @@ export function PhongDetailDialog({ phong, isOpen, onClose, toaNhaList, onEdit }
               </DialogTitle>
               {((phong as any).trangThaiTongHop === 'choDuyet') ? (
                 getTrangThaiBadge('choDuyet')
-              ) : (phong as any).trangThai === 'dangThue' ? (
+              ) : (phong as any).trangThaiTongHop === 'treTien' ? (
                 <Badge className="bg-amber-100 text-amber-600 hover:bg-amber-100 border-0 rounded-full px-4 py-1.5 text-[11px] font-black">
                   Trễ tiền
                 </Badge>
@@ -455,7 +455,7 @@ export function PhongDetailDialog({ phong, isOpen, onClose, toaNhaList, onEdit }
                   <Users className="h-4 w-4" />
                   Khách thuê hiện tại
                 </h3>
-                {((phong as any).trangThaiTongHop === 'dangThue' || (phong as any).trangThaiTongHop === 'choDuyet') && (((phong as any).khachThueHienTai && (phong as any).khachThueHienTai.length > 0) || (phong as any).hopDongHienTai) ? (
+                {(phong.trangThai === 'dangThue' || (phong as any).trangThaiTongHop === 'choDuyet') && (((phong as any).khachThueHienTai && (phong as any).khachThueHienTai.length > 0) || (phong as any).hopDongHienTai) ? (
                   <div className="space-y-3">
                     {(phong as any).hopDongHienTai && (
                       <div className={cn(
