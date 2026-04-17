@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Bell, BellRing, CheckCheck, Receipt, FileText, AlertTriangle, Info, Calendar, Home, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Bell, BellRing, CheckCheck, Receipt, FileText, AlertTriangle, Info, Calendar, Home, ChevronRight, ChevronsLeft, ChevronLeft, ChevronRight as UIChevronRight, ChevronsRight } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRouter } from 'next/navigation';
 
 interface Notification {
@@ -24,6 +25,17 @@ export default function KhachThueThongBaoPage() {
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const paginatedNotifications = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return notifications.slice(startIndex, startIndex + itemsPerPage);
+  }, [notifications, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(notifications.length / itemsPerPage);
+
   useEffect(() => {
     document.title = 'Thông báo của tôi';
     fetchNotifications();
@@ -36,14 +48,14 @@ export default function KhachThueThongBaoPage() {
       if (res.ok) {
         const data = await res.json();
         setNotifications(data.data || []);
-        
+
         const unread = data.unreadCount || 0;
         if (unread > 0) {
           fetch('/api/thong-bao/mark-read', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ markAll: true })
-          }).catch(() => {});
+          }).catch(() => { });
           setUnreadCount(0);
           window.dispatchEvent(new Event('notificationsRead'));
         } else {
@@ -135,7 +147,7 @@ export default function KhachThueThongBaoPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {notifications.map(notif => (
+          {paginatedNotifications.map(notif => (
             <Card
               key={notif._id}
               onClick={() => handleNotificationClick(notif)}
@@ -147,8 +159,8 @@ export default function KhachThueThongBaoPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2 mb-1">
-                    <h3 className={`text-sm leading-snug ${!notif.isRead ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>
-                      {notif.tieuDe}
+                    <h3 className={`text-sm leading-snug ${!notif.isRead ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
+                      {notif.tieuDe.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}]+[\uFE0F\u200D]?\s*/u, '')}
                     </h3>
                     {!notif.isRead && <div className="flex-shrink-0 w-2.5 h-2.5 mt-1 bg-blue-500 rounded-full" />}
                   </div>
@@ -171,6 +183,73 @@ export default function KhachThueThongBaoPage() {
               </div>
             </Card>
           ))}
+
+          {/* Pagination UI */}
+          <div className="mt-6 px-4 py-4 border border-gray-100 rounded-[1.5rem] flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50/30">
+            <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+              <span className="text-gray-900">{notifications.length}</span> thông báo
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="size-8 rounded-xl border-gray-200 h-8"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+              >
+                <ChevronsLeft className="size-3.5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="size-8 rounded-xl border-gray-200 h-8"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="size-3.5" />
+              </Button>
+
+              <div className="px-3 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-xl text-[10px] font-black min-w-[3rem]">
+                {currentPage} / {totalPages || 1}
+              </div>
+
+              <Button
+                variant="outline"
+                size="icon"
+                className="size-8 rounded-xl border-gray-200 h-8"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                <UIChevronRight className="size-3.5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="size-8 rounded-xl border-gray-200 h-8"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                <ChevronsRight className="size-3.5" />
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Select value={itemsPerPage.toString()} onValueChange={(val) => {
+                setItemsPerPage(Number(val));
+                setCurrentPage(1);
+              }}>
+                <SelectTrigger className="w-[65px] h-8 rounded-xl text-[10px] font-bold border-gray-200 bg-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
       )}
     </div>

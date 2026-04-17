@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action');
 
     const [phongList, total] = await Promise.all([
-      Phong.find(query).populate('toaNha').sort({ tang: 1, maPhong: 1 }).skip((page-1)*limit).limit(limit).lean(),
+      Phong.find(query).populate('toaNha').sort({ ngayTao: -1 }).skip((page-1)*limit).limit(limit).lean(),
       Phong.countDocuments(query)
     ]);
 
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
     await Promise.all(phongList.map((phong: any) => updatePhongStatus(phong._id.toString())));
     
     // Query again since status might have changed
-    const updatedPhongList = await Phong.find(query).populate('toaNha').sort({ tang: 1, maPhong: 1 }).skip((page-1)*limit).limit(limit);
+    const updatedPhongList = await Phong.find(query).populate('toaNha').sort({ ngayTao: -1 }).skip((page-1)*limit).limit(limit);
 
     const phongListWithContracts = await Promise.all(
       updatedPhongList.map(async (phongDoc) => {

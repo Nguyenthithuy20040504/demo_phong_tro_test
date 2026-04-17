@@ -101,6 +101,23 @@ const createColumns = (props: ToaNhaTableProps & { setToaNhaToDelete: (t: ToaNha
     enableHiding: false,
   },
   {
+    accessorKey: "ngayTao",
+    header: "Ngày thêm",
+    cell: ({ row }) => {
+      const date = new Date(row.original.ngayTao);
+      return (
+        <div className="text-sm font-medium">
+          <div className="text-gray-900">
+            {date.toLocaleDateString('vi-VN')}
+          </div>
+          <div className="text-xs text-gray-500">
+            {date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+          </div>
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: "diaChi",
     header: "Địa chỉ",
     cell: ({ row }) => (

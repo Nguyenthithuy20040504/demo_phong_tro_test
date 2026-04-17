@@ -297,7 +297,7 @@ export async function POST(request: NextRequest) {
           const senderName = session.user.name || 'Khách thuê';
           const maPhong = roomInfo.maPhong || '';
           const tenToaNha = toaNhaDetails.tenToaNha || '';
-          const notifTieuDe = `🚀 Sự cố mới: ${validatedData.tieuDe}`;
+          const notifTieuDe = `Sự cố mới: ${validatedData.tieuDe}`;
           const notifNoiDung = `Khách thuê ${senderName} (phòng ${maPhong} - ${tenToaNha}) vừa báo cáo sự cố mới: ${validatedData.tieuDe}.\n\nMô tả: ${validatedData.moTa}`;
 
           await ThongBao.create({
@@ -312,7 +312,7 @@ export async function POST(request: NextRequest) {
           });
 
           // --- Gửi email đến chủ nhà / quản lý (fire-and-forget) ---
-          const emailBody = `Khách thuê ${senderName} (phòng ${maPhong} - ${tenToaNha}) vừa báo cáo sự cố mới.\n\n📌 Tiêu đề: ${validatedData.tieuDe}\n📝 Mô tả: ${validatedData.moTa}\n🏠 Phòng: ${maPhong} - ${tenToaNha}`;
+          const emailBody = `Khách thuê ${senderName} (phòng ${maPhong} - ${tenToaNha}) vừa báo cáo sự cố mới.\n\nTiêu đề: ${validatedData.tieuDe}\nMô tả: ${validatedData.moTa}\nPhòng: ${maPhong} - ${tenToaNha}`;
           ;(async () => {
             try {
               const NguoiDung = (await import('@/models/NguoiDung')).default;
@@ -346,7 +346,7 @@ export async function POST(request: NextRequest) {
           if (tenantIdStr !== senderId) {
             const notifContent = `Quản lý vừa báo cáo sự cố mới cho phòng của bạn: ${validatedData.tieuDe}.\n\nTrạng thái: ${validatedData.trangThai === 'dangXuLy' ? 'Đang được xử lý' : 'Chờ xử lý'}.\nMô tả: ${validatedData.moTa}`;
             await ThongBao.create({
-              tieuDe: `🚩 Thông báo sự cố: ${validatedData.tieuDe}`,
+              tieuDe: `Thông báo sự cố: ${validatedData.tieuDe}`,
               noiDung: notifContent,
               loai: 'suCo',
               nguoiGui: new mongoose.Types.ObjectId(senderId),
@@ -380,7 +380,7 @@ export async function POST(request: NextRequest) {
                   await sendGeneralNotificationEmail({
                     email: tenantEmail,
                     khachThueName: tenantName,
-                    tieuDe: `🚩 Thông báo sự cố: ${validatedData.tieuDe}`,
+                    tieuDe: `Thông báo sự cố: ${validatedData.tieuDe}`,
                     noiDung: notifContent,
                     ccEmail: '',
                   }).catch((err: any) => console.error('[SuCo Email] Lỗi gửi email tới khách thuê', tenantEmail, err?.message));

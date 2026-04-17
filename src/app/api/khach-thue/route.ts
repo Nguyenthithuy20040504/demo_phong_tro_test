@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
 
     if (action === 'basic') {
       const metadata = [{ total: await KhachThue.countDocuments(matchQuery) }];
-      const rawData = await KhachThue.find(matchQuery).sort({ hoTen: 1 }).skip((page - 1) * limit).limit(limit).lean();
+      const rawData = await KhachThue.find(matchQuery).sort({ ngayTao: -1 }).skip((page - 1) * limit).limit(limit).lean();
       return NextResponse.json({
         success: true,
         data: rawData,
@@ -201,7 +201,7 @@ export async function GET(request: NextRequest) {
       ...(trangThaiFilter === 'hasAccount' ? [{ $match: { hasAccount: true } }] : []),
       ...(trangThaiFilter === 'noAccount' ? [{ $match: { hasAccount: false } }] : []),
       
-      { $sort: { hoTen: 1 } },
+      { $sort: { ngayTao: -1 } },
       
       // Pagination logic moved after filtering
       {

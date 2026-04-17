@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
 
         // 5. Create System Notification
         await ThongBao.create({
-          tieuDe: `🔔 Thông báo nhắc nợ hóa đơn ${hoaDon.maHoaDon}`,
+          tieuDe: `Thông báo nhắc nợ hóa đơn ${hoaDon.maHoaDon}`,
           noiDung: `Chào ${khachThueName}, bạn có khoản thanh toán hóa đơn tháng ${hoaDon.thang}/${hoaDon.nam} cho phòng ${hoaDon.phong?.maPhong || 'N/A'} vẫn đang chờ xử lý. Số tiền: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(hoaDon.conLai)}. Vui lòng kiểm tra và thanh toán sớm.`,
           loai: 'hoaDon',
           nguoiGui: session.user.id,

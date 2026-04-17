@@ -61,6 +61,10 @@ export async function GET(request: NextRequest) {
       linkedIds.push(khachThue._id);
     }
 
+    // Lấy ảnh đại diện từ NguoiDung (vì avatar được lưu ở đó)
+    const NguoiDung = (await import('@/models/NguoiDung')).default;
+    const nguoiDungRecord = await NguoiDung.findById(userId).select('anhDaiDien').lean() as any;
+
     // Nếu không tìm thấy record trong KhachThue, tạo object giả từ session để frontend không lỗi
     const khachThueDisplay = khachThue ? {
       _id: khachThue._id,
@@ -73,12 +77,14 @@ export async function GET(request: NextRequest) {
       queQuan: khachThue.queQuan,
       ngheNghiep: khachThue.ngheNghiep,
       trangThai: khachThue.trangThai,
+      anhDaiDien: (khachThue as any).anhDaiDien || nguoiDungRecord?.anhDaiDien || '',
     } : {
       _id: userId,
       hoTen: session.user.name || session.user.email || 'Khách thuê',
       soDienThoai: session.user.phone || '',
       email: session.user.email || '',
       trangThai: 'dangThue', // Giả định đang thuê nếu có hợp đồng
+      anhDaiDien: nguoiDungRecord?.anhDaiDien || '',
     };
 
     // Lấy tất cả hợp đồng hiện tại - Tìm theo bất kỳ ID nào trong linkedIds

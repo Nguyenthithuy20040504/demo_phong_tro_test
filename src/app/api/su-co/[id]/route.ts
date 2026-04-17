@@ -50,7 +50,7 @@ export async function GET(
     }
 
     // Kiểm tra quyền truy cập thông qua tòa nhà của phòng
-    const toaNhaId = (suCo.phong as any).toaNha || suCo.phong;
+    const toaNhaId = (suCo.phong as any)?._id ? (suCo.phong as any).toaNha : suCo.phong;
     const hasAccess = await isToaNhaAccessible(session.user, toaNhaId);
     if (!hasAccess) {
       return NextResponse.json(
@@ -102,7 +102,7 @@ export async function PUT(
     }
 
     // Kiểm tra quyền chỉnh sửa
-    const toaNhaId = (existingSuCo.phong as any).toaNha || existingSuCo.phong;
+    const toaNhaId = (existingSuCo.phong as any)?._id ? (existingSuCo.phong as any).toaNha : existingSuCo.phong;
     const hasAccess = await isToaNhaAccessible(session.user, toaNhaId);
     if (!hasAccess) {
       return NextResponse.json(
@@ -137,17 +137,10 @@ export async function PUT(
         daHuy: 'Đã hủy',
       };
 
-      const statusEmoji: Record<string, string> = {
-        dangXuLy: '🔧',
-        daXong: '✅',
-        daHuy: '❌',
-      };
-
       const maPhong = (suCo?.phong as any)?.maPhong || '';
-      const emoji = statusEmoji[newTrangThai] || '📋';
       const label = statusLabels[newTrangThai] || newTrangThai;
 
-      const tieuDeNotif = `${emoji} Sự cố "${existingSuCo.tieuDe}" - ${label}`;
+      const tieuDeNotif = `Sự cố "${existingSuCo.tieuDe}" - ${label}`;
       const noiDungNotif = `Sự cố "${existingSuCo.tieuDe}" tại phòng ${maPhong} đã được cập nhật trạng thái: ${label}.${
         newTrangThai === 'dangXuLy'
           ? '\n\nĐội ngũ kỹ thuật đang tiến hành xử lý. Chúng tôi sẽ thông báo khi hoàn tất.'
@@ -203,7 +196,7 @@ export async function PUT(
             await sendGeneralNotificationEmail({
               email: tenantEmail,
               khachThueName: tenantName,
-              tieuDe: tieuDeNotif.replace(/[🔧✅❌📋]\s?/, ''),
+              tieuDe: tieuDeNotif,
               noiDung: noiDungNotif,
             });
             console.log(`[SuCo Email] Background email sent to ${tenantEmail}`);
@@ -262,7 +255,7 @@ export async function DELETE(
     }
 
     // Kiểm tra quyền xóa
-    const toaNhaId = (suCo.phong as any).toaNha || suCo.phong;
+    const toaNhaId = (suCo.phong as any)?._id ? (suCo.phong as any).toaNha : suCo.phong;
     const hasAccess = await isToaNhaAccessible(session.user, toaNhaId);
     if (!hasAccess) {
       return NextResponse.json(

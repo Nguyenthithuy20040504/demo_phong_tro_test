@@ -41,7 +41,7 @@ export async function calculatePhongStatus(phongId: string): Promise<'trong' | '
       if (!hasValidTenant && ktIds.length > 0) {
         // Hợp đồng mồ côi - tự động kết thúc
         console.log(`[Auto-fix] Orphaned contract ${hopDongHoatDong.maHopDong} - terminating`);
-        hopDongHoatDong.trangThai = 'daKetThuc';
+        hopDongHoatDong.trangThai = 'daHuy';
         hopDongHoatDong.ngayKetThuc = new Date();
         await hopDongHoatDong.save();
         return 'trong';

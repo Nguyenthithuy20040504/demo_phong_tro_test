@@ -17,7 +17,11 @@ import {
   FileSpreadsheet,
   Camera,
   ChevronRight,
-  ShieldCheck
+  ChevronLeft,
+  ChevronsLeft,
+  ChevronsRight,
+  ShieldCheck,
+  MessageCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ImageUpload } from '@/components/ui/image-upload';
@@ -71,6 +75,10 @@ export default function HoaDonKhachThuePage() {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [paymentImage, setPaymentImage] = useState('');
   const [submittingPayment, setSubmittingPayment] = useState(false);
+  
+  // Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     document.title = 'Hóa đơn - Khách thuê';
@@ -101,8 +109,24 @@ export default function HoaDonKhachThuePage() {
       const matchStatus = filterStatus === 'all' || hd.trangThai === filterStatus;
       const matchYear = filterYear === 'all' || hd.nam.toString() === filterYear;
       return matchMonth && matchStatus && matchYear;
+    }).sort((a, b) => {
+      const dateA = new Date(a.ngayTao || 0).getTime();
+      const dateB = new Date(b.ngayTao || 0).getTime();
+      return dateB - dateA;
     });
   }, [hoaDons, filterMonth, filterStatus, filterYear]);
+
+  const paginatedHoaDons = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredHoaDons.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredHoaDons, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredHoaDons.length / itemsPerPage);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterMonth, filterStatus, filterYear]);
 
   const fmt = (amount: number) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount ?? 0);
@@ -216,29 +240,22 @@ export default function HoaDonKhachThuePage() {
   }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-8 pb-10"
-    >
+    <div className="space-y-4 pb-10">
       {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-2 border-b-2 border-gray-100">
-        <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest mb-1">
-              <Link 
-                href="/khach-thue/dashboard" 
-                className="flex items-center gap-1.5 text-gray-400 hover:text-primary transition-colors"
-              >
-                <Home className="size-3" />
-                Trang Chủ
-              </Link>
-              <ChevronRight className="size-3 text-gray-300" />
-              <span className="text-primary/80">Hóa đơn</span>
-            </div>
-          <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight leading-none">
-            Hóa đơn
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 mb-1">
+            <Home className="size-3" />
+            <Link href="/khach-thue/dashboard" className="hover:text-primary transition-colors cursor-pointer capitalize">Trang chủ</Link>
+            <ChevronRight className="size-3" />
+            <span className="text-primary">Hóa đơn</span>
+          </div>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tight">
+             Hóa đơn của tôi
           </h1>
-          <p className="text-gray-500 font-medium text-sm mt-2">Theo dõi và thanh toán các hóa đơn hàng tháng của bạn</p>
+          <p className="text-gray-500 font-medium text-xs leading-none">
+            Theo dõi và thanh toán các khoản phí lưu trú định kỳ
+          </p>
         </div>
         
         <div className="flex items-center gap-3">
@@ -387,17 +404,16 @@ export default function HoaDonKhachThuePage() {
                 <TableHeader>
                   <TableRow className="bg-gray-50/50 border-b border-gray-100/50 h-12 hover:bg-gray-50/50">
                     <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 pl-8">Mã hóa đơn</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400">Loại</TableHead>
                     <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400">Kỳ thanh toán</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400">Tiền phòng</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400">Điện</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400">Nước</TableHead>
                     <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400">Tổng cộng</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400">Ngày tạo</TableHead>
                     <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400">Hạn cuối</TableHead>
                     <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 pr-8">Trạng thái</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredHoaDons.map((hd) => (
+                  {paginatedHoaDons.map((hd) => (
                     <TableRow
                       key={hd._id}
                       className="hover:bg-primary/5 transition-all cursor-pointer group/row h-14"
@@ -408,38 +424,105 @@ export default function HoaDonKhachThuePage() {
                           <div className="size-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 group-hover/row:bg-primary group-hover/row:text-white transition-all shadow-sm">
                             <Receipt className="size-4" />
                           </div>
-                          <span className="font-black text-sm text-gray-900 tracking-tight">{hd.maHoaDon}</span>
+                          <span className="font-semibold text-[13px] text-gray-900 tracking-tight">{hd.maHoaDon}</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm font-bold text-gray-700">T. {hd.thang}/{hd.nam}</span>
-                      </TableCell>
-                      <TableCell className="font-bold text-gray-800 text-sm">{fmt(hd.tienPhong)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="text-sm font-bold text-gray-900">{fmt(hd.tienDien)}</div>
-                          <div className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono bg-gray-50 px-1 rounded">{hd.soDien}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="text-sm font-bold text-gray-900">{fmt(hd.tienNuoc)}</div>
-                          <div className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono bg-gray-50 px-1 rounded">{hd.soNuoc}</div>
-                        </div>
+                        {hd.loai === 'chi' || hd.maHoaDon.startsWith('HC-') ? (
+                          <Badge variant="outline" className="text-gray-700 border-gray-200 text-[10px] uppercase font-semibold">Hoàn tiền</Badge>
+                        ) : hd.maHoaDon.startsWith('COC-') ? (
+                          <Badge variant="outline" className="text-gray-700 border-gray-200 text-[10px] uppercase font-semibold">Tiền cọc</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-gray-700 border-gray-200 text-[10px] uppercase font-semibold">Tiền phòng</Badge>
+                        )}
                       </TableCell>
                       <TableCell>
-                        <span className="text-[14px] font-black text-gray-900 tracking-tight">{fmt(hd.tongTien)}</span>
+                        <span className="text-sm font-medium text-gray-900">T. {hd.thang}/{hd.nam}</span>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2 text-sm font-bold text-gray-500">
+                        <span className="text-sm font-semibold text-gray-900">{fmt(hd.tongTien)}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm font-medium text-gray-900">{fmtDate(hd.ngayTao)}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm font-medium text-gray-900">
                           {fmtDate(hd.hanThanhToan)}
-                        </div>
+                        </span>
                       </TableCell>
                       <TableCell className="pr-8">{getStatusBadge(hd.trangThai)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+            </div>
+            
+            {/* Pagination UI */}
+            <div className="px-8 py-5 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50/30">
+              <div className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                Hiển thị <span className="text-gray-900">{paginatedHoaDons.length}</span> trên <span className="text-gray-900">{filteredHoaDons.length}</span> kết quả
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9 rounded-xl border-gray-200"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronsLeft className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9 rounded-xl border-gray-200"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                
+                <div className="px-4 h-9 flex items-center justify-center bg-white border border-gray-200 rounded-xl text-xs font-black min-w-[3rem]">
+                  {currentPage} / {totalPages || 1}
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9 rounded-xl border-gray-200"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9 rounded-xl border-gray-200"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                >
+                  <ChevronsRight className="size-4" />
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Số hàng:</span>
+                <Select value={itemsPerPage.toString()} onValueChange={(val) => {
+                  setItemsPerPage(Number(val));
+                  setCurrentPage(1);
+                }}>
+                  <SelectTrigger className="w-[70px] h-9 rounded-xl text-xs font-bold border-gray-200">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -481,213 +564,233 @@ export default function HoaDonKhachThuePage() {
         </CardContent>
       </Card>
 
-      {/* Dialog chi tiết hóa đơn */}
+      {/* Dialog chi tiết hóa đơn - Rich Data Reversion */}
       <Dialog open={!!selectedHoaDon} onOpenChange={(open) => !open && setSelectedHoaDon(null)}>
         <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
           {selectedHoaDon && (
-            <>
+            <div className="space-y-4 md:space-y-6 pt-2">
               <DialogHeader>
-                <DialogTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                      <Receipt className="size-5" />
-                    </div>
-                    <div>
-                      <div className="text-lg font-bold">{selectedHoaDon.maHoaDon}</div>
-                      <div className="text-sm text-gray-500 font-normal">Hóa đơn tháng {selectedHoaDon.thang}/{selectedHoaDon.nam}</div>
-                    </div>
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => {
-                      // Logic xuất PDF riêng cho 1 hóa đơn nếu cần
-                      toast.info('Tính năng in lẻ đang được cập nhật');
-                    }}
-                    className="rounded-full text-gray-400 hover:text-primary"
-                  >
-                    <Download className="size-4" />
-                  </Button>
-                </DialogTitle>
+                <DialogTitle className="text-lg md:text-xl">Chi tiết hóa đơn</DialogTitle>
+                <div className="text-xs md:text-sm text-gray-500">
+                  Thông tin chi tiết hóa đơn {selectedHoaDon.maHoaDon}
+                </div>
               </DialogHeader>
 
-              {/* Trạng thái */}
-              <div className="flex items-center justify-between px-1">
-                <span className="text-sm text-gray-500">Trạng thái</span>
-                {getStatusBadge(selectedHoaDon.trangThai)}
+              {/* Invoice Header */}
+              <div className="text-center border-b pb-3 md:pb-4">
+                <h2 className="text-lg md:text-2xl font-bold">
+                  {selectedHoaDon.loai === 'chi' || selectedHoaDon.maHoaDon.startsWith('HC-') 
+                    ? 'HÓA ĐƠN HOÀN CỌC' 
+                    : selectedHoaDon.maHoaDon.startsWith('COC-') 
+                      ? 'HÓA ĐƠN TIỀN CỌC' 
+                      : 'HÓA ĐƠN THUÊ PHÒNG'}
+                </h2>
+                <p className="text-base md:text-lg text-gray-600">{selectedHoaDon.maHoaDon}</p>
               </div>
 
-              <Separator />
-
-              {/* Chi tiết các khoản */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Chi tiết các khoản phí</h4>
-
-                {/* Tiền phòng */}
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="size-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-                      <Home className="size-4 text-indigo-600" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-800">Tiền phòng</div>
-                    </div>
-                  </div>
-                  <span className="font-semibold text-gray-900">{fmt(selectedHoaDon.tienPhong)}</span>
-                </div>
-
-                {/* Điện */}
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="size-8 rounded-lg bg-yellow-100 flex items-center justify-center">
-                      <Zap className="size-4 text-yellow-600" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-800">Tiền điện</div>
-                      <div className="text-xs text-gray-400">
-                        {selectedHoaDon.chiSoDienBanDau ?? '?'} → {selectedHoaDon.chiSoDienCuoiKy ?? '?'} · {selectedHoaDon.soDien} kWh
-                        {(selectedHoaDon as any).giaDien ? ` · ${fmt((selectedHoaDon as any).giaDien)}/kWh` : ''}
-                      </div>
-                    </div>
-                  </div>
-                  <span className="font-semibold text-gray-900">{fmt(selectedHoaDon.tienDien)}</span>
-                </div>
-
-                {/* Nước */}
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="size-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                      <Droplets className="size-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-800">Tiền nước</div>
-                      <div className="text-xs text-gray-400">
-                        {selectedHoaDon.chiSoNuocBanDau ?? '?'} → {selectedHoaDon.chiSoNuocCuoiKy ?? '?'} · {selectedHoaDon.soNuoc} m³
-                        {(selectedHoaDon as any).giaNuoc ? ` · ${fmt((selectedHoaDon as any).giaNuoc)}/m³` : ''}
-                      </div>
-                    </div>
-                  </div>
-                  <span className="font-semibold text-gray-900">{fmt(selectedHoaDon.tienNuoc)}</span>
-                </div>
-
-                {/* Phí dịch vụ khác nếu có */}
-                {selectedHoaDon.phiDichVu && selectedHoaDon.phiDichVu.length > 0 && (
-                  <>
-                    {selectedHoaDon.phiDichVu.map((phi: any, i: number) => (
-                      <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <div className="size-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                            <FileText className="size-4 text-purple-600" />
-                          </div>
-                          <div className="text-sm font-medium text-gray-800">{phi.ten || 'Dịch vụ khác'}</div>
-                        </div>
-                        <span className="font-semibold text-gray-900">{fmt(phi.gia || 0)}</span>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-
-              <Separator />
-
-              {/* Tổng */}
-              <div className="flex items-center justify-between px-1">
-                <span className="font-semibold text-gray-700">Tổng cộng</span>
-                <span className="text-xl font-bold text-gray-900">{fmt(selectedHoaDon.tongTien)}</span>
-              </div>
-
-              {/* Thông tin ngày */}
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <div className="text-xs text-gray-400 mb-1">Ngày tạo</div>
-                  <div className="font-medium text-gray-700">{selectedHoaDon.ngayTao ? fmtDate(selectedHoaDon.ngayTao) : '—'}</div>
-                </div>
-                <div className={`rounded-xl p-3 ${selectedHoaDon.trangThai === 'quaHan' ? 'bg-rose-50' : 'bg-gray-50'}`}>
-                  <div className="text-xs text-gray-400 mb-1">Hạn thanh toán</div>
-                  <div className={`font-medium ${selectedHoaDon.trangThai === 'quaHan' ? 'text-rose-600' : 'text-gray-700'}`}>
-                    {fmtDate(selectedHoaDon.hanThanhToan)}
-                  </div>
-                </div>
-              </div>
-
-              {/* Ghi chú */}
+              {/* Ghi chú (Đưa lên đầu) */}
               {selectedHoaDon.ghiChu && (
-                <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-sm text-amber-800">
-                  <span className="font-medium">Ghi chú: </span>{selectedHoaDon.ghiChu}
+                <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-lg">
+                  <h3 className="text-sm md:text-base font-semibold mb-1 text-emerald-800 flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4" />
+                    Ghi chú
+                  </h3>
+                  <p className="text-xs md:text-sm text-emerald-700">{selectedHoaDon.ghiChu}</p>
                 </div>
               )}
 
-              {/* Note about waiting approval if in choDuyet */}
-              {selectedHoaDon.trangThai === 'choDuyet' && (
-                <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-3 text-sm text-yellow-800 flex items-start gap-2">
-                  <span className="text-yellow-600 mt-0.5 animate-pulse">⏳</span>
-                  <span>Đang chờ chủ trọ xác nhận biên lai giải ngân. Hóa đơn sẽ cập nhật trạng thái sau khi được duyệt.</span>
+              {/* Thông tin phòng & thanh toán */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                <div>
+                  <h3 className="text-sm md:text-base font-semibold mb-2">Thông tin phòng</h3>
+                  <p className="text-xs md:text-sm"><strong>Phòng:</strong> {(selectedHoaDon.phong as any)?.maPhong || '—'}</p>
+                  <p className="text-xs md:text-sm"><strong>Tòa nhà:</strong> {(selectedHoaDon.phong as any)?.toaNha?.tenToaNha || '—'}</p>
+                  <p className="text-xs md:text-sm"><strong>Hợp đồng:</strong> {(selectedHoaDon as any).hopDong?.maHopDong || 'HĐ Gốc'}</p>
                 </div>
-              )}
-
-              {selectedHoaDon.trangThai === 'tuChoi' && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-800 flex items-start gap-2">
-                  <span className="text-red-600 mt-0.5">❌</span>
-                  <span>Biên lai thanh toán của bạn đã bị <strong>từ chối</strong>. Vui lòng kiểm tra lại thông tin chuyển khoản và gửi lại biên lai mới, hoặc liên hệ chủ trọ để biết thêm chi tiết.</span>
+                <div>
+                  <h3 className="text-sm md:text-base font-semibold mb-2">Thông tin thanh toán</h3>
+                  <p className="text-xs md:text-sm"><strong>Tháng/Năm:</strong> {selectedHoaDon.thang}/{selectedHoaDon.nam}</p>
+                  <p className="text-xs md:text-sm"><strong>Hạn thanh toán:</strong> {fmtDate(selectedHoaDon.hanThanhToan)}</p>
+                  <p className="text-xs md:text-sm"><strong>Trạng thái:</strong> {getStatusBadge(selectedHoaDon.trangThai)}</p>
                 </div>
-              )}
+              </div>
 
-              {/* Thông tin chuyển khoản & QR */}
-              {selectedHoaDon.trangThai !== 'daThanhToan' && (
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="size-2 rounded-full bg-blue-500" />
-                    <h4 className="text-sm font-bold text-slate-700 uppercase tracking-tight">Thanh toán chuyển khoản</h4>
-                  </div>
-                  
-                  {selectedHoaDon.checkoutUrl ? (
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
-                        <img 
-                          src={selectedHoaDon.checkoutUrl} 
-                          alt="VietQR Landlord" 
-                          className="w-full max-w-[220px] aspect-square object-contain"
-                        />
-                      </div>
-                      <div className="w-full space-y-2 text-sm">
-                        <div className="flex justify-between items-center py-1 border-b border-slate-200 border-dashed">
-                          <span className="text-slate-500">Ngân hàng:</span>
-                          <span className="font-bold text-slate-800">{(selectedHoaDon as any).chuNha?.thongTinThanhToan?.tenNganHang || (selectedHoaDon as any).chuNha?.thongTinThanhToan?.nganHang || '—'}</span>
+              <Separator />
+
+              {/* Chỉ số điện nước (Nếu có) */}
+              {!selectedHoaDon.maHoaDon.startsWith('COC-') && !selectedHoaDon.maHoaDon.startsWith('HC-') && (
+                <div>
+                  <h3 className="text-sm md:text-base font-semibold mb-3">Chỉ số điện nước</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-4">
+                    <div>
+                      <h4 className="font-medium mb-2 flex items-center gap-2 text-amber-600">
+                        <Zap className="size-4" /> Điện
+                      </h4>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between">
+                          <span>Chỉ số:</span>
+                          <span>{selectedHoaDon.chiSoDienBanDau} → {selectedHoaDon.chiSoDienCuoiKy}</span>
                         </div>
-                        <div className="flex justify-between items-center py-1 border-b border-slate-200 border-dashed">
-                          <span className="text-slate-500">Số tài khoản:</span>
-                          <span className="font-bold text-blue-600">{(selectedHoaDon as any).chuNha?.thongTinThanhToan?.soTaiKhoan || '—'}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-1">
-                          <span className="text-slate-500">Chủ tài khoản:</span>
-                          <span className="font-bold text-slate-800">{(selectedHoaDon as any).chuNha?.thongTinThanhToan?.chuTaiKhoan || '—'}</span>
+                        <div className="flex justify-between font-medium">
+                          <span>Sử dụng:</span>
+                          <span>{selectedHoaDon.soDien} kWh</span>
                         </div>
                       </div>
-                      <p className="text-[11px] text-center text-slate-400 italic">Quét mã QR bằng ứng dụng Ngân hàng để thanh toán nhanh</p>
                     </div>
-                  ) : (
-                    <div className="text-center py-4 text-slate-500 text-sm">
-                      Chủ trọ chưa cập nhật thông tin thanh toán.
+                    <div>
+                      <h4 className="font-medium mb-2 flex items-center gap-2 text-blue-600">
+                        <Droplets className="size-4" /> Nước
+                      </h4>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between">
+                          <span>Chỉ số:</span>
+                          <span>{selectedHoaDon.chiSoNuocBanDau} → {selectedHoaDon.chiSoNuocCuoiKy}</span>
+                        </div>
+                        <div className="flex justify-between font-medium">
+                          <span>Sử dụng:</span>
+                          <span>{selectedHoaDon.soNuoc} m³</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Chi tiết các khoản phí */}
+              <div>
+                <h3 className="text-sm md:text-base font-semibold mb-3">Chi tiết hóa đơn</h3>
+                <div className="space-y-2 text-xs md:text-sm">
+                  <div className="flex justify-between">
+                    <span>Tiền phòng</span>
+                    <span>{fmt(selectedHoaDon.tienPhong)}</span>
+                  </div>
+                  {(selectedHoaDon.tienDien > 0 || selectedHoaDon.soDien > 0) && (
+                    <div className="flex justify-between">
+                      <span>Tiền điện ({selectedHoaDon.soDien} kWh)</span>
+                      <span>{fmt(selectedHoaDon.tienDien)}</span>
                     </div>
                   )}
+                  {(selectedHoaDon.tienNuoc > 0 || selectedHoaDon.soNuoc > 0) && (
+                    <div className="flex justify-between">
+                      <span>Tiền nước ({selectedHoaDon.soNuoc} m³)</span>
+                      <span>{fmt(selectedHoaDon.tienNuoc)}</span>
+                    </div>
+                  )}
+                  {selectedHoaDon.phiDichVu && selectedHoaDon.phiDichVu.map((phi, index) => (
+                    <div key={index} className="flex justify-between">
+                      <span>{phi.ten}</span>
+                      <span>{fmt(phi.gia)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Total */}
+              <div className="border-t pt-3 md:pt-4">
+                <div className="flex justify-between text-base md:text-lg font-semibold text-[#5fb3a6]">
+                  <span>Tổng tiền:</span>
+                  <span>{fmt(selectedHoaDon.tongTien)}</span>
+                </div>
+                <div className="flex justify-between text-xs md:text-sm">
+                  <span>Đã thanh toán:</span>
+                  <span className="text-green-600 font-medium">{fmt(selectedHoaDon.daThanhToan)}</span>
+                </div>
+                <div className="flex justify-between text-xs md:text-sm">
+                  <span>Còn lại:</span>
+                  <span className={selectedHoaDon.conLai > 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>
+                    {fmt(selectedHoaDon.conLai)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Thông tin thời gian */}
+              <div className="grid grid-cols-2 gap-3 text-[11px]">
+                <div className="bg-gray-50 p-2 rounded-xl text-center">
+                  <div className="text-gray-400 uppercase font-black tracking-tighter mb-1">Ngày lập đơn</div>
+                  <div className="font-bold text-gray-700">{fmtDate(selectedHoaDon.ngayTao)}</div>
+                </div>
+                <div className={`p-2 rounded-xl text-center ${selectedHoaDon.trangThai === 'quaHan' ? 'bg-rose-50 text-rose-600' : 'bg-gray-50 text-gray-700'}`}>
+                  <div className="text-gray-400 uppercase font-black tracking-tighter mb-1">Hạn thanh toán</div>
+                  <div className="font-extrabold">{fmtDate(selectedHoaDon.hanThanhToan)}</div>
+                </div>
+              </div>
+
+              {/* Lịch sử xác nhận (Nếu đã thanh toán) */}
+              {selectedHoaDon.trangThai === 'daThanhToan' && (selectedHoaDon as any).ngayThanhToan && (
+                <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-start gap-3">
+                  <div className="size-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                    <ShieldCheck className="size-4" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-xs font-black text-emerald-700 uppercase">Xác nhận thanh toán</div>
+                    <div className="text-xs text-emerald-800 font-medium font-mono">
+                      Ghi nhận lúc: {new Date((selectedHoaDon as any).ngayThanhToan).toLocaleString('vi-VN')}
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {selectedHoaDon.trangThai !== 'daThanhToan' && selectedHoaDon.trangThai !== 'choDuyet' && (
-                <div className="grid grid-cols-1 gap-2">
-                  <Button 
-                    variant="outline"
-                    className="w-full rounded-xl border-[#0068FF] text-[#0068FF] hover:bg-[#0068FF]/5" 
-                    onClick={() => setIsPaymentDialogOpen(true)}
-                  >
-                    💳 Gửi biên lai chuyển khoản (Thủ công)
-                  </Button>
+              {/* Biên lai thanh toán (Nếu có) */}
+              {(selectedHoaDon as any).anhBienLai && (
+                <div className="space-y-2">
+                   <div className="text-xs font-black text-gray-400 uppercase tracking-widest pl-1 leading-none">Biên lai đối soát</div>
+                   <div className="relative group">
+                      <img 
+                        src={(selectedHoaDon as any).anhBienLai} 
+                        alt="Bien lai" 
+                        className="w-full rounded-2xl border-2 border-gray-100 shadow-sm group-hover:shadow-md transition-shadow cursor-pointer" 
+                        onClick={() => window.open((selectedHoaDon as any).anhBienLai, '_blank')}
+                      />
+                      <div className="absolute top-2 right-2 px-2 py-1 bg-black/50 backdrop-blur-md text-white text-[8px] font-black rounded-lg opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest pointer-events-none">Click để phóng to</div>
+                   </div>
                 </div>
               )}
-              <Button variant="ghost" className="w-full rounded-xl" onClick={() => setSelectedHoaDon(null)}>
-                Đóng
-              </Button>
-            </>
+
+              {/* Thanh toán QR (Chỉ hiện cho hóa đơn THU, chưa thanh toán và có URL) */}
+              {selectedHoaDon.trangThai !== 'daThanhToan' && selectedHoaDon.loai !== 'chi' && selectedHoaDon.checkoutUrl && (
+                <div className="p-4 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="size-2 rounded-full bg-blue-500 animate-pulse" />
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Thanh toán chuyển khoản nhanh</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="bg-white p-4 rounded-2xl shadow-md border border-slate-100 shrink-0">
+                      <img src={selectedHoaDon.checkoutUrl} alt="VietQR" className="size-56 md:size-64 object-contain" />
+                    </div>
+                    <div className="w-full space-y-2 text-sm bg-white/50 p-4 rounded-xl">
+                       <div className="flex justify-between border-b border-slate-200 border-dashed py-1">
+                          <span className="text-slate-400 font-medium">Ngân hàng:</span>
+                          <span className="font-extrabold text-slate-700">{(selectedHoaDon as any).chuNha?.thongTinThanhToan?.tenNganHang || '—'}</span>
+                       </div>
+                       <div className="flex justify-between border-b border-slate-200 border-dashed py-1">
+                          <span className="text-slate-400 font-medium">Số tài khoản:</span>
+                          <span className="font-black text-blue-600">{(selectedHoaDon as any).chuNha?.thongTinThanhToan?.soTaiKhoan || '—'}</span>
+                       </div>
+                       <div className="flex justify-between py-1">
+                          <span className="text-slate-400 font-medium">Người thụ hưởng:</span>
+                          <span className="font-extrabold text-slate-700 uppercase">{(selectedHoaDon as any).chuNha?.thongTinThanhToan?.chuTaiKhoan || '—'}</span>
+                       </div>
+                    </div>
+                    <p className="text-[10px] text-slate-400 italic font-medium">Mở ứng dụng Ngân hàng và quét mã để thanh toán nhanh</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Nút thao tác đóng */}
+              <div className="flex gap-2 pt-2">
+                <Button variant="ghost" className="flex-1 rounded-xl text-xs font-black uppercase tracking-widest text-gray-400" onClick={() => setSelectedHoaDon(null)}>
+                  Đóng nội dung
+                </Button>
+                {selectedHoaDon.trangThai !== 'daThanhToan' && selectedHoaDon.loai !== 'chi' && selectedHoaDon.checkoutUrl && (
+                  <Button 
+                    className="flex-[2] rounded-xl text-xs font-black uppercase tracking-widest bg-blue-600 hover:bg-blue-700"
+                    onClick={() => setIsPaymentDialogOpen(true)}
+                  >
+                    🚀 Gửi biên lai thanh toán
+                  </Button>
+                )}
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>
@@ -754,6 +857,6 @@ export default function HoaDonKhachThuePage() {
           </div>
         </DialogContent>
       </Dialog>
-    </motion.div>
+    </div>
   );
 }

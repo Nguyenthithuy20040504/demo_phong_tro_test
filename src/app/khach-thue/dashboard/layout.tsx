@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { useSession, signOut } from 'next-auth/react';
 
 import { Button } from '@/components/ui/button';
-import { Home, FileText, AlertCircle, User, LogOut, Menu, X, Bell } from 'lucide-react';
+import { Home, FileText, AlertCircle, User, LogOut, Menu, X, Bell, ShieldCheck } from 'lucide-react';
 
 export default function KhachThueDashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -72,6 +72,7 @@ export default function KhachThueDashboardLayout({ children }: { children: React
 
   const navigation = [
     { name: 'Trang chủ', href: '/khach-thue/dashboard', icon: Home },
+    { name: 'Hợp đồng', href: '/khach-thue/dashboard/hop-dong', icon: ShieldCheck },
     { name: 'Hóa đơn', href: '/khach-thue/dashboard/hoa-don', icon: FileText },
     { name: 'Sự cố', href: '/khach-thue/dashboard/su-co', icon: AlertCircle },
     { name: 'Thông báo', href: '/khach-thue/dashboard/thong-bao', icon: Bell, badge: unreadCount },
@@ -103,11 +104,11 @@ export default function KhachThueDashboardLayout({ children }: { children: React
 
           {/* Prominent Profile Card */}
           <div className="mb-4 p-5 bg-white rounded-3xl shadow-[0_15px_30px_-5px_rgba(0,0,0,0.1)] border border-white/20">
-            <h2 className="text-[14px] font-black text-[#5fb3a6]/90 uppercase tracking-[0.1em] mb-1">XIN CHÀO,</h2>
-            <p className="text-lg font-black text-[#5fb3a6] truncate leading-tight">{user?.name}</p>
+            <h2 className="text-[14px] font-semibold text-[#5fb3a6]/90 uppercase tracking-[0.1em] mb-1">XIN CHÀO,</h2>
+            <p className="text-lg font-semibold text-[#5fb3a6] truncate leading-tight">{user?.name}</p>
             <div className="flex items-center gap-2 mt-2">
               <div className="size-1.5 bg-[#5fb3a6] rounded-full animate-pulse" />
-              <p className="text-[11px] text-[#5fb3a6]/80 uppercase tracking-widest font-black">{(user as any)?.phone}</p>
+              <p className="text-[11px] text-[#5fb3a6]/80 uppercase tracking-widest font-semibold">{(user as any)?.phone}</p>
             </div>
           </div>
 
@@ -130,7 +131,7 @@ export default function KhachThueDashboardLayout({ children }: { children: React
                   `}
                 >
                   <Icon className={`h-5 w-5 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
-                  <span className="text-[14px] uppercase tracking-wider flex-1 truncate">{item.name}</span>
+                  <span className="text-[14px] font-semibold uppercase tracking-wider flex-1 truncate">{item.name}</span>
                   {badge > 0 && (
                     <span className="bg-rose-500 text-white text-[10px] font-black rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center shadow-lg">
                       {badge > 9 ? '9+' : badge}

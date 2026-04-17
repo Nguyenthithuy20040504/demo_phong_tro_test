@@ -22,7 +22,9 @@ import {
   MessageCircle,
   AlertCircle,
   Mail,
-  Ban
+  Ban,
+  ArrowUpRight,
+  ArrowDownRight
 } from "lucide-react"
 import {
   ColumnDef,
@@ -226,6 +228,27 @@ const createColumns = (props: HoaDonTableProps & { setHoaDonToDelete: (h: HoaDon
       return <HoaDonCellViewer hoaDon={row.original} onView={props.onView} />
     },
     enableHiding: false,
+  },
+  {
+    accessorKey: "loai",
+    header: "Loại",
+    cell: ({ row }) => {
+      const loai = row.original.loai;
+      if (loai === 'chi') {
+        return (
+          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 gap-1">
+            <ArrowDownRight className="h-3 w-3" />
+            Hoàn tiền
+          </Badge>
+        );
+      }
+      return (
+        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1">
+          <ArrowUpRight className="h-3 w-3" />
+          Thu tiền
+        </Badge>
+      );
+    },
   },
   {
     accessorKey: "ngayTao",
@@ -559,6 +582,10 @@ export function HoaDonDataTable(props: HoaDonDataTableProps) {
               <SelectItem value="quaHan">Quá hạn</SelectItem>
               <SelectItem value="daHuy">Đã hủy</SelectItem>
               <SelectItem value="tuChoi">Từ chối</SelectItem>
+              <DropdownMenuSeparator />
+              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase">Loại giao dịch</div>
+              <SelectItem value="thu" className="text-emerald-600">Thu tiền phòng</SelectItem>
+              <SelectItem value="chi" className="text-red-600">Hoàn tiền cọc</SelectItem>
             </SelectContent>
           </Select>
           <Select value={monthFilter} onValueChange={onMonthChange}>

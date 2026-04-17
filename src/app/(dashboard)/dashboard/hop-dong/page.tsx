@@ -91,6 +91,7 @@ export default function HopDongPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [globalBuildingId, setGlobalBuildingId] = useState<string>('all');
   const [hoanCoc, setHoanCoc] = useState(false);
+  const [refundDueDate, setRefundDueDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
 
   useEffect(() => {
@@ -1148,6 +1149,7 @@ export default function HopDongPage() {
         body: JSON.stringify({
           trangThai: 'daHuy',
           hoanCoc: hoanCoc,
+          refundDueDate: refundDueDate,
         }),
       });
       
@@ -1508,13 +1510,30 @@ export default function HopDongPage() {
                       className="border-orange-400 data-[state=checked]:bg-orange-600"
                     />
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 flex-1">
                     <Label htmlFor="hoanCoc" className="text-sm font-bold text-orange-900 cursor-pointer">
                       Xác nhận hoàn trả tiền cọc
                     </Label>
                     <p className="text-xs text-orange-800 leading-normal">
                       Nếu chọn, hệ thống sẽ tự động **tạo 01 hóa đơn hoàn tiền** trị giá {formatCurrency(cancellingHopDong.tienCoc)} cho khách thuê.
                     </p>
+
+                    {hoanCoc && (
+                      <div className="mt-3 pt-3 border-t border-orange-200">
+                        <Label className="text-xs font-semibold text-orange-900 mb-1.5 block">
+                          Hạn hoàn trả tiền cọc:
+                        </Label>
+                        <Input 
+                          type="date"
+                          value={refundDueDate}
+                          onChange={(e) => setRefundDueDate(e.target.value)}
+                          className="h-8 text-xs border-orange-300 focus:ring-orange-500"
+                        />
+                        <p className="text-[10px] text-orange-700 mt-1 italic">
+                          * Đây là ngày bạn cam kết sẽ gửi lại tiền cho khách.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
                 

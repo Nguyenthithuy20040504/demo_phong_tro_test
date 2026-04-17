@@ -102,7 +102,7 @@ export async function PUT(
       const expiryText = updatedUser.ngayHetHan ? new Date(updatedUser.ngayHetHan).toLocaleDateString('vi-VN') : 'Không giới hạn';
       
       await ThongBao.create({
-        tieuDe: `⚙️ Quản trị viên đã cập nhật gói dịch vụ của bạn`,
+        tieuDe: `Quản trị viên đã cập nhật gói dịch vụ của bạn`,
         noiDung: `Kính gửi ${updatedUser.ten || updatedUser.name},\n\nTài khoản của bạn vừa được cập nhật bởi hệ thống: \n- Gói hiện tại: ${packageName}\n- Thời hạn mới: ${expiryText}\n\nNếu bạn có thắc mắc, vui lòng liên hệ bộ phận hỗ trợ.\n\nTrân trọng.`,
         loai: 'he_thong',
         nguoiGui: session.user.id,

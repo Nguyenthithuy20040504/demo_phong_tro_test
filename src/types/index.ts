@@ -164,8 +164,9 @@ export interface HopDong {
   chiSoDienBanDau: number;
   chiSoNuocBanDau: number;
   phiDichVu: PhiDichVu[];
-  trangThai: 'choDuyet' | 'hoatDong' | 'hetHan' | 'daHuy';
+  trangThai: 'choDuyet' | 'hoatDong' | 'hetHan' | 'daHuy' | 'choDuyetGiaHan';
   fileHopDong?: string;
+  ngayKetThucGiaHan?: Date;
   ngayTao: Date;
   ngayCapNhat: Date;
 }
@@ -209,6 +210,7 @@ export interface HoaDon {
   tongTien: number;
   daThanhToan: number;
   conLai: number;
+  loai?: 'thu' | 'chi';
   trangThai: 'chuaThanhToan' | 'daThanhToanMotPhan' | 'daThanhToan' | 'quaHan' | 'choDuyet' | 'tuChoi' | 'daHuy';
   hanThanhToan: Date;
   ghiChu?: string;

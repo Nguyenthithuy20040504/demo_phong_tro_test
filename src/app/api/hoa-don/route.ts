@@ -213,7 +213,7 @@ export async function GET(request: NextRequest) {
       HoaDon.find(query)
         .populate('hopDong', 'maHopDong')
         .populate('phong', 'maPhong')
-        .sort({ nam: -1, thang: -1 })
+        .sort({ ngayTao: -1 })
         .skip(skip)
         .limit(limit),
       HoaDon.countDocuments(query)
@@ -330,9 +330,16 @@ export async function GET(request: NextRequest) {
     }));
 
 
+    // Sắp xếp lại lần cuối để đảm bảo thứ tự ngày tạo mới nhất lên đầu
+    const sortedHoaDons = processedHoaDons.sort((a, b) => {
+      const dateA = new Date(a.ngayTao).getTime();
+      const dateB = new Date(b.ngayTao).getTime();
+      return dateB - dateA;
+    });
+
     return NextResponse.json({
       success: true,
-      data: processedHoaDons,
+      data: sortedHoaDons,
       pagination: {
         page,
         limit,
@@ -399,7 +406,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Kiểm tra quyền truy cập tòa nhà
-    const toaNhaId = (hopDongData.phong as any).toaNha || hopDongData.phong;
+    const toaNhaId = hopDongData.phong?._id ? hopDongData.phong.toaNha : hopDongData.phong;
     const hasAccess = await isToaNhaAccessible(session.user, toaNhaId);
     if (!hasAccess) {
       return NextResponse.json(

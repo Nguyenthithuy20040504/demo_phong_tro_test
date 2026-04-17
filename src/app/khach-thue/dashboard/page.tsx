@@ -116,12 +116,12 @@ export default function KhachThueDashboardPage() {
               <div className="flex flex-col items-center p-4 bg-white rounded-2xl shadow-sm border border-gray-50">
                 <div className="bg-primary/10 p-3 rounded-xl mb-3"><Phone className="h-5 w-5 text-primary" /></div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 mb-1">Hotline</span>
-                <strong className="text-gray-900">0123-456-789</strong>
+                <strong className="text-gray-900">0392-537-324</strong>
               </div>
               <div className="flex flex-col items-center p-4 bg-white rounded-2xl shadow-sm border border-gray-50">
                 <div className="bg-indigo-50 p-3 rounded-xl mb-3"><Mail className="h-5 w-5 text-indigo-500" /></div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 mb-1">Email</span>
-                <strong className="text-gray-900">support@rent.vn</strong>
+                <strong className="text-gray-900">25A4042227@hvnh.edu.vn</strong>
               </div>
             </div>
           </CardContent>
@@ -223,7 +223,7 @@ export default function KhachThueDashboardPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-black text-gray-900">
+                        <h3 className="text-lg font-semibold text-gray-900">
                           {hd.trangThai === 'choDuyetGiaHan' ? 'Yêu cầu gia hạn hợp đồng' : 'Hợp đồng chờ duyệt'}
                         </h3>
                         <Badge className={`${hd.trangThai === 'choDuyetGiaHan' ? 'bg-indigo-500' : 'bg-amber-500'} text-white border-none font-bold text-[10px] px-2.5 rounded-lg animate-pulse`}>
@@ -231,19 +231,19 @@ export default function KhachThueDashboardPage() {
                         </Badge>
                       </div>
                       <div className="space-y-1 text-sm text-gray-600">
-                        <p><span className="font-bold text-gray-900">Phòng:</span> {hd.phong?.maPhong} — {hd.phong?.toaNha?.tenToaNha}</p>
-                        <p><span className="font-bold text-gray-900">Mã HĐ:</span> {hd.maHopDong}</p>
+                        <p><span className="font-semibold text-gray-900">Phòng:</span> {hd.phong?.maPhong} — {hd.phong?.toaNha?.tenToaNha}</p>
+                        <p><span className="font-semibold text-gray-900">Mã HĐ:</span> {hd.maHopDong}</p>
                         {hd.trangThai === 'choDuyetGiaHan' ? (
                           <>
-                            <p className="flex items-center gap-2"><span className="font-bold text-gray-900 min-w-[120px]">Ngày kết thúc cũ:</span> {formatDate(hd.ngayKetThuc)}</p>
-                            <p className="flex items-center gap-2 text-indigo-600 font-bold">
+                            <p className="flex items-center gap-2"><span className="font-semibold text-gray-900 min-w-[120px]">Ngày kết thúc cũ:</span> {formatDate(hd.ngayKetThuc)}</p>
+                            <p className="flex items-center gap-2 text-indigo-600 font-semibold">
                               <span className="text-gray-900 min-w-[120px]">Gia hạn đến:</span> {formatDate(hd.ngayKetThucGiaHan)}
                             </p>
                           </>
                         ) : (
                           <>
-                            <p><span className="font-bold text-gray-900">Giá thuê:</span> {formatCurrency(hd.giaThue)}/tháng • <span className="font-bold text-gray-900">Cọc:</span> {formatCurrency(hd.tienCoc)}</p>
-                            <p><span className="font-bold text-gray-900">Thời hạn:</span> {formatDate(hd.ngayBatDau)} → {formatDate(hd.ngayKetThuc)}</p>
+                            <p><span className="font-semibold text-gray-900">Giá thuê:</span> {formatCurrency(hd.giaThue)}/tháng • <span className="font-semibold text-gray-900">Cọc:</span> {formatCurrency(hd.tienCoc)}</p>
+                            <p><span className="font-semibold text-gray-900">Thời hạn:</span> {formatDate(hd.ngayBatDau)} → {formatDate(hd.ngayKetThuc)}</p>
                           </>
                         )}
                         {hd.ngayTao && (
@@ -261,7 +261,7 @@ export default function KhachThueDashboardPage() {
                     <Button
                       onClick={() => handleApproval(hd._id, 'duyet')}
                       disabled={approving}
-                      className="flex-1 md:w-40 h-12 rounded-2xl font-black bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-200 transition-all"
+                      className="flex-1 md:w-40 h-12 rounded-2xl font-bold bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-200 transition-all"
                     >
                       {approving ? <Loader2 className="size-4 animate-spin mr-2" /> : <CheckCircle2 className="size-4 mr-2" />}
                       Duyệt
@@ -287,7 +287,7 @@ export default function KhachThueDashboardPage() {
             <div className="size-1 bg-primary rounded-full" />
             Workspace
           </div>
-          <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight leading-none">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight leading-none">
             Dashboard
           </h1>
         </div>
@@ -776,7 +776,7 @@ export default function KhachThueDashboardPage() {
               <div className="flex flex-col">
                 <div className="flex items-center gap-3 mb-2">
                   <h4 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight leading-none">
-                    {dashboardData?.chuNha?.hoTen || 'Thuy Test'}
+                    {dashboardData?.chuNha?.hoTen || 'Ban Quản Lý'}
                   </h4>
                   <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-black px-2.5 py-0.5">QUẢN LÝ TRỰC TIẾP</Badge>
                 </div>

@@ -244,15 +244,24 @@ export default function ThongTinKhachThuePage() {
                         const res = await fetch('/api/upload', { method: 'POST', body: formData });
                         const resData = await res.json();
                         if (resData.success) {
-                          const imgUrl = resData.data.url;
-                          await fetch('/api/auth/khach-thue/me', {
+                          const imgUrl = resData.data.secure_url;
+                          const updateRes = await fetch('/api/auth/khach-thue/me', {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ anhDaiDien: imgUrl })
                           });
-                          fetchProfile();
+                          const updateData = await updateRes.json();
+                          if (updateData.success) {
+                            fetchProfile();
+                            toast.dismiss();
+                            toast.success('Đã cập nhật ảnh đại diện');
+                          } else {
+                            toast.dismiss();
+                            toast.error(updateData.message || 'Lỗi khi lưu ảnh đại diện');
+                          }
+                        } else {
                           toast.dismiss();
-                          toast.success('Đã cập nhật ảnh đại diện');
+                          toast.error(resData.message || 'Lỗi khi tải ảnh lên');
                         }
                       } catch (err) {
                         toast.dismiss();
@@ -266,7 +275,7 @@ export default function ThongTinKhachThuePage() {
                 </div>
               </div>
 
-              <h2 className="text-xl font-black text-gray-900 mb-1 tracking-tight">{profile?.hoTen}</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-1 tracking-tight">{profile?.hoTen}</h2>
               <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-primary/5 text-primary text-[10px] font-black uppercase tracking-widest border border-primary/10">
                 {profile?.ngheNghiep || 'Cư dân PiRoom'}
               </div>
@@ -346,8 +355,8 @@ export default function ThongTinKhachThuePage() {
                       <item.icon className="size-5" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400 mb-1 leading-none">{item.label}</p>
-                      <p className="text-[15px] font-bold text-gray-900 tracking-tight">{item.value}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-1 leading-none">{item.label}</p>
+                      <p className="text-[14px] font-semibold text-gray-800 tracking-tight">{item.value}</p>
                     </div>
                   </div>
                 ))}

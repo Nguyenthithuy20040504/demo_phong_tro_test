@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
           // Tạo thông báo xác nhận thanh toán
           await ThongBao.create({
-            tieuDe: `🎉 Xác nhận thanh toán gói ${plan.ten} thành công`,
+            tieuDe: `Xác nhận thanh toán gói ${plan.ten} thành công`,
             noiDung: `Kính gửi ${user.ten},\n\nKhoản thanh toán qua mã QR (Order: ${orderCode}) cho gói dịch vụ ${plan.ten} của bạn đã được xác nhận tự động. Hệ thống đã gia hạn và kích hoạt các tính năng đến ngày ${newExpiry.toLocaleDateString('vi-VN')}.\n\nCảm ơn bạn đã tin tưởng và sử dụng hệ thống PiRoom!\n\nTrân trọng.`,
             loai: 'thanh_toan_saas',
             nguoiGui: senderId,
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
           // Gửi thông báo cho Admin
           if (admin) {
             await ThongBao.create({
-              tieuDe: `💰 Biến động số dư: ${user.ten} gia hạn SaaS`,
+              tieuDe: `Biến động số dư: ${user.ten} gia hạn SaaS`,
               noiDung: `Chủ trọ ${user.ten} (${user.email || ''}) vừa thanh toán thành công qua mã QR PayOS (Order: ${orderCode}) cho gói dịch vụ ${plan.ten}.\nKhoản tiền ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(webhookData.amount || plan.gia)} đã được cộng vào tài khoản.\nHệ thống đã tự động gia hạn thành công đến ngày ${newExpiry.toLocaleDateString('vi-VN')}.`,
               loai: 'thanh_toan_saas',
               nguoiGui: user._id,

@@ -405,7 +405,7 @@ export function PhongDetailDialog({ phong, isOpen, onClose, toaNhaList, onEdit }
                 <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
                   <p className="text-[10px] font-black text-blue-400 uppercase tracking-tight flex items-center gap-1 mb-1">
                     <Clock className="h-3 w-3" />
-                    Ngày tạo HĐ
+                    Ngày tạo phòng
                   </p>
                   <p className="text-sm font-black text-blue-600 truncate">
                     {phong.ngayTao ? new Date(phong.ngayTao).toLocaleDateString('vi-VN') : 'N/A'}

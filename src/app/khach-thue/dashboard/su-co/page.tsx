@@ -1,10 +1,10 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Wrench, MessageSquare, Clock, Plus, Loader2, CheckCircle2, Calendar, AlertCircle, MapPin, Search, Home, ChevronRight } from 'lucide-react';
+import { Wrench, MessageSquare, Clock, Plus, Loader2, CheckCircle2, Calendar, AlertCircle, MapPin, Search, Home, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { SuCo } from '@/types';
@@ -58,6 +58,10 @@ export default function SuCoKhachThuePage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+
+  // Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     document.title = 'Báo cáo Sự cố - Khách thuê';
@@ -176,17 +180,17 @@ export default function SuCoKhachThuePage() {
     }
   };
 
-  const getPriorityBadge = (priority: string) => {
+   const getPriorityBadge = (priority: string) => {
     const val = priority || 'trungBinh';
     switch (val) {
       case 'khancap':
-        return <Badge variant="destructive" className="animate-pulse">Khẩn cấp</Badge>;
+        return <Badge variant="outline" className="text-gray-900 border-gray-900 animate-pulse">Khẩn cấp</Badge>;
       case 'cao':
-        return <Badge variant="destructive" className="bg-rose-500/10 text-rose-600 border-rose-500/20">Cao</Badge>;
+        return <Badge variant="outline" className="text-gray-900 border-gray-400">Cao</Badge>;
       case 'trungBinh':
-        return <Badge className="bg-yellow-500/10 text-yellow-700 border-yellow-500/20">Trung bình</Badge>;
+        return <Badge variant="outline" className="text-gray-700 border-gray-200">Trung bình</Badge>;
       case 'thap':
-        return <Badge className="bg-slate-500/10 text-slate-600 border-slate-500/20">Thấp</Badge>;
+        return <Badge variant="outline" className="text-gray-500 border-gray-100">Thấp</Badge>;
       default:
         return <Badge variant="outline">{val}</Badge>;
     }
@@ -218,6 +222,19 @@ export default function SuCoKhachThuePage() {
     return matchesSearch && matchesStatus && matchesType && matchesPriority;
   });
 
+  const paginatedSuCos = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredSuCos.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredSuCos, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredSuCos.length / itemsPerPage);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, typeFilter, priorityFilter]);
+
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -228,17 +245,22 @@ export default function SuCoKhachThuePage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.1em] text-muted-foreground/40 mb-0.5">
-            <Home className="size-3.5" />
+    <div className="space-y-4 pb-10">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 mb-1">
+            <Home className="size-3" />
             <Link href="/khach-thue/dashboard" className="hover:text-primary transition-colors cursor-pointer capitalize">Trang chủ</Link>
-            <ChevronRight className="size-3.5 text-muted-foreground/20" />
-            <span className="text-primary/80">Sự cố</span>
+            <ChevronRight className="size-3" />
+            <span className="text-primary">Sự cố</span>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Báo cáo sự cố</h1>
-          <p className="text-gray-500">Quản lý và theo dõi các yêu cầu hỗ trợ sửa chữa</p>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tight">
+             Báo cáo sự cố
+          </h1>
+          <p className="text-gray-500 font-medium text-xs leading-none">
+            Quản lý và theo dõi các yêu cầu hỗ trợ sửa chữa
+          </p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -491,42 +513,111 @@ export default function SuCoKhachThuePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredSuCos.map((sc) => (
+                  {paginatedSuCos.map((sc) => (
                     <TableRow 
                       key={sc._id} 
-                      className="hover:bg-slate-50/80 transition-all border-slate-50 h-20 group"
+                      className="hover:bg-slate-50/80 transition-all border-slate-50 h-20 group cursor-pointer"
                       onClick={() => setSelectedSuCo(sc)}
                     >
                       <TableCell>
-                        <div className="max-w-[280px]">
-                          <div className="font-bold text-slate-900 group-hover:text-primary transition-colors truncate">{sc.tieuDe}</div>
-                          <div className="text-xs text-slate-400 truncate mt-1 italic leading-relaxed">{sc.moTa}</div>
+                        <div className="max-w-[280px] pl-4">
+                          <div className="font-semibold text-sm text-slate-900 group-hover:text-primary transition-colors truncate">{sc.tieuDe}</div>
+                          <div className="text-xs text-slate-500 truncate mt-1 italic leading-relaxed">{sc.moTa}</div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div className="text-slate-700 font-bold">{(sc.phong as any)?.toaNha?.tenToaNha || 'N/A'}</div>
-                          <div className="text-[11px] text-slate-400 font-medium">Phòng {(sc.phong as any)?.maPhong || ''}</div>
+                          <div className="text-slate-900 font-semibold">{(sc.phong as any)?.toaNha?.tenToaNha || 'N/A'}</div>
+                          <div className="text-[11px] text-slate-500 font-medium">Phòng {(sc.phong as any)?.maPhong || ''}</div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm font-medium text-slate-600 bg-slate-100/80 px-2.5 py-1 rounded-lg">{getLoaiSuCoText(sc.loaiSuCo)}</span>
+                        <span className="text-sm font-medium text-slate-700 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">{getLoaiSuCoText(sc.loaiSuCo)}</span>
                       </TableCell>
                       <TableCell>{getPriorityBadge(sc.mucDoUuTien)}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
+                        <div className="flex items-center gap-2 text-sm text-slate-700 font-medium">
                           <div className="p-1.5 rounded-lg bg-slate-50 group-hover:bg-white transition-colors">
                             <Calendar className="size-3.5" />
                           </div>
                           {new Date(sc.ngayBaoCao).toLocaleDateString('vi-VN')}
                         </div>
                       </TableCell>
-                      <TableCell>{getStatusBadge(sc.trangThai)}</TableCell>
+                      <TableCell className="pr-4">{getStatusBadge(sc.trangThai)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
+
+            {/* Pagination UI */}
+            <div className="px-6 py-5 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50/30">
+              <div className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                Hiển thị <span className="text-gray-900">{paginatedSuCos.length}</span> trên <span className="text-gray-900">{filteredSuCos.length}</span> kết quả
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9 rounded-xl border-gray-200"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronsLeft className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9 rounded-xl border-gray-200"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                
+                <div className="px-4 h-9 flex items-center justify-center bg-white border border-gray-200 rounded-xl text-xs font-black min-w-[3rem]">
+                  {currentPage} / {totalPages || 1}
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9 rounded-xl border-gray-200"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9 rounded-xl border-gray-200"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                >
+                  <ChevronsRight className="size-4" />
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Số hàng:</span>
+                <Select value={itemsPerPage.toString()} onValueChange={(val) => {
+                  setItemsPerPage(Number(val));
+                  setCurrentPage(1);
+                }}>
+                  <SelectTrigger className="w-[70px] h-9 rounded-xl text-xs font-bold border-gray-200 bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
           </CardContent>
         </Card>
       )}

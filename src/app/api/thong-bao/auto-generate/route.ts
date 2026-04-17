@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
         const hoTen = tenant.hoTen || tenant.ten || 'Khách thuê';
         await ThongBao.create({
-          tieuDe: `⚠️ Hóa đơn ${invoice.maHoaDon} đã quá hạn thanh toán`,
+          tieuDe: `Hóa đơn ${invoice.maHoaDon} đã quá hạn thanh toán`,
           noiDung: `Kính gửi ${hoTen},\n\nHóa đơn ${invoice.maHoaDon} của bạn đã quá hạn thanh toán vào ${new Date(invoice.hanThanhToan).toLocaleDateString('vi-VN')}.\n\nSố tiền còn lại cần thanh toán: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(invoice.conLai)}\n\nVui lòng thanh toán sớm để tránh phát sinh phí phạt. Nếu đã thanh toán, hãy thông báo cho chủ nhà để cập nhật hệ thống.\n\nTrân trọng.`,
           loai: 'hoaDon',
           nguoiGui: sender,
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
         const hoTen = (tenant.hoTen || tenant.ten || 'Khách thuê');
 
         await ThongBao.create({
-          tieuDe: `📋 Hợp đồng ${hopDong.maHopDong} sắp hết hạn (còn ${daysLeft} ngày)`,
+          tieuDe: `Hợp đồng ${hopDong.maHopDong} sắp hết hạn (còn ${daysLeft} ngày)`,
           noiDung: `Kính gửi ${hoTen},\n\nHợp đồng ${hopDong.maHopDong} của bạn sẽ hết hạn vào ngày ${new Date(hopDong.ngayKetThuc).toLocaleDateString('vi-VN')} (còn ${daysLeft} ngày).\n\nVui lòng liên hệ chủ nhà để gia hạn hợp đồng hoặc chuẩn bị cho việc chuyển đi.\n\nTrân trọng.`,
           loai: 'hopDong',
           nguoiGui: sender,
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
         const packageName = landlord.goiDichVu === 'chuyenNghiep' ? 'Chuyên nghiệp' : (landlord.goiDichVu === 'coBan' ? 'Cơ bản' : 'Miễn phí');
 
         await ThongBao.create({
-          tieuDe: `⚡ Cảnh báo: Gói dịch vụ ${packageName} sắp hết hạn`,
+          tieuDe: `Cảnh báo: Gói dịch vụ ${packageName} sắp hết hạn`,
           noiDung: `Kính gửi ${landlord.ten},\n\nGói dịch vụ ${packageName} của bạn trên hệ thống Quản lý nhà trọ sẽ hết hạn vào ngày ${new Date(landlord.ngayHetHan).toLocaleDateString('vi-VN')} (còn ${daysLeft} ngày).\n\nVui lòng thực hiện gia hạn để không bị gián đoạn các tính năng quản lý và vận hành.\n\nTrân trọng,\nĐội ngũ Admin PiRoom.`,
           loai: 'he_thong',
           nguoiGui: sender,

@@ -180,7 +180,9 @@ export default function HoaDonPage() {
         formDataResponse.ok ? formDataResponse.json() : { data: { hopDongList: [], phongList: [], khachThueList: [] } }
       ]);
 
-      const hoaDons = hoaDonData.data || [];
+      const hoaDons = (hoaDonData.data || []).sort((a: any, b: any) => {
+        return new Date(b.ngayTao).getTime() - new Date(a.ngayTao).getTime();
+      });
       const hopDongs = formDataResult.data?.hopDongList || [];
       const phongs = formDataResult.data?.phongList || [];
       const khachThues = formDataResult.data?.khachThueList || [];
@@ -895,6 +897,11 @@ export default function HoaDonPage() {
                       <div className="flex items-center gap-2 mt-1">
                         <Home className="h-3 w-3 text-gray-400" />
                         <span className="text-sm text-gray-600">{getPhongName(hoaDon.phong, phongList)}</span>
+                        {hoaDon.loai === 'chi' ? (
+                          <Badge variant="outline" className="text-[10px] bg-red-50 text-red-700 border-red-200 py-0 h-5">Hoàn tiền</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200 py-0 h-5">Thu tiền</Badge>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-col gap-1 items-end">
@@ -1000,9 +1007,26 @@ export default function HoaDonPage() {
             <div className="space-y-4 md:space-y-6">
               {/* Invoice Header */}
               <div className="text-center border-b pb-3 md:pb-4">
-                <h2 className="text-lg md:text-2xl font-bold">HÓA ĐƠN THUÊ PHÒNG</h2>
+                <h2 className="text-lg md:text-2xl font-bold">
+                  {viewingHoaDon.loai === 'chi' || viewingHoaDon.maHoaDon.startsWith('HC-') 
+                    ? 'HÓA ĐƠN HOÀN CỌC' 
+                    : viewingHoaDon.maHoaDon.startsWith('COC-') 
+                      ? 'HÓA ĐƠN TIỀN CỌC' 
+                      : 'HÓA ĐƠN THUÊ PHÒNG'}
+                </h2>
                 <p className="text-base md:text-lg text-gray-600">{viewingHoaDon.maHoaDon}</p>
               </div>
+              
+              {/* Notes */}
+              {viewingHoaDon.ghiChu && (
+                <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-lg">
+                  <h3 className="text-sm md:text-base font-semibold mb-1 text-emerald-800 flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4" />
+                    Ghi chú
+                  </h3>
+                  <p className="text-xs md:text-sm text-emerald-700">{viewingHoaDon.ghiChu}</p>
+                </div>
+              )}
 
               {/* Invoice Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
@@ -1105,14 +1129,6 @@ export default function HoaDonPage() {
                   </span>
                 </div>
               </div>
-
-              {/* Notes */}
-              {viewingHoaDon.ghiChu && (
-                <div>
-                  <h3 className="text-sm md:text-base font-semibold mb-2">Ghi chú</h3>
-                  <p className="text-xs md:text-sm text-gray-600">{viewingHoaDon.ghiChu}</p>
-                </div>
-              )}
 
               {/* Actions */}
               <DialogFooter className="flex-col sm:flex-row gap-2">
