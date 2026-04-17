@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
     // Lấy tất cả hợp đồng hiện tại - Tìm theo bất kỳ ID nào trong linkedIds
     const hopDongList = await HopDong.find({
       khachThueId: { $in: linkedIds },
-      trangThai: { $in: ['hoatDong', 'choDuyet'] }
+      trangThai: { $in: ['hoatDong', 'choDuyet', 'choDuyetGiaHan'] }
     })
       .populate({
         path: 'phong',
@@ -100,7 +100,8 @@ export async function GET(request: NextRequest) {
       })
       .populate('khachThueId', 'hoTen soDienThoai email anhDaiDien')
       .populate('nguoiDaiDien', 'hoTen soDienThoai email anhDaiDien')
-      .sort({ ngayTao: -1 });
+      .sort({ ngayTao: -1 })
+      .lean();
 
     const hopDongHienTai = hopDongList.length > 0 ? hopDongList[0] : null;
 

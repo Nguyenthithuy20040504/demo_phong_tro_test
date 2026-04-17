@@ -30,8 +30,9 @@ export async function PUT(
     }
 
     await dbConnect();
+    const { id } = await params;
 
-    const hopDong = await HopDong.findById(params.id)
+    const hopDong = await HopDong.findById(id)
       .populate({
         path: 'phong',
         select: 'maPhong toaNha',
@@ -95,6 +96,14 @@ export async function PUT(
     const chuNhaId = phongInfo?.toaNha?.chuSoHuu;
 
     if (action === 'duyet') {
+      const isGiaHan = hopDong.trangThai === 'choDuyetGiaHan';
+
+      // Nếu là duyệt gia hạn, cập nhật ngày kết thúc chính thức từ ngày dự kiến
+      if (isGiaHan && hopDong.ngayKetThucGiaHan) {
+        hopDong.ngayKetThuc = hopDong.ngayKetThucGiaHan;
+        hopDong.ngayKetThucGiaHan = undefined;
+      }
+
       // Duyệt hợp đồng
       hopDong.trangThai = 'hoatDong';
       await hopDong.save();
@@ -107,9 +116,9 @@ export async function PUT(
       // Import HoaDon if not already
       const HoaDon = (await import('@/models/HoaDon')).default;
 
-      // Sinh hóa đơn tiền cọc tự động
+      // Sinh hóa đơn tiền cọc tự động (Chỉ cho hợp đồng mới, KHÔNG cho gia hạn)
       let checkoutUrl = '';
-      if (chuNhaId && hopDong.tienCoc > 0) {
+      if (!isGiaHan && chuNhaId && hopDong.tienCoc > 0) {
         const dbUser = await mongoose.model('NguoiDung').findById(chuNhaId).select('thongTinThanhToan');
         if (dbUser && dbUser.thongTinThanhToan && dbUser.thongTinThanhToan.soTaiKhoan) {
           const { nganHang, soTaiKhoan, chuTaiKhoan } = dbUser.thongTinThanhToan;
@@ -252,15 +261,33 @@ export async function PUT(
 
     } else {
       // Từ chối hợp đồng
-      hopDong.trangThai = 'daHuy';
-      await hopDong.save();
+      const isGiaHan = hopDong.trangThai === 'choDuyetGiaHan';
+
+      if (isGiaHan) {
+        // Nếu từ chối gia hạn, quay lại trạng thái hoạt động (hoặc hết hạn nếu đã qua ngày kết thúc)
+        const now = new Date();
+        const expirationDate = new Date(hopDong.ngayKetThuc);
+        
+        hopDong.trangThai = now > expirationDate ? 'hetHan' : 'hoatDong';
+        hopDong.ngayKetThucGiaHan = undefined; // Xóa ngày dự kiến gia hạn
+        await hopDong.save();
+      } else {
+        // Từ chối duyệt hợp đồng mới -> Hủy hoàn toàn
+        hopDong.trangThai = 'daHuy';
+        await hopDong.save();
+
+        // Giải phóng phòng
+        await updatePhongStatus(hopDong.phong._id || hopDong.phong);
+      }
 
       // Gửi thông báo cho chủ nhà
       if (chuNhaId) {
         try {
           await ThongBao.create({
-            tieuDe: `Hợp đồng bị từ chối - Phòng ${tenPhong}`,
-            noiDung: `Khách thuê đã từ chối hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}).`,
+            tieuDe: isGiaHan ? `Yêu cầu gia hạn bị từ chối - Phòng ${tenPhong}` : `Hợp đồng bị từ chối - Phòng ${tenPhong}`,
+            noiDung: isGiaHan 
+              ? `Khách thuê đã từ chối yêu cầu gia hạn hợp đồng phòng ${tenPhong} (Mã: ${hopDong.maHopDong}). Hợp đồng sẽ giữ nguyên thời hạn cũ.`
+              : `Khách thuê đã từ chối hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}).`,
             loai: 'hopDong',
             nguoiGui: new mongoose.Types.ObjectId(userId),
             nguoiNhan: [chuNhaId],
@@ -276,8 +303,10 @@ export async function PUT(
               await sendGeneralNotificationEmail({
                 email: chuNhaDoc.email,
                 khachThueName: chuNhaDoc.ten || chuNhaDoc.name || 'Chủ trọ',
-                tieuDe: `Khách thuê từ chối hợp đồng - Phòng ${tenPhong}`,
-                noiDung: `Khách thuê đã từ chối ký duyệt hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}).\n\nVui lòng liên hệ với khách thuê để biết thêm chi tiết hoặc xem xét ký lại hợp đồng.`,
+                tieuDe: isGiaHan ? `Khách từ chối gia hạn - Phòng ${tenPhong}` : `Khách thuê từ chối hợp đồng - Phòng ${tenPhong}`,
+                noiDung: isGiaHan
+                  ? `Khách thuê đã từ chối yêu cầu gia hạn hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}).\n\nHợp đồng của khách hiện vẫn được giữ nguyên trạng thái và thời hạn cũ.`
+                  : `Khách thuê đã từ chối ký duyệt hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}).\n\nVui lòng liên hệ với khách thuê để biết thêm chi tiết hoặc xem xét ký lại hợp đồng.`,
                 ccEmail: '', // Không CC khi gửi cho chủ nhà
               });
             }
@@ -291,8 +320,8 @@ export async function PUT(
 
       return NextResponse.json({
         success: true,
-        message: 'Hợp đồng đã bị từ chối',
-        data: { trangThai: 'daHuy' }
+        message: isGiaHan ? 'Yêu cầu gia hạn đã bị từ chối' : 'Hợp đồng đã bị từ chối',
+        data: { trangThai: hopDong.trangThai }
       });
     }
 

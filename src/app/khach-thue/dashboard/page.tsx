@@ -139,7 +139,7 @@ export default function KhachThueDashboardPage() {
   const khachThueId = khachThue?._id;
   
   const pendingContracts = hopDongList.filter((hd: any) => {
-    if (hd.trangThai !== 'choDuyet') return false;
+    if (!['choDuyet', 'choDuyetGiaHan'].includes(hd.trangThai)) return false;
     // Chỉ người đại diện mới thấy nút duyệt
     const daiDienId = typeof hd.nguoiDaiDien === 'object' 
       ? hd.nguoiDaiDien?._id?.toString() 
@@ -178,12 +178,16 @@ export default function KhachThueDashboardPage() {
     }).format(amount);
   };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('vi-VN');
+  const formatDate = (date: any) => {
+    if (!date) return 'Dữ liệu trống từ Server';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return 'Ngày không hợp lệ';
+    return d.toLocaleDateString('vi-VN');
   };
 
   const getHanDuyet = (dateStr: string) => {
     if (!dateStr) return '';
+    // Hạn duyệt là 7 phút kể từ ngày tạo/yêu cầu (để phục vụ test nhanh)
     const expDate = new Date(new Date(dateStr).getTime() + 7 * 60 * 1000);
     const now = new Date();
     const diffMs = expDate.getTime() - now.getTime();
@@ -219,18 +223,36 @@ export default function KhachThueDashboardPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-black text-gray-900">Hợp đồng chờ duyệt</h3>
-                        <Badge className="bg-amber-500 text-white border-none font-bold text-[10px] px-2.5 rounded-lg animate-pulse">
-                          CHỜ DUYỆT
+                        <h3 className="text-lg font-black text-gray-900">
+                          {hd.trangThai === 'choDuyetGiaHan' ? 'Yêu cầu gia hạn hợp đồng' : 'Hợp đồng chờ duyệt'}
+                        </h3>
+                        <Badge className={`${hd.trangThai === 'choDuyetGiaHan' ? 'bg-indigo-500' : 'bg-amber-500'} text-white border-none font-bold text-[10px] px-2.5 rounded-lg animate-pulse`}>
+                          {hd.trangThai === 'choDuyetGiaHan' ? 'GIA HẠN' : 'CHỜ DUYỆT'}
                         </Badge>
                       </div>
                       <div className="space-y-1 text-sm text-gray-600">
-                        <p><span className="font-bold text-gray-900">Phòng:</span> {hd.phong?.maPhong} - {hd.phong?.toaNha?.tenToaNha}</p>
+                        <p><span className="font-bold text-gray-900">Phòng:</span> {hd.phong?.maPhong} — {hd.phong?.toaNha?.tenToaNha}</p>
                         <p><span className="font-bold text-gray-900">Mã HĐ:</span> {hd.maHopDong}</p>
-                        <p><span className="font-bold text-gray-900">Giá thuê:</span> {formatCurrency(hd.giaThue)}/tháng • <span className="font-bold text-gray-900">Cọc:</span> {formatCurrency(hd.tienCoc)}</p>
-                        <p><span className="font-bold text-gray-900">Thời hạn:</span> {formatDate(hd.ngayBatDau)} → {formatDate(hd.ngayKetThuc)}</p>
+                        {hd.trangThai === 'choDuyetGiaHan' ? (
+                          <>
+                            <p className="flex items-center gap-2"><span className="font-bold text-gray-900 min-w-[120px]">Ngày kết thúc cũ:</span> {formatDate(hd.ngayKetThuc)}</p>
+                            <p className="flex items-center gap-2 text-indigo-600 font-bold">
+                              <span className="text-gray-900 min-w-[120px]">Gia hạn đến:</span> {formatDate(hd.ngayKetThucGiaHan)}
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p><span className="font-bold text-gray-900">Giá thuê:</span> {formatCurrency(hd.giaThue)}/tháng • <span className="font-bold text-gray-900">Cọc:</span> {formatCurrency(hd.tienCoc)}</p>
+                            <p><span className="font-bold text-gray-900">Thời hạn:</span> {formatDate(hd.ngayBatDau)} → {formatDate(hd.ngayKetThuc)}</p>
+                          </>
+                        )}
                         {hd.ngayTao && (
-                          <p><span className="font-bold text-red-600">Hạn duyệt:</span> <span className="text-red-500 font-semibold">{getHanDuyet(hd.ngayTao)}</span></p>
+                          <p>
+                            <span className="font-bold text-red-600">Hạn duyệt:</span>{' '}
+                            <span className="text-red-500 font-semibold">
+                              {getHanDuyet(hd.trangThai === 'choDuyetGiaHan' ? (hd.ngayCapNhat || hd.ngayTao) : hd.ngayTao)}
+                            </span>
+                          </p>
                         )}
                       </div>
                     </div>
@@ -569,8 +591,15 @@ export default function KhachThueDashboardPage() {
                         </div>
                         <div className="bg-indigo-50/50 p-4 rounded-3xl text-center">
                           <Lock className="size-6 text-indigo-600 mx-auto mb-2" />
-                          <p className="text-[10px] font-black uppercase text-indigo-600/70 mb-1">Ngày hết hạn</p>
-                          <p className="text-lg font-black text-indigo-800">{formatDate(currentHopDong.ngayKetThuc)}</p>
+                          <p className="text-[10px] font-black uppercase text-indigo-600/70 mb-1">
+                            {currentHopDong.trangThai === 'choDuyetGiaHan' ? 'Ngày hết hạn mới' : 'Ngày hết hạn'}
+                          </p>
+                          <p className="text-lg font-black text-indigo-800">
+                            {formatDate(currentHopDong.trangThai === 'choDuyetGiaHan' ? currentHopDong.ngayKetThucGiaHan : currentHopDong.ngayKetThuc)}
+                          </p>
+                          {currentHopDong.trangThai === 'choDuyetGiaHan' && (
+                             <p className="text-[10px] text-indigo-500 font-bold mt-1">(Dự kiến)</p>
+                          )}
                         </div>
                       </div>
 

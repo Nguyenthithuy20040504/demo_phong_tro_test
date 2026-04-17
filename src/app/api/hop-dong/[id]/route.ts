@@ -23,6 +23,7 @@ const hopDongSchema = z.object({
   nguoiDaiDien: z.string().min(1, 'Người đại diện là bắt buộc'),
   ngayBatDau: z.string().min(1, 'Ngày bắt đầu là bắt buộc'),
   ngayKetThuc: z.string().min(1, 'Ngày kết thúc là bắt buộc'),
+  ngayKetThucGiaHan: z.string().optional(),
   giaThue: z.number().min(0, 'Giá thuê phải lớn hơn hoặc bằng 0'),
   tienCoc: z.number().min(0, 'Tiền cọc phải lớn hơn hoặc bằng 0'),
   chuKyThanhToan: z.enum(['thang', 'quy', 'nam']),
@@ -34,7 +35,7 @@ const hopDongSchema = z.object({
   chiSoNuocBanDau: z.number().min(0, 'Chỉ số nước ban đầu phải lớn hơn hoặc bằng 0'),
   phiDichVu: z.array(phiDichVuSchema).optional(),
   fileHopDong: z.string().optional(),
-  trangThai: z.enum(['hoatDong', 'hetHan', 'daHuy']).optional(),
+  trangThai: z.enum(['choDuyet', 'hoatDong', 'hetHan', 'daHuy', 'choDuyetGiaHan']).optional(),
   hoanCoc: z.boolean().optional(),
 });
 
@@ -168,31 +169,18 @@ export async function PUT(
       // (không cần restrict vì HĐ chưa được duyệt)
     }
 
-    // Không cho phép chỉnh sửa nội dung hợp đồng đã được duyệt (hoạt động)
-    // Ngoại trừ: Gia hạn (cập nhật ngayKetThuc + trangThai) và Hủy hợp đồng (cập nhật trangThai + hoanCoc)
-    if (existingHopDong.trangThai === 'hoatDong') {
+    // Chặn chỉnh sửa nội dung cơ bản của hợp đồng đã duyệt hoặc hết hạn
+    // Chỉ cho phép Gia hạn hoặc Hủy (với HĐ đang hoạt động)
+    if (['hoatDong', 'hetHan'].includes(existingHopDong.trangThai)) {
       const allowedFields = Object.keys(validatedData);
       
-      // Kiểm tra xem có trường nào nằm ngoài danh sách được phép không
       const forbiddenFields = allowedFields.filter(field => 
-        !['trangThai', 'ngayKetThuc', 'hoanCoc'].includes(field)
+        !['trangThai', 'ngayKetThuc', 'ngayKetThucGiaHan', 'hoanCoc'].includes(field)
       );
 
       if (forbiddenFields.length > 0) {
         return NextResponse.json(
-          { message: 'Không thể chỉnh sửa các thông tin cơ bản của hợp đồng đã được phê duyệt. Chỉ cho phép thực hiện Gia hạn hoặc Hủy hợp đồng.' },
-          { status: 403 }
-        );
-      }
-    }
-
-    // Không cho phép chỉnh sửa hợp đồng đã hết hạn (trừ gia hạn) hoặc đã hủy
-    if (existingHopDong.trangThai === 'hetHan') {
-      const allowedFields = Object.keys(validatedData);
-      const isGiaHan = allowedFields.length === 1 && allowedFields[0] === 'ngayKetThuc';
-      if (!isGiaHan) {
-        return NextResponse.json(
-          { message: 'Không thể chỉnh sửa hợp đồng đã hết hạn. Chỉ cho phép gia hạn.' },
+          { message: 'Không thể chỉnh sửa các thông tin gốc. Chỉ cho phép thực hiện Gia hạn hoặc Hủy hợp đồng.' },
           { status: 403 }
         );
       }
@@ -315,19 +303,18 @@ export async function PUT(
       const newEndDate = new Date(validatedData.ngayKetThuc);
       updateData.ngayKetThuc = newEndDate;
       
-      // Tự động chuyển trạng thái về hoatDong nếu gia hạn
+      // Tự động chuyển trạng thái về hoatDong nếu gia hạn trực tiếp
       if (!validatedData.trangThai && newEndDate > new Date()) {
         updateData.trangThai = 'hoatDong';
       }
     }
 
-    const hopDong = await HopDong.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true, runValidators: true }
-    ).populate('phong', 'maPhong toaNha')
-     .populate('khachThueId', 'hoTen soDienThoai')
-     .populate('nguoiDaiDien', 'hoTen soDienThoai');
+    if (validatedData.ngayKetThucGiaHan) {
+      updateData.ngayKetThucGiaHan = new Date(validatedData.ngayKetThucGiaHan);
+    }
+
+    // Tìm hợp đồng để cập nhật tường minh (tránh lỗi cache schema)
+    const hopDong = await HopDong.findById(id);
 
     if (!hopDong) {
       return NextResponse.json(
@@ -335,6 +322,36 @@ export async function PUT(
         { status: 404 }
       );
     }
+
+    // Gán dữ liệu cơ bản
+    Object.assign(hopDong, updateData);
+
+    // Ép kiểu Date cho các trường ngày tháng quan trọng
+    if (updateData.ngayBatDau) hopDong.ngayBatDau = new Date(updateData.ngayBatDau);
+    if (updateData.ngayKetThuc) hopDong.ngayKetThuc = new Date(updateData.ngayKetThuc);
+    
+    if (updateData.ngayKetThucGiaHan) {
+      console.log('>>> BYPASSING MONGOOSE CACHE - DIRECT SAVING:', updateData.ngayKetThucGiaHan);
+      const extensionDate = new Date(updateData.ngayKetThucGiaHan);
+      
+      // Cập nhật trực tiếp vào collection để tránh Mongoose stripping
+      await mongoose.connection.collection('hopdongs').updateOne(
+        { _id: new mongoose.Types.ObjectId(id) },
+        { $set: { ngayKetThucGiaHan: extensionDate } }
+      );
+      
+      // Đảm bảo instance hiện tại cũng có dữ liệu
+      hopDong.ngayKetThucGiaHan = extensionDate;
+    }
+
+    await hopDong.save();
+
+    // Re-populate sau khi save để trả về kết quả đầy đủ
+    const populatedHopDong = await HopDong.findById(id)
+      .populate('phong', 'maPhong toaNha')
+      .populate('khachThueId', 'hoTen soDienThoai')
+      .populate('nguoiDaiDien', 'hoTen soDienThoai')
+      .lean(); // Dùng lean để lấy đúng dữ liệu thô từ DB
 
     // Cập nhật trạng thái phòng và khách thuê tự động
     const phongId = hopDong.phong?._id || hopDong.phong;
@@ -416,7 +433,7 @@ export async function PUT(
 
     return NextResponse.json({
       success: true,
-      data: hopDong,
+      data: populatedHopDong,
       message: validatedData.trangThai === 'daHuy' 
         ? 'Hợp đồng đã được hủy thành công' 
         : 'Hợp đồng đã được cập nhật thành công',

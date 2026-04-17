@@ -1086,7 +1086,7 @@ export default function HopDongPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ngayKetThuc: newEndDate,
+          ngayKetThucGiaHan: newEndDate,
           trangThai: 'choDuyetGiaHan', // Chuyển sang trạng thái chờ khách duyệt
         }),
       });

@@ -16,6 +16,7 @@ export interface IHopDong extends Document {
   nguoiDaiDien: mongoose.Types.ObjectId;
   ngayBatDau: Date;
   ngayKetThuc: Date;
+  ngayKetThucGiaHan?: Date;
   giaThue: number;
   tienCoc: number;
   chuKyThanhToan: 'thang' | 'quy' | 'nam';
@@ -78,6 +79,9 @@ const HopDongSchema = new Schema<IHopDong>({
   ngayKetThuc: {
     type: Date,
     required: [true, 'Ngày kết thúc là bắt buộc']
+  },
+  ngayKetThucGiaHan: {
+    type: Date
   },
   giaThue: {
     type: Number,
