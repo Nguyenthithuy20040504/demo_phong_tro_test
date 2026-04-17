@@ -11,7 +11,6 @@ import {
   RefreshCw,
   UserCheck,
   UserX,
-  LockKeyhole,
   Building2,
   Home,
   AlertCircle,
@@ -27,7 +26,6 @@ import {
   Info,
   CheckCircle2,
   UserPlus,
-  Edit2,
   X
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -76,9 +74,7 @@ export default function AdminLandlordManagementPage() {
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [isEditProfileDialogOpen, setIsEditProfileDialogOpen] = useState(false);
   const [isEditPlanDialogOpen, setIsEditPlanDialogOpen] = useState(false);
-  const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
 
   // Creation state
   const [createData, setCreateData] = useState({
@@ -96,26 +92,12 @@ export default function AdminLandlordManagementPage() {
     ngheNghiep: ''
   });
 
-  // Edit Profile state
-  const [editProfileData, setEditProfileData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    cccd: '',
-    ngaySinh: '',
-    gioiTinh: 'nam',
-    queQuan: '',
-    ngheNghiep: ''
-  });
-
   // Edit Plan state
   const [editPlanData, setEditPlanData] = useState({
     goiDichVu: 'mienPhi',
     ngayHetHan: '',
     isActive: true
   });
-
-  const [newPassword, setNewPassword] = useState('');
 
   const fetchLandlords = useCallback(async (showLoading = true) => {
     try {
@@ -171,29 +153,7 @@ export default function AdminLandlordManagementPage() {
     }
   };
 
-  const handleEditProfile = async () => {
-    if (!selectedLandlord) return;
-    setActionLoading('edit-profile');
-    try {
-      const response = await fetch(`/api/admin/users/${selectedLandlord._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editProfileData),
-      });
 
-      if (response.ok) {
-        toast.success('Đã cập nhật hồ sơ chủ trọ thành công');
-        setIsEditProfileDialogOpen(false);
-        fetchLandlords(false);
-      } else {
-        toast.error('Lỗi khi cập nhật hồ sơ');
-      }
-    } catch (error) {
-      toast.error('Lỗi kết nối');
-    } finally {
-      setActionLoading(null);
-    }
-  };
 
   const handleEditPlan = async () => {
     if (!selectedLandlord) return;
@@ -245,29 +205,7 @@ export default function AdminLandlordManagementPage() {
     }
   };
 
-  const handleResetPassword = async () => {
-    if (!selectedLandlord || !newPassword) return;
-    setActionLoading('reset-pw');
-    try {
-      const response = await fetch(`/api/admin/users/${selectedLandlord._id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: newPassword }),
-      });
 
-      if (response.ok) {
-        toast.success('Đã đặt lại mật khẩu thành công');
-        setIsResetPasswordDialogOpen(false);
-        setNewPassword('');
-      } else {
-        toast.error('Lỗi khi đặt lại mật khẩu');
-      }
-    } catch (error) {
-      toast.error('Lỗi kết nối');
-    } finally {
-      setActionLoading(null);
-    }
-  };
 
   const handleDelete = async (id: string) => {
     setActionLoading(`delete-${id}`);
@@ -317,20 +255,7 @@ export default function AdminLandlordManagementPage() {
     setIsViewDialogOpen(true);
   };
 
-  const openEditProfileDialog = (landlord: Landlord) => {
-    setSelectedLandlord(landlord);
-    setEditProfileData({
-      name: landlord.name || landlord.ten || '',
-      email: landlord.email,
-      phone: landlord.phone || landlord.soDienThoai || '',
-      cccd: landlord.cccd || '',
-      ngaySinh: landlord.ngaySinh ? new Date(landlord.ngaySinh).toISOString().split('T')[0] : '',
-      gioiTinh: landlord.gioiTinh || 'nam',
-      queQuan: landlord.queQuan || '',
-      ngheNghiep: landlord.ngheNghiep || ''
-    });
-    setIsEditProfileDialogOpen(true);
-  };
+
 
   const openEditPlanDialog = (landlord: Landlord) => {
     setSelectedLandlord(landlord);
@@ -423,14 +348,8 @@ export default function AdminLandlordManagementPage() {
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             onView={openViewDialog}
-            onEditProfile={openEditProfileDialog}
             onEditPlan={openEditPlanDialog}
             onToggleStatus={handleToggleStatus}
-            onResetPassword={(l) => {
-              setSelectedLandlord(l);
-              setNewPassword('');
-              setIsResetPasswordDialogOpen(true);
-            }}
             onDelete={handleDelete}
             onResendVerification={handleResendVerification}
             actionLoading={actionLoading}
@@ -637,14 +556,7 @@ export default function AdminLandlordManagementPage() {
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" className="rounded-xl h-10 border-gray-100 text-xs font-bold uppercase tracking-widest px-4 hover:bg-gray-50" onClick={() => {
-                  setIsViewDialogOpen(false);
-                  openEditProfileDialog(selectedLandlord!);
-                }}>
-                  Edit Profile
-                </Button>
-              </div>
+
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
@@ -734,247 +646,7 @@ export default function AdminLandlordManagementPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Profile Dialog */}
-      <Dialog open={isEditProfileDialogOpen} onOpenChange={setIsEditProfileDialogOpen}>
-        <DialogContent className="sm:max-w-[550px] p-0 rounded-[2rem] overflow-hidden border-none shadow-3xl">
-          <DialogHeader className="p-8 pb-4 bg-teal-50/50">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-white rounded-2xl shadow-sm border border-teal-100">
-                <Edit2 className="h-6 w-6 text-teal-600" />
-              </div>
-              <div>
-                <DialogTitle className="text-xl font-black tracking-tight">Cập nhật hồ sơ chủ trọ</DialogTitle>
-                <DialogDescription className="font-medium text-teal-700/60">Thay đổi thông tin hành chính của tài khoản</DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
 
-          <ScrollArea className="h-[450px] px-8 py-6">
-            <div className="space-y-6">
-              <div className="grid gap-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Họ và tên</Label>
-                <Input
-                  placeholder="Nguyễn Văn A"
-                  className="h-11 rounded-xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600 font-medium"
-                  value={editProfileData.name}
-                  onChange={(e) => setEditProfileData({ ...editProfileData, name: e.target.value })}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-5">
-                <div className="grid gap-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Số điện thoại</Label>
-                  <Input
-                    placeholder="09xxx"
-                    className="h-11 rounded-xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
-                    value={editProfileData.phone}
-                    onChange={(e) => setEditProfileData({ ...editProfileData, phone: e.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Số CCCD</Label>
-                  <Input
-                    placeholder="12 chữ số"
-                    className="h-11 rounded-xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
-                    value={editProfileData.cccd}
-                    onChange={(e) => setEditProfileData({ ...editProfileData, cccd: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-5">
-                <div className="grid gap-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Ngày sinh</Label>
-                  <Input
-                    type="date"
-                    className="h-11 rounded-xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
-                    value={editProfileData.ngaySinh}
-                    onChange={(e) => setEditProfileData({ ...editProfileData, ngaySinh: e.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Giới tính</Label>
-                  <Select value={editProfileData.gioiTinh} onValueChange={(v) => setEditProfileData({ ...editProfileData, gioiTinh: v })}>
-                    <SelectTrigger className="h-11 rounded-xl bg-gray-50/50 border-gray-100 focus:ring-teal-600 font-medium">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl shadow-xl">
-                      <SelectItem value="nam" className="rounded-lg">Nam</SelectItem>
-                      <SelectItem value="nu" className="rounded-lg">Nữ</SelectItem>
-                      <SelectItem value="khac" className="rounded-lg">Khác</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Quê quán</Label>
-                <Input
-                  placeholder="Địa chỉ thường trú"
-                  className="h-11 rounded-xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
-                  value={editProfileData.queQuan}
-                  onChange={(e) => setEditProfileData({ ...editProfileData, queQuan: e.target.value })}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Nghề nghiệp</Label>
-                <Input
-                  placeholder="VD: Kinh doanh tự do"
-                  className="h-11 rounded-xl bg-gray-50/50 border-gray-100 focus-visible:ring-teal-600"
-                  value={editProfileData.ngheNghiep}
-                  onChange={(e) => setEditProfileData({ ...editProfileData, ngheNghiep: e.target.value })}
-                />
-              </div>
-            </div>
-          </ScrollArea>
-
-          <DialogFooter className="p-8 pt-4 bg-gray-50/30 flex-col sm:flex-row gap-3">
-            <Button variant="ghost" onClick={() => setIsEditProfileDialogOpen(false)} className="flex-1 h-11 rounded-xl font-bold order-2 sm:order-1 transition-all active:scale-95">
-              Hủy bỏ
-            </Button>
-            <Button
-              onClick={handleEditProfile}
-              disabled={actionLoading === 'edit-profile'}
-              className="flex-1 h-11 rounded-xl bg-teal-600 hover:bg-teal-700 font-bold shadow-lg shadow-teal-100 order-1 sm:order-2 transition-all active:scale-95"
-            >
-              {actionLoading === 'edit-profile' ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-              Lưu hồ sơ
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Plan Dialog (`isEditPlanDialogOpen`) */}
-      <Dialog open={isEditPlanDialogOpen} onOpenChange={setIsEditPlanDialogOpen}>
-        <DialogContent className="sm:max-w-[450px] p-0 rounded-[2rem] overflow-hidden border-none shadow-4xl animate-in zoom-in-95">
-          <DialogHeader className="p-8 pb-4 bg-blue-50/50">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-100">
-                <CreditCard className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <DialogTitle className="text-xl font-black tracking-tight">Sửa gói & Gia hạn</DialogTitle>
-                <DialogDescription className="font-medium text-blue-700/60 leading-tight">Cập nhật quyền lợi sử dụng hệ thống</DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <div className="p-8 space-y-6">
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
-              <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Đang chỉnh sửa cho</p>
-                <p className="text-sm font-bold text-gray-800 leading-none">{selectedLandlord?.name || selectedLandlord?.ten}</p>
-              </div>
-              <Badge className="bg-white border-blue-100 text-blue-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm">{selectedLandlord?.email}</Badge>
-            </div>
-
-            <div className="grid gap-6">
-              <div className="grid gap-3">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Gói dịch vụ Premium</Label>
-                <Select value={editPlanData.goiDichVu} onValueChange={(v) => setEditPlanData({ ...editPlanData, goiDichVu: v })}>
-                  <SelectTrigger className="h-12 rounded-2xl bg-gray-50 border-gray-100 focus:ring-blue-600 font-bold">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl shadow-3xl">
-                    <SelectItem value="mienPhi" className="rounded-xl">Miễn phí (Tiêu chuẩn)</SelectItem>
-                    <SelectItem value="coBan" className="rounded-xl">Cơ bản (Professional)</SelectItem>
-                    <SelectItem value="chuyenNghiep" className="rounded-xl">Chuyên nghiệp (Enterprise)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-3">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Thời hạn sử dụng mới</Label>
-                <div className="relative group">
-                  <Calendar className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-blue-600" />
-                  <Input
-                    id="edit-expiry"
-                    type="date"
-                    value={editPlanData.ngayHetHan}
-                    onChange={(e) => setEditPlanData({ ...editPlanData, ngayHetHan: e.target.value })}
-                    className="h-12 pl-12 rounded-2xl bg-gray-50 border-gray-100 focus-visible:ring-blue-600 font-bold"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2 p-1 pt-2">
-                <div
-                  className={cn("p-1.5 rounded-lg transition-all", editPlanData.isActive ? "bg-emerald-100" : "bg-orange-100")}
-                  onClick={() => setEditPlanData({ ...editPlanData, isActive: !editPlanData.isActive })}
-                >
-                  {editPlanData.isActive ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <X className="h-4 w-4 text-orange-600" />}
-                </div>
-                <Label className="text-xs font-black uppercase tracking-widest text-gray-700 cursor-pointer" onClick={() => setEditPlanData({ ...editPlanData, isActive: !editPlanData.isActive })}>
-                  Trạng thái: <span className={cn(editPlanData.isActive ? "text-emerald-600" : "text-orange-600")}>{editPlanData.isActive ? 'Cho phép truy cập' : 'Ngắt kết nối / Khóa'}</span>
-                </Label>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter className="p-8 pt-4 bg-gray-50/50 flex-col sm:flex-row gap-3">
-            <Button variant="ghost" onClick={() => setIsEditPlanDialogOpen(false)} className="flex-1 h-12 rounded-2xl font-bold order-2 sm:order-1 transition-shadow hover:bg-gray-100">
-              Bỏ qua
-            </Button>
-            <Button
-              onClick={handleEditPlan}
-              className="flex-1 h-12 rounded-2xl bg-blue-600 hover:bg-blue-700 font-bold shadow-lg shadow-blue-100 order-1 sm:order-2 transition-all active:scale-95"
-              disabled={actionLoading === 'edit-plan'}
-            >
-              {actionLoading === 'edit-plan' ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
-              Xác nhận gia hạn
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Reset Pass Dialog */}
-      <Dialog open={isResetPasswordDialogOpen} onOpenChange={setIsResetPasswordDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] p-0 rounded-[2rem] overflow-hidden border-none shadow-4xl">
-          <DialogHeader className="p-8 pb-4 bg-rose-50/50">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-rose-600 rounded-2xl shadow-lg shadow-rose-100">
-                <LockKeyhole className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <DialogTitle className="text-xl font-black tracking-tight">Cấp lại mật khẩu</DialogTitle>
-              </div>
-            </div>
-          </DialogHeader>
-          <div className="p-8 space-y-6">
-            <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Tài khoản</p>
-              <p className="text-sm font-bold text-gray-800 break-all leading-tight">{selectedLandlord?.email}</p>
-            </div>
-            <div className="space-y-3">
-              <Label htmlFor="new-pass" className="text-xs font-black uppercase tracking-widest text-gray-500 ml-1">Mật khẩu mới</Label>
-              <Input
-                id="new-pass"
-                type="password"
-                placeholder="Lớn hơn 6 ký tự"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="h-12 rounded-2xl bg-gray-50 border-gray-100 focus-visible:ring-rose-500"
-              />
-              <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl border border-amber-100">
-                <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                <p className="text-[10px] font-medium text-amber-800 leading-normal">Mật khẩu sẽ có hiệu lực ngay lập tức. Hãy đảm bảo bạn đã thông báo cho chủ trọ mật khẩu này.</p>
-              </div>
-            </div>
-          </div>
-          <DialogFooter className="p-8 pt-4 bg-gray-50/50 flex-col sm:flex-row gap-3">
-            <Button variant="ghost" onClick={() => setIsResetPasswordDialogOpen(false)} className="flex-1 h-12 rounded-2xl font-bold order-2 sm:order-1 capitalize">Hủy bỏ</Button>
-            <Button
-              onClick={handleResetPassword}
-              className="flex-1 h-12 rounded-2xl bg-rose-600 hover:bg-rose-700 font-bold shadow-lg shadow-rose-100 order-1 sm:order-2 transition-all active:scale-95"
-              disabled={actionLoading === 'reset-pw' || !newPassword}
-            >
-              {actionLoading === 'reset-pw' ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <ChevronRight className="h-4 w-4 mr-2" />}
-              Đổi mật khẩu
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

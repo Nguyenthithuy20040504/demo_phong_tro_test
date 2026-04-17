@@ -239,7 +239,7 @@ export default function ThemMoiHoaDonPage() {
     
     // Kiểm tra validation trước khi submit
     if (formData.chiSoDienBanDau < 0 || formData.chiSoDienCuoiKy < 0) {
-      toast.error('Chỉ số điện không được âm bạn nhé!');
+      toast.error('Chỉ số điện không được phép nhận giá trị âm.');
       return;
     }
     
@@ -249,12 +249,12 @@ export default function ThemMoiHoaDonPage() {
     }
     
     if (formData.chiSoDienCuoiKy < formData.chiSoDienBanDau) {
-      toast.error('Chỉ số điện cuối kỳ phải lớn hơn hoặc bằng chỉ số ban đầu mới đúng nhé!');
+      toast.error('Chỉ số điện cuối kỳ phải lớn hơn hoặc bằng chỉ số ban đầu.');
       return;
     }
     
     if (formData.chiSoNuocCuoiKy < formData.chiSoNuocBanDau) {
-      toast.error('Bạn kiểm tra lại chỉ số nước nhé, số cuối kỳ phải lớn hơn số ban đầu.');
+      toast.error('Vui lòng kiểm tra lại chỉ số nước. Số cuối kỳ phải lớn hơn hoặc bằng số ban đầu.');
       return;
     }
     
@@ -301,7 +301,7 @@ export default function ThemMoiHoaDonPage() {
         toast.error(errorData.message || 'Ồ, có lỗi khi tạo hóa đơn. Bạn thử lại xem sao!');
       }
     } catch (error) {
-      toast.error('Lỗi kết nối rồi. Bạn kiểm tra lại mạng nhé!');
+      toast.error('Lỗi kết nối. Vui lòng kiểm tra lại đường truyền mạng.');
     } finally {
       setSubmitting(false);
     }

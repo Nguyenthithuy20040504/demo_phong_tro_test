@@ -259,7 +259,7 @@ export default function HoaDonPage() {
     cache.setIsRefreshing(true);
     await fetchData(true);
     cache.setIsRefreshing(false);
-    toast.success('Dữ liệu hóa đơn đã được cập nhật mới nhất!');
+    toast.success('Dữ liệu hóa đơn đã được cập nhật.');
   };
 
   const filteredHoaDon = hoaDonList.filter(hoaDon => {
@@ -328,13 +328,13 @@ export default function HoaDonPage() {
         cache.clearCache();
         // Cập nhật trạng thái thành 'daHuy' thay vì xóa khỏi list
         setHoaDonList(prev => prev.map(hoaDon => hoaDon._id === id ? { ...hoaDon, trangThai: 'daHuy' } : hoaDon));
-        toast.success('Đã hủy hóa đơn thành công!');
+        toast.success('Hóa đơn đã được hủy.');
       } else {
         const errorData = await response.json();
-        toast.error('Ồ, chưa hủy được hóa đơn này. ' + (errorData.message || 'Bạn thử lại sau nhé!'));
+        toast.error('Không thể hủy hóa đơn. ' + (errorData.message || 'Vui lòng thử lại sau.'));
       }
     } catch (error) {
-      toast.error('Lỗi kết nối rồi. Bạn kiểm tra lại mạng nhé!');
+      toast.error('Lỗi kết nối. Vui lòng kiểm tra lại đường truyền mạng.');
     }
   };
 
@@ -355,7 +355,7 @@ export default function HoaDonPage() {
         setHoaDonList(prev => prev.map(hoaDon => ids.includes(hoaDon._id!) ? { ...hoaDon, trangThai: 'daHuy' } : hoaDon));
         toast.success(`Thành công! Đã hủy ${ids.length} hóa đơn.`);
       } else {
-        toast.error(`Có ${failedDeletes.length} hóa đơn chưa hủy được. Bạn kiểm tra lại nhé!`);
+        toast.error(`Có ${failedDeletes.length} hóa đơn chưa được hủy. Vui lòng kiểm tra lại.`);
       }
     } catch (error) {
       toast.error('Có lỗi xảy ra khi kết nối. Một số hóa đơn có thể chưa được hủy.');
@@ -424,7 +424,7 @@ export default function HoaDonPage() {
     const publicUrl = `${window.location.origin}/hoa-don/${hoaDon._id}`;
     
     navigator.clipboard.writeText(publicUrl).then(() => {
-      toast.success('Đã sao chép link hóa đơn! Bạn có thể gửi cho khách ngay.');
+      toast.success('Liên kết hóa đơn đã được sao chép.');
     }).catch(() => {
       // Fallback: hiển thị modal với link
       const modal = document.createElement('div');
@@ -638,7 +638,7 @@ export default function HoaDonPage() {
       printWindow.focus();
       setTimeout(() => {
         printWindow.print();
-        toast.success('Đã mở cửa sổ in/xuất PDF!', { id: toastId });
+        toast.success('Đã mở tệp tin PDF.', { id: toastId });
       }, 500);
     } catch (error) {
       console.error('PDF export error:', error);
@@ -665,7 +665,7 @@ export default function HoaDonPage() {
         const result = await response.json();
         toast.success(`Hệ thống đã tự động tạo xong ${result.data.createdInvoices} hóa đơn cho bạn.`);
         if (result.data.errors.length > 0) {
-          toast.warning(`Có ${result.data.errors.length} hóa đơn bị lỗi, bạn kiểm tra lại nhé.`);
+          toast.warning(`Có ${result.data.errors.length} hóa đơn bị lỗi. Vui lòng kiểm tra lại.`);
         }
         fetchData(); // Refresh data
       } else {
@@ -1308,7 +1308,7 @@ function PaymentForm({
                   variant="outline"
                   onClick={() => {
                     navigator.clipboard.writeText(hoaDon.checkoutUrl || '');
-                    toast.success('Đã sao chép link QR!');
+                    toast.success('Đã sao chép liên kết QR.');
                   }}
                 >
                   <Copy className="h-3 w-3" />

@@ -29,7 +29,6 @@ import {
   Clock,
   UserX,
   UserCheck,
-  LockKeyhole,
   AlertTriangle,
   MailCheck,
   MailX
@@ -161,10 +160,8 @@ const getInitials = (name: string) => {
 
 type LandlordTableProps = {
   onView: (landlord: Landlord) => void
-  onEditProfile: (landlord: Landlord) => void
   onEditPlan: (landlord: Landlord) => void
   onToggleStatus: (landlord: Landlord) => void
-  onResetPassword: (landlord: Landlord) => void
   onDelete: (id: string) => void
   onResendVerification: (landlord: Landlord) => void
   actionLoading: string | null
@@ -321,14 +318,6 @@ const createColumns = (props: LandlordTableProps & { setLandlordToDelete: (l: La
               <span className="font-medium text-sm">Xem chi tiết</span>
             </DropdownMenuItem>
             
-            <DropdownMenuItem className="rounded-lg py-2 cursor-pointer" onClick={(e) => {
-              e.stopPropagation();
-              props.onEditProfile(landlord);
-            }}>
-              <Edit2 className="mr-3 h-4 w-4 opacity-70" />
-              <span className="font-medium text-sm">Chỉnh sửa hồ sơ</span>
-            </DropdownMenuItem>
-
             <DropdownMenuSeparator className="my-1" />
 
             <DropdownMenuItem className="rounded-lg py-2 cursor-pointer" onClick={(e) => {
@@ -354,14 +343,6 @@ const createColumns = (props: LandlordTableProps & { setLandlordToDelete: (l: La
                   <span className="font-medium text-sm text-emerald-600">Mở khóa tài khoản</span>
                 </>
               )}
-            </DropdownMenuItem>
-
-            <DropdownMenuItem className="rounded-lg py-2 cursor-pointer" onClick={(e) => {
-              e.stopPropagation();
-              props.onResetPassword(landlord);
-            }}>
-              <LockKeyhole className="mr-3 h-4 w-4 opacity-70" />
-              <span className="font-medium text-sm">Đặt lại mật khẩu</span>
             </DropdownMenuItem>
 
             {!emailVerified && (

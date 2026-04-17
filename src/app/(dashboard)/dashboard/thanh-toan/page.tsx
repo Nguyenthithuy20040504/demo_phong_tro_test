@@ -163,7 +163,7 @@ export default function ThanhToanPage() {
     cache.setIsRefreshing(true);
     await fetchData(true);
     cache.setIsRefreshing(false);
-    toast.success('Dữ liệu thanh toán đã được làm mới!');
+    toast.success('Dữ liệu thanh toán đã được cập nhật.');
   };
 
   const filteredThanhToan = thanhToanList.filter(thanhToan => {
@@ -283,10 +283,10 @@ export default function ThanhToanPage() {
       if (response.ok) {
         cache.clearCache();
         setThanhToanList(prev => prev.filter(thanhToan => thanhToan._id !== id));
-        toast.success('Đã xóa lịch sử thanh toán thành công!');
+        toast.success('Lịch sử thanh toán đã được xóa.');
       } else {
         const errorData = await response.json();
-        toast.error('Chưa xóa được giao dịch này. ' + (errorData.message || 'Bạn kiểm tra lại nhé!'));
+        toast.error('Không thể xóa giao dịch. ' + (errorData.message || 'Vui lòng kiểm tra lại.'));
       }
     } catch (error) {
       toast.error('Lỗi kết nối rồi. Bạn kiểm tra lại mạng xem sao!');
@@ -334,7 +334,7 @@ export default function ThanhToanPage() {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       
-      toast.success('Đã tải biên lai xuống thành công!', { id: toastId });
+      toast.success('Biên lai đã được tải xuống.', { id: toastId });
     } catch (error) {
       console.error('Download error:', error);
       // Fallback: Mở trong tab mới nếu fetch bị lỗi CORS
@@ -829,7 +829,7 @@ function ThanhToanForm({
         onSuccess();
       } else {
         const errorData = await response.json();
-        toast.error('Có chút trục trặc: ' + (errorData.message || 'không thể lưu dữ liệu nhé!'));
+        toast.error('Đã xảy ra lỗi: ' + (errorData.message || 'không thể lưu dữ liệu.'));
       }
     } catch (error) {
       toast.error('Lỗi kết nối khi gửi dữ liệu thanh toán.');

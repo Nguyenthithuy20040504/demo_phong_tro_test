@@ -89,6 +89,8 @@ function LoginFormContent() {
 
       if (role === 'khachThue') {
         window.location.href = '/khach-thue/dashboard';
+      } else if (role === 'admin') {
+        window.location.href = '/dashboard/admin/saas-dashboard';
       } else {
         window.location.href = selectedPlan ? `/dashboard?plan=${selectedPlan}` : '/dashboard';
       }

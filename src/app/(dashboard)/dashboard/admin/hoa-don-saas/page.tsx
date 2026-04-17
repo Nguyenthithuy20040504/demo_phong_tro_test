@@ -124,7 +124,7 @@ export default function SaaSInvoicesPage() {
 
       if (res.ok) {
         const data = await res.json();
-        toast.success('Đã đồng bộ ngày hết hạn thành công!', { id: 'sync' });
+        toast.success('Đồng bộ ngày hết hạn thành công.', { id: 'sync' });
         fetchPayments();
       } else {
         const err = await res.json();
@@ -228,7 +228,7 @@ export default function SaaSInvoicesPage() {
       XLSX.writeFile(workbook, `BaoCao_SaaS_${new Date().getTime()}.xlsx`);
       
       toast.dismiss();
-      toast.success('Đã xuất Excel thành công!');
+      toast.success('Dữ liệu đã được xuất thành tệp tin Excel.');
     } catch (error) {
       toast.dismiss();
       toast.error('Lỗi khi xuất dữ liệu Excel.');
@@ -365,7 +365,7 @@ export default function SaaSInvoicesPage() {
       pdf.save(`BaoCao_SaaS_${new Date().getTime()}.pdf`);
       
       toast.dismiss();
-      toast.success('Đã xuất PDF thành công!');
+      toast.success('Dữ liệu đã được xuất thành tệp tin PDF.');
     } catch (error) {
       console.error('PDF Export Error:', error);
       toast.dismiss();

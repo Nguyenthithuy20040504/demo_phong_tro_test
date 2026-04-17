@@ -29,7 +29,6 @@ import {
   Plus, 
   Search, 
   Edit, 
-  Trash2, 
   Users, 
   Phone,
   Mail,
@@ -53,7 +52,6 @@ import useSWR, { mutate } from 'swr';
 import { KhachThue } from '@/types';
 import { KhachThueDataTable } from './table';
 import { CCCDUpload } from '@/components/ui/cccd-upload';
-import { DeleteConfirmPopover } from '@/components/ui/delete-confirm-popover';
 import { KhachThueDetailDialog } from '@/components/ui/khach-thue-detail-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
@@ -124,32 +122,7 @@ export default function KhachThuePage() {
     setIsDetailOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    setActionLoading(`delete-${id}`);
-    try {
-      const response = await fetch(`/api/khach-thue/${id}`, {
-        method: 'DELETE',
-      });
-      
-      const result = await response.json();
-      if (response.ok && result.success) {
-        mutate(apiUrl);
-        toast.success('Đã xóa thông tin khách thuê thành công!');
-      } else {
-        const msg = (result.message || '').toLowerCase();
-        if (msg.includes('hop dong') || msg.includes('hợp đồng') || msg.includes('contract')) {
-          toast.error('Khách thuê này đang có hợp đồng hoạt động. Bạn hãy kết thúc hợp đồng trước khi xóa nhé!');
-        } else {
-          toast.error(result.message || 'Rất tiếc, đã có lỗi khi xóa. Vui lòng thử lại!');
-        }
-      }
-    } catch (error) {
-      console.error('Error deleting khach thue:', error);
-      toast.error('Mất kết nối với máy chủ. Vui lòng thử lại sau ít phút!');
-    } finally {
-      setActionLoading(null);
-    }
-  };
+
 
   // State cho dialog tạo tài khoản
   const [isCreateAccountOpen, setIsCreateAccountOpen] = useState(false);
@@ -261,7 +234,7 @@ export default function KhachThuePage() {
                     {editingKhachThue ? 'Cập nhật hồ sơ khách thuê' : 'Thêm khách thuê mới'}
                 </DialogTitle>
                 <DialogDescription>
-                    {editingKhachThue ? 'Thay đổi thông tin liên lạc hoặc hồ sơ của khách' : 'Hãy nhập đầy đủ thông tin để tạo hồ sơ khách thuê mới nhé!'}
+                    {editingKhachThue ? 'Thay đổi thông tin liên lạc hoặc hồ sơ của khách' : 'Vui lòng nhập đầy đủ thông tin để tạo hồ sơ khách thuê mới.'}
                 </DialogDescription>
                 </DialogHeader>
                 
@@ -355,7 +328,6 @@ export default function KhachThuePage() {
             data={filteredKhachThue}
             onView={handleView}
             onEdit={handleEdit}
-            onDelete={handleDelete}
             onCreateAccount={!isNhanVien ? handleCreateAccount : undefined}
             actionLoading={actionLoading}
             searchTerm={searchTerm}
@@ -363,7 +335,6 @@ export default function KhachThuePage() {
             selectedTrangThai={selectedTrangThai}
             onTrangThaiChange={setSelectedTrangThai}
             canEdit={!isNhanVien}
-            canDelete={!isNhanVien}
           />
         </CardContent>
       </Card>
@@ -489,7 +460,7 @@ export default function KhachThuePage() {
                       onClick={() => {
                         const publicUrl = `${window.location.origin}/khach-thue/dang-nhap`;
                         navigator.clipboard.writeText(publicUrl);
-                        toast.success('Đã sao chép đường dẫn đăng nhập cho khách!');
+                        toast.success('Liên kết đăng nhập dành cho khách đã được sao chép.');
                       }}
                       className="text-green-600 hover:text-green-700 hover:bg-green-50"
                       title="Copy link đăng nhập"
@@ -507,15 +478,8 @@ export default function KhachThuePage() {
                         </Button>
                     )}
                   </div>
-                  {!isNhanVien && (
-                    <DeleteConfirmPopover
-                        onConfirm={() => handleDelete(khachThue._id!)}
-                        title="Xóa khách thuê"
-                        description="Bạn có thực sự muốn xóa hồ sơ khách thuê này không?"
-                        className="text-black hover:text-red-700 hover:bg-red-50"
-                    />
-                  )}
-                </div>
+                  </div>
+
               </div>
             </Card>
           ))}
@@ -696,7 +660,7 @@ function KhachThueForm({
         if (result.success) {
           onSuccess(result.data);
         } else {
-          toast.error(result.message || 'Rất tiếc, không thể lưu thông tin. Hãy kiểm tra lại nhé!');
+          toast.error(result.message || 'Không thể lưu thông tin. Vui lòng kiểm tra lại.');
         }
       } else {
         const error = await response.json();
@@ -712,7 +676,7 @@ function KhachThueForm({
       }
     } catch (error) {
       console.error('Error submitting form:', error);
-      toast.error('Mất kết nối với máy chủ. Kiểm tra lại mạng nhé!');
+      toast.error('Mất kết nối với máy chủ. Vui lòng kiểm tra lại đường truyền mạng.');
     } finally {
       setIsSubmitting(false);
     }

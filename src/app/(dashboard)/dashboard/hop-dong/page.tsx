@@ -350,10 +350,10 @@ export default function HopDongPage() {
         setHopDongList(prev => prev.filter(hopDong => hopDong._id !== id));
         toast.success('Đã xóa hợp đồng thành công khỏi hệ thống!');
       } else {
-        toast.error('Ồ, không xóa được hợp đồng này. Bạn thử lại sau nhé!');
+        toast.error('Không thể xóa hợp đồng. Vui lòng thử lại sau.');
       }
     } catch (error) {
-      toast.error('Lỗi kết nối rồi. Bạn kiểm tra lại mạng nhé!');
+      toast.error('Lỗi kết nối. Vui lòng kiểm tra lại đường truyền mạng.');
     }
   };
 
@@ -1048,9 +1048,11 @@ export default function HopDongPage() {
       const blob = new Blob([uint8Array], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
       saveAs(blob, `hop-dong-${hopDong.maHopDong}.docx`);
       
-      toast.success('Đã tải xuống file hợp đồng thành công!');
+      saveAs(blob, `hop-dong-${hopDong.maHopDong}.docx`);
+      
+      toast.success('Hợp đồng đã được tải xuống.');
     } catch (error) {
-      toast.error('Chưa tạo được file Word. Bạn thử lại xem sao!');
+      toast.error('Không thể tạo tệp tin Word. Vui lòng thử lại.');
     }
   };
 
@@ -1068,14 +1070,14 @@ export default function HopDongPage() {
     
     // Cảnh báo khi chưa chọn thời gian gia hạn mới
     if (!newEndDate) {
-      toast.warning('Bạn vui lòng chọn ngày kết thúc mới để gia hạn hợp đồng nhé!');
+      toast.warning('Vui lòng chọn ngày kết thúc mới để thực hiện gia hạn hợp đồng.');
       return;
     }
 
     const currentEndDate = new Date(extendingHopDong.ngayKetThuc);
     const selectedEndDate = new Date(newEndDate);
     if (selectedEndDate <= currentEndDate) {
-      toast.warning('Ngày kết thúc mới phải sau ngày kết thúc hiện tại!');
+      toast.warning('Ngày kết thúc mới phải sau ngày kết thúc hiện tại.');
       return;
     }
     
@@ -1108,7 +1110,7 @@ export default function HopDongPage() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 tieuDe: `Yêu cầu gia hạn hợp đồng - Phòng ${getPhongName(extendingHopDong.phong)}`,
-                noiDung: `Chủ trọ vừa gửi yêu cầu gia hạn hợp đồng ${extendingHopDong.maHopDong} đến ngày ${selectedEndDate.toLocaleDateString('vi-VN')}. Bạn vui lòng kiểm tra và duyệt trên ứng dụng nhé!`,
+                noiDung: `Chủ trọ vừa gửi yêu cầu gia hạn hợp đồng ${extendingHopDong.maHopDong} đến ngày ${selectedEndDate.toLocaleDateString('vi-VN')}. Vui lòng kiểm tra và phê duyệt trên ứng dụng.`,
                 loai: 'hopDong',
                 nguoiNhan: ktIds,
                 phong: [typeof extendingHopDong.phong === 'object' ? (extendingHopDong.phong as any)._id : extendingHopDong.phong],
@@ -1118,11 +1120,11 @@ export default function HopDongPage() {
           }
         } catch(e) { console.error('Error sending extension notification:', e); }
 
-        toast.success('Yêu cầu gia hạn đã được gửi tới khách thuê để phê duyệt!');
+        toast.success('Yêu cầu gia hạn đã được gửi tới khách thuê.');
         setExtendingHopDong(null);
       } else {
         const errorData = await response.json();
-        toast.error(errorData.message || 'Không gia hạn được hợp đồng. Bạn kiểm tra lại thông tin nhé!');
+        toast.error(errorData.message || 'Không thể gia hạn hợp đồng. Vui lòng kiểm tra lại thông tin.');
       }
     } catch (error) {
       toast.error('Lỗi kết nối khi gia hạn hợp đồng.');
@@ -1159,10 +1161,10 @@ export default function HopDongPage() {
         setHopDongList(prev => prev.map(hd => 
           hd._id === cancellingHopDong._id ? result.data : hd
         ));
-        toast.success('Hợp đồng đã được hủy thành công!');
+        toast.success('Hợp đồng đã được hủy.');
         setCancellingHopDong(null);
       } else {
-        toast.error('Chưa hủy được hợp đồng này. Thử lại sau nhé!');
+        toast.error('Không thể hủy hợp đồng. Vui lòng thử lại sau.');
       }
     } catch (error) {
       toast.error('Lỗi kết nối khi hủy hợp đồng.');
@@ -1538,7 +1540,7 @@ export default function HopDongPage() {
                 </div>
                 
                 <p className="text-[11px] text-muted-foreground italic leading-relaxed">
-                  💡 Ghi chú: Thông báo hủy hợp đồng sẽ được gửi tự động đến tất cả thành viên trong hợp đồng ngay sau khi bạn xác nhận.
+                  Ghi chú: Thông báo hủy hợp đồng sẽ được gửi tự động đến tất cả thành viên trong hợp đồng ngay sau khi xác nhận.
                 </p>
               </div>
             </div>

@@ -373,6 +373,21 @@ export async function DELETE(
       );
     }
 
+    // Kiểm tra xem phòng có hợp đồng đang hoạt động hoặc chờ duyệt không
+    const mongoose = (await import('mongoose')).default;
+    const HopDongModel = mongoose.models.HopDong || mongoose.model('HopDong');
+    const existingContract = await HopDongModel.findOne({
+      phong: id,
+      trangThai: { $in: ['hoatDong', 'choDuyet'] }
+    });
+
+    if (existingContract) {
+      return NextResponse.json(
+        { message: 'Không thể xóa phòng đang có hợp đồng hoạt động hoặc chờ duyệt. Vui lòng kết thúc hợp đồng trước.' },
+        { status: 400 }
+      );
+    }
+
     await Phong.findByIdAndDelete(id);
 
     return NextResponse.json({

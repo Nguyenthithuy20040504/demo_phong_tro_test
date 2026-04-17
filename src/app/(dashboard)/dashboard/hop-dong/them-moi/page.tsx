@@ -448,7 +448,7 @@ export default function ThemMoiHopDongPage() {
         router.refresh();
       } else {
         const errorData = await response.json();
-        toast.error(errorData.message || 'Ồ, có lỗi khi tạo hợp đồng rồi. Bạn kiểm tra lại nhé!');
+        toast.error(errorData.message || 'Đã xảy ra lỗi khi tạo hợp đồng. Vui lòng kiểm tra lại.');
       }
     } catch (error) {
       toast.error('Lỗi kết nối rồi. Bạn kiểm tra lại mạng xem sao!');
@@ -502,7 +502,7 @@ export default function ThemMoiHopDongPage() {
                 Thông tin quy định liên kết tài khoản
               </AlertTitle>
               <AlertDescription className="text-[13px] text-teal-800 leading-normal">
-                Để đảm bảo tính minh bạch, hệ thống quy định <strong>mọi thành viên</strong> phải có tài khoản cá nhân đã được liên kết tại trang <strong>Quản lý khách thuê</strong>. Nếu không tìm thấy tên khách, hãy tạo tài khoản cho họ trước khi thêm vào hợp đồng nhé!
+                Để đảm bảo tính minh bạch, hệ thống quy định <strong>mọi thành viên</strong> phải có tài khoản cá nhân đã được liên kết tại trang <strong>Quản lý khách thuê</strong>. Nếu không tìm thấy tên khách, yêu cầu tạo tài khoản trước khi thực hiện thêm vào hợp đồng.
               </AlertDescription>
             </div>
           </Alert>

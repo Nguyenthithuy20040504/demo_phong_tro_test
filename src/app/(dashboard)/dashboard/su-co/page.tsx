@@ -191,7 +191,7 @@ export default function SuCoPage() {
     cache.setIsRefreshing(true);
     await fetchData(true);
     cache.setIsRefreshing(false);
-    toast.success('Dữ liệu đã được làm mới rồi nhé!');
+    toast.success('Dữ liệu đã được cập nhật.');
   };
 
   const filteredSuCo = suCoList.filter(suCo => {
@@ -288,12 +288,12 @@ export default function SuCoPage() {
       if (result.success) {
         cache.clearCache();
         setSuCoList(prev => prev.filter(suCo => suCo._id !== id));
-        toast.success('Đã xóa sự cố này khỏi danh sách!');
+        toast.success('Sự cố đã được xóa khỏi danh sách.');
       } else {
-        toast.error('Hệ thống chưa xóa được sự cố này. Bạn thử lại sau ít phút nhé!');
+        toast.error('Không thể xóa sự cố. Vui lòng thử lại sau.');
       }
     } catch (error) {
-      toast.error('Có lỗi xảy ra khi kết nối. Bạn kiểm tra lại mạng nhé!');
+      toast.error('Lỗi kết nối. Vui lòng kiểm tra lại đường truyền mạng.');
     }
   };
 
@@ -320,16 +320,16 @@ export default function SuCoPage() {
       if (result.success) {
         // Cập nhật lại với dữ liệu chính xác từ server (vd: có thêm ngày xử lý)
         setSuCoList(prev => prev.map(suCo => suCo._id === id ? result.data : suCo));
-        toast.success('Đã cập nhật tình trạng xử lý sự cố mới nhất.');
+        toast.success('Tình trạng xử lý sự cố đã được cập nhật.');
       } else {
         // Rollback nếu có lỗi từ server
         setSuCoList(previousList);
-        toast.error('Chưa cập nhật được trạng thái. Bạn thử lại xem sao!');
+        toast.error('Không thể cập nhật trạng thái. Vui lòng thử lại.');
       }
     } catch (error) {
       // Rollback nếu lỗi kết nối
       setSuCoList(previousList);
-      toast.error('Lỗi kết nối rồi. Bạn kiểm tra lại mạng nhé!');
+      toast.error('Lỗi kết nối. Vui lòng kiểm tra lại đường truyền mạng.');
     }
   };
 
@@ -749,13 +749,13 @@ function SuCoForm({
       const result = await response.json();
 
       if (result.success) {
-        toast.success(suCo ? 'Thông tin sự cố đã được cập nhật!' : 'Gửi báo cáo sự cố thành công!');
+        toast.success(suCo ? 'Thông tin sự cố đã được cập nhật.' : 'Đã gửi báo cáo sự cố.');
         onSuccess();
       } else {
-        toast.error('Có chút trục trặc: ' + (result.message || 'vui lòng thử lại sau nhé!'));
+        toast.error('Đã xảy ra lỗi: ' + (result.message || 'vui lòng thử lại sau.'));
       }
     } catch (error) {
-      toast.error('Không gửi được dữ liệu. Bạn kiểm tra lại kết nối mạng nhé!');
+      toast.error('Không thể gửi dữ liệu. Vui lòng kiểm tra lại kết nối mạng.');
     } finally {
       setIsSubmitting(false);
     }

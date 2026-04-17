@@ -35,7 +35,7 @@ export function ChatBot() {
     {
       id: '1',
       role: 'bot',
-      content: 'Xin chào! Tôi là trợ lý ảo của hệ thống quản lý phòng trọ. Tôi có thể giúp gì cho bạn hôm nay?',
+      content: 'Xin chào. Tôi là trợ lý ảo của hệ thống quản lý phòng trọ. Tôi có thể hỗ trợ gì cho bạn.',
       timestamp: new Date(),
     },
   ]);
@@ -102,7 +102,7 @@ export function ChatBot() {
       const errorMessage: Message = {
         id: Date.now().toString(),
         role: 'bot',
-        content: 'Xin lỗi, tôi đang gặp chút sự cố kết nối. Bạn vui lòng thử lại sau giây lát nhé!',
+        content: 'Hệ thống đang gặp sự cố kết nối. Vui lòng thử lại sau.',
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -234,7 +234,7 @@ export function ChatBot() {
                           <div className="flex justify-start">
                             <div className="flex gap-2 items-center bg-white p-3 rounded-2xl border border-teal-50 shadow-sm rounded-tl-none">
                               <Loader2 className="w-4 h-4 animate-spin text-teal-500" />
-                              <span className="text-xs text-slate-400">Bot đang trả lời...</span>
+                              <span className="text-xs text-slate-400">Đang xử lý</span>
                             </div>
                           </div>
                         )}
@@ -250,7 +250,7 @@ export function ChatBot() {
                       className="flex w-full gap-2 items-center"
                     >
                       <Input
-                        placeholder="Hãy hỏi tôi điều gì đó..."
+                        placeholder="Nhập nội dung cần hỗ trợ"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         className="flex-1 border-slate-200 focus:ring-teal-500 rounded-xl"

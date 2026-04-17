@@ -3,11 +3,15 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Trash2, AlertTriangle, X } from 'lucide-react';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Trash2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DeleteConfirmPopoverProps {
@@ -55,8 +59,8 @@ export function DeleteConfirmPopover({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <Button
           variant={buttonVariant}
           size={buttonSize}
@@ -77,68 +81,51 @@ export function DeleteConfirmPopover({
             </>
           )}
         </Button>
-      </PopoverTrigger>
-      <PopoverContent 
-        className="w-80 p-0" 
-        align="end"
-        side="top"
-        sideOffset={8}
-      >
-        <div className="p-4">
-          {/* Header */}
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-destructive/10 flex items-center justify-center">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[400px] p-0 overflow-hidden border-none shadow-2xl">
+        <div className="bg-white p-6">
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
+              <AlertTriangle className="h-8 w-8 text-red-500" />
             </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-sm text-foreground">
+            
+            <div className="space-y-2">
+              <DialogTitle className="text-xl font-bold text-gray-900">
                 {title}
-              </h3>
+              </DialogTitle>
+              <DialogDescription className="text-gray-500 leading-relaxed">
+                {description}
+              </DialogDescription>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 text-muted-foreground hover:text-foreground"
-              onClick={handleCancel}
-            >
-              <X className="h-3 w-3" />
-            </Button>
           </div>
 
-          {/* Description */}
-          <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-            {description}
-          </p>
-
-          {/* Actions */}
-          <div className="flex gap-2 justify-end">
+          <div className="flex flex-col sm:flex-row gap-3 mt-8">
             <Button
               variant="outline"
-              size="sm"
               onClick={handleCancel}
               disabled={isDeleting}
+              className="flex-1 h-12 rounded-xl font-semibold border-gray-200 hover:bg-gray-50"
             >
               Hủy
             </Button>
             <Button
               variant="destructive"
-              size="sm"
               onClick={handleConfirm}
               disabled={isDeleting}
-              className="min-w-[80px]"
+              className="flex-1 h-12 rounded-xl font-semibold shadow-lg shadow-red-100"
             >
               {isDeleting ? (
                 <>
-                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
-                  Đang xóa...
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                  Đang xử lý...
                 </>
               ) : (
-                'Xóa'
+                'Xác nhận xóa'
               )}
             </Button>
           </div>
         </div>
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
 }

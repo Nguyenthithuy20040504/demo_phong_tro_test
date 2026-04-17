@@ -3,7 +3,6 @@
 import * as React from "react";
 import {
   Edit,
-  Trash2,
   Eye,
   Phone,
   Mail,
@@ -84,31 +83,30 @@ import type { KhachThue } from '@/types';
 const getAccountStatusBadge = (hasAccount: boolean) => {
   if (hasAccount) {
     return (
-      <Badge variant="default" className="gap-1 bg-emerald-600 hover:bg-emerald-700">
-        <Check className="h-3 w-3" />
+      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
+        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]" />
         Đã có tài khoản
-      </Badge>
+      </div>
     );
   }
   return (
-    <Badge variant="outline" className="gap-1 text-muted-foreground border-dashed">
-      <X className="h-3 w-3" />
+    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-50 text-slate-500 border border-dashed border-slate-300">
+      <X className="h-3 w-3 text-slate-400" />
       Chưa có tài khoản
-    </Badge>
+    </div>
   );
 };
 
 type KhachThueTableProps = {
   onView?: (khachThue: KhachThue) => void;
   onEdit: (khachThue: KhachThue) => void;
-  onDelete: (id: string) => void;
   onCreateAccount?: (khachThue: KhachThue) => void;
   actionLoading: string | null;
   canEdit?: boolean;
   canDelete?: boolean;
 };
 
-const createColumns = (props: KhachThueTableProps & { setKhachThueToDelete: (k: KhachThue) => void; setIsDeleteDialogOpen: (o: boolean) => void }): ColumnDef<KhachThue>[] => [
+const createColumns = (props: KhachThueTableProps): ColumnDef<KhachThue>[] => [
   {
     accessorKey: "hoTen",
     header: "Họ tên",
@@ -218,28 +216,7 @@ const createColumns = (props: KhachThueTableProps & { setKhachThueToDelete: (k: 
     },
   },
 
-  {
-    accessorKey: "anhCCCD",
-    header: "Ảnh CCCD",
-    cell: ({ row }) => {
-      const anhCCCD = row.original.anhCCCD;
-      const hasFront = !!anhCCCD?.matTruoc;
-      const hasBack = !!anhCCCD?.matSau;
-      
-      if (!hasFront && !hasBack) return <span className="text-muted-foreground text-sm">-</span>;
-      
-      return (
-        <div className="flex gap-1">
-          <Badge variant={hasFront ? "default" : "outline"} className="text-[10px] px-1 h-5">
-            {hasFront ? "Mặt trước OK" : "Thiếu trước"}
-          </Badge>
-          <Badge variant={hasBack ? "default" : "outline"} className="text-[10px] px-1 h-5">
-            {hasBack ? "Mặt sau OK" : "Thiếu sau"}
-          </Badge>
-        </div>
-      );
-    },
-  },
+
   {
     accessorKey: "ngayTao",
     header: "Ngày tạo hồ sơ",
@@ -263,24 +240,32 @@ const createColumns = (props: KhachThueTableProps & { setKhachThueToDelete: (k: 
     cell: ({ row }) => {
       const khachThue = row.original as any;
       const hasAccount = !!khachThue.matKhau && khachThue.matKhau !== '';
+      
       if (hasAccount) return getAccountStatusBadge(true);
+      
       return (
-        <div className="flex items-center gap-2">
-          {getAccountStatusBadge(false)}
-          {props.onCreateAccount && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
-              onClick={(e) => {
-                e.stopPropagation();
-                props.onCreateAccount!(row.original);
-              }}
-              disabled={props.actionLoading === `create-account-${row.original._id}`}
-            >
-              <UserPlus className="h-3 w-3" />
-              {props.actionLoading === `create-account-${row.original._id}` ? 'Đang tạo...' : 'Tạo TK'}
-            </Button>
+        <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+          {props.onCreateAccount ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border border-dashed border-slate-300 bg-slate-50/50 text-slate-500 cursor-pointer hover:bg-slate-100 hover:border-slate-400 transition-all shadow-sm group">
+                  <X className="h-3 w-3 text-slate-400 group-hover:text-slate-600" />
+                  <span>Chưa có tài khoản</span>
+                  <ChevronDown className="h-3 w-3 opacity-40 group-hover:opacity-70 transition-opacity" />
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuItem 
+                  className="text-xs text-blue-600 font-medium cursor-pointer"
+                  onClick={() => props.onCreateAccount!(row.original)}
+                >
+                  <UserPlus className="h-3.5 w-3.5 mr-2" />
+                  Tạo tài khoản mới
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            getAccountStatusBadge(false)
           )}
         </div>
       );
@@ -319,23 +304,6 @@ const createColumns = (props: KhachThueTableProps & { setKhachThueToDelete: (k: 
               <Edit className="mr-2 h-4 w-4" />
               Chỉnh sửa
             </DropdownMenuItem>
-          )}
-          {props.canDelete !== false && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                className="text-destructive"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  props.setKhachThueToDelete(row.original);
-                  props.setIsDeleteDialogOpen(true);
-                }}
-                disabled={props.actionLoading === `delete-${row.original._id}`}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {props.actionLoading === `delete-${row.original._id}` ? 'Đang xóa...' : 'Xóa hồ sơ'}
-              </DropdownMenuItem>
-            </>
           )}
           {props.onCreateAccount && !(row.original as any).matKhau && (
             <>
@@ -386,8 +354,6 @@ type KhachThueDataTableProps = KhachThueTableProps & {
 export function KhachThueDataTable(props: KhachThueDataTableProps) {
   const { data: initialData, searchTerm, onSearchChange, selectedTrangThai, onTrangThaiChange, ...tableProps } = props;
   const [data, setData] = React.useState(() => initialData);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-  const [khachThueToDelete, setKhachThueToDelete] = React.useState<KhachThue | null>(null);
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -406,9 +372,7 @@ export function KhachThueDataTable(props: KhachThueDataTableProps) {
   }, [initialData]);
   
   const columns = React.useMemo(() => createColumns({ 
-    ...tableProps, 
-    setKhachThueToDelete, 
-    setIsDeleteDialogOpen 
+    ...tableProps
   }), [tableProps]);
 
   const table = useReactTable({
@@ -544,36 +508,7 @@ export function KhachThueDataTable(props: KhachThueDataTableProps) {
         </Table>
       </div>
 
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Xác nhận xóa</DialogTitle>
-            <DialogDescription>
-              Bạn có chắc chắn muốn xóa khách thuê <strong>{khachThueToDelete?.hoTen}</strong>? Hành động này không thể hoàn tác.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => setIsDeleteDialogOpen(false)}
-            >
-              Hủy
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                if (khachThueToDelete) {
-                  tableProps.onDelete(khachThueToDelete._id!);
-                  setIsDeleteDialogOpen(false);
-                  setKhachThueToDelete(null);
-                }
-              }}
-            >
-              Xác nhận xóa
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
       
       <div className="flex items-center justify-between px-4">
         <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">

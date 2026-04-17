@@ -202,7 +202,7 @@ export function TopNavbar() {
         {/* Primary Header (Dark Teal) */}
         <header className="h-14 md:h-16 bg-[#006050] text-white flex items-center px-3 md:px-8 justify-between border-b border-white/5">
           <div className="flex items-center gap-3 md:gap-6">
-            <Link href="/dashboard" className="flex items-center gap-2 md:gap-2.5 group">
+            <Link href={isAdmin ? "/dashboard/admin/saas-dashboard" : "/dashboard"} className="flex items-center gap-2 md:gap-2.5 group">
               <Home className="size-5 md:size-6 text-white" />
               <span className="text-base md:text-xl font-bold tracking-tight text-white hidden sm:inline-block">Quản lý nhà trọ</span>
             </Link>

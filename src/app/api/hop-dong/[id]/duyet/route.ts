@@ -163,7 +163,7 @@ export async function PUT(
         try {
           await ThongBao.create({
             tieuDe: `[Quan Trọng] Đóng phí Đặt cọc Hợp đồng - Phòng ${tenPhong}`,
-            noiDung: `Hệ thống vừa phát hành Hóa đơn tiền cọc trị giá ${hopDong.tienCoc.toLocaleString('vi-VN')}đ. Bạn vui lòng quét mã VietQR và thanh toán nhé!`,
+            noiDung: `Hệ thống vừa phát hành Hóa đơn tiền cọc trị giá ${hopDong.tienCoc.toLocaleString('vi-VN')}đ. Vui lòng quét mã VietQR và thực hiện thanh toán.`,
             loai: 'hoaDon',
             nguoiGui: new mongoose.Types.ObjectId(chuNhaId.toString()), // Chủ nhà gửi
             nguoiNhan: [new mongoose.Types.ObjectId(userId)], // Gửi về cho bạn người duyệt

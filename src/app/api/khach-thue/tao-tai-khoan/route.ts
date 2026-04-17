@@ -45,41 +45,36 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Kiểm tra khách thuê đã có tài khoản chưa (qua SĐT)
+    // Kiểm tra khách thuê đã có tài khoản chưa
     const existingAccount = await NguoiDung.findOne({
-      vaiTro: 'khachThue',
       $or: [
-        { soDienThoai: khachThue.soDienThoai },
-        { phone: khachThue.soDienThoai },
-      ]
-    });
-    if (existingAccount) {
-      return NextResponse.json({ 
-        success: false, 
-        message: `Khách thuê này đã có tài khoản (email: ${existingAccount.email})` 
-      }, { status: 400 });
-    }
-
-    // Kiểm tra SĐT đã bị dùng chưa (unique index)
-    const phoneTaken = await NguoiDung.findOne({
-      $or: [
+        { _id: khachThueId },
+        { email: emailLower },
         { soDienThoai: khachThue.soDienThoai },
         { phone: khachThue.soDienThoai }
       ]
     });
+    
+    if (existingAccount) {
+      return NextResponse.json({ 
+        success: false, 
+        message: `Khách thuê này hoặc email/số điện thoại này đã có tài khoản (email: ${existingAccount.email})` 
+      }, { status: 400 });
+    }
 
     const token = crypto.randomBytes(32).toString('hex');
     const hanToken = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
 
     // Tạo tài khoản NguoiDung 
     const newUser = new NguoiDung({
+      _id: khachThueId,
       ten: khachThue.hoTen,
       name: khachThue.hoTen,
       email: emailLower,
       matKhau: matKhau,
       password: matKhau,
-      soDienThoai: phoneTaken ? `kt_${khachThue.soDienThoai}` : khachThue.soDienThoai,
-      phone: phoneTaken ? `kt_${khachThue.soDienThoai}` : khachThue.soDienThoai,
+      soDienThoai: khachThue.soDienThoai,
+      phone: khachThue.soDienThoai,
       vaiTro: 'khachThue',
       role: 'khachThue',
       trangThai: 'hoatDong',

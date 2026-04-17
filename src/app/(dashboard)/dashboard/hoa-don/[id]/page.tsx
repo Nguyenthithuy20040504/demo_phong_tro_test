@@ -140,7 +140,7 @@ export default function ChinhSuaHoaDonPage() {
           return;
         }
       } else {
-        toast.error('Có lỗi khi tải thông tin hóa đơn. Thử lại sau nhé!');
+        toast.error('Đã xảy ra lỗi khi tải thông tin hóa đơn. Vui lòng thử lại sau.');
         router.push('/dashboard/hoa-don');
         return;
       }
@@ -236,7 +236,7 @@ export default function ChinhSuaHoaDonPage() {
         router.refresh();
       } else {
         const errorData = await response.json();
-        toast.error(errorData.message || 'Ồ, chưa lưu được thay đổi này. Bạn thử lại nhé!');
+        toast.error(errorData.message || 'Không thể lưu thay đổi. Vui lòng thử lại.');
       }
     } catch (error) {
       toast.error('Lỗi kết nối khi gửi dữ liệu rồi.');

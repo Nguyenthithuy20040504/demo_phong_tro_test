@@ -165,7 +165,7 @@ export default function CaiDatPage() {
 
   const handleSaveFontSettings = () => {
     localStorage.setItem('fontSettings', JSON.stringify(fontSettings));
-    toast.success('Đã lưu cài đặt font chữ của bạn thành công rồi nhé!');
+    toast.success('Cài đặt font chữ đã được lưu.');
   };
 
   const handleThemeChange = (theme: string) => {
@@ -181,7 +181,7 @@ export default function CaiDatPage() {
     setUiSettings(newUiSettings);
     applyDensity(density);
     localStorage.setItem('uiSettings', JSON.stringify(newUiSettings));
-    toast.success('Đã thay đổi độ hiển thị của giao diện nhé!');
+    toast.success('Cài đặt hiển thị giao diện đã được thay đổi.');
   };
 
   return (
@@ -370,7 +370,7 @@ export default function CaiDatPage() {
             className="w-full"
             onClick={() => {
               localStorage.setItem('uiSettings', JSON.stringify(uiSettings));
-              toast.success('Tuyệt vời! Tất cả cài đặt giao diện đã được lưu rồi nhé!');
+              toast.success('Tất cả cài đặt giao diện đã được lưu.');
             }}
           >
             <Settings className="h-4 w-4 mr-2" />

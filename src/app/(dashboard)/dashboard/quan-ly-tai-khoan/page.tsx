@@ -172,7 +172,7 @@ export default function AccountManagementPage() {
         setUsers(data);
         cache.setCache({ users: data });
       } else {
-        toast.error('Hệ thống chưa tải được danh sách người dùng, bạn thử lại sau nhé!');
+        toast.error('Hệ thống không thể tải danh sách người dùng. Vui lòng thử lại sau.');
       }
     } catch (error) {
       toast.error('Có lỗi khi lấy dữ liệu người dùng rồi.');
@@ -185,7 +185,7 @@ export default function AccountManagementPage() {
     cache.setIsRefreshing(true);
     await fetchUsers(true);
     cache.setIsRefreshing(false);
-    toast.success('Dữ liệu người dùng đã được làm mới rồi nhé!');
+    toast.success('Dữ liệu người dùng đã được cập nhật.');
   };
 
   const handleCreateUser = async () => {
@@ -217,7 +217,7 @@ export default function AccountManagementPage() {
         fetchUsers(true);
       } else {
         const error = await response.json();
-        toast.error(error.message || 'Ồ, chưa tạo được tài khoản rồi. Bạn kiểm tra lại thông tin nhé!');
+        toast.error(error.message || 'Không thể tạo tài khoản. Vui lòng kiểm tra lại thông tin.');
       }
     } catch (error) {
       toast.error('Có lỗi kết nối khi tạo tài khoản.');
@@ -237,14 +237,14 @@ export default function AccountManagementPage() {
       });
 
       if (response.ok) {
-        toast.success('Hệ thống đã cập nhật thông tin tài khoản thành công!');
+        toast.success('Thông tin tài khoản đã được cập nhật.');
         setIsEditDialogOpen(false);
         setSelectedUser(null);
         cache.clearCache();
         fetchUsers(true);
       } else {
         const error = await response.json();
-        toast.error(error.message || 'Chưa lưu được thay đổi cho tài khoản này. Bạn thử lại nhé!');
+        toast.error(error.message || 'Không thể lưu thay đổi cho tài khoản. Vui lòng thử lại.');
       }
     } catch (error) {
       toast.error('Lỗi kết nối khi cập nhật tài khoản rồi.');
@@ -264,7 +264,7 @@ export default function AccountManagementPage() {
       });
 
       if (response.ok) {
-        toast.success('Đặt lại mật khẩu thành công!');
+        toast.success('Mật khẩu đã được đặt lại.');
         setIsResetPasswordDialogOpen(false);
         setNewPassword('');
         setSelectedUser(null);
@@ -979,7 +979,7 @@ export default function AccountManagementPage() {
             </div>
             <div className="p-3 bg-blue-50 border border-blue-100 rounded-md">
               <p className="text-xs text-blue-700 leading-relaxed">
-                <strong>Lưu ý:</strong> Sau khi đặt lại, người dùng sẽ phải dùng mật khẩu mới này để đăng nhập. Bạn hãy thông báo mật khẩu này cho họ nhé.
+                <strong>Lưu ý:</strong> Sau khi đặt lại, người dùng sẽ phải sử dụng mật khẩu mới để đăng nhập. Vui lòng thông báo mật khẩu này cho người dùng.
               </p>
             </div>
           </div>

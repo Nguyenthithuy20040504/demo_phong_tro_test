@@ -37,7 +37,7 @@ export default function KhachThueDangNhapPage() {
         localStorage.setItem('khachThueToken', result.data.token);
         localStorage.setItem('khachThueData', JSON.stringify(result.data.khachThue));
         
-        toast.success('Đăng nhập thành công!');
+        toast.success('Đăng nhập thành công.');
         router.push('/khach-thue/dashboard');
       } else {
         toast.error(result.message || 'Đăng nhập thất bại');

@@ -256,7 +256,7 @@ export default function PublicInvoicePage() {
 
       // Tải xuống PDF
       pdf.save(`hoa-don-${hoaDon.maHoaDon}.pdf`);
-      toast.success('Đã xuất hóa đơn thành PDF thành công!');
+      toast.success('Hóa đơn đã được xuất thành tệp tin PDF.');
     } catch (error) {
       console.error('Error generating PDF:', error);
       toast.error('Có lỗi xảy ra khi xuất PDF');

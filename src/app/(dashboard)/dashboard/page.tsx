@@ -220,6 +220,10 @@ export default function DashboardPage() {
     }
   }, [status, session, router]);
 
+  if (status === 'authenticated' && session?.user?.role === 'admin') {
+    return null;
+  }
+
   // Filters
   const [selectedToaNha, setSelectedToaNha] = useState<string>(() => {
     if (typeof window !== 'undefined') {

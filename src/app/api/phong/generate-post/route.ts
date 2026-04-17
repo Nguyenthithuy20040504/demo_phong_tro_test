@@ -131,7 +131,7 @@ QUY TẮC QUAN TRỌNG:
         } else {
           console.error('Gemini API Error details:', data);
           if (isOverloaded) {
-            throw new Error('Hệ thống AI hiện đang quá tải do lượng truy cập cao. Bạn vui lòng đợi khoảng 1 phút rồi bấm thử lại nhé!');
+            throw new Error('Hệ thống AI hiện đang quá tải. Vui lòng thử lại sau.');
           }
           throw new Error('Lỗi từ hệ thống AI: ' + (data.error?.message || 'Không xác định'));
         }

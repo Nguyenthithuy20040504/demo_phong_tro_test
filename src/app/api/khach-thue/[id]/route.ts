@@ -347,7 +347,7 @@ export async function DELETE(
     const tenantEmail = khachThue?.email || nguoiDungKT?.email || nguoiDungByPhone?.email;
     const tenantName = khachThue?.hoTen || nguoiDungKT?.ten || nguoiDungKT?.name || nguoiDungByPhone?.ten || nguoiDungByPhone?.name;
 
-    // 1. Tìm tất cả hợp đồng hoạt động/chờ duyệt của khách thuê
+    // 1. Kiểm tra xem khách thuê có hợp đồng nào đang hoạt động hoặc chờ duyệt không
     const activeContracts = await HopDong.find({
       $or: [
         { khachThueId: { $in: [id, new mongoose.Types.ObjectId(id)] } },
@@ -356,47 +356,56 @@ export async function DELETE(
       trangThai: { $in: ['hoatDong', 'choDuyet'] }
     });
 
-    // 2. Kết thúc hợp đồng và reset phòng về trạng thái trống
-    for (const hopDong of activeContracts) {
-      hopDong.trangThai = 'daKetThuc';
-      hopDong.ngayKetThuc = new Date();
-      await hopDong.save();
-
-      if (hopDong.phong) {
-        await Phong.findByIdAndUpdate(hopDong.phong, {
-          trangThai: 'trong',
-          nguoiThue: null,
-        });
-      }
+    if (activeContracts.length > 0) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Khách thuê này hiện đang có hợp đồng đang hoạt động hoặc đang chờ duyệt. Vui lòng kết thúc tất cả hợp đồng trước khi thực hiện xóa hồ sơ.' 
+        },
+        { status: 400 }
+      );
     }
 
-    // 3. Xóa tài khoản NguoiDung liên kết (match cả vaiTro và role)
+    // 3. Xóa tài khoản NguoiDung liên kết (match id, phone hoặc email)
+    // Chỉ xóa nếu là vai trò khachThue để tránh xóa nhầm role khác
     const deleteOrConditions: any[] = [{ _id: id }];
     if (tenantPhone) {
       deleteOrConditions.push(
-        { vaiTro: 'khachThue', soDienThoai: tenantPhone },
-        { vaiTro: 'khachThue', phone: tenantPhone },
-        { role: 'khachThue', soDienThoai: tenantPhone },
-        { role: 'khachThue', phone: tenantPhone }
+        { soDienThoai: tenantPhone },
+        { phone: tenantPhone },
+        { soDienThoai: `kt_${tenantPhone}` },
+        { phone: `kt_${tenantPhone}` }
       );
     }
     if (tenantEmail) {
-      deleteOrConditions.push(
-        { vaiTro: 'khachThue', email: tenantEmail.toLowerCase() },
-        { role: 'khachThue', email: tenantEmail.toLowerCase() }
-      );
+      deleteOrConditions.push({ email: tenantEmail.toLowerCase() });
     }
-    await NguoiDung.deleteMany({ $or: deleteOrConditions });
+
+    // Xác định ID chủ nhà quản lý để tránh xóa nhầm tài khoản của chủ nhà khác
+    let chuNhaId = session.user.id;
+    if (session.user.role === 'nhanVien') {
+      const staff = await NguoiDung.findById(session.user.id).select('nguoiQuanLy');
+      if (staff?.nguoiQuanLy) {
+        chuNhaId = staff.nguoiQuanLy.toString();
+      }
+    }
+
+    await NguoiDung.deleteMany({ 
+      $and: [
+        { $or: deleteOrConditions },
+        { $or: [{ vaiTro: 'khachThue' }, { role: 'khachThue' }] },
+        { nguoiQuanLy: new mongoose.Types.ObjectId(chuNhaId) }
+      ]
+    });
 
     // 4. Xóa khách thuê từ KhachThue collection (nếu có)
     if (khachThue) {
       await KhachThue.findByIdAndDelete(id);
     }
 
-    const roomCount = activeContracts.length;
     return NextResponse.json({
       success: true,
-      message: `Đã xóa khách thuê ${tenantName}${roomCount > 0 ? `, kết thúc ${roomCount} hợp đồng và reset phòng` : ''}`,
+      message: `Đã xóa khách thuê ${tenantName} và tài khoản liên kết thành công.`,
     });
 
   } catch (error) {

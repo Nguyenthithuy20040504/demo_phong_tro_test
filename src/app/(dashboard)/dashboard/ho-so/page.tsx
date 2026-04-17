@@ -232,7 +232,7 @@ export default function ProfilePage() {
         });
       }
     } catch (error) {
-      toast.error('Ồ, không tải được thông tin hồ sơ của bạn rồi. Thử lại sau nhé!');
+      toast.error('Không thể tải thông tin hồ sơ. Vui lòng thử lại sau.');
     } finally {
       setLoading(false);
     }
@@ -253,7 +253,7 @@ export default function ProfilePage() {
         const updatedProfile = await response.json();
         setProfile(updatedProfile);
         setIsEditing(false);
-        toast.success('Hồ sơ của bạn đã được cập nhật thành công rồi nhé!');
+        toast.success('Hồ sơ đã được cập nhật.');
         
         // Update session
         await update({
@@ -265,7 +265,7 @@ export default function ProfilePage() {
           }
         });
       } else {
-        toast.error('Ồ, chưa lưu được thay đổi cho hồ sơ rồi. Bạn kiểm tra lại nhé!');
+        toast.error('Không thể lưu thay đổi cho hồ sơ. Vui lòng kiểm tra lại.');
       }
     } catch (error) {
       toast.error('Lỗi kết nối khi cập nhật hồ sơ rồi!');
@@ -285,7 +285,9 @@ export default function ProfilePage() {
       caiDatThongBao: { 
         tuDongNhacNo: profile?.caiDatThongBao?.tuDongNhacNo ?? false,
         thoiGianNhacNoEmail: profile?.caiDatThongBao?.thoiGianNhacNoEmail ?? 1440,
-        ngayGuiThongBaoCuoi: profile?.caiDatThongBao?.ngayGuiThongBaoCuoi || null
+        ngayGuiThongBaoCuoi: profile?.caiDatThongBao?.ngayGuiThongBaoCuoi || null,
+        tuDongNhacNoTelegram: profile?.caiDatThongBao?.tuDongNhacNoTelegram ?? false,
+        telegramChatId: profile?.caiDatThongBao?.telegramChatId || null
       }
     });
     setIsEditing(false);
@@ -294,7 +296,7 @@ export default function ProfilePage() {
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error('Mật khẩu xác nhận không khớp mất rồi. Bạn kiểm tra lại nhé!');
+      toast.error('Mật khẩu xác nhận không khớp. Vui lòng kiểm tra lại.');
       return;
     }
     
@@ -318,7 +320,7 @@ export default function ProfilePage() {
           confirmPassword: ''
         });
       } else {
-        toast.error(data.error || 'Đổi mật khẩu chưa thành công. Bạn kiểm tra lại mật khẩu hiện tại nhé!');
+        toast.error(data.error || 'Đổi mật khẩu không thành công. Vui lòng kiểm tra lại mật khẩu hiện tại.');
       }
     } catch (error) {
       toast.error('Có lỗi xảy ra khi thực hiện đổi mật khẩu.');
@@ -1032,7 +1034,7 @@ export default function ProfilePage() {
             <Shield className="h-5 w-5 text-amber-600 shrink-0" />
             <p className="text-xs text-amber-800 leading-relaxed">
               <strong>Mẹo nhỏ:</strong> Nên để tần suất ít nhất 1440 phút (1 ngày) để tránh làm phiền khách thuê. 
-              Đừng quên kiểm tra thông tin ngân hàng ở tab Thông tin để đảm bảo mã QR VietQR được tạo đúng nhé!
+              Kiểm tra thông tin ngân hàng để đảm bảo mã QR VietQR được tạo chính xác.
             </p>
           </div>
         </TabsContent>

@@ -79,7 +79,7 @@ export default function ToaNhaPage() {
     cache.setIsRefreshing(true);
     await fetchToaNha(true);
     cache.setIsRefreshing(false);
-    toast.success('Dữ liệu đã được cập nhật mới nhất!');
+    toast.success('Dữ liệu đã được cập nhật.');
   };
 
   const filteredToaNha = toaNhaList.filter(toaNha =>
@@ -100,12 +100,12 @@ export default function ToaNhaPage() {
       if (response.ok && result.success) {
         cache.clearCache();
         setToaNhaList(prev => prev.filter(toaNha => toaNha._id !== id));
-        toast.success('Đã xóa tòa nhà thành công!');
+        toast.success('Tòa nhà đã được xóa.');
       } else {
         toast.error(result.message || 'Xóa tòa nhà thất bại. Vui lòng thử lại sau.');
       }
     } catch (error) {
-      toast.error('Mất kết nối đến máy chủ. Kiểm tra mạng rồi thử lại nhé!');
+      toast.error('Mất kết nối với máy chủ. Vui lòng kiểm tra lại đường truyền mạng.');
     }
   };
 
@@ -329,7 +329,7 @@ function ToaNhaForm({
         if (msg.includes('duplicate') || msg.includes('exists') || response.status === 409) {
           toast.error('Tòa nhà này đã tồn tại trong hệ thống. Hãy đặt tên khác!');
         } else if (response.status === 400) {
-          toast.error('Thông tin chưa đầy đủ. Kiểm tra lại các trường bắt buộc nhé!');
+          toast.error('Thông tin không đầy đủ. Vui lòng kiểm tra lại các trường bắt buộc.');
         } else if (response.status === 403) {
           toast.error('Bạn không có quyền thực hiện thao tác này.');
         } else {
@@ -337,7 +337,7 @@ function ToaNhaForm({
         }
       }
     } catch (error) {
-      toast.error('Mất kết nối đến máy chủ. Kiểm tra mạng rồi thử lại nhé!');
+      toast.error('Mất kết nối với máy chủ. Vui lòng kiểm tra lại đường truyền mạng.');
     } finally {
       setSubmitting(false);
     }

@@ -839,7 +839,7 @@ export default function HoaDonKhachThuePage() {
                     body: JSON.stringify(reqData)
                   });
                   if(res.ok) {
-                    toast.success('Gửi xác nhận thanh toán thành công!');
+                    toast.success('Xác nhận thanh toán đã được gửi.');
                     setIsPaymentDialogOpen(false);
                     setSelectedHoaDon((prev: any) => ({...prev, trangThai: 'choDuyet'})); 
                     fetchHoaDons();

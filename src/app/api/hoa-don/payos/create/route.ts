@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (hoaDon.trangThai === 'daThanhToan') {
-      return NextResponse.json({ message: 'Hóa đơn này đã được thanh toán xong rồi nhé!' }, { status: 400 });
+      return NextResponse.json({ message: 'Hóa đơn đã được thanh toán.' }, { status: 400 });
     }
 
     // Origin for returning dynamically
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating PayOS payment link for invoice:', error);
     return NextResponse.json({ 
-        message: 'Lỗi khởi tạo cổng thanh toán. Bạn vui lòng thử lại sau hoặc liên hệ hỗ trợ nhé!',
+        message: 'Lỗi khởi tạo cổng thanh toán. Vui lòng thử lại sau hoặc liên hệ bộ phận hỗ trợ.',
         error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }

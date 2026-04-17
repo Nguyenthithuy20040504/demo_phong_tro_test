@@ -154,12 +154,14 @@ function RoomCard({
   phong,
   onClick,
   onEdit,
+  onDelete,
   onGeneratePost,
   isNhanVien,
 }: { 
   phong: EnrichedPhong;
   onClick: () => void;
   onEdit: (e: React.MouseEvent, phong: EnrichedPhong) => void;
+  onDelete: (phong: EnrichedPhong) => void;
   onGeneratePost: (e: React.MouseEvent, phong: EnrichedPhong) => void;
   isNhanVien?: boolean;
 }) {
@@ -172,7 +174,7 @@ function RoomCard({
       type="button"
       onClick={onClick}
       className={`
-        relative w-full rounded-xl border-2 p-3 md:p-4
+        relative w-full rounded-xl border-2 pt-5 pb-3 px-3 md:pt-7 md:pb-4 md:px-4
         transition-all duration-200 ease-out cursor-pointer
         ${status.bg} ${status.border} ${status.hoverBg}
         hover:shadow-lg hover:-translate-y-0.5
@@ -191,7 +193,31 @@ function RoomCard({
           >
             <Edit className="h-4 w-4" />
           </div>
-          
+          {/* Delete button */}
+          <div onClick={(e) => {
+            e.stopPropagation();
+            if (tenantName) {
+              toast.error('Phòng hiện đang có người thuê hoặc hợp đồng còn hiệu lực. Yêu cầu kết thúc hợp đồng trước khi thực hiện thao tác xóa.');
+            }
+          }}>
+            {!tenantName ? (
+              <DeleteConfirmPopover 
+                onConfirm={() => onDelete(phong)}
+                title="Xóa phòng"
+                description={`Bạn có chắc muốn xóa phòng ${phong.maPhong}? Dữ liệu sẽ không thể khôi phục.`}
+                className="h-8 w-8 bg-red-500 rounded-lg shadow-lg flex items-center justify-center text-white hover:scale-110 hover:bg-red-600 transition-all duration-300 border-none"
+              >
+                <Trash2 className="h-4 w-4" />
+              </DeleteConfirmPopover>
+            ) : (
+              <div 
+                className="h-8 w-8 bg-red-200 rounded-lg shadow-lg flex items-center justify-center text-red-400 cursor-not-allowed transition-all duration-300 border-none"
+              >
+                <Trash2 className="h-4 w-4" />
+              </div>
+            )}
+          </div>
+
           {/* Sell/Rent out button (only for empty rooms) */}
           {(phong.trangThaiTongHop || 'trong') === 'trong' && (
             <div 
@@ -250,6 +276,7 @@ function FloorSection({
   rooms,
   onRoomClick,
   onEditClick,
+  onDeleteClick,
   onGeneratePostClick,
   isNhanVien,
 }: {
@@ -257,6 +284,7 @@ function FloorSection({
   rooms: EnrichedPhong[];
   onRoomClick: (phong: EnrichedPhong) => void;
   onEditClick: (e: React.MouseEvent, phong: EnrichedPhong) => void;
+  onDeleteClick: (phong: EnrichedPhong) => void;
   onGeneratePostClick: (e: React.MouseEvent, phong: EnrichedPhong) => void;
   isNhanVien?: boolean;
 }) {
@@ -279,6 +307,7 @@ function FloorSection({
               phong={phong}
               onClick={() => onRoomClick(phong)}
               onEdit={onEditClick}
+              onDelete={onDeleteClick}
               onGeneratePost={onGeneratePostClick}
               isNhanVien={isNhanVien}
             />
@@ -439,7 +468,7 @@ export default function PhongPage() {
     cache.setIsRefreshing(true);
     await fetchPhong(true);
     cache.setIsRefreshing(false);
-    toast.success('Dữ liệu đã được cập nhật mới nhất!');
+    toast.success('Dữ liệu đã được cập nhật.');
   };
 
   // =====================================================
@@ -539,13 +568,13 @@ export default function PhongPage() {
       if (response.ok && result.success) {
         cache.clearCache();
         setPhongList(prev => prev.filter(phong => phong._id !== id));
-        toast.success('Đã xóa phòng thành công!');
+        toast.success('Đã xóa phòng.');
       } else {
         const msg = (result.message || '').toLowerCase();
         if (msg.includes('hop dong') || msg.includes('hợp đồng') || msg.includes('khach thue')) {
-          toast.error('Phòng này đang có người thuê hoặc hợp đồng còn hạn. Hãy kết thúc hợp đồng trước khi xóa nhé!');
+          toast.error('Phòng hiện đang có người thuê hoặc hợp đồng còn hiệu lực. Yêu cầu kết thúc hợp đồng trước khi thực hiện thao tác xóa.');
         } else {
-          toast.error(result.message || 'Có lỗi xảy ra khi xóa phòng. Vui lòng thử lại!');
+          toast.error(result.message || 'Có lỗi xảy ra khi xóa phòng. Vui lòng thử lại sau.');
         }
       }
     } catch (error) {
@@ -809,6 +838,9 @@ export default function PhongPage() {
                 e.stopPropagation();
                 handleEdit(p);
               }}
+              onDeleteClick={(p) => {
+                handleDelete(p._id!);
+              }}
               onGeneratePostClick={(e, p) => {
                 e.stopPropagation();
                 handleGeneratePost(p);
@@ -857,7 +889,7 @@ export default function PhongPage() {
           
           <DialogFooter>
             <div className="text-xs md:text-sm text-gray-600">
-              Có tất cả {viewingImages.length} ảnh {viewingImages.length > 1 && '- Bạn có thể vuốt để xem thêm nhé!'}
+              Có tất cả {viewingImages.length} ảnh {viewingImages.length > 1 && '- Vuốt để xem thêm'}
             </div>
           </DialogFooter>
         </DialogContent>
@@ -1011,7 +1043,7 @@ export default function PhongPage() {
                   const data = await res.json();
                   
                   if (res.ok && data.success) {
-                    toast.success('Đăng bài thành công!', {
+                    toast.success('Bài viết đã được tạo.', {
                       description: (
                         <div className="flex flex-col gap-1 mt-1">
                           <span>Bài đăng hoàn chỉnh đã có mặt trên Fanpage.</span>
@@ -1114,20 +1146,20 @@ function PhongForm({
         if (result.success) {
           onSuccess();
         } else {
-          toast.error(result.message || 'Rất tiếc, đã có lỗi xảy ra. Bạn kiểm tra lại thông tin nhé!');
+          toast.error(result.message || 'Đã có lỗi xảy ra. Vui lòng kiểm tra lại thông tin.');
         }
       } else {
         const error = await response.json();
         const msg = (error.message || '').toLowerCase();
         if (msg.includes('duplicate') || msg.includes('exists')) {
-            toast.error('Mã phòng này đã tồn tại trong tòa nhà rồi. Hãy chọn mã khác nhé!');
+            toast.error('Mã phòng đã tồn tại trong tòa nhà. Vui lòng chọn mã khác.');
         } else {
-            toast.error(error.message || 'Không thể lưu thông tin. Vui lòng thử lại sau!');
+            toast.error(error.message || 'Không thể lưu thông tin. Vui lòng thử lại sau.');
         }
       }
     } catch (error) {
       console.error('Error submitting form:', error);
-      toast.error('Mất kết nối với máy chủ. Kiểm tra lại mạng nhé!');
+      toast.error('Mất kết nối với máy chủ. Vui lòng kiểm tra lại đường truyền mạng.');
     } finally {
       setIsSubmitting(false);
     }
@@ -1336,7 +1368,7 @@ function PhongForm({
             <div>
               <h3 className="text-base md:text-lg font-medium mb-1">Quản lý hình ảnh</h3>
               <p className="text-xs text-gray-600">
-                Hãy tải lên những tấm hình đẹp nhất để thu hút khách thuê nhé! (Tối đa 10 ảnh)
+                Tải lên hình ảnh phòng thực tế (Tối đa 10 ảnh).
               </p>
             </div>
             

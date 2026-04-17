@@ -240,7 +240,7 @@ export default function ThongBaoPage() {
     cache.setIsRefreshing(true);
     await fetchData(true);
     cache.setIsRefreshing(false);
-    toast.success('Danh sách thông báo đã được làm mới rồi nhé!');
+    toast.success('Danh sách thông báo đã được cập nhật.');
   };
 
   const handleAutoGenerate = async () => {
@@ -380,12 +380,13 @@ export default function ThongBaoPage() {
           method: 'DELETE',
         });
 
+        const result = await response.json();
         if (response.ok) {
           cache.clearCache();
           setThongBaoList(prev => prev.filter(thongBao => thongBao._id !== id));
-          toast.success('Xóa thông báo thành công rồi nhé!');
+          toast.success('Thông báo đã được xóa.');
         } else {
-          toast.error('Ồ, có chút lỗi khi xóa thông báo. Bạn thử lại xem sao!');
+          toast.error(result.message || 'Đã xảy ra lỗi khi xóa thông báo. Vui lòng thử lại.');
         }
       } catch (error) {
         toast.error('Có lỗi khi kết nối để xóa thông báo.');
@@ -406,7 +407,7 @@ export default function ThongBaoPage() {
       const result = await response.json();
       
       if (response.ok && result.success) {
-        toast.success(result.message || 'Đã gửi lại thông báo thành công!', { id: toastId });
+        toast.success(result.message || 'Đã gửi lại thông báo.', { id: toastId });
       } else {
         toast.error(result.message || 'Lỗi khi gửi lại thông báo', { id: toastId });
       }
@@ -1143,7 +1144,7 @@ function ThongBaoForm({
         toast.success(thongBao ? 'Tuyệt vời! Thông báo đã được cập nhật thành công.' : 'Chúc mừng! Bạn đã tạo một thông báo mới thành công.');
         onSuccess();
       } else {
-        toast.error(result.message || 'Ồ, chưa lưu được thông báo rồi. Bạn kiểm tra lại nhé!');
+        toast.error(result.message || 'Không thể lưu thông báo. Vui lòng kiểm tra lại.');
       }
     } catch (error) {
       toast.error('Lỗi kết nối khi gửi thông báo rồi.');

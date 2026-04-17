@@ -127,7 +127,7 @@ export default function ChinhSuaHopDongPage() {
           return;
         }
       } else {
-        toast.error('Có lỗi khi tải thông tin hợp đồng. Bạn thử lại sau nhé!');
+        toast.error('Đã xảy ra lỗi khi tải thông tin hợp đồng. Vui lòng thử lại sau.');
         router.push('/dashboard/hop-dong');
         return;
       }
@@ -242,14 +242,14 @@ export default function ChinhSuaHopDongPage() {
         const result = await response.json();
         // Xóa cache để force refresh data
         sessionStorage.removeItem('hop-dong-data');
-        toast.success(result.message || 'Hợp đồng đã được cập nhật thành công rồi nhé!');
+        toast.success(result.message || 'Hợp đồng đã được cập nhật.');
         // Sử dụng replace để không tạo history entry mới
         // và refresh để cập nhật dữ liệu server-side
         router.replace('/dashboard/hop-dong');
         router.refresh();
       } else {
         const errorData = await response.json();
-        toast.error(errorData.message || 'Ồ, chưa lưu được thay đổi cho hợp đồng này. Bạn thử lại nhé!');
+        toast.error(errorData.message || 'Không thể lưu thay đổi cho hợp đồng. Vui lòng thử lại.');
       }
     } catch (error) {
       toast.error('Lỗi kết nối khi gửi dữ liệu rồi.');
@@ -322,7 +322,7 @@ export default function ChinhSuaHopDongPage() {
                 Quy định liên kết tài khoản bắt buộc
               </AlertTitle>
               <AlertDescription className="text-[13px] text-teal-800 leading-normal">
-                Để kích hoạt hợp đồng, hệ thống yêu cầu <strong>tất cả thành viên</strong> phải có tài khoản cá nhân đã được liên kết hồ sơ tại trang <strong>Quản lý khách thuê</strong>. Vui lòng kiểm tra lại trước khi nhấn lưu nhé!
+                Để kích hoạt hợp đồng, hệ thống yêu cầu <strong>tất cả thành viên</strong> phải có tài khoản cá nhân đã được liên kết hồ sơ tại trang <strong>Quản lý khách thuê</strong>. Vui lòng kiểm tra lại trước khi thực hiện lưu.
               </AlertDescription>
             </div>
           </Alert>
