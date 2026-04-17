@@ -153,7 +153,7 @@ export default function AdminLandlordManagementPage() {
       });
 
       if (response.ok) {
-        toast.success('Đã gửi email tới tài khoản vừa tạo', { duration: 5000 });
+        toast.success('Đã gửi email tới tài khoản vừa tạob', { duration: 5000 });
         setIsCreateDialogOpen(false);
         setCreateData({
           name: '', email: '', phone: '', password: '', role: 'chuNha', goiDichVu: 'mienPhi',
