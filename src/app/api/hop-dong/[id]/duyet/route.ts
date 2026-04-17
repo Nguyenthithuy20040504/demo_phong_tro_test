@@ -48,10 +48,10 @@ export async function PUT(
       );
     }
 
-    // Kiểm tra hợp đồng đang ở trạng thái chờ duyệt
-    if (hopDong.trangThai !== 'choDuyet') {
+    // Kiểm tra hợp đồng đang ở trạng thái chờ duyệt hoặc chờ duyệt gia hạn
+    if (!['choDuyet', 'choDuyetGiaHan'].includes(hopDong.trangThai)) {
       return NextResponse.json(
-        { success: false, message: 'Hợp đồng không ở trạng thái chờ duyệt' },
+        { success: false, message: 'Hợp đồng không ở trạng thái chờ duyệt hoặc chờ duyệt gia hạn' },
         { status: 400 }
       );
     }

@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Plus, 
   FileText, 
@@ -89,6 +90,7 @@ export default function HopDongPage() {
   const [newEndDate, setNewEndDate] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [globalBuildingId, setGlobalBuildingId] = useState<string>('all');
+  const [hoanCoc, setHoanCoc] = useState(false);
 
 
   useEffect(() => {
@@ -252,6 +254,8 @@ export default function HopDongPage() {
     switch (status) {
       case 'choDuyet':
         return <Badge className="bg-amber-500 text-white border-none">Chờ duyệt</Badge>;
+      case 'choDuyetGiaHan':
+        return <Badge className="bg-indigo-500 text-white border-none">Chờ duyệt gia hạn</Badge>;
       case 'hoatDong':
         return <Badge variant="default">Hoạt động</Badge>;
       case 'hetHan':
@@ -1059,7 +1063,20 @@ export default function HopDongPage() {
   };
 
   const submitGiaHan = async () => {
-    if (!extendingHopDong || !newEndDate) return;
+    if (!extendingHopDong) return;
+    
+    // Cảnh báo khi chưa chọn thời gian gia hạn mới
+    if (!newEndDate) {
+      toast.warning('Bạn vui lòng chọn ngày kết thúc mới để gia hạn hợp đồng nhé!');
+      return;
+    }
+
+    const currentEndDate = new Date(extendingHopDong.ngayKetThuc);
+    const selectedEndDate = new Date(newEndDate);
+    if (selectedEndDate <= currentEndDate) {
+      toast.warning('Ngày kết thúc mới phải sau ngày kết thúc hiện tại!');
+      return;
+    }
     
     setActionLoading(`giahan-${extendingHopDong._id}`);
     try {
@@ -1070,6 +1087,7 @@ export default function HopDongPage() {
         },
         body: JSON.stringify({
           ngayKetThuc: newEndDate,
+          trangThai: 'choDuyetGiaHan', // Chuyển sang trạng thái chờ khách duyệt
         }),
       });
       
@@ -1079,7 +1097,27 @@ export default function HopDongPage() {
         setHopDongList(prev => prev.map(hd => 
           hd._id === extendingHopDong._id ? result.data : hd
         ));
-        toast.success('Đã gia hạn hợp đồng thành công rồi nhé!');
+        
+        // Gửi thông báo cho khách thuê (Hệ thống sẽ thực hiện tại API nếu cần, nhưng gửi client-side để chắc chắn)
+        try {
+          const ktIds = (extendingHopDong.khachThueId || []).map((kt: any) => typeof kt === 'object' ? kt._id : kt);
+          if (ktIds.length > 0) {
+            await fetch('/api/thong-bao', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                tieuDe: `Yêu cầu gia hạn hợp đồng - Phòng ${getPhongName(extendingHopDong.phong)}`,
+                noiDung: `Chủ trọ vừa gửi yêu cầu gia hạn hợp đồng ${extendingHopDong.maHopDong} đến ngày ${selectedEndDate.toLocaleDateString('vi-VN')}. Bạn vui lòng kiểm tra và duyệt trên ứng dụng nhé!`,
+                loai: 'hopDong',
+                nguoiNhan: ktIds,
+                phong: [typeof extendingHopDong.phong === 'object' ? (extendingHopDong.phong as any)._id : extendingHopDong.phong],
+                ngayGui: new Date(),
+              })
+            });
+          }
+        } catch(e) { console.error('Error sending extension notification:', e); }
+
+        toast.success('Yêu cầu gia hạn đã được gửi tới khách thuê để phê duyệt!');
         setExtendingHopDong(null);
       } else {
         const errorData = await response.json();
@@ -1094,6 +1132,7 @@ export default function HopDongPage() {
 
   const handleHuy = (hopDong: HopDong) => {
     setCancellingHopDong(hopDong);
+    setHoanCoc(false);
   };
 
   const submitHuy = async () => {
@@ -1108,6 +1147,7 @@ export default function HopDongPage() {
         },
         body: JSON.stringify({
           trangThai: 'daHuy',
+          hoanCoc: hoanCoc,
         }),
       });
       
@@ -1458,9 +1498,28 @@ export default function HopDongPage() {
                   <p className="font-medium">{cancellingHopDong.trangThai === 'hoatDong' ? 'Đang hoạt động' : cancellingHopDong.trangThai === 'choDuyet' ? 'Chờ duyệt' : cancellingHopDong.trangThai}</p>
                 </div>
               </div>
-              <div className="pt-2 border-t">
-                <p className="text-xs text-muted-foreground italic">
-                  💡 Lưu ý: Tiền cọc {formatCurrency(cancellingHopDong.tienCoc)} cần được xử lý theo điều khoản chấm dứt hợp đồng. Thông báo hủy sẽ được gửi tự động đến khách thuê.
+              <div className="pt-2 border-t space-y-3">
+                <div className="flex items-start space-x-3 p-3 bg-orange-50 rounded-md border border-orange-100">
+                  <div className="flex items-center h-5">
+                    <Checkbox 
+                      id="hoanCoc" 
+                      checked={hoanCoc} 
+                      onCheckedChange={(checked) => setHoanCoc(!!checked)}
+                      className="border-orange-400 data-[state=checked]:bg-orange-600"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="hoanCoc" className="text-sm font-bold text-orange-900 cursor-pointer">
+                      Xác nhận hoàn trả tiền cọc
+                    </Label>
+                    <p className="text-xs text-orange-800 leading-normal">
+                      Nếu chọn, hệ thống sẽ tự động **tạo 01 hóa đơn hoàn tiền** trị giá {formatCurrency(cancellingHopDong.tienCoc)} cho khách thuê.
+                    </p>
+                  </div>
+                </div>
+                
+                <p className="text-[11px] text-muted-foreground italic leading-relaxed">
+                  💡 Ghi chú: Thông báo hủy hợp đồng sẽ được gửi tự động đến tất cả thành viên trong hợp đồng ngay sau khi bạn xác nhận.
                 </p>
               </div>
             </div>
