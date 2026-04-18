@@ -157,6 +157,7 @@ function RoomCard({
   onDelete,
   onGeneratePost,
   isNhanVien,
+  hasPostingFeature,
 }: { 
   phong: EnrichedPhong;
   onClick: () => void;
@@ -164,6 +165,7 @@ function RoomCard({
   onDelete: (phong: EnrichedPhong) => void;
   onGeneratePost: (e: React.MouseEvent, phong: EnrichedPhong) => void;
   isNhanVien?: boolean;
+  hasPostingFeature?: boolean;
 }) {
   const status = getStatusConfig(phong.trangThaiTongHop || 'trong');
   const StatusIcon = status.icon;
@@ -219,7 +221,7 @@ function RoomCard({
           </div>
 
           {/* Sell/Rent out button (only for empty rooms) */}
-          {(phong.trangThaiTongHop || 'trong') === 'trong' && (
+          {(phong.trangThaiTongHop || 'trong') === 'trong' && hasPostingFeature && (
             <div 
               onClick={(e) => onGeneratePost(e, phong)}
               className="h-8 w-8 bg-emerald-500 rounded-lg shadow-lg flex items-center justify-center text-white hover:scale-110 hover:bg-emerald-600 transition-all duration-300"
@@ -279,6 +281,7 @@ function FloorSection({
   onDeleteClick,
   onGeneratePostClick,
   isNhanVien,
+  hasPostingFeature,
 }: {
   tang: number;
   rooms: EnrichedPhong[];
@@ -287,6 +290,7 @@ function FloorSection({
   onDeleteClick: (phong: EnrichedPhong) => void;
   onGeneratePostClick: (e: React.MouseEvent, phong: EnrichedPhong) => void;
   isNhanVien?: boolean;
+  hasPostingFeature?: boolean;
 }) {
   return (
     <div className="space-y-3">
@@ -310,6 +314,7 @@ function FloorSection({
               onDelete={onDeleteClick}
               onGeneratePost={onGeneratePostClick}
               isNhanVien={isNhanVien}
+              hasPostingFeature={hasPostingFeature}
             />
           ))}
       </div>
@@ -339,7 +344,7 @@ export default function PhongPage() {
   const [selectedToaNhaTab, setSelectedToaNhaTab] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const globalId = localStorage.getItem('selected_building_id');
-      return globalId && globalId !== 'all' ? globalId : '';
+      return (globalId && globalId !== 'all') ? globalId : '';
     }
     return '';
   });
@@ -362,9 +367,17 @@ export default function PhongPage() {
   const [generatingForPhong, setGeneratingForPhong] = useState<string>('');
   const [generatingPhongImages, setGeneratingPhongImages] = useState<string[]>([]);
   const [isPostingToFacebook, setIsPostingToFacebook] = useState(false);
+  
+  // Real-time feature check
+  const [hasPostingFeature, setHasPostingFeature] = useState(true);
 
   useEffect(() => {
     document.title = 'Quản lý Phòng';
+    fetch('/api/user/features').then(res => res.json()).then(data => {
+      if (data.success) {
+        setHasPostingFeature(data.hasPostingFeature);
+      }
+    }).catch(e => console.error('Error fetching features:', e));
   }, []);
 
   useEffect(() => {
@@ -846,6 +859,7 @@ export default function PhongPage() {
                 handleGeneratePost(p);
               }}
               isNhanVien={isNhanVien}
+              hasPostingFeature={hasPostingFeature}
             />
           ))
         )}

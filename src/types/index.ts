@@ -346,3 +346,19 @@ export interface DashboardStats {
   hoaDonQuaHanList?: HoaDonQuaHanItem[];
   hopDongSapHetHanList?: HopDongSapHetHanItem[];
 }
+
+export interface GoiDichVu {
+  _id?: string;
+  ten: string;
+  moTa: string;
+  gia: number;
+  thoiGian: number;
+  maxPhong: number;
+  features: string[];
+  hasPostingFeature: boolean;
+  isPopular: boolean;
+  isActive: boolean;
+  trangThai: 'hoatDong' | 'daHuy';
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+}
