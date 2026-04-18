@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import NguoiDung from '@/models/NguoiDung';
 import GoiDichVu from '@/models/GoiDichVu';
+import ToaNha from '@/models/ToaNha';
+import Phong from '@/models/Phong';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,18 +23,40 @@ export async function GET() {
       return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 });
     }
 
-    // Default to true if no plan is specified so they can still see it by default
-    // or evaluate based on the populated Plan.
+    // Calculate Limit and Usage
+    let maxPhong = -1; // Default unlimited
+    let currentRoomCount = 0;
     let hasPostingFeature = true;
-    
-    if (user.goiDichVuId) {
-      const plan = user.goiDichVuId as any;
-      hasPostingFeature = plan.hasPostingFeature ?? true;
+
+    if (user.role === 'chuNha') {
+      let plan = null;
+      if (user.goiDichVuId) {
+        plan = user.goiDichVuId; // populated
+      } else {
+        // Fallback search by label
+        plan = await GoiDichVu.findOne({ ten: { $regex: user.goiDichVu, $options: 'i' } });
+      }
+
+      if (plan) {
+        maxPhong = plan.maxPhong;
+        hasPostingFeature = plan.hasPostingFeature ?? true;
+      } else {
+        // Default hardcoded fallbacks
+        if (user.goiDichVu === 'mienPhi') maxPhong = 10;
+        else if (user.goiDichVu === 'coBan') maxPhong = 20;
+      }
+
+      // Count all rooms
+      const userBuildings = await ToaNha.find({ chuSoHuu: user._id }).select('_id');
+      const buildingIds = userBuildings.map(b => b._id);
+      currentRoomCount = await Phong.countDocuments({ toaNha: { $in: buildingIds } });
     }
 
     return NextResponse.json({
       success: true,
-      hasPostingFeature
+      hasPostingFeature,
+      maxPhong,
+      currentRoomCount
     });
   } catch (error: any) {
     console.error('Error fetching features:', error);

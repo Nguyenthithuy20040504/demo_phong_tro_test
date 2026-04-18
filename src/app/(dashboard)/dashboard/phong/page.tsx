@@ -370,12 +370,16 @@ export default function PhongPage() {
   
   // Real-time feature check
   const [hasPostingFeature, setHasPostingFeature] = useState(true);
+  const [maxPhong, setMaxPhong] = useState(-1);
+  const [currentRoomCount, setCurrentRoomCount] = useState(0);
 
   useEffect(() => {
     document.title = 'Quản lý Phòng';
     fetch('/api/user/features').then(res => res.json()).then(data => {
       if (data.success) {
         setHasPostingFeature(data.hasPostingFeature);
+        setMaxPhong(data.maxPhong);
+        setCurrentRoomCount(data.currentRoomCount);
       }
     }).catch(e => console.error('Error fetching features:', e));
   }, []);
@@ -674,7 +678,18 @@ export default function PhongPage() {
       {/* ===== HEADER ===== */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">Quản lý phòng</h1>
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-3">
+            Quản lý phòng
+            {maxPhong !== -1 ? (
+              <Badge variant={currentRoomCount < maxPhong ? 'outline' : 'destructive'} className="text-[10px] md:text-xs py-0.5">
+                {currentRoomCount} / {maxPhong} phòng
+              </Badge>
+            ) : currentRoomCount > 0 ? (
+              <Badge variant="outline" className="text-[10px] md:text-xs py-0.5 border-emerald-200 bg-emerald-50 text-emerald-700">
+                {currentRoomCount} phòng
+              </Badge>
+            ) : null}
+          </h1>
           <p className="text-xs md:text-sm text-gray-500">Sơ đồ trực quan theo tầng tòa nhà</p>
         </div>
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
@@ -691,9 +706,14 @@ export default function PhongPage() {
           {!isNhanVien && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" onClick={() => setEditingPhong(null)} className="w-full sm:w-auto">
+                <Button 
+                  size="sm" 
+                  onClick={() => setEditingPhong(null)} 
+                  className="w-full sm:w-auto"
+                  disabled={maxPhong !== -1 && currentRoomCount >= maxPhong}
+                >
                   <Plus className="h-4 w-4 mr-2" />
-                  Thêm phòng
+                  {maxPhong !== -1 && currentRoomCount >= maxPhong ? 'Đã hết lượt thêm' : 'Thêm phòng'}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto w-[95vw] md:w-full">
