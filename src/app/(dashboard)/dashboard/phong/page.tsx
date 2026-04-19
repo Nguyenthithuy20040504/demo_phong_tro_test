@@ -373,8 +373,7 @@ export default function PhongPage() {
   const [maxPhong, setMaxPhong] = useState(-1);
   const [currentRoomCount, setCurrentRoomCount] = useState(0);
 
-  useEffect(() => {
-    document.title = 'Quản lý Phòng';
+  const fetchFeatures = () => {
     fetch('/api/user/features').then(res => res.json()).then(data => {
       if (data.success) {
         setHasPostingFeature(data.hasPostingFeature);
@@ -382,6 +381,11 @@ export default function PhongPage() {
         setCurrentRoomCount(data.currentRoomCount);
       }
     }).catch(e => console.error('Error fetching features:', e));
+  };
+
+  useEffect(() => {
+    document.title = 'Quản lý Phòng';
+    fetchFeatures();
   }, []);
 
   useEffect(() => {
@@ -585,6 +589,7 @@ export default function PhongPage() {
       if (response.ok && result.success) {
         cache.clearCache();
         setPhongList(prev => prev.filter(phong => phong._id !== id));
+        fetchFeatures(); // Cập nhật lại số lượng phòng và trạng thái nút thêm phòng
         toast.success('Đã xóa phòng.');
       } else {
         const msg = (result.message || '').toLowerCase();
@@ -734,6 +739,7 @@ export default function PhongPage() {
                     cache.clearCache();
                     setIsDialogOpen(false);
                     fetchPhong(true);
+                    fetchFeatures(); // Cập nhật lại số lượng phòng và trạng thái nút thêm phòng
                     toast.success(editingPhong ? 'Đã lưu các thay đổi của phòng thành công!' : 'Đã thêm phòng mới vào danh sách!');
                   }}
                 />

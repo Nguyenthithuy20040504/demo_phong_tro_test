@@ -33,16 +33,23 @@ export async function GET() {
       if (user.goiDichVuId) {
         plan = user.goiDichVuId; // populated
       } else {
+        // Map common internal slugs to database names for better fallback matching
+        const slugMap: { [key: string]: string } = {
+          'mienPhi': 'Miễn Phí',
+          'coBan': 'Cơ Bản',
+          'chuyenNghiep': 'Chuyên Nghiệp'
+        };
+        const searchName = slugMap[user.goiDichVu] || user.goiDichVu;
         // Fallback search by label
-        plan = await GoiDichVu.findOne({ ten: { $regex: user.goiDichVu, $options: 'i' } });
+        plan = await GoiDichVu.findOne({ ten: { $regex: searchName, $options: 'i' } });
       }
 
       if (plan) {
         maxPhong = plan.maxPhong;
         hasPostingFeature = plan.hasPostingFeature ?? true;
       } else {
-        // Default hardcoded fallbacks
-        if (user.goiDichVu === 'mienPhi') maxPhong = 10;
+        // Default hardcoded fallbacks - updated to match current system defaults
+        if (user.goiDichVu === 'mienPhi') maxPhong = 2;
         else if (user.goiDichVu === 'coBan') maxPhong = 20;
       }
 

@@ -161,6 +161,16 @@ export default function SubscriptionPage() {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
   };
 
+  const getRoomLimitDescription = (maxPhong: number) => {
+    if (maxPhong === -1) return 'Không giới hạn phòng';
+    return `Quản lý tối đa ${maxPhong} phòng`;
+  };
+
+  const getFilteredFeatures = (features: string[] = []) => {
+    // Lọc bỏ các dòng chữ cứng về giới hạn phòng để tránh bị lặp hoặc sai lệch dữ liệu
+    return features.filter(f => !f.toLowerCase().includes('tối đa') || !f.toLowerCase().includes('phòng'));
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -256,8 +266,8 @@ export default function SubscriptionPage() {
                  <div>
                     <p className="text-xs text-teal-100 font-medium">Giới hạn phòng</p>
                     <p className="font-bold">
-                      {currentPlanDetails ? (currentPlanDetails.maxPhong === -1 ? 'Không giới hạn' : `Tối đa ${currentPlanDetails.maxPhong} phòng`) : 
-                       (userGoiDichVu === 'chuyenNghiep' ? 'Không giới hạn' : 
+                      {currentPlanDetails ? getRoomLimitDescription(currentPlanDetails.maxPhong) : 
+                       (userGoiDichVu === 'chuyenNghiep' ? 'Không giới hạn phòng' : 
                         userGoiDichVu === 'coBan' ? 'Tối đa 20 phòng' : 'Tối đa 10 phòng')}
                     </p>
                  </div>
@@ -276,10 +286,12 @@ export default function SubscriptionPage() {
                  <div className="bg-white/20 p-2 rounded-lg">
                     <Zap className="h-5 w-5" />
                  </div>
-                 <div>
+                  <div>
                     <p className="text-xs text-teal-100 font-medium">Tính năng chính</p>
-                    <p className="font-bold">{currentPlanDetails?.features[0] || 'Nhắc nợ tự động'}</p>
-                 </div>
+                    <p className="font-bold">
+                      {getFilteredFeatures(currentPlanDetails?.features)[0] || 'Nhắc nợ tự động'}
+                    </p>
+                  </div>
               </div>
            </div>
         </CardContent>
@@ -338,7 +350,17 @@ export default function SubscriptionPage() {
                 
                 <CardContent className="flex-1">
                   <ul className="space-y-4">
-                    {plan.features.map((feature, idx) => (
+                    {/* Luôn hiển thị giới hạn phòng chuẩn ở đầu danh sách */}
+                    <li className="flex items-start gap-3">
+                      <div className="mt-0.5 bg-teal-50 rounded-full p-0.5">
+                        <CheckCircle2 className="h-4 w-4 text-teal-600" />
+                      </div>
+                      <span className="text-sm font-bold text-teal-700 leading-tight">
+                        {getRoomLimitDescription(plan.maxPhong)}
+                      </span>
+                    </li>
+
+                    {getFilteredFeatures(plan.features).map((feature, idx) => (
                       <li key={idx} className="flex items-start gap-3">
                         <div className="mt-0.5 bg-teal-50 rounded-full p-0.5">
                           <CheckCircle2 className="h-4 w-4 text-teal-600" />
