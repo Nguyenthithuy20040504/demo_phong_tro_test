@@ -157,6 +157,7 @@ function RoomCard({
   onDelete,
   onGeneratePost,
   isNhanVien,
+  hasPostingFeature,
 }: { 
   phong: EnrichedPhong;
   onClick: () => void;
@@ -164,6 +165,7 @@ function RoomCard({
   onDelete: (phong: EnrichedPhong) => void;
   onGeneratePost: (e: React.MouseEvent, phong: EnrichedPhong) => void;
   isNhanVien?: boolean;
+  hasPostingFeature?: boolean;
 }) {
   const status = getStatusConfig(phong.trangThaiTongHop || 'trong');
   const StatusIcon = status.icon;
@@ -220,7 +222,7 @@ function RoomCard({
           </div>
 
           {/* Sell/Rent out button (only for empty rooms) */}
-          {(phong.trangThaiTongHop || 'trong') === 'trong' && (
+          {(phong.trangThaiTongHop || 'trong') === 'trong' && hasPostingFeature && (
             <div 
               onClick={(e) => onGeneratePost(e, phong)}
               className="h-8 w-8 bg-emerald-500 rounded-lg shadow-lg flex items-center justify-center text-white hover:scale-110 hover:bg-emerald-600 transition-all duration-300"
@@ -280,6 +282,7 @@ function FloorSection({
   onDeleteClick,
   onGeneratePostClick,
   isNhanVien,
+  hasPostingFeature,
 }: {
   tang: number;
   rooms: EnrichedPhong[];
@@ -288,6 +291,7 @@ function FloorSection({
   onDeleteClick: (phong: EnrichedPhong) => void;
   onGeneratePostClick: (e: React.MouseEvent, phong: EnrichedPhong) => void;
   isNhanVien?: boolean;
+  hasPostingFeature?: boolean;
 }) {
   return (
     <div className="space-y-3">
@@ -311,6 +315,7 @@ function FloorSection({
               onDelete={onDeleteClick}
               onGeneratePost={onGeneratePostClick}
               isNhanVien={isNhanVien}
+              hasPostingFeature={hasPostingFeature}
             />
           ))}
       </div>
@@ -340,7 +345,7 @@ export default function PhongPage() {
   const [selectedToaNhaTab, setSelectedToaNhaTab] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const globalId = localStorage.getItem('selected_building_id');
-      return globalId && globalId !== 'all' ? globalId : '';
+      return (globalId && globalId !== 'all') ? globalId : '';
     }
     return '';
   });
@@ -363,9 +368,25 @@ export default function PhongPage() {
   const [generatingForPhong, setGeneratingForPhong] = useState<string>('');
   const [generatingPhongImages, setGeneratingPhongImages] = useState<string[]>([]);
   const [isPostingToFacebook, setIsPostingToFacebook] = useState(false);
+  
+  // Real-time feature check
+  const [hasPostingFeature, setHasPostingFeature] = useState(true);
+  const [maxPhong, setMaxPhong] = useState(-1);
+  const [currentRoomCount, setCurrentRoomCount] = useState(0);
+
+  const fetchFeatures = () => {
+    fetch('/api/user/features').then(res => res.json()).then(data => {
+      if (data.success) {
+        setHasPostingFeature(data.hasPostingFeature);
+        setMaxPhong(data.maxPhong);
+        setCurrentRoomCount(data.currentRoomCount);
+      }
+    }).catch(e => console.error('Error fetching features:', e));
+  };
 
   useEffect(() => {
     document.title = 'Quản lý Phòng';
+    fetchFeatures();
   }, []);
 
   useEffect(() => {
@@ -569,6 +590,7 @@ export default function PhongPage() {
       if (response.ok && result.success) {
         cache.clearCache();
         setPhongList(prev => prev.filter(phong => phong._id !== id));
+        fetchFeatures(); // Cập nhật lại số lượng phòng và trạng thái nút thêm phòng
         toast.success('Đã xóa phòng.');
       } else {
         const msg = (result.message || '').toLowerCase();
@@ -662,7 +684,18 @@ export default function PhongPage() {
       {/* ===== HEADER ===== */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">Quản lý phòng</h1>
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-3">
+            Quản lý phòng
+            {maxPhong !== -1 ? (
+              <Badge variant={currentRoomCount < maxPhong ? 'outline' : 'destructive'} className="text-[10px] md:text-xs py-0.5">
+                {currentRoomCount} / {maxPhong} phòng
+              </Badge>
+            ) : currentRoomCount > 0 ? (
+              <Badge variant="outline" className="text-[10px] md:text-xs py-0.5 border-emerald-200 bg-emerald-50 text-emerald-700">
+                {currentRoomCount} phòng
+              </Badge>
+            ) : null}
+          </h1>
           <p className="text-xs md:text-sm text-gray-500">Sơ đồ trực quan theo tầng tòa nhà</p>
         </div>
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
@@ -679,9 +712,14 @@ export default function PhongPage() {
           {!isNhanVien && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" onClick={() => setEditingPhong(null)} className="w-full sm:w-auto">
+                <Button 
+                  size="sm" 
+                  onClick={() => setEditingPhong(null)} 
+                  className="w-full sm:w-auto"
+                  disabled={maxPhong !== -1 && currentRoomCount >= maxPhong}
+                >
                   <Plus className="h-4 w-4 mr-2" />
-                  Thêm phòng
+                  {maxPhong !== -1 && currentRoomCount >= maxPhong ? 'Đã hết lượt thêm' : 'Thêm phòng'}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto w-[95vw] md:w-full">
@@ -703,6 +741,7 @@ export default function PhongPage() {
                     cache.clearCache();
                     setIsDialogOpen(false);
                     fetchPhong(true);
+                    fetchFeatures(); // Cập nhật lại số lượng phòng và trạng thái nút thêm phòng
                     toast.success(editingPhong ? 'Đã lưu các thay đổi của phòng thành công!' : 'Đã thêm phòng mới vào danh sách!');
                   }}
                 />
@@ -848,6 +887,7 @@ export default function PhongPage() {
                 handleGeneratePost(p);
               }}
               isNhanVien={isNhanVien}
+              hasPostingFeature={hasPostingFeature}
             />
           ))
         )}

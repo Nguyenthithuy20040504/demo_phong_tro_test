@@ -61,6 +61,7 @@ export default function ManagePlansPage() {
     thoiGian: 1,
     maxPhong: -1,
     features: [],
+    hasPostingFeature: true,
     isPopular: false,
     isActive: true,
     trangThai: 'hoatDong'
@@ -158,6 +159,7 @@ export default function ManagePlansPage() {
       thoiGian: 1,
       maxPhong: -1,
       features: [],
+      hasPostingFeature: true,
       isPopular: false,
       isActive: true,
       trangThai: 'hoatDong'
@@ -360,47 +362,21 @@ export default function ManagePlansPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label>Tính năng quảng cáo</Label>
-              <div className="space-y-2">
-                {(currentPlan.features || []).map((feature: string, idx: number) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <Input
-                      value={feature}
-                      placeholder={`Tính năng ${idx + 1}`}
-                      onChange={(e) => {
-                        const updated = [...(currentPlan.features || [])];
-                        updated[idx] = e.target.value;
-                        setCurrentPlan({...currentPlan, features: updated});
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => {
-                        const updated = (currentPlan.features || []).filter((_: any, i: number) => i !== idx);
-                        setCurrentPlan({...currentPlan, features: updated});
-                      }}
-                    >
-                      <XCircle className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="w-full mt-1 gap-1.5 text-xs"
-                  onClick={() => {
-                    setCurrentPlan({...currentPlan, features: [...(currentPlan.features || []), '']});
-                  }}
-                >
-                  <Plus className="h-3.5 w-3.5" /> Thêm tính năng
-                </Button>
-              </div>
+              <Label>Tùy chọn Tính năng</Label>
+              <Select 
+                value={currentPlan.hasPostingFeature === false ? 'khong' : 'co'}
+                onValueChange={(val) => setCurrentPlan({...currentPlan, hasPostingFeature: val === 'co'})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn tùy chọn tính năng đăng bài" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="co">Thêm Tính năng quảng cáo/đăng bài</SelectItem>
+                  <SelectItem value="khong">Không có chức năng đăng bài</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex items-center justify-between space-x-2 p-2 bg-muted/30 rounded-lg">
+            <div className="flex items-center justify-between space-x-2 p-2 bg-muted/30 rounded-lg mt-2">
                 <div className="flex flex-col gap-0.5">
                     <Label className="text-sm font-bold">Gói phổ biến</Label>
                     <span className="text-[10px] text-muted-foreground uppercase">Gắn nhãn RECOMMENDED</span>

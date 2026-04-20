@@ -7,6 +7,7 @@ export interface IGoiDichVu extends Document {
   thoiGian: number; // số tháng
   maxPhong: number; // giới hạn số phòng, -1 là không giới hạn
   features: string[];
+  hasPostingFeature: boolean;
   isPopular: boolean;
   isActive: boolean;
   trangThai: 'hoatDong' | 'daHuy';
@@ -43,6 +44,10 @@ const GoiDichVuSchema = new Schema<IGoiDichVu>({
   features: [{
     type: String
   }],
+  hasPostingFeature: {
+    type: Boolean,
+    default: true
+  },
   isPopular: {
     type: Boolean,
     default: false

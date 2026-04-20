@@ -1,7 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import dbConnect from '@/lib/mongodb';
+import NguoiDung from '@/models/NguoiDung';
+
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+
+    await dbConnect();
+    const user = await NguoiDung.findOne({ email: session.user.email }).populate('goiDichVuId');
+    if (user?.goiDichVuId) {
+      const plan = user.goiDichVuId as any;
+      if (plan.hasPostingFeature === false) {
+        return NextResponse.json({ success: false, message: 'Gói dịch vụ của bạn không hỗ trợ tính năng đăng bài.' }, { status: 403 });
+      }
+    }
+
     const { message, images } = await request.json();
 
     if (!message) {
