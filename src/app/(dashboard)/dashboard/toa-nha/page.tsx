@@ -18,10 +18,17 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Plus, 
-  Search, 
-  Building2, 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Plus,
+  Search,
+  Building2,
   RefreshCw,
   AlertCircle,
 } from 'lucide-react';
@@ -58,7 +65,7 @@ export default function ToaNhaPage() {
           return;
         }
       }
-      
+
       const response = await fetch('/api/toa-nha');
       if (response.ok) {
         const result = await response.json();
@@ -130,9 +137,9 @@ export default function ToaNhaPage() {
             Danh sách tất cả tòa nhà trong hệ thống
           </p>
         </div>
-        
+
         <div className="flex gap-2 w-full sm:w-auto">
-          <Button 
+          <Button
             variant="outline"
             size="sm"
             onClick={handleRefresh}
@@ -150,17 +157,17 @@ export default function ToaNhaPage() {
                   Thêm Tòa nhà
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-xl">
+              <DialogContent className="max-w-xl bg-white rounded-2xl border-slate-200 shadow-xl">
                 <DialogHeader>
-                  <DialogTitle>
+                  <DialogTitle className="text-slate-800">
                     {editingToaNha ? 'Cập nhật Tòa nhà' : 'Thêm Tòa nhà mới'}
                   </DialogTitle>
-                  <DialogDescription>
+                  <DialogDescription className="text-slate-500">
                     {editingToaNha ? 'Cập nhật thông tin cho tòa nhà này.' : 'Nhập các thông số cơ bản để tạo một tòa nhà mới.'}
                   </DialogDescription>
                 </DialogHeader>
-                
-                <ToaNhaForm 
+
+                <ToaNhaForm
                   toaNha={editingToaNha}
                   onClose={() => setIsDialogOpen(false)}
                   onSuccess={() => {
@@ -188,7 +195,7 @@ export default function ToaNhaPage() {
             </div>
           </div>
         </Card>
-        
+
         <Card className="p-3 md:p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -253,11 +260,11 @@ export default function ToaNhaPage() {
 }
 
 // Form component remains largely the same but with style updates
-function ToaNhaForm({ 
-  toaNha, 
-  onClose, 
-  onSuccess 
-}: { 
+function ToaNhaForm({
+  toaNha,
+  onClose,
+  onSuccess
+}: {
   toaNha: ToaNha | null;
   onClose: () => void;
   onSuccess: () => void;
@@ -272,6 +279,51 @@ function ToaNhaForm({
     moTa: toaNha?.moTa || '',
     tienNghiChung: toaNha?.tienNghiChung || [],
   });
+
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [wards, setWards] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch('https://provinces.open-api.vn/api/p/')
+      .then(res => res.json())
+      .then(data => setProvinces(data))
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (formData.thanhPho && provinces.length > 0) {
+      const p = provinces.find(x => x.name === formData.thanhPho);
+      if (p) {
+        fetch(`https://provinces.open-api.vn/api/p/${p.code}?depth=2`)
+          .then(res => res.json())
+          .then(data => setDistricts(data.districts))
+          .catch(console.error);
+      } else {
+        setDistricts([]);
+        setWards([]);
+      }
+    } else {
+      setDistricts([]);
+      setWards([]);
+    }
+  }, [formData.thanhPho, provinces]);
+
+  useEffect(() => {
+    if (formData.quan && districts.length > 0) {
+      const d = districts.find(x => x.name === formData.quan);
+      if (d) {
+        fetch(`https://provinces.open-api.vn/api/d/${d.code}?depth=2`)
+          .then(res => res.json())
+          .then(data => setWards(data.wards))
+          .catch(console.error);
+      } else {
+        setWards([]);
+      }
+    } else {
+      setWards([]);
+    }
+  }, [formData.quan, districts]);
 
   const tienNghiOptions = [
     { value: 'wifi', label: 'WiFi' },
@@ -292,6 +344,11 @@ function ToaNhaForm({
 
     if (!formData.tenToaNha.trim()) {
       toast.error('Bạn chưa nhập tên tòa nhà!');
+      return;
+    }
+
+    if (!formData.thanhPho || !formData.quan || !formData.phuong) {
+      toast.error('Bạn vui lòng chọn đầy đủ Thành phố, Quận/Huyện, Phường/Xã!');
       return;
     }
 
@@ -346,7 +403,7 @@ function ToaNhaForm({
   const handleTienNghiChange = (tienNghi: string, checked: boolean) => {
     setFormData(prev => ({
       ...prev,
-      tienNghiChung: checked 
+      tienNghiChung: checked
         ? [...prev.tienNghiChung, tienNghi]
         : prev.tienNghiChung.filter(t => t !== tienNghi)
     }));
@@ -355,51 +412,78 @@ function ToaNhaForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4 py-4">
       <div className="space-y-1.5">
-        <Label htmlFor="tenToaNha" className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Tên tòa nhà</Label>
+        <Label htmlFor="tenToaNha" className="text-xs font-bold uppercase tracking-widest text-slate-500">Tên tòa nhà</Label>
         <Input
           id="tenToaNha"
           value={formData.tenToaNha}
           onChange={(e) => setFormData(prev => ({ ...prev, tenToaNha: e.target.value }))}
           placeholder="VD: Tòa nhà Hoàng Anh, KTX ABC..."
           required
-          className="h-10 bg-secondary/30 border-transparent rounded-xl focus:bg-background transition-all"
+          className="h-10 bg-white border border-slate-200 shadow-sm rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 transition-all text-slate-800 font-medium"
         />
       </div>
 
-      <div className="space-y-1.5">
-        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Địa chỉ</Label>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Input placeholder="Số nhà / Ngõ" value={formData.soNha} onChange={(e) => setFormData(prev => ({ ...prev, soNha: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
-          <Input placeholder="Tên đường" value={formData.duong} onChange={(e) => setFormData(prev => ({ ...prev, duong: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
-        </div>
+      <div className="space-y-3">
+        <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">Địa chỉ (Chọn theo bản đồ hành chính)</Label>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Input placeholder="Phường / Xã" value={formData.phuong} onChange={(e) => setFormData(prev => ({ ...prev, phuong: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
-          <Input placeholder="Quận / Huyện" value={formData.quan} onChange={(e) => setFormData(prev => ({ ...prev, quan: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
-          <Input placeholder="Thành phố" value={formData.thanhPho} onChange={(e) => setFormData(prev => ({ ...prev, thanhPho: e.target.value }))} required className="h-10 bg-secondary/30 border-transparent rounded-xl" />
+          <Select value={formData.thanhPho || ''} onValueChange={(value) => setFormData(prev => ({ ...prev, thanhPho: value, quan: '', phuong: '' }))}>
+            <SelectTrigger className="h-10 bg-white border border-slate-200 shadow-sm rounded-xl focus:ring-1 focus:ring-primary/50 transition-all text-slate-800 font-medium">
+              <SelectValue placeholder="Thành phố / Tỉnh" />
+            </SelectTrigger>
+            <SelectContent>
+              {provinces.map(p => (
+                <SelectItem key={p.code} value={p.name}>{p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={formData.quan || ''} onValueChange={(value) => setFormData(prev => ({ ...prev, quan: value, phuong: '' }))} disabled={!formData.thanhPho || districts.length === 0}>
+            <SelectTrigger className="h-10 bg-white border border-slate-200 shadow-sm rounded-xl focus:ring-1 focus:ring-primary/50 transition-all text-slate-800 font-medium">
+              <SelectValue placeholder="Quận / Huyện" />
+            </SelectTrigger>
+            <SelectContent>
+              {districts.map(d => (
+                <SelectItem key={d.code} value={d.name}>{d.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={formData.phuong || ''} onValueChange={(value) => setFormData(prev => ({ ...prev, phuong: value }))} disabled={!formData.quan || wards.length === 0}>
+            <SelectTrigger className="h-10 bg-white border border-slate-200 shadow-sm rounded-xl focus:ring-1 focus:ring-primary/50 transition-all text-slate-800 font-medium">
+              <SelectValue placeholder="Phường / Xã" />
+            </SelectTrigger>
+            <SelectContent>
+              {wards.map(w => (
+                <SelectItem key={w.code} value={w.name}>{w.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Input placeholder="Tên đường" value={formData.duong} onChange={(e) => setFormData(prev => ({ ...prev, duong: e.target.value }))} required className="h-10 bg-white border border-slate-200 shadow-sm rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 transition-all text-slate-800 font-medium" />
+          <Input placeholder="Số nhà / Ngõ" value={formData.soNha} onChange={(e) => setFormData(prev => ({ ...prev, soNha: e.target.value }))} required className="h-10 bg-white border border-slate-200 shadow-sm rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 transition-all text-slate-800 font-medium" />
         </div>
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="moTa" className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Mô tả (Ghi chú)</Label>
-        <Textarea id="moTa" value={formData.moTa} onChange={(e) => setFormData(prev => ({ ...prev, moTa: e.target.value }))} rows={2} placeholder="Ghi chú thêm về tòa nhà..." className="bg-secondary/30 border-transparent rounded-xl focus:bg-background transition-all resize-none" />
+        <Label htmlFor="moTa" className="text-xs font-bold uppercase tracking-widest text-slate-500">Mô tả (Ghi chú)</Label>
+        <Textarea id="moTa" value={formData.moTa} onChange={(e) => setFormData(prev => ({ ...prev, moTa: e.target.value }))} rows={2} placeholder="Ghi chú thêm về tòa nhà..." className="bg-white border border-slate-200 shadow-sm rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 transition-all resize-none text-slate-800 font-medium" />
       </div>
 
       <div className="space-y-2">
-        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Tiện ích chung</Label>
+        <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">Tiện ích chung</Label>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
           {tienNghiOptions.map((option) => (
             <div
               key={option.value}
               onClick={() => handleTienNghiChange(option.value, !formData.tienNghiChung.includes(option.value))}
-              className={`flex items-center gap-2 p-2 rounded-xl cursor-pointer transition-all text-xs font-medium select-none ${
-                formData.tienNghiChung.includes(option.value)
-                  ? 'bg-primary/10 text-primary border border-primary/20'
-                  : 'bg-secondary/20 text-muted-foreground hover:bg-secondary/40 border border-transparent'
-              }`}
+              className={`flex items-center gap-2 p-2 rounded-xl cursor-pointer transition-all text-xs font-medium select-none border ${formData.tienNghiChung.includes(option.value)
+                  ? 'bg-primary/5 text-primary border-primary/30 shadow-sm'
+                  : 'bg-white text-slate-600 hover:bg-slate-50 border-slate-200'
+                }`}
             >
-              <div className={`size-3 rounded-full flex-shrink-0 border ${
-                formData.tienNghiChung.includes(option.value) ? 'bg-primary border-primary' : 'border-muted-foreground/30'
-              }`} />
+              <div className={`size-3 rounded-full flex-shrink-0 border ${formData.tienNghiChung.includes(option.value) ? 'bg-primary border-primary' : 'border-slate-300'
+                }`} />
               {option.label}
             </div>
           ))}
@@ -407,17 +491,17 @@ function ToaNhaForm({
       </div>
 
       <DialogFooter className="gap-3 pt-4 pb-2 border-t border-border/10">
-        <Button 
-          type="button" 
-          variant="ghost" 
-          onClick={onClose} 
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onClose}
           disabled={submitting}
           className="rounded-xl h-10 px-6 font-bold text-xs uppercase tracking-widest"
         >
           Hủy
         </Button>
-        <Button 
-          type="submit" 
+        <Button
+          type="submit"
           disabled={submitting}
           className="rounded-xl h-10 px-8 font-bold text-xs uppercase tracking-widest shadow-premium"
         >

@@ -39,6 +39,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { 
   Plus, 
   Search, 
@@ -54,7 +56,10 @@ import {
   Home,
   RefreshCw,
   Zap,
-  AlertTriangle
+  AlertTriangle,
+  Check,
+  ChevronsUpDown,
+  X
 } from 'lucide-react';
 import { ThongBao, ToaNha, Phong, KhachThue } from '@/types';
 import { toast } from 'sonner';
@@ -178,7 +183,7 @@ export default function ThongBaoPage() {
         const chuNhaData = await chuNhaResponse.json();
         
         const thongBaos = thongBaoData.success ? thongBaoData.data : [];
-        const mappedChuNha = Array.isArray(chuNhaData) ? chuNhaData.map((u: any) => ({ _id: u._id, hoTen: u.ten || u.name })) : [];
+        const mappedChuNha = Array.isArray(chuNhaData) ? chuNhaData.map((u: any) => ({ _id: u._id, hoTen: u.ten || u.name, email: u.email })) : [];
         
         setThongBaoList(thongBaos);
         setToaNhaList([]);
@@ -1081,6 +1086,7 @@ function ThongBaoForm({
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [openNguoiNhanDropdown, setOpenNguoiNhanDropdown] = useState(false);
 
   // Helper function to extract Room ID from a tenant
   const getTenantRoomId = (k: any) => {
@@ -1492,30 +1498,89 @@ function ThongBaoForm({
             </Button>
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto border rounded-md p-3 bg-gray-50/50">
-          {filteredTenants.map((khachThue) => (
-            <div key={khachThue._id} className="flex items-center space-x-2 bg-white p-2 rounded border border-gray-100 shadow-sm hover:border-green-200 transition-colors">
-              <input
-                type="checkbox"
-                id={`user-${khachThue._id}`}
-                checked={formData.nguoiNhan.includes(khachThue._id!)}
-                onChange={(e) => handleNguoiNhanChange(khachThue._id!, e.target.checked)}
-                className="rounded border-gray-300 w-3.5 h-3.5 text-green-600 focus:ring-green-500"
-              />
-              <Label htmlFor={`user-${khachThue._id}`} className="text-[11px] cursor-pointer truncate font-medium flex-1">
-                {khachThue.hoTen}
-              </Label>
-            </div>
-          ))}
-          {filteredTenants.length === 0 && (
-            <p className="col-span-full text-center py-4 text-xs text-gray-400 italic">
-              {isAdmin ? 'Không tìm thấy chủ nhà nào phù hợp' : 'Không tìm thấy khách thuê nào phù hợp'}
-            </p>
-          )}
-        </div>
-        <p className="text-[10px] text-gray-400 italic">
-          Đã chọn {formData.nguoiNhan.length} người nhận
-        </p>
+        <Popover open={openNguoiNhanDropdown} onOpenChange={setOpenNguoiNhanDropdown}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={openNguoiNhanDropdown}
+              className="w-full justify-between h-auto min-h-10 py-2 border-gray-300"
+            >
+              <div className="flex flex-wrap gap-1 items-center">
+                {formData.nguoiNhan.length > 0 ? (
+                  <span className="text-sm font-medium text-green-700">
+                    Đã chọn {formData.nguoiNhan.length} {isAdmin ? 'chủ nhà' : 'người nhận'}
+                  </span>
+                ) : (
+                  <span className="text-sm text-gray-500 font-normal">
+                    Tìm kiếm và chọn {isAdmin ? 'chủ nhà' : 'người nhận'}...
+                  </span>
+                )}
+              </div>
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 shadow-lg" align="start">
+            <Command>
+              <CommandInput placeholder={`Tìm kiếm theo tên${isAdmin ? ' hoặc email' : ''}...`} className="h-10 text-sm" />
+              <CommandList>
+                <CommandEmpty>Không tìm thấy dữ liệu phù hợp.</CommandEmpty>
+                <CommandGroup className="max-h-60 overflow-y-auto w-full">
+                  {filteredTenants.map((khachThue) => (
+                    <CommandItem
+                      key={khachThue._id}
+                      value={`${khachThue.hoTen} ${(khachThue as any).email || ''}`}
+                      onSelect={() => {
+                        handleNguoiNhanChange(khachThue._id!, !formData.nguoiNhan.includes(khachThue._id!));
+                        setOpenNguoiNhanDropdown(false);
+                      }}
+                      className="cursor-pointer flex items-center justify-between py-2"
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-medium text-sm text-slate-800">{khachThue.hoTen}</span>
+                        {(khachThue as any).email && (
+                          <span className="text-xs text-muted-foreground">{(khachThue as any).email}</span>
+                        )}
+                      </div>
+                      <Check
+                        className={`h-4 w-4 text-green-600 transition-opacity ${
+                          formData.nguoiNhan.includes(khachThue._id!) ? "opacity-100" : "opacity-0"
+                        }`}
+                      />
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+        {formData.nguoiNhan.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5 pt-1 max-h-32 overflow-y-auto">
+            {formData.nguoiNhan.map((id) => {
+              const kt = filteredTenants.find(t => t._id === id);
+              if (!kt) return null;
+              return (
+                <Badge key={id} variant="secondary" className="bg-green-50/80 text-green-800 border border-green-200/60 font-medium flex items-center pr-1.5 py-1">
+                  <span>{kt.hoTen}</span>
+                  <div
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleNguoiNhanChange(id, false);
+                    }}
+                    className="ml-1 cursor-pointer hover:bg-green-200 rounded-full p-0.5 transition-colors"
+                  >
+                    <X className="h-3 w-3" />
+                  </div>
+                </Badge>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-[11px] text-gray-500 italic">
+            Chưa có {isAdmin ? 'chủ nhà' : 'người nhận'} nào được chọn
+          </p>
+        )}
       </div>
       )}
 

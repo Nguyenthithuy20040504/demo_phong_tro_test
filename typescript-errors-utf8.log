@@ -1,0 +1,129 @@
+﻿.next/types/validator.ts(702,31): error TS2344: Type 'typeof import("C:/Users/Az09.Team/Git-projects/demo_phong_tro_test/src/app/api/hoa-don-public/[id]/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/hoa-don-public/[id]">'.
+  Types of property 'GET' are incompatible.
+    Type '(request: NextRequest, { params }: { params: { id: string; }; }) => Promise<NextResponse<{ success: boolean; message: string; }> | NextResponse<{ success: boolean; data: { hoaDon: (FlattenMaps<...> & Required<...> & { ...; })[] | (FlattenMaps<...> & ... 1 more ... & { ...; }); thanhToanList: (FlattenMaps<...> & ... ...' is not assignable to type '(request: NextRequest, context: { params: Promise<{ id: string; }>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters '__1' and 'context' are incompatible.
+        Type '{ params: Promise<{ id: string; }>; }' is not assignable to type '{ params: { id: string; }; }'.
+          Types of property 'params' are incompatible.
+            Property 'id' is missing in type 'Promise<{ id: string; }>' but required in type '{ id: string; }'.
+.next/types/validator.ts(765,31): error TS2344: Type 'typeof import("C:/Users/Az09.Team/Git-projects/demo_phong_tro_test/src/app/api/hop-dong/[id]/duyet/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/hop-dong/[id]/duyet">'.
+  Types of property 'PUT' are incompatible.
+    Type '(request: NextRequest, { params }: { params: { id: string; }; }) => Promise<NextResponse<{ success: boolean; message: string; }>>' is not assignable to type '(request: NextRequest, context: { params: Promise<{ id: string; }>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters '__1' and 'context' are incompatible.
+        Type '{ params: Promise<{ id: string; }>; }' is not assignable to type '{ params: { id: string; }; }'.
+          Types of property 'params' are incompatible.
+            Property 'id' is missing in type 'Promise<{ id: string; }>' but required in type '{ id: string; }'.
+.next/types/validator.ts(963,31): error TS2344: Type 'typeof import("C:/Users/Az09.Team/Git-projects/demo_phong_tro_test/src/app/api/thanh-toan/[id]/duyet/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/thanh-toan/[id]/duyet">'.
+  Types of property 'PATCH' are incompatible.
+    Type '(request: NextRequest, { params }: { params: { id: string; }; }) => Promise<NextResponse<{ message: string; }>>' is not assignable to type '(request: NextRequest, context: { params: Promise<{ id: string; }>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters '__1' and 'context' are incompatible.
+        Type '{ params: Promise<{ id: string; }>; }' is not assignable to type '{ params: { id: string; }; }'.
+          Types of property 'params' are incompatible.
+            Property 'id' is missing in type 'Promise<{ id: string; }>' but required in type '{ id: string; }'.
+.next/types/validator.ts(972,31): error TS2344: Type 'typeof import("C:/Users/Az09.Team/Git-projects/demo_phong_tro_test/src/app/api/thanh-toan/[id]/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/thanh-toan/[id]">'.
+  Types of property 'PUT' are incompatible.
+    Type '(request: NextRequest, { params }: { params: { id: string; }; }) => Promise<NextResponse<{ message: string; }>>' is not assignable to type '(request: NextRequest, context: { params: Promise<{ id: string; }>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters '__1' and 'context' are incompatible.
+        Type '{ params: Promise<{ id: string; }>; }' is not assignable to type '{ params: { id: string; }; }'.
+          Types of property 'params' are incompatible.
+            Property 'id' is missing in type 'Promise<{ id: string; }>' but required in type '{ id: string; }'.
+.next/types/validator.ts(981,31): error TS2344: Type 'typeof import("C:/Users/Az09.Team/Git-projects/demo_phong_tro_test/src/app/api/thanh-toan/[id]/tu-choi/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/thanh-toan/[id]/tu-choi">'.
+  Types of property 'PATCH' are incompatible.
+    Type '(request: NextRequest, { params }: { params: { id: string; }; }) => Promise<NextResponse<{ message: string; }>>' is not assignable to type '(request: NextRequest, context: { params: Promise<{ id: string; }>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters '__1' and 'context' are incompatible.
+        Type '{ params: Promise<{ id: string; }>; }' is not assignable to type '{ params: { id: string; }; }'.
+          Types of property 'params' are incompatible.
+            Property 'id' is missing in type 'Promise<{ id: string; }>' but required in type '{ id: string; }'.
+demo_phong_tro-main/src/app/(dashboard)/dashboard/su-co/page.tsx(488,47): error TS2339: Property 'nguoiBaoCao' does not exist on type 'SuCo'.
+demo_phong_tro-main/src/app/(dashboard)/dashboard/su-co/page.tsx(488,79): error TS2339: Property 'nguoiBaoCao' does not exist on type 'SuCo'.
+demo_phong_tro-main/src/app/(dashboard)/dashboard/su-co/page.tsx(488,132): error TS2339: Property 'nguoiBaoCao' does not exist on type 'SuCo'.
+demo_phong_tro-main/src/app/(dashboard)/dashboard/su-co/table.tsx(275,31): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string | { hoTen: string; }'.
+  Type 'undefined' is not assignable to type 'string | { hoTen: string; }'.
+demo_phong_tro-main/src/app/(dashboard)/dashboard/su-co/table.tsx(277,56): error TS2339: Property 'soDienThoai' does not exist on type 'never'.
+demo_phong_tro-main/src/app/(dashboard)/dashboard/su-co/table.tsx(279,26): error TS2339: Property 'soDienThoai' does not exist on type 'never'.
+demo_phong_tro-main/src/app/api/auth/register/route.ts(54,26): error TS2339: Property 'errors' does not exist on type 'ZodError<unknown>'.
+demo_phong_tro-main/src/app/api/hoa-don/latest-reading/route.ts(21,26): error TS2345: Argument of type 'string | number' is not assignable to parameter of type 'string'.
+  Type 'number' is not assignable to type 'string'.
+demo_phong_tro-main/src/app/api/hop-dong/route.ts(192,26): error TS2339: Property 'errors' does not exist on type 'ZodError<unknown>'.
+demo_phong_tro-main/src/app/api/notifications/route.ts(160,65): error TS2339: Property 'maPhong' does not exist on type 'ObjectId'.
+demo_phong_tro-main/src/app/api/notifications/route.ts(160,78): error TS7053: Element implicitly has an 'any' type because expression of type '"daHuy" | "moi" | "dangXuLy" | "daXong"' can't be used to index type '{ moi: string; dangXuLy: string; }'.
+  Property 'daHuy' does not exist on type '{ moi: string; dangXuLy: string; }'.
+demo_phong_tro-main/src/app/api/notifications/route.ts(164,28): error TS2339: Property 'maPhong' does not exist on type 'ObjectId'.
+demo_phong_tro-main/src/app/api/notifications/route.ts(165,20): error TS18049: 'issue.khachThue' is possibly 'null' or 'undefined'.
+demo_phong_tro-main/src/app/api/notifications/route.ts(165,36): error TS2339: Property 'hoTen' does not exist on type 'ObjectId'.
+demo_phong_tro-main/src/app/api/notifications/route.ts(220,27): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ critical: number; high: number; medium: number; low: number; }'.
+  No index signature with a parameter of type 'string' was found on type '{ critical: number; high: number; medium: number; low: number; }'.
+demo_phong_tro-main/src/app/api/notifications/route.ts(220,62): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ critical: number; high: number; medium: number; low: number; }'.
+  No index signature with a parameter of type 'string' was found on type '{ critical: number; high: number; medium: number; low: number; }'.
+demo_phong_tro-main/src/app/api/phong/route.ts(170,26): error TS2339: Property 'errors' does not exist on type 'ZodError<unknown>'.
+demo_phong_tro-main/src/app/api/su-co/[id]/route.ts(104,26): error TS2339: Property 'errors' does not exist on type 'ZodError<unknown>'.
+demo_phong_tro-main/src/app/api/su-co/route.ts(145,26): error TS2339: Property 'errors' does not exist on type 'ZodError<unknown>'.
+scripts/debug/check-all-db.ts(3,23): error TS2307: Cannot find module './src/lib/mongodb' or its corresponding type declarations.
+scripts/debug/check-all-db.ts(4,20): error TS2307: Cannot find module './src/models/ToaNha' or its corresponding type declarations.
+scripts/debug/check-all-db.ts(5,19): error TS2307: Cannot find module './src/models/Phong' or its corresponding type declarations.
+scripts/debug/check-all-db.ts(6,21): error TS2307: Cannot find module './src/models/HopDong' or its corresponding type declarations.
+scripts/debug/check-all-db.ts(7,20): error TS2307: Cannot find module './src/models/HoaDon' or its corresponding type declarations.
+scripts/debug/check-all-db.ts(8,23): error TS2307: Cannot find module './src/models/NguoiDung' or its corresponding type declarations.
+scripts/debug/check-all-db.ts(9,23): error TS2307: Cannot find module './src/models/KhachThue' or its corresponding type declarations.
+scripts/debug/check-all-db.ts(10,18): error TS2307: Cannot find module './src/models/SuCo' or its corresponding type declarations.
+scripts/debug/check-db.ts(3,23): error TS2307: Cannot find module '../src/lib/mongodb' or its corresponding type declarations.
+scripts/debug/check-db.ts(4,23): error TS2307: Cannot find module '../src/models/NguoiDung' or its corresponding type declarations.
+scripts/debug/check_contracts.ts(2,23): error TS2307: Cannot find module './src/lib/mongodb' or its corresponding type declarations.
+scripts/debug/check_contracts.ts(3,21): error TS2307: Cannot find module './src/models/HopDong' or its corresponding type declarations.
+scripts/debug/check_tenant_data.ts(1,23): error TS2307: Cannot find module './src/lib/mongodb' or its corresponding type declarations.
+scripts/debug/check_tenant_data.ts(2,23): error TS2307: Cannot find module './src/models/NguoiDung' or its corresponding type declarations.
+scripts/debug/check_tenant_data.ts(3,23): error TS2307: Cannot find module './src/models/KhachThue' or its corresponding type declarations.
+scripts/debug/check_tenant_data.ts(4,21): error TS2307: Cannot find module './src/models/HopDong' or its corresponding type declarations.
+scripts/debug/check_tenant_data.ts(28,23): error TS7006: Parameter 'c' implicitly has an 'any' type.
+scripts/debug/debug-stats.ts(2,20): error TS2307: Cannot find module './src/models/ToaNha' or its corresponding type declarations.
+scripts/debug/debug-stats.ts(3,19): error TS2307: Cannot find module './src/models/Phong' or its corresponding type declarations.
+scripts/debug/debug-stats.ts(4,23): error TS2307: Cannot find module './src/models/NguoiDung' or its corresponding type declarations.
+scripts/debug/debug-stats.ts(5,23): error TS2307: Cannot find module './src/lib/mongodb' or its corresponding type declarations.
+scripts/debug/debug-stats.ts(6,40): error TS2307: Cannot find module './src/lib/auth-utils' or its corresponding type declarations.
+scripts/debug/debug-stats.ts(30,47): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/app/(dashboard)/dashboard/admin/saas-dashboard/page.tsx(38,10): error TS2305: Module '"@/lib/utils"' has no exported member 'formatCurrency'.
+src/app/(dashboard)/dashboard/quan-ly-tai-khoan/table.tsx(195,39): error TS2339: Property 'daXacMinhEmail' does not exist on type 'User'.
+src/app/api/auth/forgot-password/reset/route.ts(31,10): error TS18047: 'rawUser' is possibly 'null'.
+src/app/api/auth/forgot-password/reset/route.ts(31,18): error TS2339: Property 'maKhoiPhucMatKhau' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[] | (FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })'.
+  Property 'maKhoiPhucMatKhau' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[]'.
+src/app/api/auth/forgot-password/reset/route.ts(31,39): error TS18047: 'rawUser' is possibly 'null'.
+src/app/api/auth/forgot-password/reset/route.ts(31,47): error TS2339: Property 'maKhoiPhucMatKhau' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[] | (FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })'.
+  Property 'maKhoiPhucMatKhau' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[]'.
+src/app/api/auth/forgot-password/reset/route.ts(38,10): error TS18047: 'rawUser' is possibly 'null'.
+src/app/api/auth/forgot-password/reset/route.ts(38,18): error TS2339: Property 'hanMaKhoiPhucMatKhau' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[] | (FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })'.
+  Property 'hanMaKhoiPhucMatKhau' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[]'.
+src/app/api/auth/forgot-password/reset/route.ts(38,55): error TS18047: 'rawUser' is possibly 'null'.
+src/app/api/auth/forgot-password/reset/route.ts(38,63): error TS2339: Property 'hanMaKhoiPhucMatKhau' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[] | (FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })'.
+  Property 'hanMaKhoiPhucMatKhau' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[]'.
+src/app/api/auth/forgot-password/verify-code/route.ts(27,15): error TS2339: Property 'maKhoiPhucMatKhau' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[] | (FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })'.
+  Property 'maKhoiPhucMatKhau' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[]'.
+src/app/api/auth/forgot-password/verify-code/route.ts(27,41): error TS2339: Property 'maKhoiPhucMatKhau' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[] | (FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })'.
+  Property 'maKhoiPhucMatKhau' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[]'.
+src/app/api/auth/forgot-password/verify-code/route.ts(34,15): error TS2339: Property 'hanMaKhoiPhucMatKhau' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[] | (FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })'.
+  Property 'hanMaKhoiPhucMatKhau' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[]'.
+src/app/api/auth/forgot-password/verify-code/route.ts(34,57): error TS2339: Property 'hanMaKhoiPhucMatKhau' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[] | (FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })'.
+  Property 'hanMaKhoiPhucMatKhau' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[]'.
+src/app/api/cron/daily-reminder/route.ts(37,37): error TS2339: Property 'models' does not exist on type '{ conn: any; promise: Promise<any> | null; }'.
+src/app/api/cron/daily-reminder/route.ts(37,66): error TS2339: Property 'model' does not exist on type '{ conn: any; promise: Promise<any> | null; }'.
+src/app/api/cron/daily-reminder/route.ts(38,33): error TS2339: Property 'models' does not exist on type '{ conn: any; promise: Promise<any> | null; }'.
+src/app/api/cron/daily-reminder/route.ts(39,34): error TS2339: Property 'models' does not exist on type '{ conn: any; promise: Promise<any> | null; }'.
+src/app/api/cron/daily-reminder/route.ts(39,60): error TS2339: Property 'model' does not exist on type '{ conn: any; promise: Promise<any> | null; }'.
+src/app/api/cron/daily-reminder/route.ts(40,36): error TS2339: Property 'models' does not exist on type '{ conn: any; promise: Promise<any> | null; }'.
+src/app/api/cron/daily-reminder/route.ts(40,64): error TS2339: Property 'model' does not exist on type '{ conn: any; promise: Promise<any> | null; }'.
+src/app/api/hoa-don/latest-reading/route.ts(21,26): error TS2345: Argument of type 'string | number' is not assignable to parameter of type 'string'.
+  Type 'number' is not assignable to type 'string'.
+src/app/api/telegram/webhook/route.ts(23,31): error TS7006: Parameter 'ctx' implicitly has an 'any' type.
+src/app/api/telegram/webhook/route.ts(81,29): error TS7006: Parameter 'ctx' implicitly has an 'any' type.
+src/app/api/telegram/webhook/route.ts(200,33): error TS7006: Parameter 'ctx' implicitly has an 'any' type.
+src/app/api/telegram/webhook/route.ts(211,33): error TS7006: Parameter 'ctx' implicitly has an 'any' type.
+src/app/api/user/subscription/status/route.ts(53,39): error TS2339: Property 'goiDichVu' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[] | (FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })'.
+  Property 'goiDichVu' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[]'.
+src/app/api/user/subscription/status/route.ts(55,39): error TS2339: Property 'goiDichVu' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[] | (FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })'.
+  Property 'goiDichVu' does not exist on type '(FlattenMaps<any> & Required<{ _id: unknown; }> & { __v: number; })[]'.
+src/lib/telegram.ts(1,26): error TS2307: Cannot find module 'telegraf' or its corresponding type declarations.
+ui-ux-pro-max-skill-main/cli/src/commands/init.ts(4,17): error TS2307: Cannot find module 'ora' or its corresponding type declarations.
+ui-ux-pro-max-skill-main/cli/src/commands/init.ts(5,21): error TS2307: Cannot find module 'prompts' or its corresponding type declarations.
+ui-ux-pro-max-skill-main/cli/src/commands/update.ts(2,17): error TS2307: Cannot find module 'ora' or its corresponding type declarations.
+ui-ux-pro-max-skill-main/cli/src/commands/versions.ts(2,17): error TS2307: Cannot find module 'ora' or its corresponding type declarations.
+ui-ux-pro-max-skill-main/cli/src/index.ts(3,25): error TS2307: Cannot find module 'commander' or its corresponding type declarations.
+ui-ux-pro-max-skill-main/cli/src/index.ts(30,18): error TS7006: Parameter 'options' implicitly has an 'any' type.
+ui-ux-pro-max-skill-main/cli/src/index.ts(52,18): error TS7006: Parameter 'options' implicitly has an 'any' type.

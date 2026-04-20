@@ -98,9 +98,9 @@ export default function AccountManagementPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [newPassword, setNewPassword] = useState('');
+  const [isToggleStatusDialogOpen, setIsToggleStatusDialogOpen] = useState(false);
+  const [userToToggle, setUserToToggle] = useState<User | null>(null);
   const hasFetchedRef = useRef(false);
   
   const [tenantSuggestions, setTenantSuggestions] = useState<any[]>([]);
@@ -251,50 +251,30 @@ export default function AccountManagementPage() {
     }
   };
 
-  const handleResetPassword = async () => {
-    if (!selectedUser || !newPassword) return;
-
-    try {
-      const response = await fetch(`/api/admin/users/${selectedUser._id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ password: newPassword }),
-      });
-
-      if (response.ok) {
-        toast.success('Mật khẩu đã được đặt lại.');
-        setIsResetPasswordDialogOpen(false);
-        setNewPassword('');
-        setSelectedUser(null);
-      } else {
-        const error = await response.json();
-        toast.error(error.message || 'Chưa đặt lại được mật khẩu.');
-      }
-    } catch (error) {
-      toast.error('Lỗi khi thực hiện đặt lại mật khẩu.');
-    }
-  };
-
   // Không cho phép xóa tài khoản để đảm bảo tính toàn vẹn dữ liệu
   const handleDeleteUser = async () => {
     toast.error('Không cho phép xóa tài khoản để đảm bảo tính toàn vẹn dữ liệu và lưu log ở các hợp đồng, hóa đơn. Vui lòng sử dụng chức năng "Khóa tài khoản".');
   };
 
-  const handleToggleStatus = async (user: User) => {
+  const handleToggleStatus = (user: User) => {
+    setUserToToggle(user);
+    setIsToggleStatusDialogOpen(true);
+  };
+
+  const executeToggleStatus = async () => {
+    if (!userToToggle) return;
     try {
-      const newStatus = !getUserIsActive(user);
-      const response = await fetch(`/api/admin/users/${user._id}`, {
+      const newStatus = !getUserIsActive(userToToggle);
+      const response = await fetch(`/api/admin/users/${userToToggle._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...user,
-          name: getUserName(user),
-          phone: getUserPhone(user),
-          role: getUserRole(user),
+          ...userToToggle,
+          name: getUserName(userToToggle),
+          phone: getUserPhone(userToToggle),
+          role: getUserRole(userToToggle),
           isActive: newStatus,
           trangThai: newStatus ? 'hoatDong' : 'khoa'
         }),
@@ -302,6 +282,8 @@ export default function AccountManagementPage() {
 
       if (response.ok) {
         toast.success(newStatus ? 'Đã mở khóa tài khoản!' : 'Đã khóa tài khoản thành công!');
+        setIsToggleStatusDialogOpen(false);
+        setUserToToggle(null);
         cache.clearCache();
         fetchUsers(true);
       } else {
@@ -322,12 +304,6 @@ export default function AccountManagementPage() {
       isActive: getUserIsActive(user)
     });
     setIsEditDialogOpen(true);
-  };
-
-  const openResetPasswordDialog = (user: User) => {
-    setSelectedUser(user);
-    setNewPassword('');
-    setIsResetPasswordDialogOpen(true);
   };
 
   const getRoleBadge = (role: string) => {
@@ -632,6 +608,31 @@ export default function AccountManagementPage() {
           </DialogContent>
       </Dialog>
 
+      {/* Toggle Status Confirmation Dialog */}
+      <Dialog open={isToggleStatusDialogOpen} onOpenChange={setIsToggleStatusDialogOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle>{userToToggle && getUserIsActive(userToToggle) ? 'Xác nhận khóa tài khoản' : 'Xác nhận mở khóa tài khoản'}</DialogTitle>
+            <DialogDescription className="pt-2">
+              {userToToggle && getUserIsActive(userToToggle) 
+                ? `Bạn có chắc chắn muốn khóa tài khoản của "${getUserName(userToToggle)}"? Tài khoản bị khóa sẽ không thể đăng nhập vào hệ thống.`
+                : `Bạn có chắc chắn muốn mở khóa tài khoản của "${userToToggle ? getUserName(userToToggle) : ''}"? Họ sẽ có thể đăng nhập trở lại.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex justify-end gap-2 mt-2">
+            <Button variant="outline" onClick={() => setIsToggleStatusDialogOpen(false)}>
+              Hủy
+            </Button>
+            <Button 
+              variant={userToToggle && getUserIsActive(userToToggle) ? "destructive" : "default"} 
+              onClick={executeToggleStatus}
+            >
+              {userToToggle && getUserIsActive(userToToggle) ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4 lg:gap-6">
         <Card className="p-2 md:p-4 premium-card shadow-sm">
@@ -724,7 +725,6 @@ export default function AccountManagementPage() {
             onEdit={openEditDialog}
             onDelete={handleDeleteUser}
             onToggleStatus={handleToggleStatus}
-            onResetPassword={openResetPasswordDialog}
             currentUserId={((session?.user as any)?.id)}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
@@ -846,15 +846,7 @@ export default function AccountManagementPage() {
                         <Edit className="h-3 w-3 mr-1" />
                         Sửa
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openResetPasswordDialog(user)}
-                        className="flex-1 h-8 text-xs"
-                      >
-                        <LockKeyhole className="h-3 w-3 mr-1" />
-                        Mật khẩu
-                      </Button>
+
                       <Button
                         variant="outline"
                         size="sm"
@@ -953,50 +945,7 @@ export default function AccountManagementPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Reset Password Dialog */}
-      <Dialog open={isResetPasswordDialogOpen} onOpenChange={setIsResetPasswordDialogOpen}>
-        <DialogContent className="w-[95vw] sm:w-full sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <LockKeyhole className="h-5 w-5 text-orange-500" />
-              Đặt lại mật khẩu
-            </DialogTitle>
-            <DialogDescription>
-              Nhập mật khẩu mới cho tài khoản <strong>{selectedUser ? getUserName(selectedUser) : ''}</strong>
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="new-password">Mật khẩu mới</Label>
-              <Input
-                id="new-password"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Nhập ít nhất 6 ký tự"
-                autoFocus
-              />
-            </div>
-            <div className="p-3 bg-blue-50 border border-blue-100 rounded-md">
-              <p className="text-xs text-blue-700 leading-relaxed">
-                <strong>Lưu ý:</strong> Sau khi đặt lại, người dùng sẽ phải sử dụng mật khẩu mới để đăng nhập. Vui lòng thông báo mật khẩu này cho người dùng.
-              </p>
-            </div>
-          </div>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setIsResetPasswordDialogOpen(false)} className="w-full sm:w-auto">
-              Hủy
-            </Button>
-            <Button 
-              className="bg-orange-600 hover:bg-orange-700 w-full sm:w-auto" 
-              onClick={handleResetPassword}
-              disabled={!newPassword || newPassword.length < 6}
-            >
-              Đặt lại mật khẩu
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
     </div>
   );
 }

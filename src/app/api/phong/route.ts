@@ -212,8 +212,14 @@ export async function POST(request: NextRequest) {
     await ToaNha.findByIdAndUpdate(validatedData.toaNha, { $inc: { tongSoPhong: 1 } });
 
     return NextResponse.json({ success: true, data: newPhong }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating phong:', error);
-    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
+    if (error.code === 11000 && error.keyPattern && error.keyPattern.maPhong) {
+      return NextResponse.json({ success: false, message: 'Mã phòng này đã tồn tại trong tòa nhà. Vui lòng nhập mã phòng khác.' }, { status: 400 });
+    }
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ success: false, message: error.issues[0].message }, { status: 400 });
+    }
+    return NextResponse.json({ success: false, message: 'Lỗi khi tạo phòng. Vui lòng thử lại sau.' }, { status: 500 });
   }
 }

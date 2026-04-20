@@ -170,8 +170,9 @@ function RoomCard({
   const tenantName = getTenantName(phong);
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
       className={`
         relative w-full rounded-xl border-2 pt-5 pb-3 px-3 md:pt-7 md:pb-4 md:px-4
@@ -266,7 +267,7 @@ function RoomCard({
           </p>
         )}
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -696,6 +697,7 @@ export default function PhongPage() {
                 <PhongForm 
                   phong={editingPhong}
                   toaNhaList={toaNhaList}
+                  phongList={phongList}
                   onClose={() => setIsDialogOpen(false)}
                   onSuccess={() => {
                     cache.clearCache();
@@ -1099,11 +1101,13 @@ export default function PhongPage() {
 function PhongForm({ 
   phong, 
   toaNhaList,
+  phongList,
   onClose, 
   onSuccess 
 }: { 
   phong: Phong | null;
   toaNhaList: ToaNha[];
+  phongList: Phong[];
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -1127,6 +1131,45 @@ function PhongForm({
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasManuallyEditedCode, setHasManuallyEditedCode] = useState(false);
+
+  // Tự động sinh mã phòng dựa trên tầng và tòa nhà (nếu đang thêm mới và chưa tự sửa tay)
+  useEffect(() => {
+    if (phong || hasManuallyEditedCode) return; // Bỏ qua nếu đang sửa phòng hoặc user đã tự nhập mã
+    
+    if (formData.toaNha && formData.tang !== undefined) {
+      const getToaNhaIdStr = (t: any) => typeof t === 'object' && t ? t._id : t;
+      
+      const roomsInFloor = phongList.filter(p => 
+        getToaNhaIdStr(p.toaNha) === formData.toaNha && p.tang === formData.tang
+      );
+
+      if (roomsInFloor.length > 0) {
+        // Tìm phòng có số đuôi lớn nhất
+        const roomNumbers = roomsInFloor.map(p => {
+          const match = p.maPhong.match(/(\d+)$/);
+          return match ? parseInt(match[1], 10) : 0;
+        });
+        const maxNumber = Math.max(...roomNumbers);
+        
+        // Giữ lại định dạng tiền tố của mã lớn nhất (vd: "A102" -> tiền tố là "A", đuôi 102 -> tiếp theo "A103")
+        const maxRoom = roomsInFloor.find(p => p.maPhong.endsWith(maxNumber.toString()));
+        if (maxRoom && maxNumber > 0) {
+          const prefix = maxRoom.maPhong.replace(new RegExp(`${maxNumber}$`), '');
+          setFormData(prev => ({ ...prev, maPhong: `${prefix}${maxNumber + 1}` }));
+        } else {
+          // Fallback: 101, 102, 201...
+          const formattedTang = formData.tang === 0 ? 'T' : formData.tang.toString();
+          const nextIndex = (roomsInFloor.length + 1).toString().padStart(2, '0');
+          setFormData(prev => ({ ...prev, maPhong: `${formattedTang}${nextIndex}` }));
+        }
+      } else {
+        // Tầng chưa có phòng nào: mặc định Tầng + 01 (vd: Tầng 1 -> 101)
+        const formattedTang = formData.tang === 0 ? 'T' : formData.tang.toString();
+        setFormData(prev => ({ ...prev, maPhong: `${formattedTang}01` }));
+      }
+    }
+  }, [formData.toaNha, formData.tang, phongList, phong, hasManuallyEditedCode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1211,14 +1254,14 @@ function PhongForm({
               <Input
                 id="maPhong"
                 value={formData.maPhong}
-                onChange={(e) => setFormData(prev => ({ ...prev, maPhong: e.target.value.toUpperCase() }))}
+                onChange={(e) => {
+                  setHasManuallyEditedCode(true);
+                  setFormData(prev => ({ ...prev, maPhong: e.target.value.toUpperCase() }));
+                }}
                 placeholder="VD: 101, 202, A103..."
                 required
                 className="text-sm"
               />
-              <p className="text-[10px] text-muted-foreground">
-                Sử dụng số tầng làm tiền tố (VD: Tầng 1 là 101, 102...) để dễ quản lý.
-              </p>
             </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">

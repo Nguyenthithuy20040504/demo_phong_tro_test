@@ -150,7 +150,6 @@ type UserTableProps = {
   onEdit: (user: User) => void
   onDelete: (id: string) => void
   onToggleStatus: (user: User) => void
-  onResetPassword: (user: User) => void
   currentUserId?: string
 }
 
@@ -416,17 +415,6 @@ const createColumns = (props: UserTableProps): ColumnDef<User>[] => [
                 )}
               </DropdownMenuItem>
             )}
-
-            {!isCurrentUser && (
-              <DropdownMenuItem onClick={(e) => {
-                e.stopPropagation();
-                props.onResetPassword(row.original);
-              }}>
-                <LockKeyhole className="mr-2 h-4 w-4" />
-                Đặt lại mật khẩu
-              </DropdownMenuItem>
-            )}
-
 
           </DropdownMenuContent>
         </DropdownMenu>
