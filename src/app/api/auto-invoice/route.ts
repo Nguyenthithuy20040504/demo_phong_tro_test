@@ -81,7 +81,14 @@ export async function POST(request: NextRequest) {
 
     for (const contract of activeContracts) {
       try {
-        const invoiceNumber = `HD${currentYear}${currentMonth.toString().padStart(2, '0')}${contract.phong.maPhong}`;
+        if (!contract.phong) {
+          throw new Error(`Phòng không tồn tại hoặc đã bị xóa (HĐ: ${contract.maHopDong})`);
+        }
+        if (!contract.nguoiDaiDien) {
+          throw new Error(`Hợp đồng ${contract.maHopDong} chưa có người đại diện (Khách thuê)`);
+        }
+
+        const invoiceNumber = `HD${currentYear}${currentMonth.toString().padStart(2, '0')}${contract.phong.maPhong}${contract.phong.toaNha.toString().slice(-4)}`;
 
         // Check if invoice already exists (by contract OR by generated ID)
         const existingInvoice = await HoaDon.findOne({
@@ -309,9 +316,9 @@ export async function GET(request: NextRequest) {
         chiSoDienBanDau = lastHoaDon.chiSoDienCuoiKy || 0;
         chiSoNuocBanDau = lastHoaDon.chiSoNuocCuoiKy || 0;
       } else {
-        // Nếu không có hóa đơn tháng trước, mặc định bằng 0 theo yêu cầu người dùng
-        chiSoDienBanDau = 0;
-        chiSoNuocBanDau = 0;
+        // Nếu không có hóa đơn tháng trước, lấy chỉ số đầu từ hợp đồng
+        chiSoDienBanDau = contract.chiSoDienBanDau || 0;
+        chiSoNuocBanDau = contract.chiSoNuocBanDau || 0;
       }
 
       pendingContractsResult.push({
