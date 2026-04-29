@@ -615,7 +615,7 @@ export default function HoaDonPage() {
           </table>
 
           <div class="summary">
-            <div class="summary-row"><span>Đã thanh toán:</span><span style="color:#16a34a;font-weight:bold">${formatCurrency(hoaDon.daThanhToan)}</span></div>
+            <div class="summary-row"><span>Số tiền đã trả:</span><span style="color:#16a34a;font-weight:bold">${formatCurrency(hoaDon.daThanhToan)}</span></div>
             <div class="summary-row summary-total"><span>Còn phải đóng:</span><span>${formatCurrency(hoaDon.conLai)}</span></div>
           </div>
 
@@ -936,7 +936,7 @@ export default function HoaDonPage() {
                         <p className="font-semibold text-blue-600">{formatCurrency(hoaDon.tongTien)}</p>
                       </div>
                       <div>
-                        <span className="text-gray-500">Đã thanh toán:</span>
+                        <span className="text-gray-500">Số tiền đã trả:</span>
                         <p className="font-semibold text-green-600">{formatCurrency(hoaDon.daThanhToan)}</p>
                       </div>
                       <div className="col-span-2">
@@ -1046,7 +1046,8 @@ export default function HoaDonPage() {
                 </div>
               </div>
 
-              {/* Chỉ số điện nước */}
+              {/* Chỉ số điện nước (Chỉ hiện cho hóa đơn thuê phòng thường) */}
+              {!viewingHoaDon.maHoaDon.startsWith('COC-') && !viewingHoaDon.maHoaDon.startsWith('HC-') && viewingHoaDon.loai !== 'chi' && (
               <div>
                 <h3 className="text-sm md:text-base font-semibold mb-3">Chỉ số điện nước</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-4">
@@ -1086,29 +1087,57 @@ export default function HoaDonPage() {
                   </div>
                 </div>
               </div>
+              )}
 
               {/* Invoice Details */}
               <div>
                 <h3 className="text-sm md:text-base font-semibold mb-3">Chi tiết hóa đơn</h3>
                 <div className="space-y-2 text-xs md:text-sm">
-                  <div className="flex justify-between">
-                    <span>Tiền phòng</span>
-                    <span>{formatCurrency(viewingHoaDon.tienPhong)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Tiền điện ({viewingHoaDon.soDien} kWh)</span>
-                    <span>{formatCurrency(viewingHoaDon.tienDien)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Tiền nước ({viewingHoaDon.soNuoc} m³)</span>
-                    <span>{formatCurrency(viewingHoaDon.tienNuoc)}</span>
-                  </div>
-                  {viewingHoaDon.phiDichVu.map((phi, index) => (
-                    <div key={index} className="flex justify-between">
-                      <span>{phi.ten}</span>
-                      <span>{formatCurrency(phi.gia)}</span>
-                    </div>
-                  ))}
+                  {viewingHoaDon.maHoaDon.startsWith('COC-') ? (
+                    <>
+                      {/* Hóa đơn tiền cọc: chỉ hiện tiền cọc và tiền phòng (giá thuê tham khảo) */}
+                      <div className="flex justify-between">
+                        <span>Tiền cọc</span>
+                        <span>{formatCurrency(viewingHoaDon.tongTien)}</span>
+                      </div>
+                      {(viewingHoaDon.phong as any)?.giaThue > 0 && (
+                        <div className="flex justify-between text-gray-400">
+                          <span>Giá thuê phòng (tham khảo)</span>
+                          <span>{formatCurrency((viewingHoaDon.phong as any).giaThue)}</span>
+                        </div>
+                      )}
+                    </>
+                  ) : viewingHoaDon.maHoaDon.startsWith('HC-') || viewingHoaDon.loai === 'chi' ? (
+                    <>
+                      {/* Hóa đơn hoàn cọc */}
+                      <div className="flex justify-between">
+                        <span>Tiền hoàn cọc</span>
+                        <span>{formatCurrency(viewingHoaDon.tongTien)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Hóa đơn thuê phòng thường */}
+                      <div className="flex justify-between">
+                        <span>Tiền phòng</span>
+                        <span>{formatCurrency(viewingHoaDon.tienPhong)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Tiền điện ({viewingHoaDon.soDien} kWh)</span>
+                        <span>{formatCurrency(viewingHoaDon.tienDien)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Tiền nước ({viewingHoaDon.soNuoc} m³)</span>
+                        <span>{formatCurrency(viewingHoaDon.tienNuoc)}</span>
+                      </div>
+                      {viewingHoaDon.phiDichVu.map((phi, index) => (
+                        <div key={index} className="flex justify-between">
+                          <span>{phi.ten}</span>
+                          <span>{formatCurrency(phi.gia)}</span>
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -1119,7 +1148,7 @@ export default function HoaDonPage() {
                   <span>{formatCurrency(viewingHoaDon.tongTien)}</span>
                 </div>
                 <div className="flex justify-between text-xs md:text-sm">
-                  <span>Đã thanh toán:</span>
+                  <span>Số tiền đã trả:</span>
                   <span className="text-green-600">{formatCurrency(viewingHoaDon.daThanhToan)}</span>
                 </div>
                 <div className="flex justify-between text-xs md:text-sm">
@@ -1266,7 +1295,7 @@ function PaymentForm({
             <div className="font-medium">{formatCurrency(hoaDon.tongTien)}</div>
           </div>
           <div>
-            <span className="text-gray-600">Đã thanh toán:</span>
+            <span className="text-gray-600">Số tiền đã trả:</span>
             <div className="font-medium text-green-600">{formatCurrency(hoaDon.daThanhToan)}</div>
           </div>
           <div className="col-span-2">

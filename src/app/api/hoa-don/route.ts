@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     if (id) {
       const hoaDon = await HoaDon.findById(id)
         .populate('hopDong', 'maHopDong')
-        .populate('phong', 'maPhong toaNha');
+        .populate('phong', 'maPhong toaNha giaThue');
 
       if (!hoaDon) {
         return NextResponse.json(
@@ -212,7 +212,7 @@ export async function GET(request: NextRequest) {
     const [hoaDons, total] = await Promise.all([
       HoaDon.find(query)
         .populate('hopDong', 'maHopDong')
-        .populate('phong', 'maPhong')
+        .populate('phong', 'maPhong giaThue')
         .sort({ ngayTao: -1 })
         .skip(skip)
         .limit(limit),

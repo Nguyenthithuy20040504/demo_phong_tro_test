@@ -617,7 +617,7 @@ export default function HoaDonKhachThuePage() {
 
               <Separator />
 
-              {/* Chỉ số điện nước (Nếu có) */}
+              {/* Chỉ số điện nước (Chỉ hiện cho hóa đơn thuê phòng thường) */}
               {!selectedHoaDon.maHoaDon.startsWith('COC-') && !selectedHoaDon.maHoaDon.startsWith('HC-') && (
                 <div>
                   <h3 className="text-sm md:text-base font-semibold mb-3">Chỉ số điện nước</h3>
@@ -660,28 +660,55 @@ export default function HoaDonKhachThuePage() {
               <div>
                 <h3 className="text-sm md:text-base font-semibold mb-3">Chi tiết hóa đơn</h3>
                 <div className="space-y-2 text-xs md:text-sm">
-                  <div className="flex justify-between">
-                    <span>Tiền phòng</span>
-                    <span>{fmt(selectedHoaDon.tienPhong)}</span>
-                  </div>
-                  {(selectedHoaDon.tienDien > 0 || selectedHoaDon.soDien > 0) && (
-                    <div className="flex justify-between">
-                      <span>Tiền điện ({selectedHoaDon.soDien} kWh)</span>
-                      <span>{fmt(selectedHoaDon.tienDien)}</span>
-                    </div>
+                  {selectedHoaDon.maHoaDon.startsWith('COC-') ? (
+                    <>
+                      {/* Hóa đơn tiền cọc: chỉ hiện tiền cọc và tiền phòng (giá thuê tham khảo) */}
+                      <div className="flex justify-between">
+                        <span>Tiền cọc</span>
+                        <span>{fmt(selectedHoaDon.tongTien)}</span>
+                      </div>
+                      {(selectedHoaDon.phong as any)?.giaThue > 0 && (
+                        <div className="flex justify-between text-gray-400">
+                          <span>Giá thuê phòng (tham khảo)</span>
+                          <span>{fmt((selectedHoaDon.phong as any).giaThue)}</span>
+                        </div>
+                      )}
+                    </>
+                  ) : selectedHoaDon.maHoaDon.startsWith('HC-') || selectedHoaDon.loai === 'chi' ? (
+                    <>
+                      {/* Hóa đơn hoàn cọc */}
+                      <div className="flex justify-between">
+                        <span>Tiền hoàn cọc</span>
+                        <span>{fmt(selectedHoaDon.tongTien)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Hóa đơn thuê phòng thường */}
+                      <div className="flex justify-between">
+                        <span>Tiền phòng</span>
+                        <span>{fmt(selectedHoaDon.tienPhong)}</span>
+                      </div>
+                      {(selectedHoaDon.tienDien > 0 || selectedHoaDon.soDien > 0) && (
+                        <div className="flex justify-between">
+                          <span>Tiền điện ({selectedHoaDon.soDien} kWh)</span>
+                          <span>{fmt(selectedHoaDon.tienDien)}</span>
+                        </div>
+                      )}
+                      {(selectedHoaDon.tienNuoc > 0 || selectedHoaDon.soNuoc > 0) && (
+                        <div className="flex justify-between">
+                          <span>Tiền nước ({selectedHoaDon.soNuoc} m³)</span>
+                          <span>{fmt(selectedHoaDon.tienNuoc)}</span>
+                        </div>
+                      )}
+                      {selectedHoaDon.phiDichVu && selectedHoaDon.phiDichVu.map((phi, index) => (
+                        <div key={index} className="flex justify-between">
+                          <span>{phi.ten}</span>
+                          <span>{fmt(phi.gia)}</span>
+                        </div>
+                      ))}
+                    </>
                   )}
-                  {(selectedHoaDon.tienNuoc > 0 || selectedHoaDon.soNuoc > 0) && (
-                    <div className="flex justify-between">
-                      <span>Tiền nước ({selectedHoaDon.soNuoc} m³)</span>
-                      <span>{fmt(selectedHoaDon.tienNuoc)}</span>
-                    </div>
-                  )}
-                  {selectedHoaDon.phiDichVu && selectedHoaDon.phiDichVu.map((phi, index) => (
-                    <div key={index} className="flex justify-between">
-                      <span>{phi.ten}</span>
-                      <span>{fmt(phi.gia)}</span>
-                    </div>
-                  ))}
                 </div>
               </div>
 

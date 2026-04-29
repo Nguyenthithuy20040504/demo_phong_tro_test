@@ -77,7 +77,7 @@ interface EnrichedPhong extends Phong {
     conLai: number;
   } | null;
   suCoMoi?: number;
-  trangThaiTongHop?: 'trong' | 'daThanhToan' | 'treTien' | 'suCo' | 'choDuyet';
+  trangThaiTongHop?: 'trong' | 'daThanhToan' | 'treTien' | 'suCo' | 'choDuyet' | 'dangThue';
   hopDongHienTai?: any;
 }
 
@@ -129,6 +129,15 @@ const STATUS_CONFIG = {
     dot: 'bg-blue-400',
     icon: RefreshCw,
     hoverBg: 'hover:bg-blue-100',
+  },
+  dangThue: {
+    label: 'Đang thuê',
+    bg: 'bg-sky-50',
+    border: 'border-sky-300',
+    text: 'text-sky-700',
+    dot: 'bg-sky-400',
+    icon: Users,
+    hoverBg: 'hover:bg-sky-100',
   },
 } as const;
 

@@ -109,10 +109,19 @@ export async function GET(request: NextRequest) {
         } else if (hopDongRaw && hopDongRaw.trangThai === 'choDuyet') {
           trangThaiTongHop = 'choDuyet';
         } else if (phong.trangThai === 'dangThue' || phong.trangThai === 'daDat') {
-          if (hoaDonMoiNhat && ['quaHan', 'chuaThanhToan', 'daThanhToanMotPhan'].includes((hoaDonMoiNhat as any).trangThai)) {
+          // Tìm hóa đơn thuê hàng tháng mới nhất (loại trừ hóa đơn cọc COC- và hoàn cọc HC-)
+          const hoaDonThue = await HoaDon.findOne({ 
+            phong: phong._id, 
+            maHoaDon: { $not: /^(COC-|HC-)/ }
+          }).sort({ nam: -1, thang: -1 }).lean() as any;
+
+          if (hoaDonThue && ['quaHan', 'chuaThanhToan', 'daThanhToanMotPhan'].includes(hoaDonThue.trangThai)) {
             trangThaiTongHop = 'treTien';
-          } else {
+          } else if (hoaDonThue && hoaDonThue.trangThai === 'daThanhToan') {
             trangThaiTongHop = 'daThanhToan';
+          } else {
+            // Phòng đang thuê nhưng chưa có hóa đơn tháng hoặc chỉ có hóa đơn cọc
+            trangThaiTongHop = 'dangThue';
           }
         }
 

@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         { $match: { vaiTro: 'chuNha' } },
         {
           $lookup: {
-            from: 'toanhas', // Mongoose collection name is usually lowercased + pluralized
+            from: 'toanhas',
             localField: '_id',
             foreignField: 'chuSoHuu',
             as: 'buildings'
@@ -43,14 +43,29 @@ export async function GET(request: NextRequest) {
         {
           $addFields: {
             totalBuildings: { $size: '$buildings' },
-            totalRooms: { $sum: '$buildings.tongSoPhong' }
+            _buildingIds: { $map: { input: '$buildings', as: 'b', in: '$$b._id' } }
+          }
+        },
+        {
+          $lookup: {
+            from: 'phongs',
+            localField: '_buildingIds',
+            foreignField: 'toaNha',
+            as: 'rooms'
+          }
+        },
+        {
+          $addFields: {
+            totalRooms: { $size: '$rooms' }
           }
         },
         {
           $project: {
             matKhau: 0,
             password: 0,
-            buildings: 0
+            buildings: 0,
+            _buildingIds: 0,
+            rooms: 0
           }
         },
         { $sort: { createdAt: -1 } }

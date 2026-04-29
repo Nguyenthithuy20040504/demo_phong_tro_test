@@ -117,10 +117,18 @@ export async function GET(
     } else if (hopDongHienTaiRaw && hopDongHienTaiRaw.trangThai === 'choDuyet') {
       trangThaiTongHop = 'choDuyet';
     } else if (phongObj.trangThai === 'dangThue' || phongObj.trangThai === 'daDat') {
-      if (hoaDonMoiNhat && ['quaHan', 'chuaThanhToan', 'daThanhToanMotPhan'].includes((hoaDonMoiNhat as any).trangThai)) {
+      // Tìm hóa đơn thuê hàng tháng mới nhất (loại trừ hóa đơn cọc COC- và hoàn cọc HC-)
+      const hoaDonThue = await HoaDonModel.findOne({ 
+        phong: id, 
+        maHoaDon: { $not: /^(COC-|HC-)/ }
+      }).sort({ nam: -1, thang: -1 }).lean() as any;
+
+      if (hoaDonThue && ['quaHan', 'chuaThanhToan', 'daThanhToanMotPhan'].includes(hoaDonThue.trangThai)) {
         trangThaiTongHop = 'treTien';
-      } else {
+      } else if (hoaDonThue && hoaDonThue.trangThai === 'daThanhToan') {
         trangThaiTongHop = 'daThanhToan';
+      } else {
+        trangThaiTongHop = 'dangThue';
       }
     }
 

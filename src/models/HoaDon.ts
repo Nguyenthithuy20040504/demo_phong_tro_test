@@ -229,10 +229,22 @@ HoaDonSchema.pre('save', function(next) {
   
   this.conLai = this.tongTien - this.daThanhToan;
   
-  if (this.conLai <= 0) {
-    // Đã thanh toán đủ → luôn là 'daThanhToan' bất kể ngày
+  // Không ghi đè trạng thái 'daHuy' - hóa đơn đã hủy giữ nguyên
+  if (this.trangThai === 'daHuy') {
+    return next();
+  }
+  
+  if (this.conLai <= 0 && this.tongTien > 0) {
+    // Đã thanh toán đủ (và hóa đơn có giá trị thực) → 'daThanhToan'
     this.trangThai = 'daThanhToan';
+  } else if (this.conLai <= 0 && this.tongTien <= 0) {
+    // Hóa đơn có tổng tiền = 0 (trường hợp đặc biệt) → giữ 'chuaThanhToan'
+    // Không đánh dấu là đã thanh toán khi chưa có khoản tiền nào cần thu
+    if (this.trangThai !== 'choDuyet' && this.trangThai !== 'tuChoi') {
+      this.trangThai = 'chuaThanhToan';
+    }
   } else {
+    // conLai > 0: còn tiền chưa trả
     // Ưu tiên giữ trạng thái 'choDuyet' hoặc 'tuChoi' nếu còn số tiền chưa thanh toán
     if (this.trangThai !== 'choDuyet' && this.trangThai !== 'tuChoi') {
       if (this.daThanhToan > 0) {

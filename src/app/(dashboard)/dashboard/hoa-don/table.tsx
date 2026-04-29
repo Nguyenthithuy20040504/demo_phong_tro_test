@@ -238,14 +238,14 @@ const createColumns = (props: HoaDonTableProps & { setHoaDonToDelete: (h: HoaDon
         return (
           <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 gap-1">
             <ArrowDownRight className="h-3 w-3" />
-            Hoàn tiền
+            Khoản chi
           </Badge>
         );
       }
       return (
         <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1">
           <ArrowUpRight className="h-3 w-3" />
-          Thu tiền
+          Khoản thu
         </Badge>
       );
     },

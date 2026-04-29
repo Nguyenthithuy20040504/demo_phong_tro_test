@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     })
     .populate({
       path: 'phong',
-      select: 'toaNha',
+      select: 'toaNha maPhong',
       populate: { path: 'toaNha', select: 'chuSoHuu' }
     })
     .populate('hopDong', 'snapshotKhachThue');

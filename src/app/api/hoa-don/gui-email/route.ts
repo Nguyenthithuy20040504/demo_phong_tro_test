@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung', NguoiDung.schema);
 
     const invoices = await HoaDon.find({ _id: { $in: hoaDonIds } })
-      .populate('phong', 'toaNha')
+      .populate('phong', 'toaNha maPhong')
       .populate('hopDong', 'snapshotKhachThue');
 
     let sentCount = 0;
