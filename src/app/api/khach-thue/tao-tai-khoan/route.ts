@@ -38,28 +38,28 @@ export async function POST(request: NextRequest) {
     // Kiểm tra email đã tồn tại chưa
     const emailLower = email.toLowerCase();
     const existingEmail = await NguoiDung.findOne({ email: emailLower });
-    if (existingEmail) {
-      return NextResponse.json({ 
-        success: false, 
-        message: `Email "${emailLower}" đã được sử dụng bởi tài khoản khác` 
-      }, { status: 400 });
-    }
-
-    // Kiểm tra khách thuê đã có tài khoản chưa
+    
+    // Kiểm tra khách thuê đã có tài khoản chưa (theo ID, SĐT hoặc CCCD)
     const existingAccount = await NguoiDung.findOne({
       $or: [
         { _id: khachThueId },
         { email: emailLower },
         { soDienThoai: khachThue.soDienThoai },
-        { phone: khachThue.soDienThoai }
+        { phone: khachThue.soDienThoai },
+        { cccd: khachThue.cccd }
       ]
     });
     
     if (existingAccount) {
+      // Nếu đã có tài khoản rồi, không cần tạo mới, trả về thông báo thành công luôn
       return NextResponse.json({ 
-        success: false, 
-        message: `Khách thuê này hoặc email/số điện thoại này đã có tài khoản (email: ${existingAccount.email})` 
-      }, { status: 400 });
+        success: true, 
+        message: `Khách thuê này đã có tài khoản (email: ${existingAccount.email}). Không cần tạo mới, khách có thể dùng tài khoản hiện tại để đăng nhập.`,
+        data: {
+          userId: existingAccount._id,
+          email: existingAccount.email,
+        }
+      }, { status: 200 });
     }
 
     const token = crypto.randomBytes(32).toString('hex');
