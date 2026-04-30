@@ -270,7 +270,7 @@ function LoginFormContent() {
                 asChild
                 className="flex-1 h-12 md:h-14 rounded-2xl border-primary/20 text-primary hover:bg-primary/5 transition-all font-bold shadow-sm"
               >
-                <Link href="/dang-ky">Đăng ký mới</Link>
+                <Link href={selectedPlan ? `/dang-ky?plan=${selectedPlan}` : "/dang-ky"}>Đăng ký mới</Link>
               </Button>
             </div>
           </CardContent>

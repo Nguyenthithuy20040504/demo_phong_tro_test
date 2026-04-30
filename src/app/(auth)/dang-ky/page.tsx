@@ -45,11 +45,7 @@ function RegisterFormContent() {
   const selectedPlan = searchParams.get('plan') || 'mienPhi';
   const { data: session, status } = useSession();
 
-  useEffect(() => {
-    if (status === 'authenticated') {
-      router.push('/dashboard');
-    }
-  }, [status, router]);
+  // Cho phép truy cập trang đăng ký ngay cả khi có session cũ để tránh vòng lặp redirect
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
