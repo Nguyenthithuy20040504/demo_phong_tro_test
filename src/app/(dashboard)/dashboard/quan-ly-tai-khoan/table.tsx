@@ -20,8 +20,10 @@ import {
   Search,
   RefreshCw,
   Clock,
-  LockKeyhole
+  LockKeyhole,
+  Check
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -72,6 +74,8 @@ interface User {
   name?: string
   ten?: string
   email: string
+  username?: string
+  tenDangNhap?: string
   phone?: string
   soDienThoai?: string
   role?: string
@@ -86,6 +90,7 @@ interface User {
   goiDichVu?: string
   ngayHetHan?: string
   nguoiTao?: any
+  daXacMinhEmail?: boolean
 }
 
 // Helper functions
@@ -181,11 +186,54 @@ const createColumns = (props: UserTableProps): ColumnDef<User>[] => [
     accessorKey: "email",
     header: "Email",
     cell: ({ row }) => (
-      <div className="flex items-center gap-2 min-w-48">
-        <Mail className="h-4 w-4 text-muted-foreground" />
+      <div className="flex items-center gap-2 min-w-44">
+        <Mail className="h-4 w-4 text-muted-foreground mr-1" />
         <span className="text-sm">{row.original.email}</span>
       </div>
     ),
+  },
+  {
+    accessorKey: "username",
+    header: "Tài khoản",
+    cell: ({ row }) => {
+      const username = row.original.username || row.original.tenDangNhap || row.original.email
+      return (
+        <div className="flex items-center gap-2 font-medium text-blue-600 min-w-32">
+          <UserCheck className="h-4 w-4" />
+          <span className="text-sm">{username}</span>
+        </div>
+      )
+    },
+  },
+  {
+    accessorKey: "daXacMinhEmail",
+    header: "Xác minh",
+    cell: ({ row }) => {
+      const isVerified = row.original.daXacMinhEmail
+      return (
+        <Badge 
+          variant="outline" 
+          className={cn(
+            "gap-1",
+            isVerified 
+              ? "text-emerald-700 bg-emerald-50 border-emerald-200" 
+              : "text-amber-700 bg-amber-50 border-amber-200"
+          )}
+        >
+          {isVerified ? (
+            <>
+              <Check className="h-3 w-3" />
+              Đã xác minh
+            </>
+          ) : (
+            <>
+              <Clock className="h-3 w-3" />
+              Chờ xác nhận
+            </>
+          )}
+        </Badge>
+      )
+    },
   },
   {
     accessorKey: "phone",

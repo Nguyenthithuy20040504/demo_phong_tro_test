@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 
 export interface IKhachThue extends Document {
   hoTen: string;
+  tenDangNhap: string; // Thêm tên đăng nhập duy nhất
   soDienThoai: string;
   email?: string;
   cccd: string;
@@ -25,6 +26,12 @@ export interface IKhachThue extends Document {
   lastLogin?: Date;
   vaiTro: 'khachThue';
   nguoiQuanLy: mongoose.Types.ObjectId;
+  toaNhaBanDau?: mongoose.Types.ObjectId;
+  
+  // Xác minh email
+  daXacMinhEmail?: boolean;
+  maXacNhanEmail?: string;
+  hanMaXacNhanEmail?: Date;
 }
 
 const AnhCCCDSchema = new Schema({
@@ -46,6 +53,13 @@ const KhachThueSchema = new Schema<IKhachThue>({
     required: [true, 'Họ tên là bắt buộc'],
     trim: true,
     maxlength: [100, 'Họ tên không được quá 100 ký tự']
+  },
+  tenDangNhap: {
+    type: String,
+    required: false,
+    trim: true,
+    lowercase: true,
+    minlength: [3, 'Tên đăng nhập phải có ít nhất 3 ký tự']
   },
   soDienThoai: {
     type: String,
@@ -114,7 +128,25 @@ const KhachThueSchema = new Schema<IKhachThue>({
     ref: 'NguoiDung',
     required: [true, 'Người quản lý (Chủ nhà) là bắt buộc']
   },
+  toaNhaBanDau: {
+    type: Schema.Types.ObjectId,
+    ref: 'ToaNha',
+    default: null
+  },
   lastLogin: {
+    type: Date,
+    default: null
+  },
+  // Các field cho xác minh email
+  daXacMinhEmail: {
+    type: Boolean,
+    default: false
+  },
+  maXacNhanEmail: {
+    type: String,
+    default: null
+  },
+  hanMaXacNhanEmail: {
     type: Date,
     default: null
   }
@@ -149,12 +181,20 @@ KhachThueSchema.methods.comparePassword = async function(candidatePassword: stri
 };
 
 // Index cho tìm kiếm
-KhachThueSchema.index({ hoTen: 'text', queQuan: 'text', ngheNghiep: 'text' });
+KhachThueSchema.index({ hoTen: 'text', queQuan: 'text', ngheNghiep: 'text', tenDangNhap: 'text' });
 
 // Chỉ mục duy nhất kết hợp: SĐT và CCCD chỉ duy nhất trong phạm vi từng Chủ nhà (nguoiQuanLy)
 KhachThueSchema.index({ soDienThoai: 1, nguoiQuanLy: 1 }, { unique: true });
 KhachThueSchema.index({ cccd: 1, nguoiQuanLy: 1 }, { unique: true });
 
+// Tên đăng nhập phải duy nhất trên TOÀN HỆ THỐNG và cho phép null (sparse)
+KhachThueSchema.index({ tenDangNhap: 1 }, { unique: true, sparse: true });
+
 KhachThueSchema.index({ trangThai: 1 });
 
-export default mongoose.models.KhachThue || mongoose.model<IKhachThue>('KhachThue', KhachThueSchema);
+// Delete the model if it exists to force schema update
+if (mongoose.models && mongoose.models.KhachThue) {
+  delete mongoose.models.KhachThue;
+}
+
+export default mongoose.model<IKhachThue>('KhachThue', KhachThueSchema);

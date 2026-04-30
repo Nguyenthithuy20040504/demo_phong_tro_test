@@ -189,3 +189,60 @@ export const sendGeneralNotificationEmail = async ({
     return false;
   }
 };
+
+export const sendAccountConfirmationLinkEmail = async ({
+  email,
+  khachThueName,
+  confirmLink,
+}: {
+  email: string;
+  khachThueName: string;
+  confirmLink: string;
+}) => {
+  if (!email || !process.env.SMTP_USER) {
+    console.warn('Bỏ qua gửi email: cấu hình SMTP hoặc email khách hàng không tồn tại.');
+    return false;
+  }
+
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6; border: 1px solid #eaeaea; border-radius: 8px; overflow: hidden;">
+      <div style="background-color: #2563eb; padding: 20px; text-align: center;">
+        <h2 style="color: white; margin: 0; font-size: 20px;">Xác Nhận Tài Khoản Khách Thuê</h2>
+      </div>
+      
+      <div style="padding: 24px; text-align: center;">
+        <p style="text-align: left;">Xin chào <strong>${khachThueName}</strong>,</p>
+        <p style="text-align: left;">Chủ nhà đã tạo hồ sơ khách thuê cho bạn trên hệ thống Quản lý nhà trọ. Để kích hoạt tài khoản và thiết lập mật khẩu, vui lòng nhấn vào nút bên dưới:</p>
+        
+        <div style="margin: 30px 0;">
+          <a href="${confirmLink}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Kích hoạt tài khoản</a>
+        </div>
+
+        <p style="text-align: left; font-size: 14px; color: #64748b;">Nếu nút trên không hoạt động, bạn có thể copy link sau dán vào trình duyệt:</p>
+        <p style="text-align: left; font-size: 13px; color: #2563eb; word-break: break-all;">${confirmLink}</p>
+        
+        <p style="text-align: left; font-size: 14px; color: #ef4444; margin-top: 20px;"><strong>Lưu ý:</strong> Link này chỉ có hiệu lực trong vòng 24 giờ kể từ khi được gửi.</p>
+
+        <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+          <p>Hệ thống Quản lý nhà trọ chuyên nghiệp</p>
+          <p><em>Nếu bạn không phải là người nhận được thông báo này, vui lòng bỏ qua email.</em></p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  try {
+    const transport = getMailTransport();
+    const info = await transport.sendMail({
+      from: `"Quản Lý Nhà Trọ" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: `[Kích hoạt tài khoản] Chào mừng bạn đến với hệ thống Quản lý nhà trọ`,
+      html: htmlContent,
+    });
+    console.log(`[Email Success] Đã gửi link kích hoạt tới ${email}. MessageId: ${info.messageId}`);
+    return true;
+  } catch (error: any) {
+    console.error(`[Email Error] Lỗi khi gửi email kích hoạt tới ${email}:`, error);
+    return false;
+  }
+};

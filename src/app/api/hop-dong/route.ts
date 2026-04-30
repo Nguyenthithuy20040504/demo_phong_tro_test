@@ -101,19 +101,15 @@ export async function GET(request: NextRequest) {
     console.log(`[GET /api/hop-dong] Final Target ToaNha IDs:`, targetToaNhaIds === null ? 'All' : targetToaNhaIds.map(id => id.toString()));
     
     if (session.user.role === 'khachThue') {
-      // Khách thuê chỉ xem hợp đồng của mình
-      const userId = session.user.id;
-      let ktRecord = await KhachThue.findOne({
-        $or: [
-          { _id: userId },
-          { soDienThoai: session.user.phone }
-        ]
-      }).select('_id');
-      const ktId = ktRecord ? ktRecord._id : new mongoose.Types.ObjectId(userId);
-      query.khachThueId = { $in: [new mongoose.Types.ObjectId(userId), ktId] };
+      // Khách thuê chỉ xem hợp đồng gắn trực tiếp với tài khoản này
+      const userId = new mongoose.Types.ObjectId(session.user.id);
       
-      // If toaNhaId is provided for tenant, we should also filter by it
-      if (targetToaNhaIds !== null) {
+      query.$or = [
+        { khachThueId: userId },
+        { nguoiDaiDien: userId }
+      ];
+      
+      if (targetToaNhaIds !== null && targetToaNhaIds.length > 0) {
         const phongsInBuilding = await Phong.find({ toaNha: { $in: targetToaNhaIds } }).select('_id');
         query.phong = { $in: phongsInBuilding.map(p => p._id) };
       }

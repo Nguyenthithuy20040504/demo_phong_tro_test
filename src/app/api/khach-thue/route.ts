@@ -8,6 +8,7 @@ import HopDong from '@/models/HopDong';
 import Phong from '@/models/Phong';
 import { updateKhachThueStatus } from '@/lib/status-utils';
 import { getAccessibleKhachThueIds } from '@/lib/auth-utils';
+import NguoiDung from '@/models/NguoiDung';
 import { z } from 'zod';
 import mongoose from 'mongoose';
 
@@ -87,7 +88,29 @@ export async function GET(request: NextRequest) {
         if (hd.nguoiDaiDien) tenantIdsInBuilding.add(hd.nguoiDaiDien.toString());
       });
 
-      const buildingTenantIds = Array.from(tenantIdsInBuilding);
+      // 2. Tenants who are NOT renting anywhere (chuaThue) BUT were created or historically rented here
+      const historicalHopDongs = await HopDong.find({ phong: { $in: phongIds } }).select('khachThueId nguoiDaiDien');
+      const historicalTenantIds = new Set<string>();
+      historicalHopDongs.forEach(hd => {
+        if (hd.khachThueId) hd.khachThueId.forEach((id: any) => historicalTenantIds.add(id.toString()));
+        if (hd.nguoiDaiDien) historicalTenantIds.add(hd.nguoiDaiDien.toString());
+      });
+
+      const chuaThueTenants = await KhachThue.find({
+        trangThai: 'chuaThue',
+        $or: [
+          { toaNhaBanDau: toaNhaId },
+          { _id: { $in: Array.from(historicalTenantIds).map(id => new mongoose.Types.ObjectId(id)) } }
+        ]
+      }).select('_id');
+      
+      chuaThueTenants.forEach((t: any) => tenantIdsInBuilding.add(t._id.toString()));
+
+      let buildingTenantIds = Array.from(tenantIdsInBuilding);
+      
+      if (buildingTenantIds.length === 0) {
+        return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
+      }
       
       if (accessibleKhachThueIds !== null) {
         // Intersect building tenants with accessible tenants
@@ -312,29 +335,93 @@ export async function POST(request: NextRequest) {
       ]
     });
 
-    if (existingKhachThue) {
-      return NextResponse.json(
-        { message: 'Số điện thoại hoặc CCCD đã được bạn sử dụng cho khách thuê khác trong hệ thống của mình.' },
-        { status: 400 }
-      );
+    const dbSession = await mongoose.startSession();
+    let newKhachThueData: any = null;
+
+    try {
+      await dbSession.withTransaction(async () => {
+        // Check if phone or CCCD or Email already exists for THIS landlord
+        const existingKhachThue = await KhachThue.findOne({
+          nguoiQuanLy: new mongoose.Types.ObjectId(nguoiQuanLyId),
+          $or: [
+            { soDienThoai: validatedData.soDienThoai },
+            { cccd: validatedData.cccd },
+            ...(validatedData.email ? [{ email: { $regex: new RegExp(`^${validatedData.email}$`, 'i') } }] : [])
+          ]
+        }).session(dbSession);
+
+        if (existingKhachThue) {
+          let conflictField = 'Số điện thoại hoặc CCCD';
+          if (validatedData.email && existingKhachThue.email?.toLowerCase() === validatedData.email.toLowerCase()) {
+            conflictField = 'Email, Số điện thoại hoặc CCCD';
+          }
+          throw new Error(`${conflictField} đã được bạn sử dụng cho một khách thuê khác trong danh sách của mình.`);
+        }
+
+        let linkUserId = undefined;
+
+        // Nếu có truyền userId (Account vừa chọn)
+        if (body.userId) {
+          const userObjId = new mongoose.Types.ObjectId(body.userId);
+          
+          // Kiểm tra User này có tồn tại không và role có phải TENANT không
+          const userTarget = await NguoiDung.findById(userObjId).session(dbSession);
+          if (!userTarget) {
+            throw new Error('Tài khoản được chọn không tồn tại.');
+          }
+          if (userTarget.role !== 'khachThue' && userTarget.vaiTro !== 'khachThue') {
+            throw new Error('Tài khoản được chọn không phải là vai trò Khách thuê.');
+          }
+
+          // Kiểm tra xem User này đã bị liên kết với một KhachThue khác chưa
+          const alreadyLinkedKhachThue = await KhachThue.findById(userObjId).session(dbSession);
+          if (alreadyLinkedKhachThue) {
+            throw new Error('Tài khoản này đã được liên kết với một hồ sơ khách thuê khác!');
+          }
+
+          linkUserId = userObjId;
+          
+          // Cập nhật lại thông tin của User cho khớp 100% với hồ sơ chuẩn
+          await NguoiDung.findByIdAndUpdate(userObjId, {
+            $set: {
+              ten: validatedData.hoTen,
+              name: validatedData.hoTen,
+              soDienThoai: validatedData.soDienThoai,
+              phone: validatedData.soDienThoai,
+              email: validatedData.email || userTarget.email
+            }
+          }, { session: dbSession });
+        }
+
+        const newKhachThueObj = new KhachThue({
+          ...(linkUserId ? { _id: linkUserId } : {}),
+          ...validatedData,
+          ngaySinh: new Date(validatedData.ngaySinh),
+          anhCCCD: validatedData.anhCCCD || { matTruoc: '', matSau: '' },
+          trangThai: 'chuaThue',
+          nguoiQuanLy: new mongoose.Types.ObjectId(nguoiQuanLyId),
+          toaNhaBanDau: body.toaNhaBanDau ? new mongoose.Types.ObjectId(body.toaNhaBanDau) : undefined
+        });
+
+        await newKhachThueObj.save({ session: dbSession });
+        newKhachThueData = newKhachThueObj;
+      });
+      await dbSession.endSession();
+    } catch (e: any) {
+      await dbSession.endSession();
+      return NextResponse.json({ message: e.message || 'Lỗi khi tạo khách thuê' }, { status: 400 });
     }
 
-    const newKhachThue = new KhachThue({
-      ...validatedData,
-      ngaySinh: new Date(validatedData.ngaySinh),
-      anhCCCD: validatedData.anhCCCD || { matTruoc: '', matSau: '' },
-      trangThai: 'chuaThue', // Mặc định là chưa thuê, sẽ được cập nhật tự động
-      nguoiQuanLy: new mongoose.Types.ObjectId(nguoiQuanLyId)
-    });
-
-    await newKhachThue.save();
+    if (!newKhachThueData) {
+      return NextResponse.json({ message: 'Không thể tạo khách thuê' }, { status: 500 });
+    }
 
     // Cập nhật trạng thái dựa trên hợp đồng (chạy background)
-    updateKhachThueStatus(newKhachThue._id.toString()).catch(e => console.error(e));
+    updateKhachThueStatus(newKhachThueData._id.toString()).catch(e => console.error(e));
 
     return NextResponse.json({
       success: true,
-      data: newKhachThue,
+      data: newKhachThueData,
       message: 'Khách thuê đã được tạo thành công',
     }, { status: 201 });
 

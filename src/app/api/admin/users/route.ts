@@ -3,10 +3,11 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import NguoiDung from '@/models/NguoiDung';
+import mongoose from 'mongoose';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
@@ -21,33 +22,117 @@ export async function GET() {
 
     await dbConnect();
     
-    let query: any = {};
-    if (session.user.role === 'chuNha') {
-      // Ensure we query by the managed users only
-      // Using mongoose.Types.ObjectId to ensure correct comparison
-      const mongoose = require('mongoose');
-      query.nguoiQuanLy = new mongoose.Types.ObjectId(session.user.id);
+    const { searchParams } = new URL(request?.url || 'http://localhost');
+    const type = searchParams.get('type');
+
+    let users: any[] = [];
+    
+    if (session.user.role === 'admin' && type === 'chuNha') {
+      // Aggregation for Landlords with Building/Room counts
+      users = await NguoiDung.aggregate([
+        { $match: { vaiTro: 'chuNha' } },
+        {
+          $lookup: {
+            from: 'toanhas',
+            localField: '_id',
+            foreignField: 'chuSoHuu',
+            as: 'buildings'
+          }
+        },
+        {
+          $addFields: {
+            totalBuildings: { $size: '$buildings' },
+            _buildingIds: { $map: { input: '$buildings', as: 'b', in: '$$b._id' } }
+          }
+        },
+        {
+          $lookup: {
+            from: 'phongs',
+            localField: '_buildingIds',
+            foreignField: 'toaNha',
+            as: 'rooms'
+          }
+        },
+        {
+          $addFields: {
+            totalRooms: { $size: '$rooms' }
+          }
+        },
+        {
+          $project: {
+            matKhau: 0,
+            password: 0,
+            buildings: 0,
+            _buildingIds: 0,
+            rooms: 0
+          }
+        },
+        { $sort: { createdAt: -1 } }
+      ]);
+    } else {
+      let query: any = {};
+      if (session.user.role === 'chuNha') {
+        query.nguoiQuanLy = new mongoose.Types.ObjectId(session.user.id);
+        query.role = { $nin: ['admin', 'chuNha'] };
+      }
+      
+      const rawUsers = await NguoiDung.find(query, { password: 0, matKhau: 0 })
+        .populate('nguoiQuanLy', 'ngayHetHan name ten')
+        .populate('nguoiTao', 'name ten email role')
+        .sort({ createdAt: -1 })
+        .lean();
+      
+      users = rawUsers as any[];
+
+      // Nếu là chủ nhà, lấy thêm cả KhachThue đã có tài khoản
+      if (session.user.role === 'chuNha') {
+        const KhachThue = (await import('@/models/KhachThue')).default;
+        const tenantsWithAccounts = await KhachThue.find({
+          nguoiQuanLy: session.user.id,
+          tenDangNhap: { $exists: true, $ne: '' }
+        }).lean();
+
+        // Chuyển đổi dữ liệu KhachThue sang format User
+        const tenantUsers = tenantsWithAccounts.map((kt: any) => ({
+          _id: kt._id.toString(),
+          name: kt.hoTen,
+          ten: kt.hoTen,
+          email: kt.email || '',
+          phone: kt.soDienThoai,
+          soDienThoai: kt.soDienThoai,
+          username: kt.tenDangNhap,
+          tenDangNhap: kt.tenDangNhap,
+          role: 'khachThue',
+          vaiTro: 'khachThue',
+          avatar: kt.avatar || kt.anhDaiDien,
+          isActive: true,
+          daXacMinhEmail: kt.daXacMinhEmail,
+          createdAt: kt.createdAt,
+          lastLogin: kt.lastLogin,
+          ngayHetHan: new Date(2099, 11, 31),
+          nguoiTao: session.user.id,
+          isKhachThueModel: true // Flag to skip NguoiDung migration
+        }));
+
+        users = [...users, ...tenantUsers].sort((a, b) => 
+          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        );
+      }
     }
     
-    // Explicitly exclude any admins or other landlords even if the query might suggest otherwise
-    // (though the nguoiQuanLy filter should handle this, it's a good safety measure)
-    if (session.user.role === 'chuNha') {
-      query.role = { $nin: ['admin', 'chuNha'] };
-    }
-    
-    const users = await NguoiDung.find(query, { password: 0, matKhau: 0 })
-      .populate('nguoiQuanLy', 'ngayHetHan name ten')
-      .populate('nguoiTao', 'name ten email role')
-      .sort({ createdAt: -1 })
-      .lean();
-    
-    // Auto-migrate: Nếu có user nào chưa có ngayHetHan, cập nhật luôn
+    // Auto-migrate: Nếu có user nào chưa có ngayHetHan, cập nhật luôn (chỉ cho NguoiDung model)
     let needsUpdate = false;
     const updatedUsers = [];
     
-    for (let user of users as any[]) {
+    for (let user of users) {
+      if (user.isKhachThueModel) {
+        updatedUsers.push(user);
+        continue;
+      }
+
       // Tính chất DB: Nhân viên LUÔN kế thừa ngày hết hạn của Chủ nhà nếu có Chủ nhà
       const roleStr = user.role || user.vaiTro;
+      // ... (giữ nguyên logic cập nhật ngayHetHan bên dưới)
       if (roleStr === 'nhanVien' && user.nguoiQuanLy && user.nguoiQuanLy.ngayHetHan) {
         user.ngayHetHan = user.nguoiQuanLy.ngayHetHan;
       }
