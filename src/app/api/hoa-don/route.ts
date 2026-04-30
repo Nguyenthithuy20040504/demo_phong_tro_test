@@ -50,27 +50,11 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
       }
 
-      // Nếu là khách thuê, kiểm tra xem có phải hóa đơn của mình không (qua tất cả profile liên kết)
-      if (session.user.role === 'khachThue') {
+      // Nếu là khách thuê, kiểm tra xem có phải hóa đơn của mình không
+      if (session.user.role === 'khachThue' && hoaDon.khachThue.toString() !== session.user.id) {
+        // Cần kiểm tra kỹ hơn nếu dùng SĐT hoặc liên kết khác, tạm thời logic cơ bản
         const userId = session.user.id;
-        const linkedIds = [userId];
-        
-        const KhachThueModel = (await import('@/models/KhachThue')).default;
-        const ktRecords = await KhachThueModel.find({
-          $or: [
-            { _id: userId },
-            { soDienThoai: session.user.phone },
-            { email: session.user.email }
-          ]
-        }).select('_id');
-        
-        ktRecords.forEach(kt => {
-          if (!linkedIds.includes(kt._id.toString())) {
-            linkedIds.push(kt._id.toString());
-          }
-        });
-
-        if (!linkedIds.includes(hoaDon.khachThue.toString())) {
+        if (hoaDon.khachThue.toString() !== userId) {
           return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
         }
       }
@@ -193,24 +177,22 @@ export async function GET(request: NextRequest) {
     }
 
     if (session.user.role === 'khachThue') {
-      // Logic dành cho khách thuê: Lấy hóa đơn từ tất cả profile liên kết (ID, SĐT, Email)
+      // Logic dành cho khách thuê: Chỉ lấy hóa đơn của chính họ
       const userId = session.user.id;
       const linkedIds = [new mongoose.Types.ObjectId(userId)];
 
+      // Tìm khách thuê theo phone nếu có
       const KhachThueModel = (await import('@/models/KhachThue')).default;
-      const ktRecords = await KhachThueModel.find({
+      const kt = await KhachThueModel.findOne({
         $or: [
           { _id: userId },
-          { soDienThoai: session.user.phone },
-          { email: session.user.email }
+          { soDienThoai: session.user.phone }
         ]
       }).select('_id');
 
-      ktRecords.forEach(kt => {
-        if (!linkedIds.some(id => id.toString() === kt._id.toString())) {
-          linkedIds.push(kt._id);
-        }
-      });
+      if (kt && kt._id.toString() !== userId) {
+        linkedIds.push(kt._id);
+      }
 
       query.khachThue = { $in: linkedIds };
     } else if (targetToaNhaIds !== null) {

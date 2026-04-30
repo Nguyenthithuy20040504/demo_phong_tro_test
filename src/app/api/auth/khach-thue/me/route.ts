@@ -45,25 +45,21 @@ export async function GET(request: NextRequest) {
 
     await dbConnect();
 
-    // Lấy tất cả thông tin hồ sơ khách thuê liên kết (qua ID, SĐT hoặc Email)
-    const linkedIds = [new mongoose.Types.ObjectId(userId)];
+    // Lấy thông tin khách thuê
+    // Ưu tiên tìm trong bảng KhachThue bằng userId (trường hợp ID trùng)
+    // Hoặc tìm bằng số điện thoại của user
+    let khachThue = await KhachThue.findById(userId);
     
-    const ktRecords = await KhachThue.find({
-      $or: [
-        { _id: userId },
-        { soDienThoai: session.user.phone },
-        { email: session.user.email }
-      ]
-    }).lean() as any[];
+    if (!khachThue && session.user.phone) {
+      khachThue = await KhachThue.findOne({ soDienThoai: session.user.phone });
+    }
 
-    ktRecords.forEach(kt => {
-      if (kt?._id && !linkedIds.some(id => id.toString() === kt._id.toString())) {
-        linkedIds.push(kt._id);
-      }
-    });
-
-    // Lấy 1 bản ghi làm profile hiển thị (ưu tiên bản có nhiều thông tin nhất hoặc ID trùng)
-    let khachThue = ktRecords.find(k => k._id?.toString() === userId) || ktRecords[0];
+    // Xác định list IDs có thể liên kết với hợp đồng
+    // Một số hợp đồng dùng ID của NguoiDung, một số dùng ID của KhachThue
+    const linkedIds = [new mongoose.Types.ObjectId(userId)];
+    if (khachThue && khachThue._id.toString() !== userId) {
+      linkedIds.push(khachThue._id);
+    }
 
     // Lấy ảnh đại diện từ NguoiDung (vì avatar được lưu ở đó)
     const NguoiDung = (await import('@/models/NguoiDung')).default;
