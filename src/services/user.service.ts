@@ -52,6 +52,8 @@ export class UserService {
         role: user.vaiTro || user.role,
         createdAt: user.ngayTao || user.createdAt,
         lastLogin: user.lastLogin,
+        cccd: user.cccd,
+        anhCCCD: user.anhCCCD,
         thongTinThanhToan: user.thongTinThanhToan,
         caiDatThongBao: user.caiDatThongBao
       };
@@ -70,7 +72,9 @@ export class UserService {
         avatar: client.anhDaiDien || client.avatar,
         role: 'khachThue',
         createdAt: client.ngayTao || client.createdAt,
-        lastLogin: client.lastLogin
+        lastLogin: client.lastLogin,
+        cccd: client.cccd,
+        anhCCCD: client.anhCCCD
       };
     }
 
@@ -97,6 +101,8 @@ export class UserService {
           address: data.address,
           anhDaiDien: data.avatar,
           avatar: data.avatar,
+          cccd: data.cccd,
+          anhCCCD: data.anhCCCD,
           thongTinThanhToan: data.thongTinThanhToan,
           caiDatThongBao: data.caiDatThongBao,
           updatedAt: new Date(),
@@ -111,6 +117,7 @@ export class UserService {
           soDienThoai: data.phone,
           anhDaiDien: data.avatar,
           avatar: data.avatar,
+          cccd: data.cccd,
           anhCCCD: data.anhCCCD,
           updatedAt: new Date(),
           ngayCapNhat: new Date()
@@ -130,6 +137,8 @@ export class UserService {
         role: updatedUser.vaiTro || updatedUser.role,
         createdAt: updatedUser.ngayTao || updatedUser.createdAt,
         lastLogin: updatedUser.lastLogin,
+        cccd: updatedUser.cccd,
+        anhCCCD: updatedUser.anhCCCD,
         thongTinThanhToan: updatedUser.thongTinThanhToan,
         caiDatThongBao: updatedUser.caiDatThongBao
       };

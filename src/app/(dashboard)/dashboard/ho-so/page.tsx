@@ -60,6 +60,7 @@ interface UserProfile {
   role: string;
   createdAt: string;
   lastLogin?: string;
+  cccd?: string;
   anhCCCD?: {
     matTruoc: string;
     matSau: string;
@@ -92,6 +93,7 @@ export default function ProfilePage() {
     phone: '',
     address: '',
     avatar: '',
+    cccd: '',
     anhCCCD: {
       matTruoc: '',
       matSau: ''
@@ -220,6 +222,7 @@ export default function ProfilePage() {
           phone: data.phone || '',
           address: data.address || '',
           avatar: data.avatar || '',
+          cccd: data.cccd || '',
           anhCCCD: data.anhCCCD || { matTruoc: '', matSau: '' },
           thongTinThanhToan: data.thongTinThanhToan || { nganHang: '', soTaiKhoan: '', chuTaiKhoan: '' },
           caiDatThongBao: { 
@@ -280,6 +283,7 @@ export default function ProfilePage() {
       phone: profile?.phone || '',
       address: profile?.address || '',
       avatar: profile?.avatar || '',
+      cccd: profile?.cccd || '',
       anhCCCD: profile?.anhCCCD || { matTruoc: '', matSau: '' },
       thongTinThanhToan: profile?.thongTinThanhToan || { nganHang: '', soTaiKhoan: '', chuTaiKhoan: '' },
       caiDatThongBao: { 
@@ -517,22 +521,43 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              {/* CCCD Section for Tenants */}
-              {(profile?.role === 'khachThue' || profile?.role === 'nguoiDung') && (
+              {/* CCCD Section */}
+              {(profile?.role === 'khachThue' || profile?.role === 'nguoiDung' || profile?.role === 'chuNha') && (
                 <div className="space-y-4 pt-4">
                   <Separator />
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     <div className="flex items-center gap-2">
                       <CreditCard className="h-4 w-4 text-blue-600" />
                       <Label className="text-base font-bold">Giấy tờ tùy thân (CCCD)</Label>
                     </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="cccd" className="text-xs md:text-sm">Số CCCD</Label>
+                      {isEditing ? (
+                        <Input
+                          id="cccd"
+                          value={formData.cccd}
+                          onChange={(e) => setFormData({ ...formData, cccd: e.target.value })}
+                          placeholder="Nhập 12 số căn cước công dân"
+                          className="text-sm"
+                          maxLength={12}
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2 p-2 md:p-3 border rounded-md bg-gray-50">
+                          <CreditCard className="h-3 w-3 md:h-4 md:w-4 text-gray-500" />
+                          <span className="text-sm">{formData.cccd || 'Chưa cập nhật'}</span>
+                        </div>
+                      )}
+                    </div>
                     {isEditing ? (
-                      <CCCDUpload
-                        anhCCCD={formData.anhCCCD}
-                        onCCCDChange={(newCCCD) => setFormData({ ...formData, anhCCCD: newCCCD })}
-                      />
+                      <div className="max-w-2xl">
+                        <CCCDUpload
+                          anhCCCD={formData.anhCCCD}
+                          onCCCDChange={(newCCCD) => setFormData({ ...formData, anhCCCD: newCCCD })}
+                        />
+                      </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 max-w-md">
                         <div className="space-y-1">
                           <p className="text-xs text-muted-foreground uppercase font-black">Mặt trước</p>
                           {formData.anhCCCD.matTruoc ? (

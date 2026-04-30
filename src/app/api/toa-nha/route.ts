@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
 
     const [toaNhaList, total] = await Promise.all([
       ToaNha.find(query)
-        .populate('chuSoHuu', 'ten email soDienThoai')
+        .populate('chuSoHuu', 'ten email soDienThoai cccd address')
         .sort({ ngayTao: -1 })
         .skip((page - 1) * limit)
         .limit(limit),

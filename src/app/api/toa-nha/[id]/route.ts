@@ -49,7 +49,7 @@ export async function GET(
     }
 
     const toaNha = await ToaNha.findById(id)
-      .populate('chuSoHuu', 'ten email');
+      .populate('chuSoHuu', 'ten email soDienThoai cccd address');
 
     if (!toaNha) {
       return NextResponse.json(
@@ -125,7 +125,7 @@ export async function PUT(
         // Không cập nhật tongSoPhong vì sẽ được tính tự động
       },
       { new: true, runValidators: true }
-    ).populate('chuSoHuu', 'ten email');
+    ).populate('chuSoHuu', 'ten email soDienThoai cccd address');
 
     // Tính tổng số phòng thực tế
     const phongCount = await Phong.countDocuments({ toaNha: id });

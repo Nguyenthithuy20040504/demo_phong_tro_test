@@ -362,32 +362,57 @@ export default function HopDongPage() {
       const phongInfo = getPhongInfo(hopDong.phong);
       const nguoiDaiDien = getKhachThueName(hopDong.nguoiDaiDien);
       
-      // Lấy thông tin chủ sở hữu (Bên A) từ toà nhà
+      // Lấy thông tin chủ sở hữu (Bên A) từ toà nhà trong hợp đồng
       let tenChuTro = '';
       let sdtChuTro = '';
+      let cccdChuTro = '';
+      let diaChiChuTro = '';
+      
       const phongObj = typeof hopDong.phong === 'object' ? hopDong.phong as any : null;
-      const toaNhaId = phongObj?.toaNha?._id || phongObj?.toaNha;
-      if (toaNhaId) {
-        const toaNha = toaNhaList.find(t => t._id === toaNhaId || t._id === (typeof toaNhaId === 'object' ? toaNhaId._id : toaNhaId));
-        if (toaNha && (toaNha as any).chuSoHuu) {
-          const chuSoHuu = (toaNha as any).chuSoHuu;
-          tenChuTro = chuSoHuu.ten || chuSoHuu.name || '';
-          sdtChuTro = chuSoHuu.soDienThoai || chuSoHuu.phone || '';
+      const toaNhaObj = phongObj?.toaNha;
+      
+      if (toaNhaObj && typeof toaNhaObj === 'object' && toaNhaObj.chuSoHuu) {
+        const chuSoHuu = toaNhaObj.chuSoHuu;
+        tenChuTro = chuSoHuu.ten || chuSoHuu.name || chuSoHuu.hoTen || '';
+        sdtChuTro = chuSoHuu.soDienThoai || chuSoHuu.phone || '';
+        cccdChuTro = chuSoHuu.cccd || '';
+        diaChiChuTro = chuSoHuu.address || '';
+      }
+
+      // Nếu không có, thử tìm trong toaNhaList global
+      if (!tenChuTro) {
+        const toaNhaId = toaNhaObj?._id || toaNhaObj || phongObj?.toaNha;
+        if (toaNhaId) {
+          const toaNha = toaNhaList.find(t => t._id === toaNhaId || t._id === (typeof toaNhaId === 'object' ? toaNhaId._id : toaNhaId));
+          if (toaNha && (toaNha as any).chuSoHuu) {
+            const chuSoHuu = (toaNha as any).chuSoHuu;
+            tenChuTro = chuSoHuu.ten || chuSoHuu.name || '';
+            sdtChuTro = chuSoHuu.soDienThoai || chuSoHuu.phone || '';
+            cccdChuTro = chuSoHuu.cccd || '';
+            diaChiChuTro = chuSoHuu.address || '';
+          }
         }
       }
-      // Fallback: lấy từ toà nhà đầu tiên nếu không tìm được
+
+      // Fallback cuối cùng: lấy từ toà nhà đầu tiên
       if (!tenChuTro && toaNhaList.length > 0) {
         const firstToaNha = toaNhaList[0] as any;
         if (firstToaNha.chuSoHuu) {
           tenChuTro = firstToaNha.chuSoHuu.ten || firstToaNha.chuSoHuu.name || '';
           sdtChuTro = firstToaNha.chuSoHuu.soDienThoai || firstToaNha.chuSoHuu.phone || '';
+          cccdChuTro = firstToaNha.chuSoHuu.cccd || '';
+          diaChiChuTro = firstToaNha.chuSoHuu.address || '';
         }
       }
 
       // Lấy thông tin khách thuê (Bên B)
-      const nguoiDaiDienPhone = typeof hopDong.nguoiDaiDien === 'object' 
-        ? (hopDong.nguoiDaiDien as any)?.soDienThoai || '' 
-        : '';
+      const khachDaiDienObj = typeof hopDong.nguoiDaiDien === 'object' 
+        ? hopDong.nguoiDaiDien as any
+        : khachThueList.find(k => k._id === hopDong.nguoiDaiDien);
+
+      const nguoiDaiDienPhone = khachDaiDienObj?.soDienThoai || '';
+      const cccdKhach = khachDaiDienObj?.cccd || '';
+      const queQuanKhach = khachDaiDienObj?.queQuan || khachDaiDienObj?.address || '';
 
       // Lấy danh sách tất cả khách thuê từ khachThueId (populated) và snapshotKhachThue
       const allTenantNames: string[] = [];
@@ -515,7 +540,7 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: `Nơi đăng ký hộ khẩu thường trú: ....................................................................................................`,
+                  text: `Nơi đăng ký hộ khẩu thường trú: ${diaChiChuTro || '....................................................................................................'}`,
                   size: 20,
                 }),
               ],
@@ -524,7 +549,7 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: `CMND(CCCD) số: .......................................... cấp ngày: ............................. tại: .............................`,
+                  text: `CMND(CCCD) số: ${cccdChuTro || '..............................................................................................................'}`,
                   size: 20,
                 }),
               ],
@@ -572,7 +597,7 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: `Nơi đăng ký hộ khẩu thường trú: ....................................................................................................`,
+                  text: `Nơi đăng ký hộ khẩu thường trú: ${queQuanKhach || '....................................................................................................'}`,
                   size: 20,
                 }),
               ],
@@ -581,7 +606,7 @@ export default function HopDongPage() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: `Số CMND (CCCD): .......................................... cấp ngày: ............................. tại: .............................`,
+                  text: `Số CMND (CCCD): ${cccdKhach || '..............................................................................................................'}`,
                   size: 20,
                 }),
               ],
@@ -1046,8 +1071,6 @@ export default function HopDongPage() {
       const buffer = await Packer.toBuffer(doc);
       const uint8Array = new Uint8Array(buffer);
       const blob = new Blob([uint8Array], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-      saveAs(blob, `hop-dong-${hopDong.maHopDong}.docx`);
-      
       saveAs(blob, `hop-dong-${hopDong.maHopDong}.docx`);
       
       toast.success('Hợp đồng đã được tải xuống.');

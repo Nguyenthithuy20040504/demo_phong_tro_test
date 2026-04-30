@@ -156,7 +156,11 @@ export async function GET(request: NextRequest) {
           select: 'maPhong toaNha',
           populate: {
             path: 'toaNha',
-            select: 'tenToaNha'
+            select: 'tenToaNha chuSoHuu',
+            populate: {
+              path: 'chuSoHuu',
+              select: 'ten name soDienThoai phone cccd address'
+            }
           }
         })
         .sort({ ngayTao: -1 })
@@ -176,8 +180,8 @@ export async function GET(request: NextRequest) {
 
     const uniqueIds = Array.from(allInvolvedIds);
     const [allKhachThues, allNguoiDungs] = await Promise.all([
-      KhachThue.find({ _id: { $in: uniqueIds } }).select('hoTen soDienThoai').lean(),
-      NguoiDung.find({ _id: { $in: uniqueIds } }).select('ten name soDienThoai phone').lean()
+      KhachThue.find({ _id: { $in: uniqueIds } }).select('hoTen soDienThoai cccd queQuan').lean(),
+      NguoiDung.find({ _id: { $in: uniqueIds } }).select('ten name soDienThoai phone cccd address').lean()
     ]);
 
     const userMap = new Map<string, any>();
@@ -188,7 +192,9 @@ export async function GET(request: NextRequest) {
         userMap.set(id, { 
           _id: nd._id, 
           hoTen: nd.ten || nd.name, 
-          soDienThoai: nd.soDienThoai || nd.phone 
+          soDienThoai: nd.soDienThoai || nd.phone,
+          cccd: nd.cccd,
+          address: nd.address 
         });
       }
     });

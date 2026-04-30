@@ -91,7 +91,7 @@ export function CCCDUpload({
         <h3 className="text-lg font-medium">Ảnh CCCD</h3>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
         {/* Mặt trước */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
