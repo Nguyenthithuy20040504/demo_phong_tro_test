@@ -35,17 +35,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Không tìm thấy khách thuê' }, { status: 404 });
     }
 
-    // Kiểm tra email đã tồn tại chưa
+    // Kiểm tra khách thuê hoặc email/số điện thoại đã có tài khoản chưa
     const emailLower = email.toLowerCase();
-    const existingEmail = await NguoiDung.findOne({ email: emailLower });
-    if (existingEmail) {
-      return NextResponse.json({ 
-        success: false, 
-        message: `Email "${emailLower}" đã được sử dụng bởi tài khoản khác` 
-      }, { status: 400 });
-    }
-
-    // Kiểm tra khách thuê đã có tài khoản chưa
     const existingAccount = await NguoiDung.findOne({
       $or: [
         { _id: khachThueId },
