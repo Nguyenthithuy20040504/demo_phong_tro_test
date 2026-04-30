@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import SaaSPayment from '@/models/SaaSPayment';
+import GoiDichVu from '@/models/GoiDichVu';
 import mongoose from 'mongoose';
 
 export const dynamic = 'force-dynamic';

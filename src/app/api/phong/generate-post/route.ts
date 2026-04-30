@@ -6,6 +6,7 @@ import '@/models/NguoiDung'; // Ensure User model is registered for populate
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import NguoiDung from '@/models/NguoiDung';
+import '@/models/GoiDichVu';
 
 export async function POST(request: NextRequest) {
   try {
