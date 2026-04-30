@@ -8,12 +8,13 @@ import ThanhToan from '@/models/ThanhToan';
 import ToaNha from '@/models/ToaNha';
 import ThongBao from '@/models/ThongBao';
 import payOS from '@/lib/payos';
+import { activateSubscription } from '@/lib/subscription';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Bước 1: Xác thực mã bí mật, chống giả mạo Call API
+    // ── Bước 1: Xác thực chữ ký bảo mật từ PayOS ──
     let webhookData;
     try {
       webhookData = payOS.verifyPaymentWebhookData(body);
@@ -22,151 +23,140 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Invalid signature' }, { status: 400 });
     }
 
-    // Bước 2: Kiểm tra tiền đã về tài khoản ngân hàng chưa (code = 00)
-    if (webhookData.code === '00') {
-      const orderCode = webhookData.orderCode;
-      
-      await dbConnect();
-
-      // Tìm kiếm hóa đơn khớp với OrderCode (có thể đang chờ duyệt hoặc đã thanh toán nhưng chưa gia hạn)
-      const payment = await SaasPayment.findOne({ 
-        maDonHang: Number(orderCode), 
-        $or: [{ trangThai: 'choDuyet' }, { trangThai: 'chuaThanhToanHet' }, { trangThai: 'daThanhToan', ngayHetHanMoi: null }] 
-      });
-      
-      if (payment) {
-        // Cộng dồn tiền khách vừa chuyển
-        const amountPaid = webhookData.amount || 0;
-        payment.soTienDaChuyen = (payment.soTienDaChuyen || 0) + amountPaid;
-
-        if (payment.soTienDaChuyen < payment.soTien) {
-          // Khách chưa chuyển đủ tiền -> Chỉ cập nhật trạng thái
-          payment.trangThai = 'chuaThanhToanHet';
-          await payment.save();
-          console.log(`[PAYOS SAAS] Chủ trọ thanh toán 1 phần (${payment.soTienDaChuyen}/${payment.soTien}) cho Order ${orderCode}`);
-          return NextResponse.json({ success: true, message: 'Partial payment received' });
-        }
-
-        // Đã gửi đủ tiền -> Xử lý tự động gia hạn tương tự như kịch bản trước đây
-        const plan = await GoiDichVu.findById(payment.goiDichVu);
-        const user = await NguoiDung.findById(payment.chuNha);
-        
-        if (plan && user) {
-          let userPlanRole: 'mienPhi' | 'coBan' | 'chuyenNghiep' = 'mienPhi';
-          if (plan.ten.toLowerCase().includes('cơ bản') || plan.ten.toLowerCase().includes('basic')) {
-             userPlanRole = 'coBan';
-          }
-          if (plan.ten.toLowerCase().includes('chuyên nghiệp') || plan.ten.toLowerCase().includes('professional') || plan.ten.toLowerCase().includes('vip') || plan.ten.toLowerCase().includes('pro')) {
-             userPlanRole = 'chuyenNghiep';
-          }
-
-          const currentExpiry = user.ngayHetHan ? new Date(user.ngayHetHan) : new Date();
-          const startDate = currentExpiry > new Date() ? currentExpiry : new Date();
-          
-          const newExpiry = new Date(startDate);
-          newExpiry.setMonth(startDate.getMonth() + plan.thoiGian);
-
-          // Nâng cấp và cộng ngày cho Chủ Nhà
-          user.goiDichVu = userPlanRole;
-          user.ngayHetHan = newExpiry;
-          await user.save();
-
-          // Đồng bộ ngày hết hạn cho quân lính (Nhân viên)
-          await NguoiDung.updateMany(
-            { nguoiQuanLy: user._id, $or: [{ vaiTro: 'nhanVien' }, { role: 'nhanVien' }] },
-            { $set: { ngayHetHan: newExpiry } }
-          );
-
-          // Lấy ID Admin để làm Sender
-          const admin = await NguoiDung.findOne({ $or: [{ vaiTro: 'admin' }, { role: 'admin' }] }).select('_id');
-          const senderId = admin ? admin._id : user._id;
-
-          // Tạo thông báo xác nhận thanh toán
-          await ThongBao.create({
-            tieuDe: `Xác nhận thanh toán gói ${plan.ten} thành công`,
-            noiDung: `Kính gửi ${user.ten},\n\nKhoản thanh toán qua mã QR (Order: ${orderCode}) cho gói dịch vụ ${plan.ten} của bạn đã được xác nhận tự động. Hệ thống đã gia hạn và kích hoạt các tính năng đến ngày ${newExpiry.toLocaleDateString('vi-VN')}.\n\nCảm ơn bạn đã tin tưởng và sử dụng hệ thống PiRoom!\n\nTrân trọng.`,
-            loai: 'thanh_toan_saas',
-            nguoiGui: senderId,
-            nguoiNhan: [user._id],
-            daDoc: [],
-            guiTatCa: false
-          });
-
-          // Gửi thông báo cho Admin
-          if (admin) {
-            await ThongBao.create({
-              tieuDe: `Biến động số dư: ${user.ten} gia hạn SaaS`,
-              noiDung: `Chủ trọ ${user.ten} (${user.email || ''}) vừa thanh toán thành công qua mã QR PayOS (Order: ${orderCode}) cho gói dịch vụ ${plan.ten}.\nKhoản tiền ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(webhookData.amount || plan.gia)} đã được cộng vào tài khoản.\nHệ thống đã tự động gia hạn thành công đến ngày ${newExpiry.toLocaleDateString('vi-VN')}.`,
-              loai: 'thanh_toan_saas',
-              nguoiGui: user._id,
-              nguoiNhan: [admin._id],
-              daDoc: [],
-              guiTatCa: false
-            });
-          }
-
-          // Chuyển Trạng thái hóa đơn thành Thành công
-          payment.trangThai = 'daThanhToan';
-          payment.ngayHetHanMoi = newExpiry;
-          await payment.save();
-          
-          console.log(`[PAYOS AUTOMATION] Vừa tự động gia hạn ${plan.thoiGian} tháng cho Chủ Nhà ${user.email} qua Bank Transfer!`);
-          return NextResponse.json({ success: true });
-        }
-      }
-
-      // Nếu không phải gói SaaS, kiểm tra xem có phải hóa đơn tiền phòng (%)
-      const hoaDon = await HoaDon.findOne({ paymentOrderId: String(orderCode), trangThai: { $ne: 'daThanhToan' } }).populate('phong');
-      if (hoaDon) {
-        const amountPaid = webhookData.amount || hoaDon.conLai;
-
-        // Cập nhật hóa đơn tiền phòng
-        hoaDon.daThanhToan += amountPaid;
-        hoaDon.conLai = hoaDon.tongTien - hoaDon.daThanhToan;
-        if (hoaDon.conLai <= 0) {
-          hoaDon.trangThai = 'daThanhToan';
-        } else {
-          hoaDon.trangThai = 'daThanhToanMotPhan';
-        }
-        await hoaDon.save();
-        
-        // Tạo lịch sử thanh toán (biên lai) cho chủ nhà xem trong Quản lý thu chi
-        let nguoiNhanId = hoaDon.khachThue; // fallback
-        try {
-          if (hoaDon.phong && hoaDon.phong.toaNha) {
-            const toaNha = await ToaNha.findById(hoaDon.phong.toaNha);
-            if (toaNha && toaNha.chuSoHuu) {
-              nguoiNhanId = toaNha.chuSoHuu;
-            }
-          }
-        } catch(e) {
-          console.error('Lỗi lấy chủ nhà cho hóa đơn webhook:', e);
-        }
-
-        const newThanhToan = new ThanhToan({
-          hoaDon: hoaDon._id,
-          soTien: amountPaid,
-          phuongThuc: 'chuyenKhoan',
-          thongTinChuyenKhoan: {
-            nganHang: 'PayOS Gateway',
-            soGiaoDich: String(orderCode)
-          },
-          ngayThanhToan: new Date(),
-          nguoiNhan: nguoiNhanId,
-          ghiChu: 'Thanh toán tự động qua cổng PayOS',
-          trangThai: 'daDuyet'
-        });
-        await newThanhToan.save();
-
-        console.log(`[PAYOS AUTOMATION] Vừa tự động cập nhật Thanh toán cho Hóa đơn ${hoaDon.maHoaDon} của Khách thuê! Biên lai đã được lưu.`);
-        return NextResponse.json({ success: true });
-      }
-
-      return NextResponse.json({ success: true, message: 'Đã xử lý hoặc không hợp lệ' });
+    // ── Bước 2: Chỉ xử lý khi tiền đã về (code = 00) ──
+    if (webhookData.code !== '00') {
+      return NextResponse.json({ success: true });
     }
 
-    // Trả về { success: true } theo chuẩn bắt buộc của PayOs Webhook
-    return NextResponse.json({ success: true });
+    const orderCode = webhookData.orderCode;
+    await dbConnect();
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  A) THANH TOÁN GÓI DỊCH VỤ (SaaS)
+    // ═══════════════════════════════════════════════════════════════════
+    const payment = await SaasPayment.findOne({
+      maDonHang: Number(orderCode),
+      $or: [
+        { trangThai: 'choDuyet' },
+        { trangThai: 'chuaThanhToanHet' },
+        { trangThai: 'daThanhToan', ngayHetHanMoi: null },
+      ],
+    });
+
+    if (payment) {
+      // ── Cộng dồn tiền khách vừa chuyển ──
+      const amountPaid = webhookData.amount || 0;
+      payment.soTienDaChuyen = (payment.soTienDaChuyen || 0) + amountPaid;
+
+      if (payment.soTienDaChuyen < payment.soTien) {
+        // Chưa đủ tiền → lưu trạng thái tạm
+        payment.trangThai = 'chuaThanhToanHet';
+        await payment.save();
+        console.log(
+          `[PAYOS SAAS] Partial payment (${payment.soTienDaChuyen}/${payment.soTien}) for Order ${orderCode}`,
+        );
+        return NextResponse.json({ success: true, message: 'Partial payment received' });
+      }
+
+      // ── Đủ tiền → lưu số tiền rồi kích hoạt gói ──
+      await payment.save();
+
+      const result = await activateSubscription(payment._id.toString());
+
+      if (!result.alreadyProcessed) {
+        // Tạo thông báo cho Chủ nhà
+        const admin = await NguoiDung.findOne({
+          $or: [{ vaiTro: 'admin' }, { role: 'admin' }],
+        }).select('_id');
+        const senderId = admin ? admin._id : result.userId;
+
+        await ThongBao.create({
+          tieuDe: `Xác nhận thanh toán gói ${result.planName} thành công`,
+          noiDung:
+            `Kính gửi ${result.userName},\n\n` +
+            `Khoản thanh toán qua mã QR (Order: ${orderCode}) cho gói dịch vụ ${result.planName} ` +
+            `của bạn đã được xác nhận tự động. ` +
+            `Hệ thống đã gia hạn và kích hoạt các tính năng đến ngày ${result.newExpiry.toLocaleDateString('vi-VN')}.\n\n` +
+            `Cảm ơn bạn đã tin tưởng và sử dụng hệ thống PiRoom!\n\nTrân trọng.`,
+          loai: 'thanh_toan_saas',
+          nguoiGui: senderId,
+          nguoiNhan: [result.userId],
+          daDoc: [],
+          guiTatCa: false,
+        });
+
+        // Tạo thông báo cho Admin
+        if (admin) {
+          await ThongBao.create({
+            tieuDe: `Biến động số dư: ${result.userName} gia hạn SaaS`,
+            noiDung:
+              `Chủ trọ ${result.userName} (${result.userEmail}) vừa thanh toán thành công ` +
+              `qua mã QR PayOS (Order: ${orderCode}) cho gói dịch vụ ${result.planName}.\n` +
+              `Khoản tiền ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amountPaid)} ` +
+              `đã được cộng vào tài khoản.\n` +
+              `Hệ thống đã tự động gia hạn thành công đến ngày ${result.newExpiry.toLocaleDateString('vi-VN')}.`,
+            loai: 'thanh_toan_saas',
+            nguoiGui: result.userId,
+            nguoiNhan: [admin._id],
+            daDoc: [],
+            guiTatCa: false,
+          });
+        }
+
+        console.log(
+          `[PAYOS WEBHOOK] ✓ Auto-renewed ${result.planDuration}mo for ${result.userEmail} via Bank Transfer`,
+        );
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  B) THANH TOÁN HÓA ĐƠN PHÒNG (HoaDon khách thuê)
+    // ═══════════════════════════════════════════════════════════════════
+    const hoaDon = await HoaDon.findOne({
+      paymentOrderId: String(orderCode),
+      trangThai: { $ne: 'daThanhToan' },
+    }).populate('phong');
+
+    if (hoaDon) {
+      const amountPaid = webhookData.amount || hoaDon.conLai;
+
+      hoaDon.daThanhToan += amountPaid;
+      hoaDon.conLai = hoaDon.tongTien - hoaDon.daThanhToan;
+      hoaDon.trangThai = hoaDon.conLai <= 0 ? 'daThanhToan' : 'daThanhToanMotPhan';
+      await hoaDon.save();
+
+      // Tạo biên lai thanh toán
+      let nguoiNhanId = hoaDon.khachThue;
+      try {
+        if (hoaDon.phong && hoaDon.phong.toaNha) {
+          const toaNha = await ToaNha.findById(hoaDon.phong.toaNha);
+          if (toaNha?.chuSoHuu) nguoiNhanId = toaNha.chuSoHuu;
+        }
+      } catch (e) {
+        console.error('Lỗi lấy chủ nhà cho hóa đơn webhook:', e);
+      }
+
+      const newThanhToan = new ThanhToan({
+        hoaDon: hoaDon._id,
+        soTien: amountPaid,
+        phuongThuc: 'chuyenKhoan',
+        thongTinChuyenKhoan: { nganHang: 'PayOS Gateway', soGiaoDich: String(orderCode) },
+        ngayThanhToan: new Date(),
+        nguoiNhan: nguoiNhanId,
+        ghiChu: 'Thanh toán tự động qua cổng PayOS',
+        trangThai: 'daDuyet',
+      });
+      await newThanhToan.save();
+
+      console.log(
+        `[PAYOS WEBHOOK] ✓ Invoice ${hoaDon.maHoaDon} updated via Bank Transfer. Receipt saved.`,
+      );
+      return NextResponse.json({ success: true });
+    }
+
+    return NextResponse.json({ success: true, message: 'Đã xử lý hoặc không hợp lệ' });
   } catch (error) {
     console.error('Webhook PayOS bị lỗi không mong muốn:', error);
     return NextResponse.json({ success: false }, { status: 500 });

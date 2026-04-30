@@ -75,34 +75,24 @@ export async function GET(request: NextRequest) {
       query.trangThai = trangThai;
     }
 
-    console.log(`[GET /api/hop-dong] Params - toaNhaId: ${toaNhaId}, search: ${search}, trangThai: ${trangThai}`);
-
     const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
     
-    // Filter by specific building if requested
     let targetToaNhaIds = accessibleToaNhaIds;
     if (toaNhaId && toaNhaId !== 'all' && mongoose.isValidObjectId(toaNhaId)) {
       const requestedId = new mongoose.Types.ObjectId(toaNhaId);
       if (accessibleToaNhaIds !== null) {
-        // If user has restricted access, check if requested toaNhaId is in their list
         const isAccessible = accessibleToaNhaIds.some(id => id.toString() === toaNhaId);
         if (isAccessible) {
           targetToaNhaIds = [requestedId];
         } else {
-          // Requested building not accessible
-          console.warn(`[GET /api/hop-dong] Requested building ${toaNhaId} is not accessible for user ${session.user.id}`);
           return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
         }
       } else {
-        // Super admin or unrestricted access
         targetToaNhaIds = [requestedId];
       }
     }
 
-    console.log(`[GET /api/hop-dong] Final Target ToaNha IDs:`, targetToaNhaIds === null ? 'All' : targetToaNhaIds.map(id => id.toString()));
-    
     if (session.user.role === 'khachThue') {
-      // Khách thuê xem tất cả hợp đồng liên kết với tài khoản của họ (qua ID, SĐT hoặc Email)
       const userId = session.user.id;
       const linkedIds = [new mongoose.Types.ObjectId(userId)];
       
@@ -120,32 +110,25 @@ export async function GET(request: NextRequest) {
         }
       });
 
-      // Tìm hợp đồng mà khách là thành viên hoặc người đại diện
       query.$or = [
         { khachThueId: { $in: linkedIds } },
         { nguoiDaiDien: { $in: linkedIds } }
       ];
       
-      // If toaNhaId is provided for tenant, we should also filter by it
       if (targetToaNhaIds !== null && targetToaNhaIds.length > 0) {
         const phongsInBuilding = await Phong.find({ toaNha: { $in: targetToaNhaIds } }).select('_id');
         query.phong = { $in: phongsInBuilding.map(p => p._id) };
       }
     } else if (targetToaNhaIds !== null) {
       if (targetToaNhaIds.length === 0) {
-         console.warn(`[GET /api/hop-dong] User has no accessible buildings.`);
          return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
       }
       const accessiblePhongs = await Phong.find({ toaNha: { $in: targetToaNhaIds } }).select('_id');
       const phongIds = accessiblePhongs.map(p => p._id);
-      console.log(`[GET /api/hop-dong] Filtered query by ${phongIds.length} phongs in targeted buildings`);
-      
       if (phongIds.length === 0) {
         return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
       }
       query.phong = { $in: phongIds };
-    } else {
-      console.log(`[GET /api/hop-dong] Unrestricted query (no building filter applied)`);
     }
 
 
@@ -153,15 +136,7 @@ export async function GET(request: NextRequest) {
       HopDong.find(query)
         .populate({
           path: 'phong',
-          select: 'maPhong toaNha',
-          populate: {
-            path: 'toaNha',
-            select: 'tenToaNha chuSoHuu',
-            populate: {
-              path: 'chuSoHuu',
-              select: 'ten name soDienThoai phone cccd address'
-            }
-          }
+          select: 'maPhong toaNha dienTich giaThue tienCoc giaDien giaNuoc',
         })
         .sort({ ngayTao: -1 })
         .skip((page - 1) * limit)
@@ -169,89 +144,108 @@ export async function GET(request: NextRequest) {
         .lean(),
       HopDong.countDocuments(query)
     ]);
-    console.log(`[GET /api/hop-dong] Raw HopDongs count:`, total);
 
-    // Optimize: Bulk fetch all tenants and users to avoid N+1 queries
-    const allInvolvedIds = new Set<string>();
-    hopDongListRaw.forEach(hd => {
-      if (hd.khachThueId) hd.khachThueId.forEach((id: any) => allInvolvedIds.add(id.toString()));
-      if (hd.nguoiDaiDien) allInvolvedIds.add(hd.nguoiDaiDien.toString());
+    // 1. Thu thập tất cả các ID liên quan để fetch thông tin bổ sung (Party B & Party A)
+    const involvedUserIds = new Set<string>();
+    const involvedToaNhaIds = new Set<string>();
+    
+    hopDongListRaw.forEach((hd: any) => {
+      // Party B & Tenants info IDs
+      if (hd.khachThueId) hd.khachThueId.forEach((id: any) => involvedUserIds.add(id.toString()));
+      if (hd.nguoiDaiDien) involvedUserIds.add(hd.nguoiDaiDien.toString());
+      
+      // Buildings Info (ToaNha)
+      const bId = hd.phong?.toaNha?._id || hd.phong?.toaNha;
+      if (bId) involvedToaNhaIds.add(bId.toString());
     });
 
-    const uniqueIds = Array.from(allInvolvedIds);
-    const [allKhachThues, allNguoiDungs] = await Promise.all([
-      KhachThue.find({ _id: { $in: uniqueIds } }).select('hoTen soDienThoai cccd queQuan').lean(),
-      NguoiDung.find({ _id: { $in: uniqueIds } }).select('ten name soDienThoai phone cccd address').lean()
-    ]);
+    // Cực kỳ quan trọng: Fetch ToaNha trước, sau đó lấy ID chủ nhà để add vào involvedUserIds
+    const allToaNhas = await ToaNha.find({ _id: { $in: Array.from(involvedToaNhaIds) } }).lean();
+    allToaNhas.forEach((t: any) => {
+      if (t.chuSoHuu) {
+        involvedUserIds.add(t.chuSoHuu.toString());
+      }
+    });
 
-    const userMap = new Map<string, any>();
-    allKhachThues.forEach((kt: any) => userMap.set(kt._id.toString(), kt));
-    allNguoiDungs.forEach((nd: any) => {
-      const id = nd._id.toString();
-      if (!userMap.has(id)) {
-        userMap.set(id, { 
-          _id: nd._id, 
-          hoTen: nd.ten || nd.name, 
-          soDienThoai: nd.soDienThoai || nd.phone,
-          cccd: nd.cccd,
-          address: nd.address 
+    // 2. Fetch dữ liệu bổ sung song song (Users) để điền thông chi tiết
+    const allUsers = await Promise.all([
+       KhachThue.find({ _id: { $in: Array.from(involvedUserIds) } }).lean(),
+       NguoiDung.find({ _id: { $in: Array.from(involvedUserIds) } }).lean()
+    ]).then(([kts, nds]) => [...kts, ...nds]);
+
+    // 3. Tạo map để tra cứu nhanh thông tin User (Party A & B)
+    const userLookup = new Map<string, any>();
+    allUsers.forEach((u: any) => {
+      const id = u._id.toString();
+      if (!userLookup.has(id)) {
+        userLookup.set(id, { 
+          _id: u._id, 
+          hoTen: u.hoTen || u.ten || u.name, 
+          soDienThoai: u.soDienThoai || u.phone,
+          cccd: u.cccd,
+          address: u.address || u.queQuan 
         });
       }
     });
 
-    const hopDongList = hopDongListRaw.map((hd) => {
-      const ktIds = hd.khachThueId || [];
-      const snapshots = (hd as any).snapshotKhachThue || [];
-      const allKt: any[] = [];
+    const toaNhaLookup = new Map(allToaNhas.map((t: any) => [t._id.toString(), t]));
+
+    // 4. Lắp ráp dữ liệu cuối cùng chuẩn bị trả về cho Client
+    const hopDongList = hopDongListRaw.map((hd: any) => {
+      const snapshots = hd.snapshotKhachThue || [];
       
-      // 1) Populate from khachThueId
+      // -- Gắn thông tin chi tiết cho Party B --
+      const ktIds = hd.khachThueId || [];
+      const allKt: any[] = [];
       ktIds.forEach((ktId: any) => {
         const idStr = ktId.toString();
-        const found = userMap.get(idStr);
-        if (found) {
-          allKt.push(found);
-        } else {
-          // Fallback: snapshot
+        const found = userLookup.get(idStr);
+        if (found) allKt.push(found);
+        else {
           const snap = snapshots.find((s: any) => s.id === idStr);
-          allKt.push({ _id: ktId, hoTen: snap?.hoTen || '(Không có thông tin)', soDienThoai: snap?.soDienThoai || '' });
+          allKt.push({ _id: ktId, hoTen: snap?.hoTen || '(Trống)', soDienThoai: snap?.soDienThoai || '' });
         }
       });
-      
-      // 2) Append snapshot-only tenants (không có ID trong DB)
-      for (const snap of snapshots) {
-        if (!snap.id && snap.hoTen) {
-          // Khách thuê chỉ có tên/SĐT, chưa có tài khoản
-          const alreadyExists = allKt.some(k => k.hoTen === snap.hoTen);
-          if (!alreadyExists) {
-            allKt.push({ hoTen: snap.hoTen, soDienThoai: snap.soDienThoai || '' });
-          }
-        }
-      }
       
       let nguoiDaiDien = null;
       if (hd.nguoiDaiDien) {
         const idStr = hd.nguoiDaiDien.toString();
-        nguoiDaiDien = userMap.get(idStr);
+        nguoiDaiDien = userLookup.get(idStr);
         if (!nguoiDaiDien) {
           const snap = snapshots.find((s: any) => s.id === idStr);
-          nguoiDaiDien = { _id: hd.nguoiDaiDien, hoTen: snap?.hoTen || '(Không có thông tin)', soDienThoai: snap?.soDienThoai || '' };
+          nguoiDaiDien = { _id: hd.nguoiDaiDien, hoTen: snap?.hoTen || '(Trống)', soDienThoai: snap?.soDienThoai || '' };
         }
       }
-      
-      // Nếu không có nguoiDaiDien từ DB, tìm từ snapshot
-      if (!nguoiDaiDien) {
-        const daiDienSnap = snapshots.find((s: any) => s.laNoiDaiDien);
-        if (daiDienSnap) {
-          nguoiDaiDien = { hoTen: daiDienSnap.hoTen, soDienThoai: daiDienSnap.soDienThoai || '' };
-        } else if (allKt.length > 0) {
-          nguoiDaiDien = allKt[0]; // Fallback: người đầu tiên
+
+      // -- Gắn thông tin chi tiết cho Party A (Tòa nhà & Chủ nhà) --
+      if (hd.phong) {
+        const bId = hd.phong.toaNha?._id || hd.phong.toaNha;
+        if (bId) {
+          const fullToaNha = toaNhaLookup.get(bId.toString()) as any;
+          if (fullToaNha) {
+            // Chuẩn hóa thông tin chủ nhà (Owner) bằng cách lookup trực tiếp từ userLookup
+            const ownerId = fullToaNha.chuSoHuu?.toString();
+            if (ownerId) {
+                const owner = userLookup.get(ownerId);
+                if (owner) {
+                    fullToaNha.chuSoHuu = {
+                      _id: owner._id,
+                      hoTen: owner.hoTen,
+                      soDienThoai: owner.soDienThoai,
+                      cccd: owner.cccd,
+                      address: owner.address
+                    };
+                } else {
+                    fullToaNha.chuSoHuu = {};
+                }
+            }
+            hd.phong.toaNha = fullToaNha;
+          }
         }
       }
 
       return { ...hd, khachThueId: allKt, nguoiDaiDien: nguoiDaiDien, snapshotKhachThue: snapshots };
     });
-
-
 
     return NextResponse.json({
       success: true,
@@ -306,11 +300,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if each khach thue ID exists and has an account
     const ktIds = validatedData.khachThueId;
     const chuNhaId = session.user.id;
 
-    // Use aggregation to check for accounts (matching the logic in khach-thue API)
+    // Use aggregation to check for accounts
     const tenantsWithAccounts = await KhachThue.aggregate([
       { $match: { _id: { $in: ktIds.map(id => new mongoose.Types.ObjectId(id)) } } },
       {
@@ -348,7 +341,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Ensure ALL selected tenants have an account
     const missingAccount = tenantsWithAccounts.find(t => !t.account || t.account.length === 0);
     if (missingAccount) {
       return NextResponse.json(
@@ -357,7 +349,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Kiểm tra phòng có hợp đồng đang hoạt động hoặc chờ duyệt không
     const existingHopDong = await HopDong.findOne({
       phong: validatedData.phong,
       trangThai: { $in: ['hoatDong', 'choDuyet'] },
@@ -380,10 +371,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build snapshot khách thuê
     const snapshotKhachThue: Array<{id?: string, hoTen: string, soDienThoai: string, laNoiDaiDien: boolean}> = [];
     
-    // 1) Từ khachThueId (đã được validate ở trên là có tài khoản và tồn tại)
     for (const t of tenantsWithAccounts) {
       snapshotKhachThue.push({
         id: t._id.toString(),
@@ -401,23 +390,15 @@ export async function POST(request: NextRequest) {
       ngayKetThuc: new Date(validatedData.ngayKetThuc),
       phiDichVu: validatedData.phiDichVu || [],
       snapshotKhachThue: snapshotKhachThue,
-      trangThai: 'choDuyet', // Chờ khách thuê duyệt
+      trangThai: 'choDuyet',
     });
 
     await newHopDong.save();
 
-    // KHÔNG cập nhật trạng thái phòng/khách thuê ở đây
-    // Chỉ cập nhật khi khách thuê duyệt hợp đồng
-
-    // Gửi thông báo cho khách thuê
     try {
       const ThongBao = (await import('@/models/ThongBao')).default;
-      
-      // Lấy thông tin phòng để hiển thị trong thông báo
       const phongInfo = await Phong.findById(validatedData.phong).select('maPhong');
       const tenPhong = phongInfo?.maPhong || 'N/A';
-
-      // Gửi thông báo cho TấT CẢ khách thuê trong hợp đồng
       const khachThueIds = validatedData.khachThueId || [];
       if (khachThueIds.length > 0) {
         const nguoiNhanIds = khachThueIds.map((id: string) => new mongoose.Types.ObjectId(id));
@@ -431,7 +412,6 @@ export async function POST(request: NextRequest) {
           ngayGui: new Date(),
         });
 
-        // Gửi email cho từng khách thuê (không kèm QR - chỉ thông báo)
         for (const ktId of khachThueIds) {
           try {
             let ktEmail = '';
@@ -453,7 +433,7 @@ export async function POST(request: NextRequest) {
                 khachThueName: ktName,
                 tieuDe: `Hợp đồng thuê phòng mới chờ duyệt - Phòng ${tenPhong}`,
                 noiDung: `Chủ trọ vừa tạo hợp đồng thuê phòng ${tenPhong} (Mã hợp đồng: ${validatedData.maHopDong}) và đang chờ bạn xác nhận.\n\nVui lòng đăng nhập vào hệ thống để xem chi tiết hợp đồng. Nếu bạn là người đại diện, vui lòng ký duyệt để hợp đồng có hiệu lực.`,
-                ccEmail: '', // Không CC chủ nhà khi gửi cho khách
+                ccEmail: '',
               });
             }
           } catch (emailErr) {
@@ -463,7 +443,6 @@ export async function POST(request: NextRequest) {
       }
     } catch (notifError) {
       console.error('Error sending notification:', notifError);
-      // Không fail request nếu gửi thông báo lỗi
     }
 
     return NextResponse.json({
@@ -479,7 +458,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
     console.error('Error creating hop dong:', error);
     return NextResponse.json(
       { message: 'Internal server error' },

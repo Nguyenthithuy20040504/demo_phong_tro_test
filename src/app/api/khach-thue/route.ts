@@ -398,6 +398,17 @@ export async function POST(request: NextRequest) {
           throw new Error('Số điện thoại hoặc CCCD đã được bạn sử dụng cho khách thuê khác trong hệ thống của mình.');
         }
 
+        // Kiểm tra email đã tồn tại trong hệ thống chưa (toàn bộ KhachThue)
+        if (validatedData.email) {
+          const existingEmail = await KhachThue.findOne({
+            email: { $regex: new RegExp(`^${validatedData.email}$`, 'i') }
+          }).session(dbSession);
+
+          if (existingEmail) {
+            throw new Error('Email này đã được sử dụng cho khách thuê khác trong hệ thống. Vui lòng dùng email khác.');
+          }
+        }
+
         // Kiểm tra xem đã có tài khoản (NguoiDung) hoặc hồ sơ KhachThue nào khác trong hệ thống chưa (Global)
         const globalExistingUser = await NguoiDung.findOne({
           $or: [

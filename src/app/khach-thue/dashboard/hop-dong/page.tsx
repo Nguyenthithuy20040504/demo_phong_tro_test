@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
+import { exportHopDongToDocx } from '@/lib/export-hop-dong';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
   FileText, 
@@ -87,7 +88,13 @@ export default function HopDongKhachThuePage() {
   const fetchHopDongs = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/hop-dong?limit=1000');
+      const response = await fetch('/api/hop-dong?limit=1000', {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
+        cache: 'no-store'
+      });
       const result = await response.json();
       if (result.success) {
         setHopDongs(result.data || []);
@@ -138,6 +145,12 @@ export default function HopDongKhachThuePage() {
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount ?? 0);
 
   const fmtDate = (date: string | Date) => new Date(date).toLocaleDateString('vi-VN');
+
+  const handleDownload = () => {
+    if (selectedHopDong) {
+      exportHopDongToDocx(selectedHopDong);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -559,8 +572,11 @@ export default function HopDongKhachThuePage() {
                  </div>
 
                  <div className="mt-8 flex gap-3">
-                    <Button className="flex-1 rounded-2xl h-14 font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:shadow-xl transition-all">
-                       <Download className="mr-2 size-4" /> Tải về bản PDF
+                    <Button 
+                      className="flex-1 rounded-2xl h-14 font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:shadow-xl transition-all"
+                      onClick={handleDownload}
+                    >
+                       <Download className="mr-2 size-4" /> Tải về bản Word (DOCX)
                     </Button>
                     <Button variant="outline" className="flex-1 rounded-2xl h-14 font-black uppercase tracking-widest border-2" onClick={() => setSelectedHopDong(null)}>
                        Đóng lại

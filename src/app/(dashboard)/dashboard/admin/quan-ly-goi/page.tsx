@@ -68,6 +68,16 @@ export default function ManagePlansPage() {
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [priceFilter, setPriceFilter] = useState<string>('all');
+  const [newFeature, setNewFeature] = useState('');
+
+  const availableSuggestedFeatures = [
+    "Quản lý tối đa 19 phòng",
+    "Tính năng đăng bài Facebook",
+    "Hỗ trợ kỹ thuật 24/7",
+    "Báo cáo thống kê chuyên sâu",
+    "Quản lý hóa đơn tự động",
+    "Thông báo Zalo/Sms"
+  ];
 
   useEffect(() => {
     fetchPlans();
@@ -164,7 +174,27 @@ export default function ManagePlansPage() {
       isActive: true,
       trangThai: 'hoatDong'
     });
+    setNewFeature('');
     setIsDialogOpen(true);
+  };
+
+  const handleAddFeature = () => {
+    if (!newFeature.trim()) return;
+    const currentFeatures = currentPlan.features || [];
+    if (!currentFeatures.includes(newFeature.trim())) {
+      setCurrentPlan({
+        ...currentPlan,
+        features: [...currentFeatures, newFeature.trim()]
+      });
+    }
+    setNewFeature('');
+  };
+
+  const handleRemoveFeature = (feature: string) => {
+    setCurrentPlan({
+      ...currentPlan,
+      features: (currentPlan.features || []).filter((f: string) => f !== feature)
+    });
   };
 
   return (
@@ -375,6 +405,48 @@ export default function ManagePlansPage() {
                   <SelectItem value="khong">Không có chức năng đăng bài</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Mục thêm các tính năng bổ sung */}
+            <div className="grid gap-2 p-3 border rounded-lg bg-gray-50/50">
+              <Label className="text-blue-600 font-bold flex items-center gap-1">
+                <Settings2 className="h-4 w-4" /> Chi tiết tính năng (Hiển thị tick xanh)
+              </Label>
+              <div className="flex gap-2">
+                <Input 
+                  placeholder="Thêm tính năng mới..." 
+                  value={newFeature}
+                  onChange={(e) => setNewFeature(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddFeature();
+                    }
+                  }}
+                />
+                <Button type="button" size="icon" onClick={handleAddFeature}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              {/* Danh sách các tính năng đã thêm */}
+              <div className="flex flex-wrap gap-2 mt-2">
+                {(currentPlan.features || []).map((feature: string, idx: number) => (
+                  <Badge key={idx} variant="secondary" className="pl-2 pr-1 py-1 flex items-center gap-1">
+                    {feature}
+                    <button 
+                      type="button" 
+                      onClick={() => handleRemoveFeature(feature)}
+                      className="hover:bg-gray-200 rounded-full p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                {(currentPlan.features || []).length === 0 && (
+                  <span className="text-xs text-muted-foreground italic">Chưa có tính năng bổ sung nào.</span>
+                )}
+              </div>
             </div>
             <div className="flex items-center justify-between space-x-2 p-2 bg-muted/30 rounded-lg mt-2">
                 <div className="flex flex-col gap-0.5">

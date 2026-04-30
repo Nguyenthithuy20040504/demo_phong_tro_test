@@ -1108,12 +1108,20 @@ function ThongBaoForm({
       })
     : phongList;
 
-  // Filter khachThueList based on selected toaNha
+  // FILTER logic: Lọc khách thuê dựa trên Tòa nhà và PHÒNG đã chọn
   const filteredTenants = khachThueList.filter(k => {
+    // 1. Lọc theo Tòa nhà trước
     if (formData.toaNha && formData.toaNha !== 'all') {
       const tenantToaNhaId = getTenantToaNhaId(k);
-      return tenantToaNhaId === formData.toaNha;
+      if (tenantToaNhaId !== formData.toaNha) return false;
     }
+
+    // 2. Lọc theo Phòng (NẾU người dùng có tick chọn phòng cụ thể)
+    if (formData.phong && formData.phong.length > 0) {
+      const tenantRoomId = getTenantRoomId(k);
+      return formData.phong.includes(tenantRoomId);
+    }
+
     return true;
   });
 
