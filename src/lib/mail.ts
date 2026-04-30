@@ -52,16 +52,19 @@ export const sendDebtNotificationEmail = async ({
   const daThanhToan = hoaDonData.daThanhToan || 0;
   const conLai = hoaDonData.conLai || 0;
 
+  // Lấy mã phòng
+  const maPhong = hoaDonData.phong?.maPhong || (hoaDonData.phong as any)?.maPhong || (typeof hoaDonData.phong === 'string' ? '' : '');
+
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6; border: 1px solid #eaeaea; border-radius: 8px; overflow: hidden;">
       <div style="background-color: #2563eb; padding: 20px; text-align: center;">
         <h2 style="color: white; margin: 0; font-size: 20px;">Thông Báo Cước Phí Thuê Nhà</h2>
-        <p style="color: #e0e7ff; margin: 5px 0 0 0; font-size: 14px;">Tháng ${hoaDonData.thang}/${hoaDonData.nam}</p>
+        <p style="color: #e0e7ff; margin: 5px 0 0 0; font-size: 14px;">Tháng ${hoaDonData.thang}/${hoaDonData.nam}${maPhong ? ` - Phòng ${maPhong}` : ''}</p>
       </div>
       
       <div style="padding: 24px;">
         <p>Xin chào <strong>${khachThueName}</strong>,</p>
-        <p>Đây là thông báo thanh toán tiền thuê nhà cho kỳ hạn tháng ${hoaDonData.thang}/${hoaDonData.nam}. Chi tiết hóa đơn như sau:</p>
+        <p>Đây là thông báo thanh toán tiền thuê nhà cho kỳ hạn tháng ${hoaDonData.thang}/${hoaDonData.nam}${maPhong ? ` (Phòng ${maPhong})` : ''}. Chi tiết hóa đơn như sau:</p>
         
         <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
           <tr style="border-bottom: 1px solid #eee;">
@@ -69,14 +72,14 @@ export const sendDebtNotificationEmail = async ({
             <td style="padding: 10px 0; text-align: right;">${formatCurrency(tienPhong)}</td>
           </tr>
           <tr style="border-bottom: 1px solid #eee;">
-            <td style="padding: 10px 0;">Tiền Điện (Chữ số mới: ${hoaDonData.chiSoDienCuoiKy})</td>
+            <td style="padding: 10px 0;">Tiền Điện (Chữ số mới: ${hoaDonData.chiSoDienCuoiKy || 0})</td>
             <td style="padding: 10px 0; text-align: right;">${formatCurrency(tienDien)}</td>
           </tr>
           <tr style="border-bottom: 1px solid #eee;">
-            <td style="padding: 10px 0;">Tiền Nước (Chữ số mới: ${hoaDonData.chiSoNuocCuoiKy})</td>
+            <td style="padding: 10px 0;">Tiền Nước (Chữ số mới: ${hoaDonData.chiSoNuocCuoiKy || 0})</td>
             <td style="padding: 10px 0; text-align: right;">${formatCurrency(tienNuoc)}</td>
           </tr>
-          ${hoaDonData.phiDichVu?.length > 0 ? `
+          ${tongDichVu > 0 ? `
           <tr style="border-bottom: 1px solid #eee;">
             <td style="padding: 10px 0;">Phí Dịch Vụ Khác</td>
             <td style="padding: 10px 0; text-align: right;">${formatCurrency(tongDichVu)}</td>
@@ -108,7 +111,7 @@ export const sendDebtNotificationEmail = async ({
         </div>`}
 
         <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #94a3b8;">
-          <p>Hạn thanh toán: ${new Date(hoaDonData.hanThanhToan).toLocaleDateString('vi-VN')}</p>
+          <p>Hạn thanh toán: ${hoaDonData.hanThanhToan ? new Date(hoaDonData.hanThanhToan).toLocaleDateString('vi-VN') : 'N/A'}</p>
           <p>Cảm ơn sự hợp tác của bạn!</p>
           <p><em>Đây là email tự động, vui lòng không phản hồi lại địa chỉ này.</em></p>
         </div>
@@ -118,13 +121,13 @@ export const sendDebtNotificationEmail = async ({
 
   try {
     const transport = getMailTransport();
-    const resolvedCcEmail = ccEmail || process.env.ADMIN_EMAIL || process.env.SMTP_USER; // Use ADMIN_EMAIL if set, else fallback to SMTP_USER
+    const resolvedCcEmail = ccEmail || process.env.ADMIN_EMAIL || process.env.SMTP_USER; 
 
     const info = await transport.sendMail({
       from: `"Quản Lý Phòng Trọ" <${process.env.SMTP_USER}>`,
       to: email,
-      cc: resolvedCcEmail, // Chủ nhà nhận một bản copy
-      subject: `Thông báo dư nợ thanh toán - Hóa đơn tháng ${hoaDonData.thang}/${hoaDonData.nam}`,
+      cc: resolvedCcEmail, 
+      subject: `[${maPhong ? `Phòng ${maPhong}` : 'Thông báo'}] Thông báo dư nợ thanh toán - Tháng ${hoaDonData.thang}/${hoaDonData.nam}`,
       html: htmlContent,
     });
     console.log(`[Email Success] Đã gửi thông báo tới ${email}. MessageId: ${info.messageId}`);
