@@ -231,13 +231,21 @@ export async function POST(request: NextRequest) {
     }
 
     if (email) {
-      const existingEmail = await NguoiDung.findOne({ email });
-      const existingEmailInKhachThue = await KhachThue.findOne({ email, nguoiQuanLy: session.user.id });
-      if (existingEmail || existingEmailInKhachThue) {
-        // For tenants, email uniqueness is only within landlord scope in KhachThue model, 
-        // but for NguoiDung it's global.
-        if (existingEmail) {
-            return NextResponse.json({ message: 'Email này đã được sử dụng bởi một tài khoản hệ thống.' }, { status: 400 });
+      if (role === 'khachThue') {
+        // Tenants can use the same email across different landlords, 
+        // but only ONE account per email per landlord.
+        const existingEmailInKhachThue = await KhachThue.findOne({ 
+          email, 
+          nguoiQuanLy: session.user.id 
+        });
+        if (existingEmailInKhachThue) {
+          return NextResponse.json({ message: 'Bạn đã tạo một tài khoản cho khách thuê với email này rồi.' }, { status: 400 });
+        }
+      } else {
+        // System roles (Admin, ChuNha, NhanVien) must have globally unique emails in NguoiDung table
+        const existingEmailInNguoiDung = await NguoiDung.findOne({ email });
+        if (existingEmailInNguoiDung) {
+          return NextResponse.json({ message: 'Email này đã được sử dụng bởi một tài khoản hệ thống.' }, { status: 400 });
         }
       }
     }
@@ -341,7 +349,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: messages.join(', ') }, { status: 400 });
     }
     if (error.code === 11000) {
-      return NextResponse.json({ message: 'Email này đã tồn tại trong hệ thống' }, { status: 400 });
+      return NextResponse.json({ message: 'Email hoặc Tên đăng nhập này đã tồn tại trong hệ thống' }, { status: 400 });
     }
     return NextResponse.json({ message: 'Không thể tạo được tài khoản lúc này, vui lòng thử lại sau' }, { status: 500 });
   }

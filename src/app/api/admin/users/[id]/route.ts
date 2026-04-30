@@ -31,6 +31,25 @@ export async function PUT(
     await dbConnect();
     const KhachThue = (await import('@/models/KhachThue')).default;
     
+    // Check if Email is unique based on role
+    if (email) {
+      if (role === 'khachThue') {
+        const existingEmailInKhachThue = await KhachThue.findOne({ 
+          email, 
+          nguoiQuanLy: session.user.id,
+          _id: { $ne: id }
+        });
+        if (existingEmailInKhachThue) {
+          return NextResponse.json({ message: 'Email này đã được sử dụng cho một khách thuê khác của bạn.' }, { status: 400 });
+        }
+      } else {
+        const existingEmailInNguoiDung = await NguoiDung.findOne({ email, _id: { $ne: id } });
+        if (existingEmailInNguoiDung) {
+          return NextResponse.json({ message: 'Email này đã được sử dụng bởi một tài khoản hệ thống khác.' }, { status: 400 });
+        }
+      }
+    }
+
     // Check if new username is unique if changed
     if (username) {
         const existingUsernameInNguoiDung = await NguoiDung.findOne({ username, _id: { $ne: id } });
