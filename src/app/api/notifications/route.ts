@@ -7,6 +7,7 @@ import HoaDon from '@/models/HoaDon';
 import SuCo from '@/models/SuCo';
 import HopDong from '@/models/HopDong';
 import KhachThue from '@/models/KhachThue';
+import { getAccessibleToaNhaIds } from '@/lib/auth-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,19 +31,19 @@ export async function GET(request: NextRequest) {
 
     switch (type) {
       case 'overdue_invoices':
-        notifications = await getOverdueInvoices();
+        notifications = await getOverdueInvoices(session.user);
         break;
       case 'expiring_contracts':
-        notifications = await getExpiringContracts();
+        notifications = await getExpiringContracts(session.user);
         break;
       case 'pending_issues':
-        notifications = await getPendingIssues();
+        notifications = await getPendingIssues(session.user);
         break;
       case 'system':
-        notifications = await getSystemNotifications();
+        notifications = await getSystemNotifications(session.user);
         break;
       default:
-        notifications = await getAllNotifications();
+        notifications = await getAllNotifications(session.user);
     }
 
     // Paginate results
@@ -70,11 +71,23 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function getOverdueInvoices() {
-  const overdueInvoices = await HoaDon.find({
+async function getOverdueInvoices(user: any) {
+  const query: any = {
     hanThanhToan: { $lt: new Date() },
     trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan'] },
-  })
+  };
+
+  if (user.role === 'khachThue') {
+    query.khachThue = user.id;
+  } else {
+    const accessibleToaNhaIds = await getAccessibleToaNhaIds(user);
+    if (accessibleToaNhaIds !== null) {
+      const phongs = await (await import('@/models/Phong')).default.find({ toaNha: { $in: accessibleToaNhaIds } }).select('_id');
+      query.phong = { $in: phongs.map(p => p._id) };
+    }
+  }
+
+  const overdueInvoices = await HoaDon.find(query)
     .populate('hopDong', 'maHopDong phong')
     .populate('phong', 'maPhong toaNha')
     .populate('khachThue', 'hoTen soDienThoai')
@@ -89,7 +102,7 @@ async function getOverdueInvoices() {
       invoiceId: invoice._id,
       maHoaDon: invoice.maHoaDon,
       phong: invoice.phong.maPhong,
-      khachThue: invoice.khachThue.hoTen,
+      khachThue: invoice.khachThue?.hoTen || 'Người dùng',
       hanThanhToan: invoice.hanThanhToan,
       conLai: invoice.conLai,
     },
@@ -98,14 +111,29 @@ async function getOverdueInvoices() {
   }));
 }
 
-async function getExpiringContracts() {
+async function getExpiringContracts(user: any) {
   const nextMonth = new Date();
   nextMonth.setDate(nextMonth.getDate() + 30);
 
-  const expiringContracts = await HopDong.find({
+  const query: any = {
     ngayKetThuc: { $lte: nextMonth },
     trangThai: 'hoatDong',
-  })
+  };
+
+  if (user.role === 'khachThue') {
+    query.$or = [
+      { khachThueId: user.id },
+      { nguoiDaiDien: user.id }
+    ];
+  } else {
+    const accessibleToaNhaIds = await getAccessibleToaNhaIds(user);
+    if (accessibleToaNhaIds !== null) {
+      const phongs = await (await import('@/models/Phong')).default.find({ toaNha: { $in: accessibleToaNhaIds } }).select('_id');
+      query.phong = { $in: phongs.map(p => p._id) };
+    }
+  }
+
+  const expiringContracts = await HopDong.find(query)
     .populate('phong', 'maPhong toaNha')
     .populate('nguoiDaiDien', 'hoTen soDienThoai')
     .sort({ ngayKetThuc: 1 });
@@ -122,7 +150,7 @@ async function getExpiringContracts() {
         contractId: contract._id,
         maHopDong: contract.maHopDong,
         phong: contract.phong.maPhong,
-        khachThue: contract.nguoiDaiDien.hoTen,
+        khachThue: contract.nguoiDaiDien?.hoTen || 'Người dùng',
         ngayKetThuc: contract.ngayKetThuc,
         daysLeft,
       },
@@ -132,10 +160,21 @@ async function getExpiringContracts() {
   });
 }
 
-async function getPendingIssues() {
-  const pendingIssues = await SuCo.find({
+async function getPendingIssues(user: any) {
+  const query: any = {
     trangThai: { $in: ['moi', 'dangXuLy'] },
-  })
+  };
+
+  if (user.role === 'khachThue') {
+    query.khachThue = user.id;
+  } else {
+    const accessibleToaNhaIds = await getAccessibleToaNhaIds(user);
+    if (accessibleToaNhaIds !== null) {
+      query.toaNha = { $in: accessibleToaNhaIds };
+    }
+  }
+
+  const pendingIssues = await SuCo.find(query)
     .populate('phong', 'maPhong toaNha')
     .populate('khachThue', 'hoTen soDienThoai')
     .sort({ mucDoUuTien: -1, ngayBaoCao: -1 });
@@ -176,11 +215,23 @@ async function getPendingIssues() {
   });
 }
 
-async function getSystemNotifications() {
-  // Get system-wide notifications (like maintenance, updates, etc.)
-  const systemNotifications = await ThongBao.find({
+async function getSystemNotifications(user: any) {
+  const query: any = {
     loai: 'chung',
-  })
+  };
+
+  if (user.role === 'khachThue') {
+    query.nguoiNhan = user.id;
+  } else {
+    // Landlord sees public notifications + direct ones
+    query.$or = [
+      { nguoiNhan: user.id },
+      { nguoiNhan: { $exists: false } },
+      { nguoiNhan: { $size: 0 } }
+    ];
+  }
+
+  const systemNotifications = await ThongBao.find(query)
     .populate('nguoiGui', 'ten email')
     .sort({ ngayGui: -1 })
     .limit(10);
@@ -192,19 +243,19 @@ async function getSystemNotifications() {
     message: notification.noiDung,
     data: {
       notificationId: notification._id,
-      nguoiGui: notification.nguoiGui.ten,
+      nguoiGui: notification.nguoiGui?.ten || 'Hệ thống',
     },
     priority: 'medium',
     createdAt: notification.ngayGui,
   }));
 }
 
-async function getAllNotifications() {
+async function getAllNotifications(user: any) {
   const [overdueInvoices, expiringContracts, pendingIssues, systemNotifications] = await Promise.all([
-    getOverdueInvoices(),
-    getExpiringContracts(),
-    getPendingIssues(),
-    getSystemNotifications(),
+    getOverdueInvoices(user),
+    getExpiringContracts(user),
+    getPendingIssues(user),
+    getSystemNotifications(user),
   ]);
 
   // Combine and sort by priority and date

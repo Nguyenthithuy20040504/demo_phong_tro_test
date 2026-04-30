@@ -177,24 +177,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (session.user.role === 'khachThue') {
-      // Logic dành cho khách thuê: Chỉ lấy hóa đơn của chính họ
-      const userId = session.user.id;
-      const linkedIds = [new mongoose.Types.ObjectId(userId)];
-
-      // Tìm khách thuê theo phone nếu có
-      const KhachThueModel = (await import('@/models/KhachThue')).default;
-      const kt = await KhachThueModel.findOne({
-        $or: [
-          { _id: userId },
-          { soDienThoai: session.user.phone }
-        ]
-      }).select('_id');
-
-      if (kt && kt._id.toString() !== userId) {
-        linkedIds.push(kt._id);
-      }
-
-      query.khachThue = { $in: linkedIds };
+      // Logic dành cho khách thuê: Chỉ lấy hóa đơn thuộc về tài khoản này
+      query.khachThue = new mongoose.Types.ObjectId(session.user.id);
     } else if (targetToaNhaIds !== null) {
       // Logic dành cho Admin/Chủ nhà/Nhân viên
       const phongs = await (await connectToDatabase()).model('Phong').find({ toaNha: { $in: targetToaNhaIds } }).select('_id');

@@ -93,27 +93,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (session.user.role === 'khachThue') {
-      // Khách thuê chỉ xem hợp đồng của mình: Tìm tất cả các hồ sơ KhachThue liên kết với User này
-      const userId = session.user.id;
-      const linkedIds = [new mongoose.Types.ObjectId(userId)];
+      // Khách thuê chỉ xem hợp đồng gắn trực tiếp với tài khoản này
+      const userId = new mongoose.Types.ObjectId(session.user.id);
       
-      const ktRecords = await KhachThue.find({
-        $or: [
-          { _id: userId },
-          { soDienThoai: session.user.phone },
-          { email: session.user.email }
-        ]
-      }).select('_id');
-      
-      ktRecords.forEach(kt => {
-        if (!linkedIds.some(id => id.toString() === kt._id.toString())) {
-          linkedIds.push(kt._id);
-        }
-      });
-
       query.$or = [
-        { khachThueId: { $in: linkedIds } },
-        { nguoiDaiDien: { $in: linkedIds } }
+        { khachThueId: userId },
+        { nguoiDaiDien: userId }
       ];
       
       if (targetToaNhaIds !== null && targetToaNhaIds.length > 0) {

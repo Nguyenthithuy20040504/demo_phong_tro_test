@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
     }
 
-    const { khachThueId, email, matKhau } = await request.json();
+    const { khachThueId, email, tenDangNhap } = await request.json();
     
     if (!khachThueId) {
       return NextResponse.json({ success: false, message: 'Thiếu ID khách thuê' }, { status: 400 });
@@ -23,90 +23,82 @@ export async function POST(request: NextRequest) {
     if (!email) {
       return NextResponse.json({ success: false, message: 'Vui lòng nhập email' }, { status: 400 });
     }
-    if (!matKhau || matKhau.length < 6) {
-      return NextResponse.json({ success: false, message: 'Mật khẩu phải có ít nhất 6 ký tự' }, { status: 400 });
+    if (!tenDangNhap || tenDangNhap.length < 3) {
+      return NextResponse.json({ success: false, message: 'Tên đăng nhập phải có ít nhất 3 ký tự' }, { status: 400 });
     }
 
     await dbConnect();
 
-    // Tìm khách thuê
-    const khachThue = await KhachThue.findById(khachThueId);
-    if (!khachThue) {
-      return NextResponse.json({ success: false, message: 'Không tìm thấy khách thuê' }, { status: 404 });
-    }
-
-    // Kiểm tra khách thuê hoặc email/số điện thoại đã có tài khoản chưa
-    const emailLower = email.toLowerCase();
-    const existingAccount = await NguoiDung.findOne({
-      $or: [
-        { _id: khachThueId },
-        { email: emailLower },
-        { soDienThoai: khachThue.soDienThoai },
-        { phone: khachThue.soDienThoai }
-      ]
+    // 1. Kiểm tra tenDangNhap duy nhất toàn hệ thống (trong bảng KhachThue)
+    const existingUsername = await KhachThue.findOne({ 
+      tenDangNhap: tenDangNhap.toLowerCase() 
     });
     
-    if (existingAccount) {
+    if (existingUsername) {
       return NextResponse.json({ 
         success: false, 
-        message: `Khách thuê này hoặc email/số điện thoại này đã có tài khoản (email: ${existingAccount.email})` 
+        message: 'Tên đăng nhập này đã được sử dụng. Vui lòng chọn tên khác.' 
       }, { status: 400 });
+    }
+
+    // 2. Kiểm tra email duy nhất trong phạm vi chủ nhà này
+    const existingEmailForThisOwner = await KhachThue.findOne({
+      nguoiQuanLy: session.user.id,
+      email: email.toLowerCase(),
+      _id: { $ne: khachThueId }, // Loại trừ chính khách thuê đang được xét
+      tenDangNhap: { $exists: true, $ne: '' } // Chỉ kiểm tra những người đã có tài khoản
+    });
+
+    if (existingEmailForThisOwner) {
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Bạn đã tạo một tài khoản khác sử dụng email này. Mỗi email chỉ được gán cho một tài khoản duy nhất của bạn.' 
+      }, { status: 400 });
+    }
+
+    // 3. Tìm khách thuê
+    const khachThue = await KhachThue.findById(khachThueId);
+    if (!khachThue) {
+      return NextResponse.json({ success: false, message: 'Không tìm thấy hồ sơ khách thuê' }, { status: 404 });
+    }
+
+    if (khachThue.daXacMinhEmail) {
+      return NextResponse.json({ success: false, message: 'Khách thuê này đã có tài khoản và đã xác minh.' }, { status: 400 });
     }
 
     const token = crypto.randomBytes(32).toString('hex');
     const hanToken = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
 
-    // Tạo tài khoản NguoiDung 
-    const newUser = new NguoiDung({
-      _id: khachThueId,
-      ten: khachThue.hoTen,
-      name: khachThue.hoTen,
-      email: emailLower,
-      matKhau: matKhau,
-      password: matKhau,
-      soDienThoai: khachThue.soDienThoai,
-      phone: khachThue.soDienThoai,
-      vaiTro: 'khachThue',
-      role: 'khachThue',
-      trangThai: 'hoatDong',
-      isActive: true,
-      nguoiQuanLy: session.user.id,
-      nguoiTao: session.user.id,
-      daXacMinhEmail: false,
-      maXacNhanEmail: token,
-      hanMaXacNhanEmail: hanToken,
-    });
+    // 3. Cập nhật thông tin tài khoản vào KhachThue
+    khachThue.tenDangNhap = tenDangNhap.toLowerCase();
+    khachThue.email = email.toLowerCase();
+    khachThue.maXacNhanEmail = token;
+    khachThue.hanMaXacNhanEmail = hanToken;
+    khachThue.daXacMinhEmail = false;
 
-    await newUser.save();
+    await khachThue.save();
 
     const baseUrl = request.nextUrl.origin;
-    const confirmLink = `${baseUrl}/api/auth/xac-nhan-tai-khoan?token=${token}&email=${encodeURIComponent(emailLower)}`;
+    // Link dẫn tới trang thiết lập mật khẩu dành cho khách
+    const confirmLink = `${baseUrl}/thiet-lap-mat-khau?token=${token}&email=${encodeURIComponent(khachThue.email)}`;
     
     sendAccountConfirmationLinkEmail({
-      email: emailLower,
+      email: khachThue.email,
       khachThueName: khachThue.hoTen,
       confirmLink: confirmLink
     }).catch(console.error);
 
     return NextResponse.json({
       success: true,
-      message: `Đã tạo tài khoản cho ${khachThue.hoTen}`,
+      message: `Đã gửi lời mời xác nhận tài khoản tới email ${khachThue.email}`,
       data: {
-        userId: newUser._id,
-        email: newUser.email,
+        khachThueId: khachThue._id,
+        tenDangNhap: khachThue.tenDangNhap,
       }
-    }, { status: 201 });
+    }, { status: 200 });
 
   } catch (error: any) {
     console.error('Error creating tenant account:', error);
-    
-    if (error.code === 11000) {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Email hoặc số điện thoại đã tồn tại trong hệ thống' 
-      }, { status: 400 });
-    }
-
-    return NextResponse.json({ success: false, message: 'Có lỗi xảy ra' }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Có lỗi xảy ra trong quá trình xử lý' }, { status: 500 });
   }
 }

@@ -61,11 +61,18 @@ export const authOptions: NextAuthOptions = {
           }
 
           const client = await KhachThue.findOne({
-            email,
-            //trangThai: "dangThue",
-          }).select("+matKhau");
+            $or: [
+              { tenDangNhap: email },
+              { email: email }
+            ]
+          }).select("+matKhau +daXacMinhEmail");
 
           if (!client) return null;
+
+          // Kiểm tra xem khách thuê đã xác minh email và đặt mật khẩu chưa
+          if (client.daXacMinhEmail === false) {
+            throw new Error("Tài khoản của bạn chưa được kích hoạt. Vui lòng kiểm tra email để thiết lập mật khẩu trước.");
+          }
 
           const ok =
             typeof (client as any).comparePassword === "function"
@@ -83,10 +90,11 @@ export const authOptions: NextAuthOptions = {
 
           return {
             id: client._id.toString(),
-            email: client.email,
+            email: client.email || "",
             name: client.hoTen,
             role: "khachThue",
             phone: client.soDienThoai,
+            username: client.tenDangNhap,
             avatar: undefined,
           };
         } catch (error) {

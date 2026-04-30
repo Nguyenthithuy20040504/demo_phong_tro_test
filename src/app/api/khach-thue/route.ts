@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
         ]
       }).select('_id');
       
-      chuaThueTenants.forEach(t => tenantIdsInBuilding.add(t._id.toString()));
+      chuaThueTenants.forEach((t: any) => tenantIdsInBuilding.add(t._id.toString()));
 
       let buildingTenantIds = Array.from(tenantIdsInBuilding);
       
@@ -382,28 +382,22 @@ export async function POST(request: NextRequest) {
 
     try {
       await dbSession.withTransaction(async () => {
-        // Check if phone or CCCD already exists for THIS landlord
+        // Check if phone or CCCD or Email already exists for THIS landlord
         const existingKhachThue = await KhachThue.findOne({
           nguoiQuanLy: new mongoose.Types.ObjectId(nguoiQuanLyId),
           $or: [
             { soDienThoai: validatedData.soDienThoai },
-            { cccd: validatedData.cccd }
+            { cccd: validatedData.cccd },
+            ...(validatedData.email ? [{ email: { $regex: new RegExp(`^${validatedData.email}$`, 'i') } }] : [])
           ]
         }).session(dbSession);
 
         if (existingKhachThue) {
-          throw new Error('Số điện thoại hoặc CCCD đã được bạn sử dụng cho khách thuê khác trong hệ thống của mình.');
-        }
-
-        // Kiểm tra email đã tồn tại trong hệ thống chưa (toàn bộ KhachThue)
-        if (validatedData.email) {
-          const existingEmail = await KhachThue.findOne({
-            email: { $regex: new RegExp(`^${validatedData.email}$`, 'i') }
-          }).session(dbSession);
-
-          if (existingEmail) {
-            throw new Error('Email này đã được sử dụng cho khách thuê khác trong hệ thống. Vui lòng dùng email khác.');
+          let conflictField = 'Số điện thoại hoặc CCCD';
+          if (validatedData.email && existingKhachThue.email?.toLowerCase() === validatedData.email.toLowerCase()) {
+            conflictField = 'Email, Số điện thoại hoặc CCCD';
           }
+          throw new Error(`${conflictField} đã được bạn sử dụng cho một khách thuê khác trong danh sách của mình.`);
         }
 
         let linkUserId = undefined;

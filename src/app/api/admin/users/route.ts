@@ -83,12 +83,47 @@ export async function GET(request: NextRequest) {
         .populate('nguoiTao', 'name ten email role')
         .sort({ createdAt: -1 })
         .lean();
+
+      // Nếu là chủ nhà, lấy thêm cả KhachThue đã có tài khoản
+      if (session.user.role === 'chuNha') {
+        const KhachThue = require('@/models/KhachThue').default;
+        const tenantsWithAccounts = await KhachThue.find({
+          nguoiQuanLy: session.user.id,
+          tenDangNhap: { $exists: true, $ne: '' }
+        }).lean();
+
+        // Chuyển đổi dữ liệu KhachThue sang format User
+        const tenantUsers = tenantsWithAccounts.map((kt: any) => ({
+          _id: kt._id.toString(),
+          name: kt.hoTen,
+          ten: kt.hoTen,
+          email: kt.email || '',
+          phone: kt.soDienThoai,
+          soDienThoai: kt.soDienThoai,
+          username: kt.tenDangNhap,
+          tenDangNhap: kt.tenDangNhap,
+          role: 'khachThue',
+          vaiTro: 'khachThue',
+          avatar: kt.avatar || kt.anhDaiDien,
+          isActive: true,
+          daXacMinhEmail: kt.daXacMinhEmail,
+          createdAt: kt.createdAt,
+          lastLogin: kt.lastLogin,
+          ngayHetHan: new Date(2099, 11, 31),
+          nguoiTao: session.user.id
+        }));
+
+        users = [...(users as any[]), ...tenantUsers].sort((a, b) => 
+          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        );
+      }
     }
     
     const updatedUsers = [];
     
     for (let user of users as any[]) {
       const roleStr = user.role || user.vaiTro;
+      // ... (giữ nguyên logic cập nhật ngayHetHan bên dưới)
       if (roleStr === 'nhanVien' && user.nguoiQuanLy && user.nguoiQuanLy.ngayHetHan) {
         user.ngayHetHan = user.nguoiQuanLy.ngayHetHan;
       }

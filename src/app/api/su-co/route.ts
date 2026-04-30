@@ -84,21 +84,8 @@ export async function GET(request: NextRequest) {
     }
     
     if (session.user.role === 'khachThue') {
-      const userId = session.user.id;
-      const linkedIds = [new mongoose.Types.ObjectId(userId)];
-      
-      const kt = await KhachThue.findOne({ 
-        $or: [
-          { _id: userId },
-          { soDienThoai: session.user.phone }
-        ]
-      }).select('_id');
-      
-      if (kt && kt._id.toString() !== userId) {
-        linkedIds.push(kt._id);
-      }
-      
-      query.khachThue = { $in: linkedIds };
+      const userId = new mongoose.Types.ObjectId(session.user.id);
+      query.khachThue = userId;
 
       // Filter by building if tenant specify it
       if (targetToaNhaIds !== null && targetToaNhaIds.length > 0) {
@@ -196,22 +183,12 @@ export async function POST(request: NextRequest) {
     
     // Nếu là khách thuê, tự gán khachThue, nhưng cho phép chọn phòng từ hợp đồng đang hoạt động
     if (session.user.role === 'khachThue') {
-      const userId = session.user.id;
-      
-      // Tìm khách thuê
-      let khachThue = await KhachThue.findOne({ 
-        $or: [
-          { _id: userId },
-          { soDienThoai: session.user.phone }
-        ]
-      }).select('_id');
-      
-      const ktId = khachThue ? khachThue._id : new mongoose.Types.ObjectId(userId);
+      const userId = new mongoose.Types.ObjectId(session.user.id);
       
       // Tìm tất cả hợp đồng chưa bị hủy để xác thực phòng được chọn
       const HopDong = (await import('@/models/HopDong')).default;
       const validContracts = await HopDong.find({
-        khachThueId: { $in: [new mongoose.Types.ObjectId(userId), ktId] },
+        khachThueId: userId,
         trangThai: { $ne: 'daHuy' }
       }).select('phong');
       
@@ -236,7 +213,7 @@ export async function POST(request: NextRequest) {
         }
       }
       
-      body.khachThue = ktId.toString();
+      body.khachThue = userId.toString();
     }
 
     const validatedData = suCoSchema.parse(body);

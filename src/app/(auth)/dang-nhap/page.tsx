@@ -16,8 +16,8 @@ import { Loader2, Eye, EyeOff, ShieldCheck, Sparkles, Building2 } from 'lucide-r
 import { motion, AnimatePresence } from 'framer-motion';
 
 const loginSchema = z.object({
-  email: z.string().email('Email không hợp lệ'),
-  matKhau: z.string().min(6, 'Mật khẩu phải có nhất 6 ký tự'),
+  email: z.string().min(3, 'Email hoặc Tên đăng nhập không hợp lệ'),
+  matKhau: z.string().min(6, 'Mật khẩu phải có ít nhất 6 ký tự'),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -167,12 +167,12 @@ function LoginFormContent() {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-xs font-semibold text-muted-foreground ml-1">Email</Label>
+                  <Label htmlFor="email" className="text-xs font-semibold text-muted-foreground ml-1">Email hoặc Tên đăng nhập</Label>
                   <div className="relative group">
                     <Input
                       id="email"
-                      type="email"
-                      placeholder="Nhập email tại đây"
+                      type="text"
+                      placeholder="Nhập email hoặc tên đăng nhập"
                       {...register('email')}
                       className={`h-14 bg-secondary/10 border-transparent rounded-2xl focus:bg-background transition-all px-6 font-light tracking-wide ${errors.email ? 'border-destructive/50' : ''}`}
                     />

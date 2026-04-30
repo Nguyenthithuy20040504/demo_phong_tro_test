@@ -127,15 +127,14 @@ export default function KhachThuePage() {
   // State cho dialog tạo tài khoản
   const [isCreateAccountOpen, setIsCreateAccountOpen] = useState(false);
   const [createAccountTarget, setCreateAccountTarget] = useState<KhachThue | null>(null);
-  const [accountForm, setAccountForm] = useState({ email: '', matKhau: '', xacNhanMatKhau: '' });
+  const [accountForm, setAccountForm] = useState({ email: '', tenDangNhap: '' });
   const [creatingAccount, setCreatingAccount] = useState(false);
 
   const handleCreateAccount = (khachThue: KhachThue) => {
     setCreateAccountTarget(khachThue);
     setAccountForm({
       email: khachThue.email || '',
-      matKhau: '',
-      xacNhanMatKhau: '',
+      tenDangNhap: khachThue.soDienThoai || '', // Gợi ý lấy SĐT làm username
     });
     setIsCreateAccountOpen(true);
   };
@@ -147,12 +146,8 @@ export default function KhachThuePage() {
       toast.error('Vui lòng nhập email!');
       return;
     }
-    if (!accountForm.matKhau || accountForm.matKhau.length < 6) {
-      toast.error('Mật khẩu phải có ít nhất 6 ký tự!');
-      return;
-    }
-    if (accountForm.matKhau !== accountForm.xacNhanMatKhau) {
-      toast.error('Mật khẩu xác nhận không khớp!');
+    if (!accountForm.tenDangNhap || accountForm.tenDangNhap.length < 3) {
+      toast.error('Tên đăng nhập phải có ít nhất 3 ký tự!');
       return;
     }
 
@@ -164,7 +159,7 @@ export default function KhachThuePage() {
         body: JSON.stringify({
           khachThueId: createAccountTarget._id,
           email: accountForm.email,
-          matKhau: accountForm.matKhau,
+          tenDangNhap: accountForm.tenDangNhap,
         }),
       });
 
@@ -173,7 +168,10 @@ export default function KhachThuePage() {
         mutate(apiUrl);
         setIsCreateAccountOpen(false);
         setCreateAccountTarget(null);
-        toast.success(`Đã tạo tài khoản cho ${createAccountTarget.hoTen}!`, { duration: 5000 });
+        toast.success(`Đã gửi yêu cầu xác nhận tài khoản cho ${createAccountTarget.hoTen}!`, { 
+          description: 'Khách thuê sẽ nhận được email để tự thiết lập mật khẩu.',
+          duration: 6000 
+        });
       } else {
         toast.error(result.message || 'Không thể tạo tài khoản');
       }
@@ -493,16 +491,15 @@ export default function KhachThuePage() {
         )}
       </div>
 
-      {/* Dialog tạo tài khoản */}
       <Dialog open={isCreateAccountOpen} onOpenChange={setIsCreateAccountOpen}>
         <DialogContent className="w-[95vw] md:w-full max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="h-5 w-5 text-blue-600" />
-              Tạo tài khoản đăng nhập
+              Gửi lời mời tham gia hệ thống
             </DialogTitle>
             <DialogDescription>
-              Tạo tài khoản cho khách thuê <strong>{createAccountTarget?.hoTen}</strong> để đăng nhập vào hệ thống.
+              Tạo tài khoản cho <strong>{createAccountTarget?.hoTen}</strong>. Khách thuê sẽ nhận được email để tự đặt mật khẩu.
             </DialogDescription>
           </DialogHeader>
           
@@ -511,75 +508,67 @@ export default function KhachThuePage() {
             <div className="p-3 bg-gray-50 rounded-lg space-y-2">
               <div className="flex items-center gap-2 text-sm">
                 <Users className="h-4 w-4 text-gray-400" />
-                <span className="font-medium">{createAccountTarget?.hoTen}</span>
+                <span className="font-medium text-gray-700">{createAccountTarget?.hoTen}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Phone className="h-4 w-4" />
-                <span>{createAccountTarget?.soDienThoai}</span>
-              </div>
+            </div>
+
+            {/* Tên đăng nhập */}
+            <div className="space-y-2">
+              <Label htmlFor="acc-username">Tên đăng nhập (Username) <span className="text-red-500">*</span></Label>
+              <Input
+                id="acc-username"
+                placeholder="Ví dụ: nguyenvana hoặc số điện thoại"
+                value={accountForm.tenDangNhap}
+                onChange={(e) => setAccountForm(prev => ({ ...prev, tenDangNhap: e.target.value }))}
+                className="h-11"
+              />
+              <p className="text-[11px] text-muted-foreground italic">
+                * Khách thuê sẽ dùng tên này để đăng nhập sau khi xác minh email.
+              </p>
             </div>
 
             {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="acc-email" className={cn(createAccountTarget?.email && "text-gray-500")}>Email đăng nhập <span className="text-red-500">*</span></Label>
+              <Label htmlFor="acc-email" className={cn(createAccountTarget?.email && "text-gray-500")}>Email nhận thông báo <span className="text-red-500">*</span></Label>
               <Input
                 id="acc-email"
                 type="email"
-                placeholder="Nhập email cho khách thuê"
+                placeholder="Địa chỉ email của khách"
                 value={accountForm.email}
                 onChange={(e) => setAccountForm(prev => ({ ...prev, email: e.target.value }))}
                 readOnly={!!createAccountTarget?.email}
-                className={cn(createAccountTarget?.email && "bg-gray-100 border-gray-200 text-gray-600 focus-visible:ring-0")}
+                className={cn("h-11", createAccountTarget?.email && "bg-gray-100 border-gray-200 text-gray-600 focus-visible:ring-0")}
               />
             </div>
 
-            {/* Mật khẩu */}
-            <div className="space-y-2">
-              <Label htmlFor="acc-password">Mật khẩu <span className="text-red-500">*</span></Label>
-              <Input
-                id="acc-password"
-                type="password"
-                placeholder="Tối thiểu 6 ký tự"
-                value={accountForm.matKhau}
-                onChange={(e) => setAccountForm(prev => ({ ...prev, matKhau: e.target.value }))}
-              />
+            <div className="flex gap-2 items-start bg-blue-50 border border-blue-200 p-3 rounded-md mt-2">
+              <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-blue-800 leading-normal">
+                Sau khi nhấn nút, hệ thống sẽ gửi một liên kết đến email trên. Khách thuê cần nhấn vào link để tự thiết lập mật khẩu của họ.
+              </p>
             </div>
-
-            {/* Xác nhận mật khẩu */}
-            <div className="space-y-2">
-              <Label htmlFor="acc-confirm-password">Xác nhận mật khẩu <span className="text-red-500">*</span></Label>
-              <Input
-                id="acc-confirm-password"
-                type="password"
-                placeholder="Nhập lại mật khẩu"
-                value={accountForm.xacNhanMatKhau}
-                onChange={(e) => setAccountForm(prev => ({ ...prev, xacNhanMatKhau: e.target.value }))}
-              />
-              {accountForm.xacNhanMatKhau && accountForm.matKhau !== accountForm.xacNhanMatKhau && (
-                <p className="text-xs text-red-500">Mật khẩu xác nhận không khớp</p>
-              )}
-            </div>
-
-            {createAccountTarget?.email && (
-              <div className="flex gap-2 items-start bg-amber-50 border border-amber-200 p-2.5 rounded-md mt-2">
-                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-800 leading-tight">
-                  Thông tin này được đồng bộ từ hồ sơ khách thuê. Để thay đổi, vui lòng chỉnh sửa tại mục <strong>Quản lý khách thuê</strong>.
-                </p>
-              </div>
-            )}
           </div>
           
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setIsCreateAccountOpen(false)}>
+          <DialogFooter className="gap-2 mt-4">
+            <Button variant="outline" onClick={() => setIsCreateAccountOpen(false)} className="h-11 flex-1">
               Hủy
             </Button>
             <Button 
               onClick={submitCreateAccount} 
-              disabled={creatingAccount || !accountForm.email || !accountForm.matKhau || accountForm.matKhau !== accountForm.xacNhanMatKhau}
+              disabled={creatingAccount || !accountForm.email || !accountForm.tenDangNhap}
+              className="h-11 flex-1 bg-blue-600 hover:bg-blue-700"
             >
-              <UserPlus className="h-4 w-4 mr-2" />
-              {creatingAccount ? 'Đang tạo...' : 'Tạo tài khoản'}
+              {creatingAccount ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Đang xử lý...
+                </>
+              ) : (
+                <>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Gửi lời mời
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -664,15 +653,8 @@ function KhachThueForm({
         }
       } else {
         const error = await response.json();
-        const msg = (error.message || '').toLowerCase();
-        if (msg.includes('đã được sử dụng') || msg.includes('đã tồn tại') || msg.includes('duplicate')) {
-            toast.error('Số điện thoại hoặc CCCD này đã tồn tại trong hệ thống rồi!');
-        } else if (msg.includes('cccd') || msg.includes('số điện thoại') || msg.includes('email')) {
-            // Validation errors - hiển thị đúng lỗi từ API
-            toast.error(error.message);
-        } else {
-            toast.error(error.message || 'Đã có lỗi xảy ra. Vui lòng thử lại sau!');
-        }
+        const msg = error.message || 'Đã có lỗi xảy ra. Vui lòng thử lại sau!';
+        toast.error(msg);
       }
     } catch (error) {
       console.error('Error submitting form:', error);

@@ -64,6 +64,8 @@ interface User {
   name?: string;
   ten?: string;
   email: string;
+  username?: string;
+  tenDangNhap?: string;
   phone?: string;
   soDienThoai?: string;
   role?: string;
@@ -817,6 +819,12 @@ export default function AccountManagementPage() {
                       <div className="flex items-center gap-2 text-gray-600">
                         <Phone className="h-3 w-3" />
                         <span>{getUserPhone(user)}</span>
+                      </div>
+                    )}
+                    {(user.username || (user as any).tenDangNhap) && (
+                      <div className="flex items-center gap-2 text-blue-600 font-medium">
+                        <UserCheck className="h-3 w-3" />
+                        <span>Tài khoản: {user.username || (user as any).tenDangNhap}</span>
                       </div>
                     )}
                     <div className="flex items-center gap-2 text-gray-500">

@@ -80,20 +80,22 @@ export async function getAccessibleKhachThueIds(user: any): Promise<mongoose.Typ
     return null; // Admin
   }
   
-  if (toaNhaIds.length === 0) {
-    return [];
-  }
-
+  // Không được trả về [] ở đây nếu là chủ nhà vì họ có thể có khách thuê dù chưa có tòa nhà
+  
   try {
-    const phongs = await Phong.find({ toaNha: { $in: toaNhaIds } }).select('_id');
-    const phongIds = phongs.map(p => p._id);
-
-    const hopDongs = await HopDong.find({ phong: { $in: phongIds } }).select('khachThueId');
+    let khachThueIdsViaContracts: any[] = [];
     
-    // Flatten the array of arrays
-    const khachThueIds = hopDongs.reduce((acc, hd) => {
-      return acc.concat(hd.khachThueId || []);
-    }, []);
+    if (toaNhaIds.length > 0) {
+      const phongs = await Phong.find({ toaNha: { $in: toaNhaIds } }).select('_id');
+      const phongIds = phongs.map(p => p._id);
+
+      const hopDongs = await HopDong.find({ phong: { $in: phongIds } }).select('khachThueId');
+      
+      // Flatten the array of arrays
+      khachThueIdsViaContracts = hopDongs.reduce((acc, hd) => {
+        return acc.concat(hd.khachThueId || []);
+      }, []);
+    }
 
     // Lấy thêm các khách thuê thuộc quyền quản lý trực tiếp (kèm những người chưa có hợp đồng)
     let chuNhaId = user.id;
@@ -115,7 +117,7 @@ export async function getAccessibleKhachThueIds(user: any): Promise<mongoose.Typ
     const managedUserTenantIds = managedUserTenants.map(u => u._id);
     
     // Gộp tất cả và bỏ ID trùng
-    const allKhachThueIds = [...khachThueIds, ...managedKhachThueIds, ...managedUserTenantIds];
+    const allKhachThueIds = [...khachThueIdsViaContracts, ...managedKhachThueIds, ...managedUserTenantIds];
 
     // Remove duplicates
     const uniqueIds = Array.from<string>(new Set(allKhachThueIds.map((id: any) => id.toString())))
