@@ -93,6 +93,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (session.user.role === 'khachThue') {
+      // Khách thuê chỉ xem hợp đồng của mình: Tìm tất cả các hồ sơ KhachThue liên kết với User này
       const userId = session.user.id;
       const linkedIds = [new mongoose.Types.ObjectId(userId)];
       

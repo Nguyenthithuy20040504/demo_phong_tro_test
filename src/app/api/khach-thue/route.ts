@@ -379,12 +379,9 @@ export async function POST(request: NextRequest) {
     // Start Transaction
     const dbSession = await mongoose.startSession();
     let newKhachThueData: any;
-    let isExistingAccountFound = false;
 
     try {
       await dbSession.withTransaction(async () => {
-        // ... (vẫn giữ logic bên trong, chỉ cần đảm bảo gán isExistingAccountFound = true nếu tìm thấy)
-        // [PHẦN NÀY ĐÃ ĐƯỢC CẬP NHẬT Ở BƯỚC TRƯỚC, CHỈ CẦN KHAI BÁO BIẾN NGOÀI TRANSACTION]
         // Check if phone or CCCD already exists for THIS landlord
         const existingKhachThue = await KhachThue.findOne({
           nguoiQuanLy: new mongoose.Types.ObjectId(nguoiQuanLyId),
@@ -409,43 +406,37 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Kiểm tra xem đã có tài khoản (NguoiDung) hoặc hồ sơ KhachThue nào khác trong hệ thống chưa (Global)
-        const globalExistingUser = await NguoiDung.findOne({
-          $or: [
-            { email: validatedData.email },
-            { soDienThoai: validatedData.soDienThoai },
-            { phone: validatedData.soDienThoai },
-            { cccd: validatedData.cccd }
-          ]
-        }).session(dbSession);
-
         let linkUserId = undefined;
-        let isExistingAccountFound = false;
 
-        if (globalExistingUser) {
-          isExistingAccountFound = true;
-          linkUserId = globalExistingUser._id;
-          
-          const checkIdConflict = await KhachThue.findById(linkUserId).session(dbSession);
-          if (checkIdConflict) {
-            linkUserId = undefined; 
-          }
-        }
-
+        // Nếu có truyền userId (Account vừa chọn)
         if (validatedData.userId) {
-          linkUserId = new mongoose.Types.ObjectId(validatedData.userId);
-          isExistingAccountFound = true;
-        }
+          const userObjId = new mongoose.Types.ObjectId(validatedData.userId);
+          
+          // Kiểm tra User này có tồn tại không và role có phải TENANT không
+          const userTarget = await NguoiDung.findById(userObjId).session(dbSession);
+          if (!userTarget) {
+            throw new Error('Tài khoản được chọn không tồn tại.');
+          }
+          if (userTarget.role !== 'khachThue' && userTarget.vaiTro !== 'khachThue') {
+            throw new Error('Tài khoản được chọn không phải là vai trò Khách thuê.');
+          }
 
-        if (linkUserId) {
-          await NguoiDung.findByIdAndUpdate(linkUserId, {
+          // Kiểm tra xem User này đã bị liên kết với một KhachThue khác chưa
+          const alreadyLinkedKhachThue = await KhachThue.findById(userObjId).session(dbSession);
+          if (alreadyLinkedKhachThue) {
+            throw new Error('Tài khoản này đã được liên kết với một hồ sơ khách thuê khác!');
+          }
+
+          linkUserId = userObjId;
+          
+          // Cập nhật lại thông tin của User cho khớp 100% với hồ sơ chuẩn
+          await NguoiDung.findByIdAndUpdate(userObjId, {
             $set: {
-              cccd: validatedData.cccd,
               ten: validatedData.hoTen,
               name: validatedData.hoTen,
               soDienThoai: validatedData.soDienThoai,
               phone: validatedData.soDienThoai,
-              email: validatedData.email
+              email: validatedData.email || userTarget.email
             }
           }, { session: dbSession });
         }
@@ -474,15 +465,10 @@ export async function POST(request: NextRequest) {
       updateKhachThueStatus(newKhachThueData._id.toString()).catch(e => console.error(e));
     }
 
-    let successMessage = 'Khách thuê đã được tạo thành công';
-    if (isExistingAccountFound) {
-      successMessage = 'Tìm thấy tài khoản đã có trên hệ thống. Hồ sơ đã được liên kết thành công, khách thuê có thể dùng tài khoản cũ.';
-    }
-
     return NextResponse.json({
       success: true,
       data: newKhachThueData,
-      message: successMessage,
+      message: validatedData.userId ? 'Đã tạo hồ sơ và liên kết tài khoản thành công. Khách thuê có thể dùng tài khoản cũ.' : 'Khách thuê đã được tạo thành công',
     }, { status: 201 });
 
   } catch (error: any) {
