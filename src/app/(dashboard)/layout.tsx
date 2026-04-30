@@ -48,6 +48,13 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
     };
   }, [status, session?.user]);
 
+  // Redirect tenants to their dashboard if they land here
+  useEffect(() => {
+    if (status === 'authenticated' && (session?.user as any)?.role === 'khachThue') {
+      router.replace('/khach-thue/dashboard');
+    }
+  }, [status, session, router]);
+
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -66,9 +73,7 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
     return null;
   }
 
-  // Redirect tenants to their dashboard if they land here
-  if ((session.user as any)?.role === 'khachThue') {
-    router.replace('/khach-thue/dashboard');
+  if ((session?.user as any)?.role === 'khachThue') {
     return null;
   }
 
