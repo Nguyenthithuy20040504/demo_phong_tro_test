@@ -24,6 +24,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import { 
   Users, 
   Plus, 
@@ -35,7 +54,10 @@ import {
   RefreshCw,
   UserX,
   UserCheck,
-  LockKeyhole
+  LockKeyhole,
+  ChevronsUpDown,
+  X,
+  Check
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { UserDataTable } from './table';
@@ -65,9 +87,19 @@ interface User {
 interface CreateUserData {
   name: string;
   email: string;
+  username: string;
   password: string;
   phone: string;
   role: string;
+  tenantId?: string;
+}
+
+interface TenantSuggestion {
+  _id: string;
+  hoTen: string;
+  soDienThoai: string;
+  cccd?: string;
+  email?: string;
 }
 
 export default function AccountManagementPage() {
@@ -86,6 +118,7 @@ export default function AccountManagementPage() {
   const [createUserData, setCreateUserData] = useState<CreateUserData>({
     name: '',
     email: '',
+    username: '',
     password: '',
     phone: '',
     role: 'nhanVien'
@@ -94,10 +127,32 @@ export default function AccountManagementPage() {
   const [editUserData, setEditUserData] = useState({
     name: '',
     email: '',
+    username: '',
     phone: '',
     role: '',
     isActive: true
   });
+
+  const [openTenantPopover, setOpenTenantPopover] = useState(false);
+  const [tenantSuggestions, setTenantSuggestions] = useState<TenantSuggestion[]>([]);
+
+  useEffect(() => {
+    if (isCreateDialogOpen && createUserData.role === 'khachThue') {
+      fetchTenantSuggestions();
+    }
+  }, [isCreateDialogOpen, createUserData.role]);
+
+  const fetchTenantSuggestions = async () => {
+    try {
+      const response = await fetch('/api/khach-thue?trangThai=noAccount&limit=100');
+      if (response.ok) {
+        const result = await response.json();
+        setTenantSuggestions(result.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching tenant suggestions:', error);
+    }
+  };
 
   useEffect(() => {
     document.title = 'Quản lý Tài khoản';
@@ -169,6 +224,7 @@ export default function AccountManagementPage() {
         setCreateUserData({
           name: '',
           email: '',
+          username: '',
           password: '',
           phone: '',
           role: ((session?.user as any)?.role) === 'admin' ? 'chuNha' : 'nhanVien'
@@ -277,6 +333,7 @@ export default function AccountManagementPage() {
     setEditUserData({
       name: getUserName(user),
       email: user.email || '',
+      username: user.username || user.tenDangNhap || '',
       phone: getUserPhone(user),
       role: getUserRole(user),
       isActive: getUserIsActive(user)
@@ -368,6 +425,7 @@ export default function AccountManagementPage() {
             setCreateUserData({
               name: '',
               email: '',
+              username: '',
               password: '',
               phone: '',
               role: ((session?.user as any)?.role) === 'admin' ? 'chuNha' : 'nhanVien'
@@ -390,72 +448,183 @@ export default function AccountManagementPage() {
                 Tạo tài khoản người dùng mới cho hệ thống
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-3 md:gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="create-name" className="text-xs md:text-sm">Họ và tên</Label>
-                <Input
-                  id="create-name"
-                  value={createUserData.name}
-                  onChange={(e) => setCreateUserData({ ...createUserData, name: e.target.value })}
-                  placeholder="Nhập họ và tên"
-                  autoComplete="off"
-                  className="text-sm"
-                />
+            <div className="pt-0 pb-1">
+              <Tabs 
+                value={createUserData.role} 
+                onValueChange={(val) => {
+                  setCreateUserData(prev => ({ 
+                    ...prev, 
+                    role: val,
+                    name: '', phone: '', email: '', username: '', password: '', tenantId: undefined
+                  }));
+                }} 
+                className="w-full"
+              >
+                <TabsList className="grid w-full grid-cols-2 h-10 items-center bg-gray-100 rounded-lg p-1">
+                  {((session?.user as any)?.role) === 'admin' ? (
+                    <>
+                      <TabsTrigger value="chuNha" className="rounded-md data-[state=active]:bg-[#0d9488] data-[state=active]:text-white transition-all text-sm font-medium">Chủ nhà</TabsTrigger>
+                      <TabsTrigger value="admin" className="rounded-md data-[state=active]:bg-[#0d9488] data-[state=active]:text-white transition-all text-sm font-medium">Quản trị viên</TabsTrigger>
+                    </>
+                  ) : (
+                    <>
+                      <TabsTrigger value="khachThue" className="rounded-md data-[state=active]:bg-[#0d9488] data-[state=active]:text-white transition-all text-sm font-medium">Khách thuê</TabsTrigger>
+                      <TabsTrigger value="nhanVien" className="rounded-md data-[state=active]:bg-[#0d9488] data-[state=active]:text-white transition-all text-sm font-medium">Nhân viên</TabsTrigger>
+                    </>
+                  )}
+                </TabsList>
+              </Tabs>
+            </div>
+
+            <div className="grid gap-2.5 py-1">
+              {createUserData.role === 'khachThue' && (
+                <div className="relative group rounded-lg border border-dashed border-[#0d9488]/40 bg-[#0d9488]/5 p-2.5 transition-all hover:bg-[#0d9488]/10 mb-0.5 pointer-events-auto">
+                  <div className="flex items-start gap-2.5">
+                    <div className="mt-0.5 rounded-full bg-white shadow-sm p-1.5 text-[#0d9488]">
+                      <UserCheck className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <div>
+                        <Label className="text-[13px] font-semibold text-[#0f766e]">Liên kết hồ sơ khách thuê</Label>
+                        <p className="text-[10.5px] text-[#0d9488]/80 mt-0.5 leading-tight">Hệ thống sẽ tự điền thông tin khi bạn chọn khách từ danh sách này.</p>
+                      </div>
+                      <Popover open={openTenantPopover} onOpenChange={setOpenTenantPopover}>
+                        <PopoverTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            role="combobox" 
+                            aria-expanded={openTenantPopover} 
+                            className={cn(
+                              "w-full justify-between bg-white/90 backdrop-blur-sm border-[#0d9488]/20 hover:bg-white hover:border-[#0d9488]/40 shadow-sm h-9 px-3",
+                              !createUserData.name && "text-muted-foreground"
+                            )}
+                          >
+                            <div className="flex items-center gap-2 truncate">
+                              <Search className="h-3.5 w-3.5 opacity-50 shrink-0" />
+                              <span className="truncate">
+                                {createUserData.tenantId && tenantSuggestions.find(t => t._id === createUserData.tenantId)
+                                  ? `${tenantSuggestions.find(t => t._id === createUserData.tenantId)?.hoTen} - ${tenantSuggestions.find(t => t._id === createUserData.tenantId)?.soDienThoai}`
+                                  : "Tìm theo tên hoặc SĐT..."}
+                              </span>
+                            </div>
+                            {!createUserData.tenantId ? (
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            ) : (
+                              <div 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCreateUserData(prev => ({ 
+                                    ...prev, 
+                                    name: '', phone: '', email: '', tenantId: undefined 
+                                  }));
+                                }} 
+                                className="ml-2 p-1 rounded-sm hover:bg-red-100 text-red-500 hover:text-red-700 transition-colors"
+                              >
+                                <X className="h-3.5 w-3.5 shrink-0" />
+                              </div>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[370px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Tìm theo tên hoặc SĐT..." />
+                        <CommandList>
+                          <CommandEmpty>Không có khách thuê nào đang chờ tạo tài khoản.</CommandEmpty>
+                          <CommandGroup>
+                            {tenantSuggestions.map((tenant) => (
+                              <CommandItem
+                                key={tenant._id}
+                                value={tenant.hoTen + ' ' + tenant.soDienThoai}
+                                onSelect={() => {
+                                  setCreateUserData(prev => ({ 
+                                    ...prev, 
+                                    name: tenant.hoTen, 
+                                    phone: tenant.soDienThoai, 
+                                    email: tenant.email || prev.email,
+                                    tenantId: tenant._id
+                                  }));
+                                  setOpenTenantPopover(false);
+                                }}
+                              >
+                                <Check className={cn("mr-2 h-4 w-4", createUserData.tenantId === tenant._id ? "opacity-100" : "opacity-0")} />
+                                <div className="flex flex-col">
+                                  <span>{tenant.hoTen}</span>
+                                  <span className="text-xs text-muted-foreground">SĐT: {tenant.soDienThoai} {tenant.cccd ? `- CCCD: ${tenant.cccd}` : ''}</span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="create-name" className={cn("text-[13px] font-medium", createUserData.tenantId && "text-slate-500")}>Họ và tên</Label>
+                  <Input
+                    id="create-name"
+                    value={createUserData.name}
+                    onChange={(e) => setCreateUserData({ ...createUserData, name: e.target.value })}
+                    placeholder="Nhập họ và tên"
+                    autoComplete="off"
+                    readOnly={!!createUserData.tenantId}
+                    className={cn("h-8 text-xs", createUserData.tenantId && "bg-slate-100 border-slate-200 text-slate-600 focus-visible:ring-0")}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="create-phone" className={cn("text-[13px] font-medium", createUserData.tenantId && "text-slate-500")}>Số điện thoại</Label>
+                  <Input
+                    id="create-phone"
+                    value={createUserData.phone}
+                    onChange={(e) => setCreateUserData({ ...createUserData, phone: e.target.value })}
+                    placeholder="Nhập số điện thoại"
+                    autoComplete="off"
+                    readOnly={!!createUserData.tenantId}
+                    className={cn("h-8 text-xs", createUserData.tenantId && "bg-slate-100 border-slate-200 text-slate-600 focus-visible:ring-0")}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="create-email" className="text-xs md:text-sm">Email</Label>
-                <Input
-                  id="create-email"
-                  type="email"
-                  value={createUserData.email}
-                  onChange={(e) => setCreateUserData({ ...createUserData, email: e.target.value })}
-                  placeholder="Nhập email"
-                  autoComplete="new-password"
-                  className="text-sm"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="create-password" className="text-xs md:text-sm">Mật khẩu</Label>
-                <Input
-                  id="create-password"
-                  type="password"
-                  value={createUserData.password}
-                  onChange={(e) => setCreateUserData({ ...createUserData, password: e.target.value })}
-                  placeholder="Nhập mật khẩu"
-                  className="text-sm"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="create-phone" className="text-xs md:text-sm">Số điện thoại</Label>
-                <Input
-                  id="create-phone"
-                  value={createUserData.phone}
-                  onChange={(e) => setCreateUserData({ ...createUserData, phone: e.target.value })}
-                  placeholder="Nhập số điện thoại"
-                  autoComplete="off"
-                  className="text-sm"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="role" className="text-xs md:text-sm">Vai trò</Label>
-                <Select value={createUserData.role} onValueChange={(value) => setCreateUserData({ ...createUserData, role: value })}>
-                  <SelectTrigger className="text-sm">
-                    <SelectValue placeholder="Chọn vai trò" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {((session?.user as any)?.role) === 'admin' ? (
-                      <>
-                        <SelectItem value="chuNha" className="text-sm">Chủ nhà</SelectItem>
-                        <SelectItem value="admin" className="text-sm">Quản trị viên</SelectItem>
-                      </>
-                    ) : (
-                      <>
-                        <SelectItem value="nhanVien" className="text-sm">Nhân viên</SelectItem>
-                        <SelectItem value="khachThue" className="text-sm">Khách thuê</SelectItem>
-                      </>
-                    )}
-                  </SelectContent>
-                </Select>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="create-email" className={cn("text-[13px] font-medium", createUserData.tenantId && "text-slate-500")}>Email</Label>
+                  <Input
+                    id="create-email"
+                    type="email"
+                    value={createUserData.email}
+                    onChange={(e) => setCreateUserData({ ...createUserData, email: e.target.value })}
+                    placeholder="Nhập email"
+                    autoComplete="new-password"
+                    readOnly={!!createUserData.tenantId}
+                    className={cn("h-8 text-xs", createUserData.tenantId && "bg-slate-100 border-slate-200 text-slate-600 focus-visible:ring-0")}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="create-username" className="text-[13px] font-medium">Tên đăng nhập</Label>
+                  <Input
+                    id="create-username"
+                    value={createUserData.username}
+                    onChange={(e) => setCreateUserData({ ...createUserData, username: e.target.value })}
+                    placeholder="Nhập tên đăng nhập"
+                    autoComplete="off"
+                    className="h-8 text-xs font-medium border-[#0d9488]/30 focus-visible:ring-[#0d9488]"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="create-password" className="text-[13px] font-medium">Mật khẩu</Label>
+                  <Input
+                    id="create-password"
+                    type="password"
+                    value={createUserData.password}
+                    onChange={(e) => setCreateUserData({ ...createUserData, password: e.target.value })}
+                    placeholder="Nhập mật khẩu"
+                    className="h-8 text-xs"
+                  />
+                </div>
               </div>
             </div>
             <DialogFooter className="flex-col sm:flex-row gap-2">
@@ -721,6 +890,16 @@ export default function AccountManagementPage() {
                 onChange={(e) => setEditUserData({ ...editUserData, email: e.target.value })}
                 placeholder="Nhập email"
                 className="text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-username" className="text-xs md:text-sm">Tên đăng nhập</Label>
+              <Input
+                id="edit-username"
+                value={editUserData.username}
+                onChange={(e) => setEditUserData({ ...editUserData, username: e.target.value })}
+                placeholder="Nhập tên đăng nhập"
+                className="text-sm font-medium border-[#0d9488]/30 focus-visible:ring-[#0d9488]"
               />
             </div>
             <div className="space-y-2">

@@ -27,9 +27,13 @@ export const authOptions: NextAuthOptions = {
           const matKhau = credentials.matKhau;
 
           const user = await NguoiDung.findOne({
-            email,
+            $or: [
+              { email },
+              { tenDangNhap: email },
+              { username: email }
+            ],
             trangThai: "hoatDong",
-          }).select("+matKhau");
+          }).select("+matKhau +daXacMinhEmail");
 
           if (user) {
             const ok = await user.comparePassword(matKhau);
@@ -72,10 +76,10 @@ export const authOptions: NextAuthOptions = {
           if (!ok) return null;
 
           // Cập nhật lastLogin cho khách thuê qua Service
-          await UserService.updateLastLogin(client._id.toString(), 'khachThue');
+          await UserService.updateLastLogin((client as any)._id.toString(), 'khachThue');
 
           return {
-            id: client._id.toString(),
+            id: (client as any)._id.toString(),
             email: client.email || "",
             name: client.hoTen,
             role: "khachThue",
