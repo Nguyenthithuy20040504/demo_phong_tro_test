@@ -5,28 +5,50 @@ import { z } from 'zod';
 import { sendForgotPasswordEmail } from '@/lib/mail';
 
 const sendCodeSchema = z.object({
-  email: z.string().email(),
+  identifier: z.string().min(3, 'Vui lòng nhập Email hoặc Tên đăng nhập'),
 });
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email } = sendCodeSchema.parse(body);
+    const { identifier } = sendCodeSchema.parse(body);
+    const lowerIdentifier = identifier.toLowerCase();
 
     await dbConnect();
+    const KhachThue = (await import('@/models/KhachThue')).default;
 
-    const user = await NguoiDung.findOne({ email: email.toLowerCase() });
+    // Search in NguoiDung
+    let user = await NguoiDung.findOne({
+        $or: [
+            { email: lowerIdentifier },
+            { tenDangNhap: lowerIdentifier },
+            { username: lowerIdentifier }
+        ]
+    });
 
-    if (!user) {
-      // Vì lý do bảo mật, không nên trả về lỗi cụ thể nếu email không tồn tại.
-      // Nhưng để UX tốt hơn cho demo, cứ trả về lỗi.
+    let modelType: 'NguoiDung' | 'KhachThue' = 'NguoiDung';
+    let targetUser = user;
+
+    // If not found in NguoiDung, search in KhachThue
+    if (!targetUser) {
+        targetUser = await KhachThue.findOne({
+            $or: [
+                { email: lowerIdentifier },
+                { tenDangNhap: lowerIdentifier }
+            ]
+        });
+        modelType = 'KhachThue';
+    }
+
+    if (!targetUser || !targetUser.email) {
       return NextResponse.json(
-        { message: 'Không tìm thấy người dùng với email này' },
+        { message: 'Không tìm thấy tài khoản với thông tin này' },
         { status: 404 }
       );
     }
 
-    if (user.trangThai === 'khoa') {
+    // Check if account is locked
+    if (modelType === 'NguoiDung' && (targetUser.trangThai === 'khoa' || (targetUser as any).isActive === false)) {
       return NextResponse.json(
         { message: 'Tài khoản này đang bị khóa' },
         { status: 403 }
@@ -38,16 +60,24 @@ export async function POST(request: NextRequest) {
     const expiryTime = new Date();
     expiryTime.setMinutes(expiryTime.getMinutes() + 10); // 10 minutes
 
-    await NguoiDung.updateOne(
-      { _id: user._id },
-      { $set: { maKhoiPhucMatKhau: otpCode, hanMaKhoiPhucMatKhau: expiryTime } },
-      { strict: false }
-    );
+    if (modelType === 'NguoiDung') {
+        await NguoiDung.updateOne(
+            { _id: targetUser._id },
+            { $set: { maKhoiPhucMatKhau: otpCode, hanMaKhoiPhucMatKhau: expiryTime } },
+            { strict: false }
+        );
+    } else {
+        await KhachThue.updateOne(
+            { _id: targetUser._id },
+            { $set: { maKhoiPhucMatKhau: otpCode, hanMaKhoiPhucMatKhau: expiryTime } },
+            { strict: false }
+        );
+    }
 
     // Send email
     await sendForgotPasswordEmail({
-      email: user.email,
-      khachThueName: user.ten || user.name,
+      email: targetUser.email,
+      khachThueName: targetUser.ten || (targetUser as any).name || (targetUser as any).hoTen,
       code: otpCode,
     });
 
@@ -57,7 +87,7 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ message: 'Email không hợp lệ' }, { status: 400 });
+      return NextResponse.json({ message: 'Vui lòng nhập Email hoặc Tên đăng nhập hợp lệ' }, { status: 400 });
     }
     console.error('Send forgot password code error:', error);
     return NextResponse.json(

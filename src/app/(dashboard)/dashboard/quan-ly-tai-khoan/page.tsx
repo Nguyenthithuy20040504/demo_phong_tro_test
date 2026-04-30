@@ -84,6 +84,7 @@ interface User {
 interface CreateUserData {
   name: string;
   email: string;
+  username: string;
   password: string;
   phone: string;
   role: string;
@@ -111,6 +112,7 @@ export default function AccountManagementPage() {
   const [createUserData, setCreateUserData] = useState<CreateUserData>({
     name: '',
     email: '',
+    username: '',
     password: '',
     phone: '',
     role: 'khachThue',
@@ -131,6 +133,7 @@ export default function AccountManagementPage() {
   const [editUserData, setEditUserData] = useState({
     name: '',
     email: '',
+    username: '',
     phone: '',
     role: '',
     isActive: true
@@ -210,6 +213,7 @@ export default function AccountManagementPage() {
         setCreateUserData({
           name: '',
           email: '',
+          username: '',
           password: '',
           phone: '',
           role: ((session?.user as any)?.role) === 'admin' ? 'chuNha' : 'khachThue',
@@ -301,6 +305,7 @@ export default function AccountManagementPage() {
     setEditUserData({
       name: getUserName(user),
       email: user.email || '',
+      username: user.username || user.tenDangNhap || '',
       phone: getUserPhone(user),
       role: getUserRole(user),
       isActive: getUserIsActive(user)
@@ -398,6 +403,7 @@ export default function AccountManagementPage() {
             setCreateUserData({
               name: '',
               email: '',
+              username: '',
               password: '',
               phone: '',
               role: ((session?.user as any)?.role) === 'admin' ? 'chuNha' : 'khachThue'
@@ -428,7 +434,7 @@ export default function AccountManagementPage() {
                   setCreateUserData(prev => ({ 
                     ...prev, 
                     role: val,
-                    name: '', phone: '', email: '', password: '', tenantId: undefined
+                    name: '', phone: '', email: '', username: '', password: '', tenantId: undefined
                   }));
                 }} 
                 className="w-full"
@@ -574,6 +580,17 @@ export default function AccountManagementPage() {
                     autoComplete="new-password"
                     readOnly={!!createUserData.tenantId}
                     className={cn("h-8 text-xs", createUserData.tenantId && "bg-slate-100 border-slate-200 text-slate-600 focus-visible:ring-0")}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="create-username" className="text-[13px] font-medium">Tên đăng nhập</Label>
+                  <Input
+                    id="create-username"
+                    value={createUserData.username}
+                    onChange={(e) => setCreateUserData({ ...createUserData, username: e.target.value })}
+                    placeholder="Nhập tên đăng nhập"
+                    autoComplete="off"
+                    className="h-8 text-xs font-medium border-[#0d9488]/30 focus-visible:ring-[#0d9488]"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -909,6 +926,16 @@ export default function AccountManagementPage() {
                 onChange={(e) => setEditUserData({ ...editUserData, email: e.target.value })}
                 placeholder="Nhập email"
                 className="text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-username" className="text-xs md:text-sm">Tên đăng nhập</Label>
+              <Input
+                id="edit-username"
+                value={editUserData.username}
+                onChange={(e) => setEditUserData({ ...editUserData, username: e.target.value })}
+                placeholder="Nhập tên đăng nhập"
+                className="text-sm font-medium border-[#0d9488]/30 focus-visible:ring-[#0d9488]"
               />
             </div>
             <div className="space-y-2">

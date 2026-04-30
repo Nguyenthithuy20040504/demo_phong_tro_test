@@ -185,17 +185,40 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { 
-      name, email, password, phone, role, tenantId,
+      name, email, username, password, phone, role, tenantId,
       cccd, ngaySinh, gioiTinh, queQuan, ngheNghiep, anhCCCD
     } = body;
 
     // Validation
-    if (!name || !email || !password || !role) {
-      return NextResponse.json({ message: 'Vui lòng điền đầy đủ các thông tin: Họ tên, Email, Mật khẩu và Vai trò' }, { status: 400 });
+    if (!name || (!email && role !== 'khachThue') || !username || !password || !role) {
+      return NextResponse.json({ message: 'Vui lòng điền đầy đủ các thông tin: Họ tên, Tên đăng nhập, Mật khẩu và Vai trò' }, { status: 400 });
     }
 
     if (phone && !/^[0-9]{10,11}$/.test(phone)) {
       return NextResponse.json({ message: 'Số điện thoại không hợp lệ. Vui lòng nhập 10-11 chữ số.' }, { status: 400 });
+    }
+
+    await dbConnect();
+
+    // Check if username exists in either NguoiDung or KhachThue
+    const KhachThue = (await import('@/models/KhachThue')).default;
+    const existingUsernameInNguoiDung = await NguoiDung.findOne({ username });
+    const existingUsernameInKhachThue = await KhachThue.findOne({ tenDangNhap: username });
+    
+    if (existingUsernameInNguoiDung || existingUsernameInKhachThue) {
+      return NextResponse.json({ message: 'Tên đăng nhập này đã tồn tại trong hệ thống' }, { status: 400 });
+    }
+
+    if (email) {
+      const existingEmail = await NguoiDung.findOne({ email });
+      const existingEmailInKhachThue = await KhachThue.findOne({ email, nguoiQuanLy: session.user.id });
+      if (existingEmail || existingEmailInKhachThue) {
+        // For tenants, email uniqueness is only within landlord scope in KhachThue model, 
+        // but for NguoiDung it's global.
+        if (existingEmail) {
+            return NextResponse.json({ message: 'Email này đã được sử dụng bởi một tài khoản hệ thống.' }, { status: 400 });
+        }
+      }
     }
 
     if (session.user.role === 'chuNha') {
@@ -208,83 +231,88 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check if user already exists
-    await dbConnect();
-    const existingUser = await NguoiDung.findOne({ email });
-    if (existingUser) {
-      return NextResponse.json({ message: 'Email này đã được sử dụng. Vui lòng nhập một Email khác!' }, { status: 400 });
+    let newUser;
+    let verificationRequired = role === 'khachThue' || role === 'chuNha';
+    let verifyToken = verificationRequired ? crypto.randomBytes(32).toString('hex') : undefined;
+    let otpExpiry = verificationRequired ? new Date(Date.now() + 24 * 60 * 60 * 1000) : undefined;
+
+    if (role === 'khachThue') {
+      // Handle Tenant Account
+      if (tenantId) {
+        newUser = await KhachThue.findById(tenantId);
+        if (!newUser) return NextResponse.json({ message: 'Không tìm thấy hồ sơ khách thuê để liên kết' }, { status: 404 });
+        
+        newUser.tenDangNhap = username;
+        newUser.matKhau = password;
+        newUser.daXacMinhEmail = false;
+        newUser.maXacNhanEmail = verifyToken;
+        newUser.hanMaXacNhanEmail = otpExpiry;
+        if (email) newUser.email = email;
+        await newUser.save();
+      } else {
+        // Create brand new KhachThue record
+        newUser = new KhachThue({
+          hoTen: name,
+          tenDangNhap: username,
+          matKhau: password,
+          soDienThoai: phone,
+          email: email,
+          cccd: cccd || '000000000000', // Default if not provided
+          ngaySinh: ngaySinh ? new Date(ngaySinh) : new Date(),
+          gioiTinh: gioiTinh || 'khac',
+          queQuan: queQuan || 'Chưa cập nhật',
+          nguoiQuanLy: session.user.id,
+          daXacMinhEmail: false,
+          maXacNhanEmail: verifyToken,
+          hanMaXacNhanEmail: otpExpiry,
+          trangThai: 'chuaThue'
+        });
+        await newUser.save();
+      }
+    } else {
+      // Handle NguoiDung-based roles (Admin, ChuNha, NhanVien)
+      newUser = new NguoiDung({
+        ten: name,
+        email: email,
+        username: username, // Adding this for consistency
+        matKhau: password,
+        soDienThoai: phone,
+        vaiTro: role,
+        name,
+        password: password,
+        phone,
+        role,
+        isActive: true,
+        nguoiQuanLy: session.user.role === 'chuNha' ? session.user.id : null,
+        nguoiTao: session.user.id,
+        daXacMinhEmail: !verificationRequired,
+        maXacNhanEmail: verifyToken,
+        hanMaXacNhanEmail: otpExpiry
+      });
+      await newUser.save();
     }
-
-    // Generate confirmation token for accounts created by admin/chuNha
-    let verifyToken = null;
-    let otpExpiry = null;
-    let verificationRequired = false;
-
-    if (role === 'khachThue' || role === 'chuNha') {
-      verifyToken = crypto.randomBytes(32).toString('hex');
-      otpExpiry = new Date();
-      otpExpiry.setHours(otpExpiry.getHours() + 24); // 24 hours link expiry
-      verificationRequired = true;
-    }
-
-    // Create user (password will be hashed by the model's pre-save hook)
-    const mongoose = require('mongoose');
-    const newUser = new NguoiDung({
-      ...(tenantId ? { _id: new mongoose.Types.ObjectId(tenantId) } : {}),
-      // Vietnamese fields
-      ten: name,
-      email,
-      matKhau: password,
-      soDienThoai: phone,
-      vaiTro: role,
-      trangThai: verificationRequired ? 'hoatDong' : 'hoatDong', // Always hoatDong but limited by verification
-      // English fields
-      name,
-      password: password,
-      phone,
-      role,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      nguoiQuanLy: session.user.role === 'chuNha' ? session.user.id : null,
-      nguoiTao: session.user.id,
-      // Profile fields
-      cccd: cccd || null,
-      ngaySinh: ngaySinh ? new Date(ngaySinh) : null,
-      gioiTinh: gioiTinh || null,
-      queQuan: queQuan || null,
-      ngheNghiep: ngheNghiep || null,
-      anhCCCD: anhCCCD || { matTruoc: '', matSau: '' },
-      // Verification fields
-      daXacMinhEmail: !verificationRequired,
-      maXacNhanEmail: verifyToken,
-      hanMaXacNhanEmail: otpExpiry
-    });
-
-    await newUser.save();
 
     // Send confirmation link email asynchronously
-    if (verificationRequired && verifyToken) {
+    if (verificationRequired && verifyToken && (email || newUser.email)) {
+      const targetEmail = email || newUser.email;
       (async () => {
         try {
           const origin = request.nextUrl.origin;
-          const confirmLink = `${origin}/api/auth/verify-link?email=${encodeURIComponent(newUser.email)}&token=${verifyToken}`;
+          const confirmLink = `${origin}/api/auth/verify-link?email=${encodeURIComponent(targetEmail)}&token=${verifyToken}&type=${role}`;
           
           await sendAccountConfirmationLinkEmail({
-            email: newUser.email,
-            khachThueName: newUser.ten,
+            email: targetEmail,
+            khachThueName: name,
             confirmLink: confirmLink,
           });
-          console.log(`[Admin User API] Confirmation link sent to ${newUser.email}`);
+          console.log(`[Admin User API] Confirmation link sent to ${targetEmail}`);
         } catch (mailErr) {
           console.error(`[Admin User API] Failed to send confirmation email:`, mailErr);
         }
       })();
     }
 
-    // Return user without password
-    const { password: _, ...userWithoutPassword } = newUser.toObject();
-    return NextResponse.json(userWithoutPassword, { status: 201 });
+    return NextResponse.json({ success: true, message: 'Tạo tài khoản thành công' }, { status: 201 });
   } catch (error: any) {
     console.error('Error creating user:', error);
     if (error.name === 'ValidationError') {

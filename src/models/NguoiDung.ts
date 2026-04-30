@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 export interface INguoiDung extends Document {
   ten: string;
   email: string;
+  tenDangNhap?: string;
   matKhau: string;
   soDienThoai: string;
   vaiTro: 'admin' | 'chuNha' | 'nhanVien' | 'khachThue';
@@ -13,6 +14,7 @@ export interface INguoiDung extends Document {
   ngayCapNhat: Date;
   // English field names for compatibility
   name: string;
+  username?: string;
   password: string;
   phone: string;
   role: 'admin' | 'chuNha' | 'nhanVien' | 'khachThue';
@@ -78,6 +80,15 @@ const NguoiDungSchema = new Schema<INguoiDung>({
     trim: true,
     match: [/^\S+@\S+\.\S+$/, 'Email không hợp lệ']
   },
+  tenDangNhap: {
+    type: String,
+    required: false,
+    unique: true,
+    sparse: true,
+    trim: true,
+    lowercase: true,
+    minlength: [3, 'Tên đăng nhập phải có ít nhất 3 ký tự']
+  },
   matKhau: {
     type: String,
     required: [true, 'Mật khẩu là bắt buộc'],
@@ -108,6 +119,12 @@ const NguoiDungSchema = new Schema<INguoiDung>({
     required: [true, 'Name is required'],
     trim: true,
     maxlength: [100, 'Name cannot exceed 100 characters']
+  },
+  username: {
+    type: String,
+    required: false,
+    trim: true,
+    lowercase: true
   },
   password: {
     type: String,
@@ -273,6 +290,14 @@ NguoiDungSchema.pre('save', function(next) {
   }
   if (this.isModified('name') && !this.isModified('ten')) {
     this.ten = this.name;
+  }
+
+  // Sync username fields
+  if (this.isModified('tenDangNhap') && !this.isModified('username')) {
+    this.username = this.tenDangNhap;
+  }
+  if (this.isModified('username') && !this.isModified('tenDangNhap')) {
+    this.tenDangNhap = this.username;
   }
   
   // Sync phone fields

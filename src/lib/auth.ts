@@ -26,7 +26,11 @@ export const authOptions: NextAuthOptions = {
           const matKhau = credentials.matKhau;
 
           const user = await NguoiDung.findOne({
-            email,
+            $or: [
+              { email },
+              { tenDangNhap: email },
+              { username: email }
+            ]
           }).select("+matKhau +daXacMinhEmail");
 
           if (user) {
@@ -83,13 +87,13 @@ export const authOptions: NextAuthOptions = {
 
           // Cập nhật lastLogin cho khách thuê trực tiếp
           try {
-            await KhachThue.findByIdAndUpdate(client._id, { lastLogin: new Date() });
+            await KhachThue.findByIdAndUpdate((client as any)._id, { lastLogin: new Date() });
           } catch (e) {
             console.error("Error updating lastLogin for client:", e);
           }
 
           return {
-            id: client._id.toString(),
+            id: (client as any)._id.toString(),
             email: client.email || "",
             name: client.hoTen,
             role: "khachThue",

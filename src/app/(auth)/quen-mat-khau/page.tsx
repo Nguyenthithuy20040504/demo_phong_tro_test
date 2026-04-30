@@ -15,7 +15,7 @@ import { Loader2, ShieldCheck, Sparkles, KeyRound, Mail } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const requestSchema = z.object({
-  email: z.string().email('Email không hợp lệ'),
+  identifier: z.string().min(3, 'Vui lòng nhập Email hoặc Tên đăng nhập'),
 });
 
 const verifySchema = z.object({
@@ -27,7 +27,8 @@ type VerifyForm = z.infer<typeof verifySchema>;
 
 function ForgotPasswordContent() {
   const [step, setStep] = useState<1 | 2>(1);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(''); // This will store the email returned from server if needed, or just display the input
+  const [identifier, setIdentifier] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -61,7 +62,7 @@ function ForgotPasswordContent() {
       const res = await fetch('/api/auth/forgot-password/send-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: data.email }),
+        body: JSON.stringify({ identifier: data.identifier }),
       });
 
       const result = await res.json();
@@ -71,9 +72,11 @@ function ForgotPasswordContent() {
         return;
       }
 
-      setSuccess('Mã khôi phục đã được gửi vào email của bạn!');
-      setEmail(data.email);
-      resetVerify(); // reset form OTP để tránh trình duyệt tự điền giá trị cũ
+      setSuccess('Mã khôi phục đã được gửi vào email gắn với tài khoản của bạn!');
+      setIdentifier(data.identifier);
+      // For simplicity in OTP step, we use the identifier
+      setEmail(data.identifier); 
+      resetVerify(); 
       setStep(2);
       setResendTimer(60);
       
@@ -231,19 +234,19 @@ function ForgotPasswordContent() {
             {step === 1 ? (
               <form onSubmit={handleSubmitRequest(onRequestSubmit)} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-xs font-semibold text-muted-foreground ml-1">Địa chỉ Email</Label>
+                  <Label htmlFor="identifier" className="text-xs font-semibold text-muted-foreground ml-1">Email hoặc Tên đăng nhập</Label>
                   <div className="relative group">
                     <Input
-                      id="email"
-                      type="email"
-                      placeholder="name@example.com"
-                      {...registerRequest('email')}
-                      className={`h-14 bg-secondary/10 border-transparent rounded-2xl focus:bg-background transition-all px-6 font-light tracking-wide ${errorsRequest.email ? 'border-destructive/50' : ''}`}
+                      id="identifier"
+                      type="text"
+                      placeholder="Nhập email hoặc tên tài khoản"
+                      {...registerRequest('identifier')}
+                      className={`h-14 bg-secondary/10 border-transparent rounded-2xl focus:bg-background transition-all px-6 font-light tracking-wide ${errorsRequest.identifier ? 'border-destructive/50' : ''}`}
                     />
                     <Mail className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/20 group-focus-within:text-red-500 transition-colors" />
                   </div>
-                  {errorsRequest.email && (
-                    <p className="text-[10px] font-bold text-destructive uppercase tracking-widest ml-1">{errorsRequest.email.message}</p>
+                  {errorsRequest.identifier && (
+                    <p className="text-[10px] font-bold text-destructive uppercase tracking-widest ml-1">{errorsRequest.identifier.message}</p>
                   )}
                 </div>
 
@@ -258,7 +261,7 @@ function ForgotPasswordContent() {
             ) : (
               <form onSubmit={handleSubmitVerify(onVerifySubmit)} className="space-y-6">
                 <div className="space-y-2 text-center">
-                  <Label className="text-xs font-semibold text-muted-foreground">Mã OTP đã gửi đến: <span className="text-foreground font-bold">{email}</span></Label>
+                  <Label className="text-xs font-semibold text-muted-foreground">Mã OTP đã gửi đến thông tin: <span className="text-foreground font-bold">{identifier}</span></Label>
                   <div className="relative group mt-4">
                     <input
                       id="otp-code"

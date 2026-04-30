@@ -20,7 +20,7 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
     const { 
-      name, email, phone, role, isActive,
+      name, email, username, phone, role, isActive,
       cccd, ngaySinh, gioiTinh, queQuan, ngheNghiep, anhCCCD,
       goiDichVu, ngayHetHan
     } = body;
@@ -30,116 +30,108 @@ export async function PUT(
     }
 
     await dbConnect();
+    const KhachThue = (await import('@/models/KhachThue')).default;
     
-    // Check if ChuNha is trying to edit a user they don't own
-    // Check permissions and ownership
+    // Check if new username is unique if changed
+    if (username) {
+        const existingUsernameInNguoiDung = await NguoiDung.findOne({ username, _id: { $ne: id } });
+        const existingUsernameInKhachThue = await KhachThue.findOne({ tenDangNhap: username, _id: { $ne: id } });
+        
+        if (existingUsernameInNguoiDung || existingUsernameInKhachThue) {
+            return NextResponse.json({ message: 'Tên đăng nhập này đã tồn tại trong hệ thống' }, { status: 400 });
+        }
+    }
+
+    let userToEdit = await NguoiDung.findById(id);
+    let khachThueToEdit = null;
+    
+    if (!userToEdit) {
+        khachThueToEdit = await KhachThue.findById(id);
+    }
+
+    if (!userToEdit && !khachThueToEdit) {
+        return NextResponse.json({ message: 'Không tìm thấy người dùng này' }, { status: 404 });
+    }
+
+    // Permission check
     if (session.user.role === 'chuNha') {
-       const userToEdit = await NguoiDung.findById(id);
-       if (!userToEdit) {
-           return NextResponse.json({ message: 'Không tìm thấy người dùng này' }, { status: 404 });
-       }
-       
-       // Robust check using toString for comparison
-       const managedBy = userToEdit.nguoiQuanLy?.toString();
+       const currentUser = userToEdit || (khachThueToEdit as any);
+       const managedBy = currentUser.nguoiQuanLy?.toString();
        if (managedBy !== session.user.id) {
            return NextResponse.json({ message: 'Bạn chỉ có quyền chỉnh sửa tài khoản do mình quản lý' }, { status: 403 });
        }
-       
-       if (role === 'admin' || role === 'chuNha') {
-           return NextResponse.json({ message: 'Chủ nhà chỉ được cấp quyền Nhân Viên hoặc Khách Thuê' }, { status: 403 });
-       }
-    }
-    // Admins can manage all roles, no extra check needed here
-
-    const updateData: any = {
-      // Vietnamese fields
-      ten: name,
-      soDienThoai: phone,
-      vaiTro: role,
-      trangThai: isActive ? 'hoatDong' : 'khoa',
-      // English fields
-      name,
-      phone,
-      role,
-      isActive,
-      updatedAt: new Date(),
-      // Profile fields
-      cccd: cccd !== undefined ? cccd : undefined,
-      ngaySinh: ngaySinh ? new Date(ngaySinh) : undefined,
-      gioiTinh: gioiTinh !== undefined ? gioiTinh : undefined,
-      queQuan: queQuan !== undefined ? queQuan : undefined,
-      ngheNghiep: ngheNghiep !== undefined ? ngheNghiep : undefined,
-      anhCCCD: anhCCCD !== undefined ? anhCCCD : undefined
-    };
-    
-    // Admin only fields (SaaS subscription)
-    if (session.user.role === 'admin') {
-      if (goiDichVu !== undefined) updateData.goiDichVu = goiDichVu;
-      if (ngayHetHan !== undefined) updateData.ngayHetHan = ngayHetHan ? new Date(ngayHetHan) : null;
-    }
-    
-    // Cập nhật email nếu có
-    if (email !== undefined) {
-      updateData.email = email;
-    }
-    
-    const updatedUser = await NguoiDung.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true }
-    ).select('-password -matKhau');
-    
-    if (!updatedUser) {
-      return NextResponse.json({ message: 'Không tìm thấy người dùng này' }, { status: 404 });
     }
 
-    // Gửi thông báo nếu có cập nhật gói dịch vụ hoặc ngày hết hạn (cho Chủ Trọ)
-    if (session.user.role === 'admin' && (goiDichVu !== undefined || ngayHetHan !== undefined)) {
-      const packageName = 
-        updatedUser.goiDichVu === 'chuyenNghiep' ? 'Chuyên nghiệp (Enterprise)' : 
-        updatedUser.goiDichVu === 'coBan' ? 'Cơ bản (Professional)' : 'Miễn phí (Tiêu chuẩn)';
-      
-      const expiryText = updatedUser.ngayHetHan ? new Date(updatedUser.ngayHetHan).toLocaleDateString('vi-VN') : 'Không giới hạn';
-      
-      await ThongBao.create({
-        tieuDe: `Quản trị viên đã cập nhật gói dịch vụ của bạn`,
-        noiDung: `Kính gửi ${updatedUser.ten || updatedUser.name},\n\nTài khoản của bạn vừa được cập nhật bởi hệ thống: \n- Gói hiện tại: ${packageName}\n- Thời hạn mới: ${expiryText}\n\nNếu bạn có thắc mắc, vui lòng liên hệ bộ phận hỗ trợ.\n\nTrân trọng.`,
-        loai: 'he_thong',
-        nguoiGui: session.user.id,
-        nguoiNhan: [updatedUser._id],
-        daDoc: [],
-        guiTatCa: false
-      });
-    }
+    let updatedUser;
 
-    // ===== ĐỒNG BỘ DỮ LIỆU VỚI KHÁCH THUÊ =====
-    // Nếu user có role khachThue, đồng bộ hoTen/email/soDienThoai sang bảng KhachThue
-    try {
-      const KhachThue = (await import('@/models/KhachThue')).default;
-      
-      // Tìm KhachThue bằng _id hoặc soDienThoai
-      const khachThueRecord = await KhachThue.findOne({
-        $or: [
-          { _id: id },
-          ...(phone ? [{ soDienThoai: phone }] : []),
-          ...(updatedUser.soDienThoai ? [{ soDienThoai: updatedUser.soDienThoai }] : [])
-        ]
-      });
-      
-      if (khachThueRecord) {
-        const ktUpdate: any = {};
-        if (name) ktUpdate.hoTen = name;
-        if (email !== undefined) ktUpdate.email = email;
-        if (phone) ktUpdate.soDienThoai = phone;
-        
-        if (Object.keys(ktUpdate).length > 0) {
-          await KhachThue.findByIdAndUpdate(khachThueRecord._id, ktUpdate);
-          console.log(`Đã đồng bộ thông tin sang KhachThue: ${khachThueRecord._id}`);
+    if (userToEdit) {
+        const updateData: any = {
+            ten: name,
+            email: email,
+            username: username,
+            soDienThoai: phone,
+            vaiTro: role,
+            trangThai: isActive ? 'hoatDong' : 'khoa',
+            name,
+            phone,
+            role,
+            isActive,
+            updatedAt: new Date(),
+            cccd: cccd !== undefined ? cccd : undefined,
+            ngaySinh: ngaySinh ? new Date(ngaySinh) : undefined,
+            gioiTinh: gioiTinh !== undefined ? gioiTinh : undefined,
+            queQuan: queQuan !== undefined ? queQuan : undefined,
+            ngheNghiep: ngheNghiep !== undefined ? ngheNghiep : undefined,
+            anhCCCD: anhCCCD !== undefined ? anhCCCD : undefined
+        };
+
+        if (session.user.role === 'admin') {
+            if (goiDichVu !== undefined) updateData.goiDichVu = goiDichVu;
+            if (ngayHetHan !== undefined) updateData.ngayHetHan = ngayHetHan ? new Date(ngayHetHan) : null;
         }
-      }
-    } catch (syncError) {
-      console.error('Lỗi đồng bộ KhachThue (không ảnh hưởng kết quả):', syncError);
-      // Không fail request chính nếu sync lỗi
+
+        updatedUser = await NguoiDung.findByIdAndUpdate(id, updateData, { new: true }).select('-password -matKhau');
+        if (!updatedUser) return NextResponse.json({ message: 'Lỗi cập nhật thông tin người dùng' }, { status: 500 });
+        
+        // Sync to KhachThue if linked
+        try {
+            const linkedKT = await KhachThue.findOne({ $or: [{ _id: id }, { soDienThoai: userToEdit.soDienThoai }] });
+            if (linkedKT) {
+                const ktUpdate: any = {};
+                if (name) ktUpdate.hoTen = name;
+                if (email !== undefined) ktUpdate.email = email;
+                if (phone) ktUpdate.soDienThoai = phone;
+                if (username) ktUpdate.tenDangNhap = username;
+                await KhachThue.findByIdAndUpdate(linkedKT._id, ktUpdate);
+            }
+        } catch (e) { console.error('Sync error:', e); }
+    } else {
+        // Edit in KhachThue model directly
+        const ktUpdate: any = {
+            hoTen: name,
+            email: email,
+            tenDangNhap: username,
+            soDienThoai: phone,
+            trangThai: isActive ? 'dangThue' : 'daTraPhong', // simplified mapping
+            updatedAt: new Date()
+        };
+        if (cccd) ktUpdate.cccd = cccd;
+        if (ngaySinh) ktUpdate.ngaySinh = new Date(ngaySinh);
+        if (gioiTinh) ktUpdate.gioiTinh = gioiTinh;
+        if (queQuan) ktUpdate.queQuan = queQuan;
+
+        updatedUser = await KhachThue.findByIdAndUpdate(id, ktUpdate, { new: true }).lean();
+        if (!updatedUser) return NextResponse.json({ message: 'Không tìm thấy hồ sơ khách thuê' }, { status: 404 });
+        // Map back to User-like object for response
+        updatedUser = {
+            ...updatedUser,
+            _id: updatedUser._id.toString(),
+            name: updatedUser.hoTen,
+            username: updatedUser.tenDangNhap,
+            phone: updatedUser.soDienThoai,
+            role: 'khachThue',
+            isActive: updatedUser.trangThai === 'dangThue'
+        };
     }
 
     return NextResponse.json(updatedUser);
