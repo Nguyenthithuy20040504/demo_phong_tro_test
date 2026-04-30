@@ -8,6 +8,7 @@ import HopDong from '@/models/HopDong';
 import Phong from '@/models/Phong';
 import { updateKhachThueStatus } from '@/lib/status-utils';
 import { getAccessibleKhachThueIds } from '@/lib/auth-utils';
+import NguoiDung from '@/models/NguoiDung';
 import { z } from 'zod';
 import mongoose from 'mongoose';
 
@@ -132,7 +133,7 @@ export async function GET(request: NextRequest) {
 
     let chuNhaId = session.user.id;
     if (session.user.role === 'nhanVien') {
-      const dbUser = await mongoose.model('NguoiDung').findById(session.user.id).select('nguoiQuanLy');
+      const dbUser = await NguoiDung.findById(session.user.id).select('nguoiQuanLy');
       if (dbUser && dbUser.nguoiQuanLy) {
         chuNhaId = dbUser.nguoiQuanLy.toString();
       }
@@ -367,7 +368,6 @@ export async function POST(request: NextRequest) {
     await dbConnect();
 
     let nguoiQuanLyId = session.user.id;
-    const NguoiDung = mongoose.model('NguoiDung');
     
     if (session.user.role === 'nhanVien') {
       const nhanVien = await NguoiDung.findById(session.user.id).select('nguoiQuanLy');
