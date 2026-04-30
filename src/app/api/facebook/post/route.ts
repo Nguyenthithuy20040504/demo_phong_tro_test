@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import dbConnect from '@/lib/mongodb';
+import NguoiDung from '@/models/NguoiDung';
+import '@/models/GoiDichVu';
 export async function POST(request: NextRequest) {
   try {
     const { message, images } = await request.json();
