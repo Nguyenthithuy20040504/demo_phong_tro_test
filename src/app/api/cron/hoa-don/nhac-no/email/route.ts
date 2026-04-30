@@ -193,7 +193,8 @@ export async function GET(request: NextRequest) {
 
           // Create In-App Notification (Independent of email success)
           try {
-            const noiDungThongBao = `Thông báo quá hạn: Hóa đơn tháng ${hoaDon.thang}/${hoaDon.nam} của bạn đã quá hạn thanh toán. Số tiền còn lại: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(hoaDon.conLai)}. Vui lòng hoàn tất thanh toán sớm.`;
+            const roomName = hoaDon.phong?.maPhong || (hoaDon.phong as any)?.maPhong || 'N/A';
+            const noiDungThongBao = `Thông báo quá hạn: Hóa đơn phòng ${roomName} tháng ${hoaDon.thang}/${hoaDon.nam} của bạn đã quá hạn thanh toán. Số tiền còn lại: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(hoaDon.conLai)}. Vui lòng hoàn tất thanh toán sớm.`;
 
             await new ThongBao({
               tieuDe: 'Thông báo nợ (Quá hạn)',
@@ -218,7 +219,7 @@ export async function GET(request: NextRequest) {
     if (telegramNotifications.size > 0 && bot) {
         for (const [ownerId, data] of telegramNotifications.entries()) {
            if (data.chatId && data.invoices.length > 0) {
-              const items = data.invoices.slice(0, 10).map((hd: any) => `• P.${hd.phong?.tenPhong || 'Trống'}: ${new Intl.NumberFormat('vi-VN').format(hd.conLai)} đ`).join('\n');
+              const items = data.invoices.slice(0, 10).map((hd: any) => `• P.${hd.phong?.maPhong || 'Trống'}: ${new Intl.NumberFormat('vi-VN').format(hd.conLai)} đ`).join('\n');
               const excess = data.invoices.length > 10 ? `\n_... và ${data.invoices.length - 10} hóa đơn khác._` : '';
               const msg = `🚨 *THÔNG BÁO QUÁ HẠN*\nChào ${data.name}, bạn có *${data.invoices.length} phòng* đang quá hạn thanh toán:\n\n${items}${excess}\n\nVui lòng kiểm tra lại trạng thái thu tiền trên hệ thống Web.`;
               try {
