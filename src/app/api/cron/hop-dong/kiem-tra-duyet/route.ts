@@ -44,8 +44,8 @@ export async function GET(request: NextRequest) {
       const rPhong = hd.phong as any;
       const landlordId = rPhong?.toaNha?.chuSoHuu;
 
-      if (minutesSinceAction >= 7) {
-        // XỬ LÝ QUÁ HẠN 7 PHÚT
+      if (minutesSinceAction >= 7 * 1440) {
+        // XỬ LÝ QUÁ HẠN 7 NGÀY
         if (isGiaHan) {
            // Khôi phục trạng thái cũ cho hợp đồng gia hạn
            const expirationDate = new Date(hd.ngayKetThuc);
@@ -62,8 +62,8 @@ export async function GET(request: NextRequest) {
         if (nguoiDaiDienId && landlordId) {
           const tieuDe = isGiaHan ? 'Yêu cầu gia hạn đã tự động hết hạn' : 'Hợp đồng đã bị hủy tự động';
           const noiDung = isGiaHan 
-            ? `Yêu cầu gia hạn phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) đã hết hạn do bạn không duyệt sau 7 phút. Hợp đồng giữ nguyên thời hạn cũ.`
-            : `Hợp đồng phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) đã tự động bị hủy do quá hạn 7 phút nhưng chưa được xác nhận.`;
+            ? `Yêu cầu gia hạn phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) đã hết hạn do bạn không duyệt sau 7 ngày. Hợp đồng giữ nguyên thời hạn cũ.`
+            : `Hợp đồng phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) đã tự động bị hủy do quá hạn 7 ngày nhưng chưa được xác nhận.`;
 
           await ThongBao.create({
             tieuDe,
@@ -80,8 +80,8 @@ export async function GET(request: NextRequest) {
           await ThongBao.create({
             tieuDe: isGiaHan ? 'Yêu cầu gia hạn bị bỏ qua' : 'Hợp đồng bị hủy do quá hạn',
             noiDung: isGiaHan 
-              ? `Yêu cầu gia hạn cho phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) đã quá hạn 7 phút mà khách không duyệt. Yêu cầu đã bị hủy bỏ.`
-              : `Hợp đồng phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) đã tự động bị hủy vì khách thuê không xác nhận sau 7 phút.`,
+              ? `Yêu cầu gia hạn cho phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) đã quá hạn 7 ngày mà khách không duyệt. Yêu cầu đã bị hủy bỏ.`
+              : `Hợp đồng phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) đã tự động bị hủy vì khách thuê không xác nhận sau 7 ngày.`,
             loai: 'hopDong',
             nguoiGui: landlordId,
             nguoiNhan: [landlordId],
@@ -92,13 +92,13 @@ export async function GET(request: NextRequest) {
         }
 
         cancelledCount++;
-      } else if (minutesSinceAction >= 5 && !hd.daNhacChoDuyet) {
-        // NHẮC NHỞ Ở PHÚT THỨ 5 (CÒN 2 PHÚT)
+      } else if (minutesSinceAction >= 5 * 1440 && !hd.daNhacChoDuyet) {
+        // NHẮC NHỞ Ở NGÀY THỨ 5 (CÒN 2 NGÀY)
         if (nguoiDaiDienId && landlordId) {
           const tieuDe = isGiaHan ? 'Nhắc nhở duyệt gia hạn' : 'Nhắc nhở xác nhận hợp đồng';
           const noiDung = isGiaHan
-            ? `Yêu cầu gia hạn phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) của bạn sẽ hết hiệu lực sau 2 phút nữa. Vui lòng xác nhận ngay để gia hạn.`
-            : `Hợp đồng phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) của bạn sẽ bị hủy sau 2 phút nữa. Vui lòng xác nhận hợp đồng để hoàn tất quá trình thuê.`;
+            ? `Yêu cầu gia hạn phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) của bạn sẽ hết hiệu lực sau 2 ngày nữa. Vui lòng xác nhận ngay để gia hạn.`
+            : `Hợp đồng phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) của bạn sẽ bị hủy sau 2 ngày nữa. Vui lòng xác nhận hợp đồng để hoàn tất quá trình thuê.`;
 
           await ThongBao.create({
             tieuDe,
