@@ -232,14 +232,26 @@ export async function POST(request: NextRequest) {
 
     if (email) {
       if (role === 'khachThue') {
+        const emailLower = email.toLowerCase();
         // Tenants can use the same email across different landlords, 
         // but only ONE account per email per landlord.
-        const existingEmailInKhachThue = await KhachThue.findOne({ 
-          email, 
+        let khachThueQuery: any = { 
+          email: emailLower, 
           nguoiQuanLy: session.user.id 
+        };
+        if (tenantId) {
+          const mongoose = require('mongoose');
+          khachThueQuery._id = { $ne: new mongoose.Types.ObjectId(tenantId) };
+        }
+        const existingEmailInKhachThue = await KhachThue.findOne(khachThueQuery);
+        
+        const existingEmailInNguoiDung = await NguoiDung.findOne({
+          email: `unlinked_${session.user.id}_${emailLower}`,
+          nguoiQuanLy: session.user.id
         });
-        if (existingEmailInKhachThue) {
-          return NextResponse.json({ message: 'Bạn đã tạo một tài khoản cho khách thuê với email này rồi.' }, { status: 400 });
+
+        if (existingEmailInKhachThue || existingEmailInNguoiDung) {
+          return NextResponse.json({ message: 'Bạn đã tạo một tài khoản hoặc khách thuê với email này rồi.' }, { status: 400 });
         }
       } else {
         // System roles (Admin, ChuNha, NhanVien) must have globally unique emails in NguoiDung table
@@ -279,22 +291,26 @@ export async function POST(request: NextRequest) {
         if (email) newUser.email = email;
         await newUser.save();
       } else {
-        // Create brand new KhachThue record
-        newUser = new KhachThue({
-          hoTen: name,
+        // Tạo một "tài khoản rỗng" trực tiếp trong bảng NguoiDung
+        const tempEmail = email ? `unlinked_${session.user.id}_${email.toLowerCase()}` : `unlinked_${session.user.id}_${username}_${Date.now()}@no-email.local`;
+        newUser = new NguoiDung({
+          ten: name,
+          email: tempEmail,
+          username: username,
           tenDangNhap: username,
           matKhau: password,
           soDienThoai: phone,
-          email: email,
-          cccd: cccd || '000000000000', // Default if not provided
-          ngaySinh: ngaySinh ? new Date(ngaySinh) : new Date(),
-          gioiTinh: gioiTinh || 'khac',
-          queQuan: queQuan || 'Chưa cập nhật',
-          nguoiQuanLy: session.user.id,
+          vaiTro: role,
+          name,
+          password: password,
+          phone,
+          role,
+          isActive: true,
+          nguoiQuanLy: session.user.role === 'chuNha' ? session.user.id : null,
+          nguoiTao: session.user.id,
           daXacMinhEmail: false,
           maXacNhanEmail: verifyToken,
-          hanMaXacNhanEmail: otpExpiry,
-          trangThai: 'chuaThue'
+          hanMaXacNhanEmail: otpExpiry
         });
         await newUser.save();
       }
@@ -321,8 +337,11 @@ export async function POST(request: NextRequest) {
       await newUser.save();
     }
 
+    // Chỉ gửi Email nếu KHÔNG phải Khách thuê trống (tức là đã liên kết)
+    let shouldSendConfirmation = verificationRequired && verifyToken && (role !== 'khachThue' || tenantId);
+
     // Send confirmation link email asynchronously
-    if (verificationRequired && verifyToken && (email || newUser.email)) {
+    if (shouldSendConfirmation && (email || newUser?.email)) {
       const targetEmail = email || newUser.email;
       (async () => {
         try {

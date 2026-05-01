@@ -337,7 +337,8 @@ export async function POST(request: NextRequest) {
     });
 
     const dbSession = await mongoose.startSession();
-    let newKhachThueData: any = null;
+    let newKhachThueData: any;
+    let linkUserId: mongoose.Types.ObjectId | undefined = undefined;
 
     try {
       await dbSession.withTransaction(async () => {
@@ -358,8 +359,6 @@ export async function POST(request: NextRequest) {
           }
           throw new Error(`${conflictField} đã được bạn sử dụng cho một khách thuê khác trong danh sách của mình.`);
         }
-
-        let linkUserId = undefined;
 
         // Nếu có truyền userId (Account vừa chọn)
         if (body.userId) {
@@ -383,13 +382,18 @@ export async function POST(request: NextRequest) {
           linkUserId = userObjId;
           
           // Cập nhật lại thông tin của User cho khớp 100% với hồ sơ chuẩn
+          let targetUserEmail = userTarget.email;
+          if (targetUserEmail && targetUserEmail.startsWith(`unlinked_${nguoiQuanLyId}_`)) {
+             targetUserEmail = targetUserEmail.replace(`unlinked_${nguoiQuanLyId}_`, '');
+          }
+
           await NguoiDung.findByIdAndUpdate(userObjId, {
             $set: {
               ten: validatedData.hoTen,
               name: validatedData.hoTen,
               soDienThoai: validatedData.soDienThoai,
               phone: validatedData.soDienThoai,
-              email: validatedData.email || userTarget.email
+              email: validatedData.email || targetUserEmail
             }
           }, { session: dbSession });
         }
@@ -419,6 +423,22 @@ export async function POST(request: NextRequest) {
 
     // Cập nhật trạng thái dựa trên hợp đồng (chạy background)
     updateKhachThueStatus(newKhachThueData._id.toString()).catch(e => console.error(e));
+
+    // Gửi email xác nhận nếu vừa liên kết một "tài khoản rỗng"
+    if (linkUserId) {
+      const NguoiDung = mongoose.model('NguoiDung');
+      const dbUser = await NguoiDung.findById(linkUserId);
+      if (dbUser && !dbUser.daXacMinhEmail && dbUser.maXacNhanEmail && dbUser.email && !dbUser.email.includes('@no-email.local')) {
+        const rootUrl = request.nextUrl.origin;
+        const confirmLink = `${rootUrl}/api/auth/verify-link?email=${encodeURIComponent(dbUser.email)}&token=${dbUser.maXacNhanEmail}&type=khachThue`;
+        const { sendAccountConfirmationLinkEmail } = await import('@/lib/mail');
+        sendAccountConfirmationLinkEmail({
+          email: dbUser.email,
+          khachThueName: dbUser.ten,
+          confirmLink: confirmLink,
+        }).catch(e => console.error('Lỗi gửi email khi liên kết:', e));
+      }
+    }
 
     return NextResponse.json({
       success: true,
