@@ -35,7 +35,7 @@ const hopDongSchema = z.object({
   chiSoNuocBanDau: z.number().min(0, 'Chỉ số nước ban đầu phải lớn hơn hoặc bằng 0'),
   phiDichVu: z.array(phiDichVuSchema).optional(),
   fileHopDong: z.string().optional(),
-  trangThai: z.enum(['choDuyet', 'hoatDong', 'hetHan', 'daHuy', 'choDuyetGiaHan']).optional(),
+  trangThai: z.enum(['choDuyet', 'hoatDong', 'hetHan', 'daHuy', 'choDuyetGiaHan', 'choDuyetHuy']).optional(),
   hoanCoc: z.boolean().optional(),
   refundDueDate: z.string().optional(),
 });
@@ -368,7 +368,33 @@ export async function PUT(
       await updateAllKhachThueStatus(khachThueIds.map((id: any) => id.toString()));
     }
 
-    // Gửi thông báo hủy hợp đồng cho khách thuê (HĐ11)
+    // Gửi thông báo hủy hợp đồng cho khách thuê
+    if (validatedData.trangThai === 'choDuyetHuy') {
+      try {
+        const ThongBao = (await import('@/models/ThongBao')).default;
+        const phongInfo = await Phong.findById(hopDong.phong._id).select('maPhong');
+        const tenPhong = phongInfo?.maPhong || 'N/A';
+
+        const nguoiNhanIds = existingHopDong.khachThueId
+          .map((ktId: any) => new mongoose.Types.ObjectId(ktId.toString()));
+
+        if (nguoiNhanIds.length > 0) {
+          await ThongBao.create({
+            tieuDe: `Yêu cầu hủy hợp đồng - Phòng ${tenPhong}`,
+            noiDung: `Chủ trọ đã yêu cầu hủy hợp đồng thuê phòng ${tenPhong} (Mã: ${existingHopDong.maHopDong}). Vui lòng vào mục Quản lý Hợp đồng để duyệt yêu cầu này.`,
+            loai: 'hopDong',
+            nguoiGui: new mongoose.Types.ObjectId(session.user.id),
+            nguoiNhan: nguoiNhanIds,
+            phong: [hopDong.phong._id],
+            toaNha: hopDong.phong.toaNha,
+            ngayGui: new Date(),
+          });
+        }
+      } catch (notifError) {
+        console.error('Error processing choDuyetHuy notification:', notifError);
+      }
+    }
+
     if (validatedData.trangThai === 'daHuy') {
       console.log('>>> PROCESSING CONTRACT CANCELLATION. hoanCoc:', validatedData.hoanCoc, 'tienCoc:', existingHopDong.tienCoc);
       try {

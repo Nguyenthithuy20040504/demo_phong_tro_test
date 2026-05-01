@@ -139,7 +139,7 @@ export default function KhachThueDashboardPage() {
   const khachThueId = khachThue?._id;
   
   const pendingContracts = hopDongList.filter((hd: any) => {
-    if (!['choDuyet', 'choDuyetGiaHan'].includes(hd.trangThai)) return false;
+    if (!['choDuyet', 'choDuyetGiaHan', 'choDuyetHuy'].includes(hd.trangThai)) return false;
     // Chỉ người đại diện mới thấy nút duyệt
     const daiDienId = typeof hd.nguoiDaiDien === 'object' 
       ? hd.nguoiDaiDien?._id?.toString() 
@@ -224,10 +224,10 @@ export default function KhachThueDashboardPage() {
                     <div>
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-lg font-semibold text-gray-900">
-                          {hd.trangThai === 'choDuyetGiaHan' ? 'Yêu cầu gia hạn hợp đồng' : 'Hợp đồng chờ duyệt'}
+                          {hd.trangThai === 'choDuyetGiaHan' ? 'Yêu cầu gia hạn hợp đồng' : hd.trangThai === 'choDuyetHuy' ? 'Yêu cầu hủy hợp đồng' : 'Hợp đồng chờ duyệt'}
                         </h3>
-                        <Badge className={`${hd.trangThai === 'choDuyetGiaHan' ? 'bg-indigo-500' : 'bg-amber-500'} text-white border-none font-bold text-[10px] px-2.5 rounded-lg animate-pulse`}>
-                          {hd.trangThai === 'choDuyetGiaHan' ? 'GIA HẠN' : 'CHỜ DUYỆT'}
+                        <Badge className={`${hd.trangThai === 'choDuyetGiaHan' ? 'bg-indigo-500' : hd.trangThai === 'choDuyetHuy' ? 'bg-red-500' : 'bg-amber-500'} text-white border-none font-bold text-[10px] px-2.5 rounded-lg animate-pulse`}>
+                          {hd.trangThai === 'choDuyetGiaHan' ? 'GIA HẠN' : hd.trangThai === 'choDuyetHuy' ? 'HỦY HĐ' : 'CHỜ DUYỆT'}
                         </Badge>
                       </div>
                       <div className="space-y-1 text-sm text-gray-600">
@@ -239,6 +239,14 @@ export default function KhachThueDashboardPage() {
                             <p className="flex items-center gap-2 text-indigo-600 font-semibold">
                               <span className="text-gray-900 min-w-[120px]">Gia hạn đến:</span> {formatDate(hd.ngayKetThucGiaHan)}
                             </p>
+                          </>
+                        ) : hd.trangThai === 'choDuyetHuy' ? (
+                          <>
+                             <p className="text-red-600 font-medium italic mb-1">Chủ trọ đã gửi yêu cầu hủy hợp đồng này.</p>
+                             <p><span className="font-semibold text-gray-900">Phòng:</span> {hd.phong?.maPhong} • <span className="font-semibold text-gray-900">Giá:</span> {formatCurrency(hd.giaThue)}</p>
+                             {hd.hoanCoc && (
+                               <p className="text-emerald-600 font-bold">✨ Bạn sẽ được hoàn lại {formatCurrency(hd.tienCoc)} tiền cọc</p>
+                             )}
                           </>
                         ) : (
                           <>

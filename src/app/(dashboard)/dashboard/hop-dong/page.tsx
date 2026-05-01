@@ -1172,7 +1172,7 @@ export default function HopDongPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          trangThai: 'daHuy',
+          trangThai: 'choDuyetHuy',
           hoanCoc: hoanCoc,
           refundDueDate: refundDueDate,
         }),
