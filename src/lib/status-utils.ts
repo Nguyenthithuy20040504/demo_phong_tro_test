@@ -183,7 +183,7 @@ export async function updateAllKhachThueStatus(khachThueIds?: string[]): Promise
       // Cập nhật trạng thái cho tất cả khách thuê
       const allKhachThue = await KhachThue.find({}, '_id');
       await Promise.all(
-        allKhachThue.map(khach => updateKhachThueStatus(khach._id.toString()))
+        allKhachThue.map((khach: any) => updateKhachThueStatus(khach._id.toString()))
       );
     }
   } catch (error) {

@@ -64,7 +64,7 @@ export const authOptions: NextAuthOptions = {
             };
           }
 
-          const client = await KhachThue.findOne({
+          const client: any = await KhachThue.findOne({
             $or: [
               { tenDangNhap: email },
               { email: email }

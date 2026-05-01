@@ -64,7 +64,7 @@ export async function PUT(
     const linkedIds: string[] = [userId];
 
     // Tìm KhachThue record liên kết với user đang đăng nhập
-    let khachThueRecord = await KhachThue.findById(userId);
+    let khachThueRecord: any = await KhachThue.findById(userId);
     if (!khachThueRecord && (session.user as any).phone) {
       khachThueRecord = await KhachThue.findOne({ soDienThoai: (session.user as any).phone });
     }

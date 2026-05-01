@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       
       // Tìm ID khách thuê liên quan
       let linkedIds = [userId];
-      const ktAccount = await KhachThue.findOne({
+      const ktAccount: any = await KhachThue.findOne({
         $or: [
           { _id: userId },
           { soDienThoai: session.user.phone }
@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
     if (session.user.role === 'khachThue') {
       const userId = new mongoose.Types.ObjectId(session.user.id);
       
-      let khachThue = await KhachThue.findOne({ 
+      const khachThue: any = await KhachThue.findOne({ 
         $or: [
           { _id: userId },
           { soDienThoai: session.user.phone }

@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     // Lấy thông tin khách thuê
     // Ưu tiên tìm trong bảng KhachThue bằng userId (trường hợp ID trùng)
     // Hoặc tìm bằng số điện thoại của user
-    let khachThue = await KhachThue.findById(userId);
+    let khachThue: any = await KhachThue.findById(userId);
     
     if (!khachThue && session.user.phone) {
       khachThue = await KhachThue.findOne({ soDienThoai: session.user.phone });
