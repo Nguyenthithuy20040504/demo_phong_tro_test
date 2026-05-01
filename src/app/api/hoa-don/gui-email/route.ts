@@ -10,6 +10,9 @@ import mongoose from 'mongoose';
 import { sendDebtNotificationEmail, isValidEmail } from '@/lib/mail';
 import { isToaNhaAccessible } from '@/lib/auth-utils';
 import { getOwnerByHoaDon, getVietQrUrl } from '@/lib/payment-utils';
+import ThongBao from '@/models/ThongBao';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {

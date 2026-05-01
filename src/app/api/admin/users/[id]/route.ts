@@ -5,6 +5,8 @@ import dbConnect from '@/lib/mongodb';
 import NguoiDung from '@/models/NguoiDung';
 import { ObjectId } from 'mongodb';
 
+export const dynamic = 'force-dynamic';
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
