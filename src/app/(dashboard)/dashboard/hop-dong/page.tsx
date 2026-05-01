@@ -1184,7 +1184,7 @@ export default function HopDongPage() {
         setHopDongList(prev => prev.map(hd => 
           hd._id === cancellingHopDong._id ? result.data : hd
         ));
-        toast.success('Hợp đồng đã được hủy.');
+        toast.success(result.message || 'Yêu cầu hủy hợp đồng đã được gửi tới khách thuê.');
         setCancellingHopDong(null);
       } else {
         toast.error('Không thể hủy hợp đồng. Vui lòng thử lại sau.');

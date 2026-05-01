@@ -50,8 +50,14 @@ export async function GET(request: NextRequest) {
     // Hoặc tìm bằng số điện thoại của user
     let khachThue: any = await KhachThue.findById(userId);
     
-    if (!khachThue && session.user.phone) {
-      khachThue = await KhachThue.findOne({ soDienThoai: session.user.phone });
+    if (!khachThue) {
+      khachThue = await KhachThue.findOne({
+        $or: [
+          { soDienThoai: session.user.phone },
+          { email: { $regex: new RegExp(`^${session.user.email}$`, 'i') } },
+          { hoTen: session.user.name }
+        ]
+      });
     }
 
     // Xác định list IDs có thể liên kết với hợp đồng
@@ -90,7 +96,7 @@ export async function GET(request: NextRequest) {
     // Lấy tất cả hợp đồng hiện tại - Tìm theo bất kỳ ID nào trong linkedIds
     const hopDongList = await HopDong.find({
       khachThueId: { $in: linkedIds },
-      trangThai: { $in: ['hoatDong', 'choDuyet', 'choDuyetGiaHan'] }
+      trangThai: { $in: ['hoatDong', 'choDuyet', 'choDuyetGiaHan', 'choDuyetHuy'] }
     })
       .populate({
         path: 'phong',

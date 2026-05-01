@@ -237,7 +237,12 @@ export async function PUT(
         {
           $lookup: {
             from: 'nguoidungs',
-            let: { tenantId: '$_id', phone: '$soDienThoai', email: { $toLower: '$email' } },
+            let: { 
+              tenantId: '$_id', 
+              phone: '$soDienThoai', 
+              email: { $toLower: '$email' },
+              username: { $toLower: '$tenDangNhap' }
+            },
             pipeline: [
               {
                 $match: {
@@ -245,12 +250,13 @@ export async function PUT(
                     $or: [
                       { $eq: ['$_id', '$$tenantId'] },
                       { $eq: ['$soDienThoai', '$$phone'] },
-                      {
-                        $and: [
-                          { $ne: ['$$email', null] },
-                          { $eq: [{ $toLower: '$email' }, '$$email'] }
-                        ]
-                      }
+                      { $eq: ['$soDienThoai', { $concat: ['kt_', '$$phone'] }] },
+                      { $eq: ['$phone', '$$phone'] },
+                      { $and: [{ $ne: ['$$email', null] }, { $eq: [{ $toLower: '$email' }, '$$email'] }] },
+                      { $and: [{ $ne: ['$$username', null] }, { $eq: [{ $toLower: '$tenDangNhap' }, '$$username'] }] },
+                      { $and: [{ $ne: ['$$username', null] }, { $eq: [{ $toLower: '$username' }, '$$username'] }] },
+                      { $and: [{ $eq: ['$vaiTro', 'khachThue'] }, { $eq: ['$ten', '$hoTen' ] }] },
+                      { $and: [{ $eq: ['$role', 'khachThue'] }, { $eq: ['$name', '$hoTen' ] }] }
                     ]
                   }
                 }
@@ -317,6 +323,10 @@ export async function PUT(
       updateData.ngayKetThucGiaHan = new Date(validatedData.ngayKetThucGiaHan);
     }
 
+    if (validatedData.refundDueDate) {
+      updateData.refundDueDate = new Date(validatedData.refundDueDate);
+    }
+
     // Tìm hợp đồng để cập nhật tường minh (tránh lỗi cache schema)
     const hopDong = await HopDong.findById(id);
 
@@ -372,8 +382,10 @@ export async function PUT(
     if (validatedData.trangThai === 'choDuyetHuy') {
       try {
         const ThongBao = (await import('@/models/ThongBao')).default;
-        const phongInfo = await Phong.findById(hopDong.phong._id).select('maPhong');
+        const targetPhongId = hopDong.phong._id || hopDong.phong;
+        const phongInfo = await Phong.findById(targetPhongId).select('maPhong toaNha');
         const tenPhong = phongInfo?.maPhong || 'N/A';
+        const toaNhaId = phongInfo?.toaNha;
 
         const nguoiNhanIds = existingHopDong.khachThueId
           .map((ktId: any) => new mongoose.Types.ObjectId(ktId.toString()));
@@ -385,8 +397,8 @@ export async function PUT(
             loai: 'hopDong',
             nguoiGui: new mongoose.Types.ObjectId(session.user.id),
             nguoiNhan: nguoiNhanIds,
-            phong: [hopDong.phong._id],
-            toaNha: hopDong.phong.toaNha,
+            phong: [targetPhongId],
+            toaNha: toaNhaId,
             ngayGui: new Date(),
           });
         }
@@ -399,8 +411,10 @@ export async function PUT(
       console.log('>>> PROCESSING CONTRACT CANCELLATION. hoanCoc:', validatedData.hoanCoc, 'tienCoc:', existingHopDong.tienCoc);
       try {
         const ThongBao = (await import('@/models/ThongBao')).default;
-        const phongInfo = await Phong.findById(hopDong.phong._id).select('maPhong');
+        const targetPhongId = hopDong.phong._id || hopDong.phong;
+        const phongInfo = await Phong.findById(targetPhongId).select('maPhong toaNha');
         const tenPhong = phongInfo?.maPhong || 'N/A';
+        const toaNhaId = phongInfo?.toaNha;
 
         // Gửi cho tất cả khách thuê trong hợp đồng
         const nguoiNhanIds = existingHopDong.khachThueId
@@ -413,8 +427,8 @@ export async function PUT(
             loai: 'hopDong',
             nguoiGui: new mongoose.Types.ObjectId(session.user.id),
             nguoiNhan: nguoiNhanIds,
-            phong: [hopDong.phong._id],
-            toaNha: hopDong.phong.toaNha,
+            phong: [targetPhongId],
+            toaNha: toaNhaId,
             ngayGui: new Date(),
           });
         }
@@ -463,8 +477,8 @@ export async function PUT(
               loai: 'hoaDon',
               nguoiGui: new mongoose.Types.ObjectId(session.user.id),
               nguoiNhan: nguoiNhanIds,
-              phong: [hopDong.phong._id],
-              toaNha: hopDong.phong.toaNha,
+              phong: [targetPhongId],
+              toaNha: toaNhaId,
               ngayGui: new Date()
             });
           }
@@ -480,6 +494,8 @@ export async function PUT(
       data: populatedHopDong,
       message: validatedData.trangThai === 'daHuy' 
         ? 'Hợp đồng đã được hủy thành công' 
+        : validatedData.trangThai === 'choDuyetHuy'
+        ? 'Yêu cầu hủy hợp đồng đã được gửi tới khách thuê'
         : 'Hợp đồng đã được cập nhật thành công',
     });
 

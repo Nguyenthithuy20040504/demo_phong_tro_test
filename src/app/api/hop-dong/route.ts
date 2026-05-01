@@ -224,7 +224,12 @@ export async function POST(request: NextRequest) {
       {
         $lookup: {
           from: 'nguoidungs',
-          let: { tenantId: '$_id', phone: '$soDienThoai', email: { $toLower: '$email' } },
+          let: { 
+            tenantId: '$_id', 
+            phone: '$soDienThoai', 
+            email: { $toLower: '$email' },
+            username: { $toLower: '$tenDangNhap' }
+          },
           pipeline: [
             {
               $match: {
@@ -232,7 +237,13 @@ export async function POST(request: NextRequest) {
                   $or: [
                     { $eq: ['$_id', '$$tenantId'] },
                     { $eq: ['$soDienThoai', '$$phone'] },
-                    { $and: [{ $ne: ['$$email', null] }, { $eq: [{ $toLower: '$email' }, '$$email'] }] }
+                    { $eq: ['$soDienThoai', { $concat: ['kt_', '$$phone'] }] },
+                    { $eq: ['$phone', '$$phone'] },
+                    { $and: [{ $ne: ['$$email', null] }, { $eq: [{ $toLower: '$email' }, '$$email'] }] },
+                    { $and: [{ $ne: ['$$username', null] }, { $eq: [{ $toLower: '$tenDangNhap' }, '$$username'] }] },
+                    { $and: [{ $ne: ['$$username', null] }, { $eq: [{ $toLower: '$username' }, '$$username'] }] },
+                    { $and: [{ $eq: ['$vaiTro', 'khachThue'] }, { $eq: ['$ten', '$hoTen' ] }] },
+                    { $and: [{ $eq: ['$role', 'khachThue'] }, { $eq: ['$name', '$hoTen' ] }] }
                   ]
                 }
               }

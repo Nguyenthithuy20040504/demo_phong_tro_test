@@ -147,9 +147,44 @@ export async function GET(request: NextRequest) {
     const pipeline: any[] = [
       { $match: matchQuery },
       {
+        $lookup: {
+          from: 'nguoidungs',
+          let: { 
+            tid: '$_id', 
+            ph: '$soDienThoai', 
+            em: { $toLower: '$email' },
+            un: { $toLower: '$tenDangNhap' }
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $eq: ['$_id', '$$tid'] },
+                    { $eq: ['$soDienThoai', '$$ph'] },
+                    { $eq: ['$soDienThoai', { $concat: ['kt_', '$$ph'] }] },
+                    { $eq: ['$phone', '$$ph'] },
+                    { $and: [{ $ne: ['$$em', null] }, { $eq: [{ $toLower: '$email' }, '$$em'] }] },
+                    { $and: [{ $ne: ['$$un', null] }, { $eq: [{ $toLower: '$tenDangNhap' }, '$$un'] }] },
+                    { $and: [{ $ne: ['$$un', null] }, { $eq: [{ $toLower: '$username' }, '$$un'] }] },
+                    { $and: [{ $eq: ['$vaiTro', 'khachThue'] }, { $eq: ['$ten', '$hoTen' ] }] },
+                    { $and: [{ $eq: ['$role', 'khachThue'] }, { $eq: ['$name', '$hoTen' ] }] }
+                  ]
+                }
+              }
+            },
+            { $limit: 1 }
+          ],
+          as: 'account'
+        }
+      },
+      {
         $addFields: {
           hasAccount: {
-            $gt: [{ $strLenCP: { $ifNull: ["$matKhau", ""] } }, 0]
+            $or: [
+              { $gt: [{ $strLenCP: { $ifNull: ["$matKhau", ""] } }, 0] },
+              { $gt: [{ $size: '$account' }, 0] }
+            ]
           }
         }
       },
