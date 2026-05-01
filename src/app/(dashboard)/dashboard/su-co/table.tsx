@@ -442,9 +442,7 @@ export function SuCoDataTable(props: SuCoDataTableProps) {
   })
   
   // Sync data when prop changes
-  React.useEffect(() => {
-    setData(initialData)
-  }, [initialData])
+  
   
   const columns = React.useMemo(() => createColumns({
     ...tableProps,

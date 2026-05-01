@@ -399,9 +399,7 @@ export function HopDongDataTable(props: HopDongDataTableProps) {
   })
   
   // Sync data when prop changes
-  React.useEffect(() => {
-    setData(initialData)
-  }, [initialData])
+  
   
   const columns = React.useMemo(() => createColumns({
     ...tableProps,

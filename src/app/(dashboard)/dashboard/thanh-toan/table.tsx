@@ -401,9 +401,7 @@ export function ThanhToanDataTable(props: ThanhToanDataTableProps) {
   })
   
   // Sync data when prop changes
-  React.useEffect(() => {
-    setData(initialData)
-  }, [initialData])
+  
   
   const columns = React.useMemo(() => createColumns({
     ...tableProps,

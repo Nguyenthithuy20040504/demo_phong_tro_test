@@ -487,9 +487,7 @@ export function UserDataTable(props: UserDataTableProps) {
   })
   
   // Sync data when prop changes
-  React.useEffect(() => {
-    setData(initialData)
-  }, [initialData])
+  
   
   const columns = React.useMemo(() => createColumns(tableProps), [tableProps])
 
