@@ -147,40 +147,9 @@ export async function GET(request: NextRequest) {
     const pipeline: any[] = [
       { $match: matchQuery },
       {
-        $lookup: {
-          from: 'nguoidungs',
-          let: { tenantId: '$_id', phone: '$soDienThoai', email: { $toLower: '$email' }, landlordId: new mongoose.Types.ObjectId(chuNhaId) },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ['$nguoiQuanLy', '$$landlordId'] },
-                    {
-                      $or: [
-                        { $eq: ['$_id', '$$tenantId'] },
-                        { $eq: ['$soDienThoai', '$$phone'] },
-                        { $and: [
-                          { $ne: ['$$email', null] },
-                          { $eq: [{ $toLower: '$email' }, '$$email'] }
-                        ]}
-                      ]
-                    }
-                  ]
-                }
-              }
-            },
-            { $limit: 1 },
-            { $project: { _id: 1, matKhau: { $cond: { if: { $gt: [{ $strLenCP: { $ifNull: ["$matKhau", "$password", ""] } }, 0] }, then: 1, else: 0 } } } }
-          ],
-          as: 'userAccount'
-        }
-      },
-      { $unwind: { path: '$userAccount', preserveNullAndEmptyArrays: true } },
-      {
         $addFields: {
           hasAccount: {
-            $eq: ['$userAccount.matKhau', 1]
+            $gt: [{ $strLenCP: { $ifNull: ["$matKhau", ""] } }, 0]
           }
         }
       },
