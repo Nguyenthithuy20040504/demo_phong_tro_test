@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
     }
 
     const linkedIds = [userIdObj];
-    if (khachThueRecord && khachThueRecord._id.toString() !== userIdStr) {
-      linkedIds.push(new mongoose.Types.ObjectId(khachThueRecord._id.toString()));
+    if (khachThueRecord && (khachThueRecord._id as any).toString() !== userIdStr) {
+      linkedIds.push(new mongoose.Types.ObjectId((khachThueRecord._id as any).toString()));
     }
 
     if (markAll) {

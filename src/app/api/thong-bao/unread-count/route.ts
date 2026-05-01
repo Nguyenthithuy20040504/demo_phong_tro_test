@@ -28,8 +28,8 @@ export async function GET() {
     }
 
     const linkedIds = [new mongoose.Types.ObjectId(userId)];
-    if (khachThueRecord && khachThueRecord._id.toString() !== userId) {
-      linkedIds.push(new mongoose.Types.ObjectId(khachThueRecord._id.toString()));
+    if (khachThueRecord && (khachThueRecord._id as any).toString() !== userId) {
+      linkedIds.push(new mongoose.Types.ObjectId((khachThueRecord._id as any).toString()));
     }
 
     const sessionObjId = new mongoose.Types.ObjectId(userId);
