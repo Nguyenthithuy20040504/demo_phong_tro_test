@@ -8,7 +8,7 @@ import { authOptions } from '@/lib/auth';
 // PUT - Cập nhật thanh toán
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -18,7 +18,7 @@ export async function PUT(
 
     await connectToDatabase();
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const {
       hoaDonId,
@@ -136,7 +136,7 @@ export async function PUT(
 // DELETE - Xóa thanh toán
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -146,7 +146,7 @@ export async function DELETE(
 
     await connectToDatabase();
 
-    const { id } = params;
+    const { id } = await params;
 
     // Tìm thanh toán
     const thanhToan = await ThanhToan.findById(id);

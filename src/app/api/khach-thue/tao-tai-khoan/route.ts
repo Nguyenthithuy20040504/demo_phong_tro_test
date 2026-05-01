@@ -80,11 +80,11 @@ export async function POST(request: NextRequest) {
 
     const baseUrl = request.nextUrl.origin;
     // Link dẫn tới trang thiết lập mật khẩu dành cho khách
-    const confirmLink = `${baseUrl}/thiet-lap-mat-khau?token=${token}&email=${encodeURIComponent(khachThue.email)}`;
+    const confirmLink = `${baseUrl}/thiet-lap-mat-khau?token=${token}&email=${encodeURIComponent(khachThue.email || email)}`;
     
     sendAccountConfirmationLinkEmail({
-      email: khachThue.email,
-      khachThueName: khachThue.hoTen,
+      email: khachThue.email || email,
+      khachThueName: khachThue.hoTen || 'Khách hàng',
       confirmLink: confirmLink
     }).catch(console.error);
 

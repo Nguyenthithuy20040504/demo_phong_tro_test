@@ -6,10 +6,10 @@ import NguoiDung from '@/models/NguoiDung';
 export async function GET() {
   await dbConnect();
   
-  const admin = await NguoiDung.findOne({vaiTro: 'admin'}).lean();
+  const admin = await NguoiDung.findOne({vaiTro: 'admin'}).lean() as any;
   if (!admin) return NextResponse.json({msg: 'No admin'});
   
-  const toanhas = await ToaNha.find({}).lean();
+  const toanhas = await ToaNha.find({}).lean() as any[];
   let updated = 0;
   for (const tn of toanhas) {
     const chu = await NguoiDung.findById(tn.chuSoHuu).lean();

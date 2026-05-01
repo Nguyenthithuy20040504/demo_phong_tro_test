@@ -1,13 +1,13 @@
 
 import mongoose from 'mongoose';
-import dbConnect from './src/lib/mongodb';
-import ToaNha from './src/models/ToaNha';
-import Phong from './src/models/Phong';
-import HopDong from './src/models/HopDong';
-import HoaDon from './src/models/HoaDon';
-import NguoiDung from './src/models/NguoiDung';
-import KhachThue from './src/models/KhachThue';
-import SuCo from './src/models/SuCo';
+import dbConnect from '../../src/lib/mongodb';
+import ToaNha from '../../src/models/ToaNha';
+import Phong from '../../src/models/Phong';
+import HopDong from '../../src/models/HopDong';
+import HoaDon from '../../src/models/HoaDon';
+import NguoiDung from '../../src/models/NguoiDung';
+import KhachThue from '../../src/models/KhachThue';
+import SuCo from '../../src/models/SuCo';
 
 async function checkAll() {
   await dbConnect();

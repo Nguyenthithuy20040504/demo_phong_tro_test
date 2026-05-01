@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const KhachThue = (await import('@/models/KhachThue')).default;
 
     // Search in NguoiDung
-    let targetUser = await NguoiDung.findOne({
+    let targetUser: any = await NguoiDung.findOne({
         $or: [
             { email: lowerIdentifier },
             { tenDangNhap: lowerIdentifier },
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
                 { email: lowerIdentifier },
                 { tenDangNhap: lowerIdentifier }
             ]
-        }).lean() as any;
+        }).lean();
     }
 
     if (!targetUser) {

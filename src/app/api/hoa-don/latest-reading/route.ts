@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const hopDongId = searchParams.get('hopDong');
     const thang = parseInt(searchParams.get('thang') || '1');
-    const nam = parseInt(searchParams.get('nam') || new Date().getFullYear());
+    const nam = parseInt(searchParams.get('nam') || new Date().getFullYear().toString());
 
     if (!hopDongId) {
       return NextResponse.json(

@@ -11,7 +11,7 @@ import { sendGeneralNotificationEmail, sendDebtNotificationEmail, isValidEmail }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);

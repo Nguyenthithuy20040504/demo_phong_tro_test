@@ -6,7 +6,7 @@ import ThongBao from '@/models/ThongBao';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || (session.user.role !== 'admin' && session.user.role !== 'chuNha' && session.user.role !== 'nhanVien')) {
@@ -15,8 +15,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     await connectToDatabase();
     
+    const { id } = await params;
     // Find payment
-    const thanhToan = await ThanhToan.findById(params.id);
+    const thanhToan = await ThanhToan.findById(id);
     if (!thanhToan) {
       return NextResponse.json({ message: 'Thanh toán không tồn tại' }, { status: 404 });
     }

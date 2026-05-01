@@ -47,7 +47,7 @@ export async function GET() {
            goiDichVuTiepTheo: null 
          },
          { new: true }
-       ).lean();
+       ).lean() as any;
        
        if (updatedUser) {
          user.goiDichVu = updatedUser.goiDichVu;

@@ -28,10 +28,14 @@ export interface IKhachThue extends Document {
   nguoiQuanLy: mongoose.Types.ObjectId;
   toaNhaBanDau?: mongoose.Types.ObjectId;
   
-  // Xác minh email
+  // Xác minh email và khôi phục mật khẩu
   daXacMinhEmail?: boolean;
   maXacNhanEmail?: string;
   hanMaXacNhanEmail?: Date;
+  maKhoiPhucMatKhau?: string;
+  hanMaKhoiPhucMatKhau?: Date;
+
+  comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
 const AnhCCCDSchema = new Schema({
@@ -147,6 +151,14 @@ const KhachThueSchema = new Schema<IKhachThue>({
     default: null
   },
   hanMaXacNhanEmail: {
+    type: Date,
+    default: null
+  },
+  maKhoiPhucMatKhau: {
+    type: String,
+    default: null
+  },
+  hanMaKhoiPhucMatKhau: {
     type: Date,
     default: null
   }

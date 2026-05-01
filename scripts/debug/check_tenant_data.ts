@@ -1,7 +1,7 @@
-import dbConnect from './src/lib/mongodb';
-import NguoiDung from './src/models/NguoiDung';
-import KhachThue from './src/models/KhachThue';
-import HopDong from './src/models/HopDong';
+import dbConnect from '../../src/lib/mongodb';
+import NguoiDung from '../../src/models/NguoiDung';
+import KhachThue from '../../src/models/KhachThue';
+import HopDong from '../../src/models/HopDong';
 import mongoose from 'mongoose';
 
 async function checkTenantData(username: string) {
@@ -25,7 +25,7 @@ async function checkTenantData(username: string) {
   if (khachThueBySDT) {
     const contracts = await HopDong.find({ khachThueId: khachThueBySDT._id });
     console.log(`Contracts for KhachThue (by SDT match): ${contracts.length}`);
-    contracts.forEach(c => {
+    contracts.forEach((c: any) => {
       console.log(` - Contract: ${c.maHopDong}, Status: ${c.trangThai}, Start: ${c.ngayBatDau}, End: ${c.ngayKetThuc}`);
     });
   }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
+import mongoose from 'mongoose';
 import HopDong from '@/models/HopDong';
 import HoaDon from '@/models/HoaDon';
 import KhachThue from '@/models/KhachThue';

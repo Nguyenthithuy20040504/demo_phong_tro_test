@@ -1,9 +1,9 @@
 import mongoose from 'mongoose';
-import ToaNha from './src/models/ToaNha';
-import Phong from './src/models/Phong';
-import NguoiDung from './src/models/NguoiDung';
-import dbConnect from './src/lib/mongodb';
-import { getAccessibleToaNhaIds } from './src/lib/auth-utils';
+import ToaNha from '../../src/models/ToaNha';
+import Phong from '../../src/models/Phong';
+import NguoiDung from '../../src/models/NguoiDung';
+import dbConnect from '../../src/lib/mongodb';
+import { getAccessibleToaNhaIds } from '../../src/lib/auth-utils';
 
 async function debug() {
   try {
@@ -27,7 +27,7 @@ async function debug() {
 
     if (ids && ids.length > 0) {
       const buildings = await ToaNha.find({ _id: { $in: ids } });
-      console.log('Buildings:', buildings.map(b => b.tenToaNha));
+      console.log('Buildings:', buildings.map((b: any) => b.tenToaNha));
 
       const phongs = await Phong.find({ toaNha: { $in: ids } });
       console.log('Total Rooms found for these buildings:', phongs.length);

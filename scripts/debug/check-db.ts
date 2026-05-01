@@ -1,7 +1,7 @@
 
 import mongoose from 'mongoose';
-import dbConnect from '../src/lib/mongodb';
-import NguoiDung from '../src/models/NguoiDung';
+import dbConnect from '../../src/lib/mongodb';
+import NguoiDung from '../../src/models/NguoiDung';
 
 async function checkUsers() {
   await dbConnect();

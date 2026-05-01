@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
-import dbConnect from './src/lib/mongodb';
-import HopDong from './src/models/HopDong';
+import dbConnect from '../../src/lib/mongodb';
+import HopDong from '../../src/models/HopDong';
 import * as dotenv from 'dotenv';
 import path from 'path';
 
