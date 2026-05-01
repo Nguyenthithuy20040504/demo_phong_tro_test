@@ -1,7 +1,0 @@
-USER: nt3thuy0504@gmail.com
-USER EXPIRY: Mon Jun 29 2026 08:15:22 GMT+0700 (GMT+07:00)
-
-PAYMENTS:
-488079275 | daThanhToan | Expiry: Wed Apr 29 2026 08:15:22 GMT+0700 (GMT+07:00) | Created: Wed Apr 29 2026 11:38:08 GMT+0700 (GMT+07:00)
-28619088 | daThanhToan | Expiry: Fri May 29 2026 08:15:22 GMT+0700 (GMT+07:00) | Created: Wed Apr 29 2026 08:14:46 GMT+0700 (GMT+07:00)
-59569340 | daThanhToan | Expiry: Fri Apr 24 2026 22:45:19 GMT+0700 (GMT+07:00) | Created: Tue Mar 24 2026 22:44:19 GMT+0700 (GMT+07:00)

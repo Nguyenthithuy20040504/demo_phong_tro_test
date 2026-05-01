@@ -49,9 +49,44 @@ yarn-error.log*
 next-env.d.ts
 .gitnexus
 
+# Unused package manager lock files
+pnpm-lock.yaml
+bun.lock
+
 # Agent / Skill tools (Antigravity & others)
+.agent/
+.agents/
+.claude/
 
-
-# Non-project files / Backups / Documentation (Anchored to root to allow them in subfolders like /scripts/debug if needed)
+# External projects & old source backups
 /demo_phong_tro-main/
+/impeccable-main/
+/ui-ux-pro-max-skill-main/
+/design-system/
 
+# Temp/debug files at root (prevent clutter)
+/tmp/
+*.log
+*.patch
+*_old*.tsx
+*_old*.ts
+*_backup*.ts
+
+# Debug scripts that shouldn't be in source control
+/check_*.js
+/debug_*.js
+/debug-*.js
+/fix-*.js
+/fix.js
+/list-*.js
+/list_*.js
+/search_*.js
+/test-*.js
+/test_*.js
+/test.js
+/trace-*.js
+/tmp_*.js
+/tmp-*.js
+/inspect_*.js
+/repro_*.js
+/set-*.js
