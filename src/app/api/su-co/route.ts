@@ -7,6 +7,7 @@ import Phong from '@/models/Phong';
 import KhachThue from '@/models/KhachThue';
 import ThongBao from '@/models/ThongBao';
 import ToaNha from '@/models/ToaNha';
+import HopDong from '@/models/HopDong';
 import { getAccessibleToaNhaIds } from '@/lib/auth-utils';
 import { z } from 'zod';
 import mongoose from 'mongoose';
@@ -85,9 +86,22 @@ export async function GET(request: NextRequest) {
     
     if (session.user.role === 'khachThue') {
       const userId = new mongoose.Types.ObjectId(session.user.id);
-      query.khachThue = userId;
+      
+      // Tìm ID khách thuê liên quan
+      let linkedIds = [userId];
+      const ktAccount = await KhachThue.findOne({
+        $or: [
+          { _id: userId },
+          { soDienThoai: session.user.phone }
+        ]
+      }).select('_id');
+      if (ktAccount && !ktAccount._id.equals(userId)) {
+        linkedIds.push(ktAccount._id);
+      }
 
-      // Filter by building if tenant specify it
+      query.khachThue = { $in: linkedIds };
+
+      // Filter by building if specified
       if (targetToaNhaIds !== null && targetToaNhaIds.length > 0) {
         const phongsInBuilding = await Phong.find({ toaNha: { $in: targetToaNhaIds } }).select('_id');
         query.phong = { $in: phongsInBuilding.map(p => p._id) };
@@ -124,18 +138,18 @@ export async function GET(request: NextRequest) {
       SuCo.countDocuments(query)
     ]);
 
-    // Thủ công populate khachThue từ cả 2 collection và toaNha
     const ToaNhaModel = mongoose.models.ToaNha || mongoose.model('ToaNha');
+    const NguoiDung = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+    
     const suCoList = await Promise.all(suCoListRaw.map(async (sc: any) => {
       let khachThue = null;
       if (sc.khachThue) {
         khachThue = await KhachThue.findById(sc.khachThue).select('hoTen soDienThoai').lean();
         if (!khachThue) {
-          khachThue = await mongoose.model('NguoiDung').findOne({ _id: sc.khachThue, role: 'khachThue' }).select('hoTen soDienThoai').lean();
+          khachThue = await NguoiDung.findOne({ _id: sc.khachThue, role: 'khachThue' }).select('hoTen soDienThoai').lean();
         }
       }
       
-      // Xử lý an toàn cho Tòa nhà (trường hợp populate lồng nhau bị lỗi)
       if (sc.phong && sc.phong.toaNha && typeof sc.phong.toaNha !== 'object') {
         const toaNhaInfo = await ToaNhaModel.findById(sc.phong.toaNha).select('tenToaNha').lean();
         if (toaNhaInfo) {
@@ -145,8 +159,6 @@ export async function GET(request: NextRequest) {
       
       return { ...sc, khachThue };
     }));
-
-
 
     return NextResponse.json({
       success: true,
@@ -161,85 +173,58 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching su co:', error);
-    return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
     if (!session) {
-      return NextResponse.json(
-        { message: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
     
-    // Nếu là khách thuê, tự gán khachThue, nhưng cho phép chọn phòng từ hợp đồng đang hoạt động
     if (session.user.role === 'khachThue') {
       const userId = new mongoose.Types.ObjectId(session.user.id);
       
-      // Tìm tất cả hợp đồng chưa bị hủy để xác thực phòng được chọn
-      const HopDong = (await import('@/models/HopDong')).default;
+      let khachThue = await KhachThue.findOne({ 
+        $or: [
+          { _id: userId },
+          { soDienThoai: session.user.phone }
+        ]
+      }).select('_id');
+      
+      const ktId = khachThue ? khachThue._id : userId;
+      
       const validContracts = await HopDong.find({
-        khachThueId: userId,
+        khachThueId: { $in: [userId, ktId] },
         trangThai: { $ne: 'daHuy' }
       }).select('phong');
       
       if (!validContracts || validContracts.length === 0) {
-        return NextResponse.json(
-          { message: 'Bạn không có hợp đồng thuê phòng nào' },
-          { status: 400 }
-        );
+        return NextResponse.json({ message: 'Bạn không có hợp đồng thuê phòng nào' }, { status: 400 });
       }
       
-      // Nếu client không gửi phòng, tự động lấy phòng đầu tiên
       if (!body.phong) {
         body.phong = validContracts[0].phong.toString();
       } else {
-        // Kiểm tra phòng client gửi phải thuộc hợp đồng của họ
         const validPhongIds = validContracts.map(c => c.phong.toString());
         if (!validPhongIds.includes(body.phong)) {
-          return NextResponse.json(
-             { message: 'Phòng được chọn không thuộc hợp đồng của bạn hoặc hợp đồng đã bị hủy' },
-            { status: 403 }
-          );
+          return NextResponse.json({ message: 'Phòng được chọn không thuộc hợp đồng của bạn' }, { status: 403 });
         }
       }
       
-      body.khachThue = userId.toString();
+      body.khachThue = ktId.toString();
     }
 
     const validatedData = suCoSchema.parse(body);
-
     await dbConnect();
 
-    // Check if phong exists
     const phong = await Phong.findById(validatedData.phong);
     if (!phong) {
-      return NextResponse.json(
-        { message: 'Phòng không tồn tại' },
-        { status: 400 }
-      );
-    }
-
-    // Check if khach thue exists (only if provided)
-    if (validatedData.khachThue) {
-      const khachThueKT = await KhachThue.findById(validatedData.khachThue);
-      const khachThueND = !khachThueKT ? await mongoose.model('NguoiDung').findOne({ _id: validatedData.khachThue, role: 'khachThue' }) : null;
-      
-      if (!khachThueKT && !khachThueND) {
-        return NextResponse.json(
-          { message: 'Khách thuê không tồn tại' },
-          { status: 400 }
-        );
-      }
+      return NextResponse.json({ message: 'Phòng không tồn tại' }, { status: 400 });
     }
 
     const newSuCo = new SuCo({
@@ -251,7 +236,7 @@ export async function POST(request: NextRequest) {
 
     await newSuCo.save();
 
-    // --- Gửi thông báo cho các bên liên quan (Chủ nhà/Quản lý & Khách thuê) ---
+    // --- Thông báo ---
     try {
       const roomInfo = await Phong.findById(validatedData.phong).populate('toaNha');
       if (roomInfo && roomInfo.toaNha) {
@@ -259,15 +244,9 @@ export async function POST(request: NextRequest) {
         const senderId = session.user.id;
         const isSenderKhachThue = session.user.role === 'khachThue';
         
-        // 1) Thông báo cho Chủ nhà & Quản lý (nếu người gửi là khách thuê)
-        const landlords = [
-          toaNhaDetails.chuSoHuu,
-          ...(toaNhaDetails.nguoiQuanLy || [])
-        ].filter(Boolean);
-
-        const landlordReceiverIds = Array.from(new Set(
-          landlords.map((r: any) => r.toString())
-        )).filter(id => id !== senderId)
+        const landlords = [toaNhaDetails.chuSoHuu, ...(toaNhaDetails.nguoiQuanLy || [])].filter(Boolean);
+        const landlordReceiverIds = Array.from(new Set(landlords.map((r: any) => r.toString())))
+          .filter(id => id !== senderId)
           .map(id => new mongoose.Types.ObjectId(id));
 
         if (landlordReceiverIds.length > 0 && isSenderKhachThue) {
@@ -288,40 +267,27 @@ export async function POST(request: NextRequest) {
             daDoc: [],
           });
 
-          // --- Gửi email đến chủ nhà / quản lý (fire-and-forget) ---
-          const emailBody = `Khách thuê ${senderName} (phòng ${maPhong} - ${tenToaNha}) vừa báo cáo sự cố mới.\n\nTiêu đề: ${validatedData.tieuDe}\nMô tả: ${validatedData.moTa}\nPhòng: ${maPhong} - ${tenToaNha}`;
+          // Email background
           ;(async () => {
-            try {
-              const NguoiDung = (await import('@/models/NguoiDung')).default;
-              const landlordUsers = await NguoiDung.find({
-                _id: { $in: landlordReceiverIds }
-              }).select('ten name email').lean() as any[];
-
-              for (const user of landlordUsers) {
-                const email = user.email;
-                const name = user.ten || user.name || 'Chủ nhà';
-                if (email && isValidEmail(email)) {
-                  await sendGeneralNotificationEmail({
-                    email,
-                    khachThueName: name,
-                    tieuDe: notifTieuDe,
-                    noiDung: emailBody,
-                    ccEmail: '',
-                  }).catch((err: any) => console.error('[SuCo Email] Lỗi gửi email tới chủ nhà', email, err?.message));
-                  console.log(`[SuCo Email] Đã gửi email báo sự cố tới chủ nhà/quản lý: ${email}`);
-                }
-              }
-            } catch (emailErr: any) {
-              console.error('[SuCo Email] Lỗi khi gửi email cho chủ nhà:', emailErr?.message);
-            }
+             const NguoiDung = (await import('@/models/NguoiDung')).default;
+             const landlordUsers = await NguoiDung.find({ _id: { $in: landlordReceiverIds } }).select('email ten name');
+             for (const user of landlordUsers) {
+               if (user.email && isValidEmail(user.email)) {
+                 await sendGeneralNotificationEmail({
+                   email: user.email,
+                   khachThueName: user.ten || user.name || 'Chủ nhà',
+                   tieuDe: notifTieuDe,
+                   noiDung: notifNoiDung
+                 }).catch(console.error);
+               }
+             }
           })();
         }
 
-        // 2) Thông báo cho Khách thuê (nếu người gửi là Quản lý/Chủ nhà)
         if (!isSenderKhachThue && validatedData.khachThue) {
           const tenantIdStr = validatedData.khachThue.toString();
           if (tenantIdStr !== senderId) {
-            const notifContent = `Quản lý vừa báo cáo sự cố mới cho phòng của bạn: ${validatedData.tieuDe}.\n\nTrạng thái: ${validatedData.trangThai === 'dangXuLy' ? 'Đang được xử lý' : 'Chờ xử lý'}.\nMô tả: ${validatedData.moTa}`;
+            const notifContent = `Quản lý vừa báo cáo sự cố mới cho phòng của bạn: ${validatedData.tieuDe}.\n\nMô tả: ${validatedData.moTa}`;
             await ThongBao.create({
               tieuDe: `Thông báo sự cố: ${validatedData.tieuDe}`,
               noiDung: notifContent,
@@ -332,41 +298,6 @@ export async function POST(request: NextRequest) {
               toaNha: toaNhaDetails._id,
               daDoc: [],
             });
-            console.log(`[SuCo Notification] Đã gửi thông báo cho khách thuê ${tenantIdStr}`);
-
-            // --- Gửi email đến khách thuê (fire-and-forget) ---
-            ;(async () => {
-              try {
-                const NguoiDung = (await import('@/models/NguoiDung')).default;
-                let tenantEmail: string | null = null;
-                let tenantName = 'Khách thuê';
-
-                const ktRecord = await KhachThue.findById(tenantIdStr).select('hoTen email').lean() as any;
-                if (ktRecord?.email && isValidEmail(ktRecord.email)) {
-                  tenantEmail = ktRecord.email;
-                  tenantName = ktRecord.hoTen || 'Khách thuê';
-                } else {
-                  const ndRecord = await NguoiDung.findById(tenantIdStr).select('ten name email').lean() as any;
-                  if (ndRecord?.email && isValidEmail(ndRecord.email)) {
-                    tenantEmail = ndRecord.email;
-                    tenantName = ndRecord.ten || ndRecord.name || 'Khách thuê';
-                  }
-                }
-
-                if (tenantEmail) {
-                  await sendGeneralNotificationEmail({
-                    email: tenantEmail,
-                    khachThueName: tenantName,
-                    tieuDe: `Thông báo sự cố: ${validatedData.tieuDe}`,
-                    noiDung: notifContent,
-                    ccEmail: '',
-                  }).catch((err: any) => console.error('[SuCo Email] Lỗi gửi email tới khách thuê', tenantEmail, err?.message));
-                  console.log(`[SuCo Email] Đã gửi email báo sự cố tới khách thuê: ${tenantEmail}`);
-                }
-              } catch (emailErr: any) {
-                console.error('[SuCo Email] Lỗi khi gửi email cho khách thuê:', emailErr?.message);
-              }
-            })();
           }
         }
       }
@@ -382,16 +313,9 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { message: error.issues[0].message },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: error.issues[0].message }, { status: 400 });
     }
-
     console.error('Error creating su co:', error);
-    return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
 }

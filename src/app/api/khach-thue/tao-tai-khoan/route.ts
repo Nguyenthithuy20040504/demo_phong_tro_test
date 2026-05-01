@@ -3,10 +3,9 @@ export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
-import NguoiDung from '@/models/NguoiDung';
 import KhachThue from '@/models/KhachThue';
-import { sendAccountConfirmationLinkEmail } from '@/lib/mail';
 import crypto from 'crypto';
+import { sendAccountConfirmationLinkEmail } from '@/lib/mail';
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,7 +30,8 @@ export async function POST(request: NextRequest) {
 
     // 1. Kiểm tra tenDangNhap duy nhất toàn hệ thống (trong bảng KhachThue)
     const existingUsername = await KhachThue.findOne({ 
-      tenDangNhap: tenDangNhap.toLowerCase() 
+      tenDangNhap: tenDangNhap.toLowerCase(),
+      _id: { $ne: khachThueId }
     });
     
     if (existingUsername) {
@@ -42,11 +42,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Kiểm tra email duy nhất trong phạm vi chủ nhà này
+    const emailLower = email.toLowerCase();
     const existingEmailForThisOwner = await KhachThue.findOne({
       nguoiQuanLy: session.user.id,
-      email: email.toLowerCase(),
-      _id: { $ne: khachThueId }, // Loại trừ chính khách thuê đang được xét
-      tenDangNhap: { $exists: true, $ne: '' } // Chỉ kiểm tra những người đã có tài khoản
+      email: emailLower,
+      _id: { $ne: khachThueId },
+      daXacMinhEmail: true
     });
 
     if (existingEmailForThisOwner) {
@@ -69,9 +70,9 @@ export async function POST(request: NextRequest) {
     const token = crypto.randomBytes(32).toString('hex');
     const hanToken = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
 
-    // 3. Cập nhật thông tin tài khoản vào KhachThue
+    // 4. Cập nhật thông tin tài khoản vào KhachThue
     khachThue.tenDangNhap = tenDangNhap.toLowerCase();
-    khachThue.email = email.toLowerCase();
+    khachThue.email = emailLower;
     khachThue.maXacNhanEmail = token;
     khachThue.hanMaXacNhanEmail = hanToken;
     khachThue.daXacMinhEmail = false;
@@ -80,17 +81,22 @@ export async function POST(request: NextRequest) {
 
     const baseUrl = request.nextUrl.origin;
     // Link dẫn tới trang thiết lập mật khẩu dành cho khách
-    const confirmLink = `${baseUrl}/thiet-lap-mat-khau?token=${token}&email=${encodeURIComponent(khachThue.email || email)}`;
+    const confirmLink = `${baseUrl}/thiet-lap-mat-khau?token=${token}&email=${encodeURIComponent(emailLower)}`;
     
-    sendAccountConfirmationLinkEmail({
-      email: khachThue.email || email,
-      khachThueName: khachThue.hoTen || 'Khách hàng',
-      confirmLink: confirmLink
-    }).catch(console.error);
+    try {
+      await sendAccountConfirmationLinkEmail({
+        email: emailLower,
+        khachThueName: khachThue.hoTen || 'Khách hàng',
+        confirmLink: confirmLink
+      });
+    } catch (mailError) {
+      console.error('Error sending confirmation email:', mailError);
+      // Vẫn trả về success: true nhưng cảnh báo về việc gửi mail
+    }
 
     return NextResponse.json({
       success: true,
-      message: `Đã gửi lời mời xác nhận tài khoản tới email ${khachThue.email}`,
+      message: `Đã gửi lời mời xác nhận tài khoản tới email ${emailLower}`,
       data: {
         khachThueId: khachThue._id,
         tenDangNhap: khachThue.tenDangNhap,

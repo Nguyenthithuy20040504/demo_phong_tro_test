@@ -3,8 +3,9 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import NguoiDung from '@/models/NguoiDung';
-import { sendAccountConfirmationLinkEmail } from '@/lib/mail';
 import crypto from 'crypto';
+import { sendAccountConfirmationLinkEmail } from '@/lib/mail';
+import mongoose from 'mongoose';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,10 +24,10 @@ export async function GET(request: NextRequest) {
 
     await dbConnect();
     
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(request?.url || 'http://localhost');
     const type = searchParams.get('type');
 
-    let users;
+    let users: any[] = [];
     
     if (session.user.role === 'admin' && type === 'chuNha') {
       // Aggregation for Landlords with Building/Room counts
@@ -73,20 +74,21 @@ export async function GET(request: NextRequest) {
     } else {
       let query: any = {};
       if (session.user.role === 'chuNha') {
-        const mongoose = require('mongoose');
         query.nguoiQuanLy = new mongoose.Types.ObjectId(session.user.id);
         query.role = { $nin: ['admin', 'chuNha'] };
       }
       
-      users = await NguoiDung.find(query, { password: 0, matKhau: 0 })
+      const rawUsers = await NguoiDung.find(query, { password: 0, matKhau: 0 })
         .populate('nguoiQuanLy', 'ngayHetHan name ten')
         .populate('nguoiTao', 'name ten email role')
         .sort({ createdAt: -1 })
         .lean();
 
+      users = rawUsers as any[];
+
       // Nếu là chủ nhà, lấy thêm cả KhachThue đã có tài khoản
       if (session.user.role === 'chuNha') {
-        const KhachThue = require('@/models/KhachThue').default;
+        const KhachThue = (await import('@/models/KhachThue')).default;
         const tenantsWithAccounts = await KhachThue.find({
           nguoiQuanLy: session.user.id,
           tenDangNhap: { $exists: true, $ne: '' }
@@ -110,20 +112,27 @@ export async function GET(request: NextRequest) {
           createdAt: kt.createdAt,
           lastLogin: kt.lastLogin,
           ngayHetHan: new Date(2099, 11, 31),
-          nguoiTao: session.user.id
+          nguoiTao: session.user.id,
+          isKhachThueModel: true // Flag to skip NguoiDung migration
         }));
 
-        users = [...(users as any[]), ...tenantUsers].sort((a, b) => 
+        users = [...users, ...tenantUsers].sort((a, b) => 
           new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
         );
       }
     }
     
+    // Auto-migrate: Nếu có user nào chưa có ngayHetHan, cập nhật luôn (chỉ cho NguoiDung model)
     const updatedUsers = [];
     
-    for (let user of users as any[]) {
+    for (let user of users) {
+      if (user.isKhachThueModel) {
+        updatedUsers.push(user);
+        continue;
+      }
+
+      // Tính chất DB: Nhân viên LUÔN kế thừa ngày hết hạn của Chủ nhà nếu có Chủ nhà
       const roleStr = user.role || user.vaiTro;
-      // ... (giữ nguyên logic cập nhật ngayHetHan bên dưới)
       if (roleStr === 'nhanVien' && user.nguoiQuanLy && user.nguoiQuanLy.ngayHetHan) {
         user.ngayHetHan = user.nguoiQuanLy.ngayHetHan;
       }
@@ -185,8 +194,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { 
-      name, email, username, password, phone, role, tenantId,
-      cccd, ngaySinh, gioiTinh, queQuan, ngheNghiep, anhCCCD
+      name, email, username, password, phone, role, tenantId
     } = body;
 
     // Validation
@@ -212,14 +220,8 @@ export async function POST(request: NextRequest) {
     if (email) {
       if (role === 'khachThue') {
         const emailLower = email.toLowerCase();
-        // Tenants can use the same email across different landlords, 
-        // but only ONE account per email per landlord.
-        let khachThueQuery: any = { 
-          email: emailLower, 
-          nguoiQuanLy: session.user.id 
-        };
+        let khachThueQuery: any = { email: emailLower, nguoiQuanLy: session.user.id };
         if (tenantId) {
-          const mongoose = require('mongoose');
           khachThueQuery._id = { $ne: new mongoose.Types.ObjectId(tenantId) };
         }
         const existingEmailInKhachThue = await KhachThue.findOne(khachThueQuery);
@@ -233,7 +235,6 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ message: 'Bạn đã tạo một tài khoản hoặc khách thuê với email này rồi.' }, { status: 400 });
         }
       } else {
-        // System roles (Admin, ChuNha, NhanVien) must have globally unique emails in NguoiDung table
         const existingEmailInNguoiDung = await NguoiDung.findOne({ email });
         if (existingEmailInNguoiDung) {
           return NextResponse.json({ message: 'Email này đã được sử dụng bởi một tài khoản hệ thống.' }, { status: 400 });
@@ -257,7 +258,6 @@ export async function POST(request: NextRequest) {
     let otpExpiry = verificationRequired ? new Date(Date.now() + 24 * 60 * 60 * 1000) : undefined;
 
     if (role === 'khachThue') {
-      // Handle Tenant Account
       if (tenantId) {
         newUser = await KhachThue.findById(tenantId);
         if (!newUser) return NextResponse.json({ message: 'Không tìm thấy hồ sơ khách thuê để liên kết' }, { status: 404 });
@@ -270,7 +270,6 @@ export async function POST(request: NextRequest) {
         if (email) newUser.email = email;
         await newUser.save();
       } else {
-        // Tạo một "tài khoản rỗng" trực tiếp trong bảng NguoiDung
         const tempEmail = email ? `unlinked_${session.user.id}_${email.toLowerCase()}` : `unlinked_${session.user.id}_${username}_${Date.now()}@no-email.local`;
         newUser = new NguoiDung({
           ten: name,
@@ -294,11 +293,10 @@ export async function POST(request: NextRequest) {
         await newUser.save();
       }
     } else {
-      // Handle NguoiDung-based roles (Admin, ChuNha, NhanVien)
       newUser = new NguoiDung({
         ten: name,
         email: email,
-        username: username, // Adding this for consistency
+        username: username,
         matKhau: password,
         soDienThoai: phone,
         vaiTro: role,
@@ -316,23 +314,19 @@ export async function POST(request: NextRequest) {
       await newUser.save();
     }
 
-    // Chỉ gửi Email nếu KHÔNG phải Khách thuê trống (tức là đã liên kết)
     let shouldSendConfirmation = verificationRequired && verifyToken && (role !== 'khachThue' || tenantId);
 
-    // Send confirmation link email asynchronously
     if (shouldSendConfirmation && (email || newUser?.email)) {
       const targetEmail = email || newUser.email;
       (async () => {
         try {
           const origin = request.nextUrl.origin;
           const confirmLink = `${origin}/api/auth/verify-link?email=${encodeURIComponent(targetEmail)}&token=${verifyToken}&type=${role}`;
-          
           await sendAccountConfirmationLinkEmail({
             email: targetEmail,
             khachThueName: name,
             confirmLink: confirmLink,
           });
-          console.log(`[Admin User API] Confirmation link sent to ${targetEmail}`);
         } catch (mailErr) {
           console.error(`[Admin User API] Failed to send confirmation email:`, mailErr);
         }

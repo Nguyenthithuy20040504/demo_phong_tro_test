@@ -27,7 +27,6 @@ export interface IKhachThue extends Document {
   vaiTro: 'khachThue';
   nguoiQuanLy: mongoose.Types.ObjectId;
   toaNhaBanDau?: mongoose.Types.ObjectId;
-  
   // Xác minh email và khôi phục mật khẩu
   daXacMinhEmail?: boolean;
   maXacNhanEmail?: string;

@@ -7,7 +7,6 @@ import Phong from '@/models/Phong';
 import KhachThue from '@/models/KhachThue';
 import ToaNha from '@/models/ToaNha';
 import NguoiDung from '@/models/NguoiDung';
-import { updatePhongStatus, updateAllKhachThueStatus } from '@/lib/status-utils';
 import { getAccessibleToaNhaIds } from '@/lib/auth-utils';
 import { z } from 'zod';
 import mongoose from 'mongoose';
@@ -45,16 +44,11 @@ const hopDongSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
     if (!session || !session.user) {
-      return NextResponse.json(
-        { message: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
     await dbConnect();
-
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
@@ -63,26 +57,20 @@ export async function GET(request: NextRequest) {
     const toaNhaId = searchParams.get('toaNhaId');
 
     const query: any = {};
-    
     if (search) {
       query.$or = [
         { maHopDong: { $regex: search, $options: 'i' } },
         { dieuKhoan: { $regex: search, $options: 'i' } },
       ];
     }
-    
-    if (trangThai) {
-      query.trangThai = trangThai;
-    }
+    if (trangThai) query.trangThai = trangThai;
 
     const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
-    
     let targetToaNhaIds = accessibleToaNhaIds;
     if (toaNhaId && toaNhaId !== 'all' && mongoose.isValidObjectId(toaNhaId)) {
       const requestedId = new mongoose.Types.ObjectId(toaNhaId);
       if (accessibleToaNhaIds !== null) {
-        const isAccessible = accessibleToaNhaIds.some(id => id.toString() === toaNhaId);
-        if (isAccessible) {
+        if (accessibleToaNhaIds.some(id => id.toString() === toaNhaId)) {
           targetToaNhaIds = [requestedId];
         } else {
           return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
@@ -93,37 +81,37 @@ export async function GET(request: NextRequest) {
     }
 
     if (session.user.role === 'khachThue') {
-      // Khách thuê chỉ xem hợp đồng gắn trực tiếp với tài khoản này
       const userId = new mongoose.Types.ObjectId(session.user.id);
       
-      query.$or = [
-        { khachThueId: userId },
-        { nguoiDaiDien: userId }
-      ];
+      let linkedIds = [userId];
+      const ktRecords = await KhachThue.find({
+        $or: [
+          { _id: userId },
+          { soDienThoai: session.user.phone },
+          { email: session.user.email }
+        ]
+      }).select('_id');
+      ktRecords.forEach((kt: any) => {
+        if (!linkedIds.some(id => id.equals(kt._id))) linkedIds.push(kt._id);
+      });
+
+      query.$or = [{ khachThueId: { $in: linkedIds } }, { nguoiDaiDien: { $in: linkedIds } }];
       
       if (targetToaNhaIds !== null && targetToaNhaIds.length > 0) {
         const phongsInBuilding = await Phong.find({ toaNha: { $in: targetToaNhaIds } }).select('_id');
         query.phong = { $in: phongsInBuilding.map(p => p._id) };
       }
     } else if (targetToaNhaIds !== null) {
-      if (targetToaNhaIds.length === 0) {
-         return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
-      }
+      if (targetToaNhaIds.length === 0) return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
       const accessiblePhongs = await Phong.find({ toaNha: { $in: targetToaNhaIds } }).select('_id');
       const phongIds = accessiblePhongs.map(p => p._id);
-      if (phongIds.length === 0) {
-        return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
-      }
+      if (phongIds.length === 0) return NextResponse.json({ success: true, data: [], pagination: { total: 0 } });
       query.phong = { $in: phongIds };
     }
 
-
     const [hopDongListRaw, total] = await Promise.all([
       HopDong.find(query)
-        .populate({
-          path: 'phong',
-          select: 'maPhong toaNha dienTich giaThue tienCoc giaDien giaNuoc',
-        })
+        .populate({ path: 'phong', select: 'maPhong toaNha dienTich giaThue tienCoc giaDien giaNuoc' })
         .sort({ ngayTao: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
@@ -131,35 +119,24 @@ export async function GET(request: NextRequest) {
       HopDong.countDocuments(query)
     ]);
 
-    // 1. Thu thập tất cả các ID liên quan để fetch thông tin bổ sung (Party B & Party A)
     const involvedUserIds = new Set<string>();
     const involvedToaNhaIds = new Set<string>();
-    
     hopDongListRaw.forEach((hd: any) => {
-      // Party B & Tenants info IDs
       if (hd.khachThueId) hd.khachThueId.forEach((id: any) => involvedUserIds.add(id.toString()));
       if (hd.nguoiDaiDien) involvedUserIds.add(hd.nguoiDaiDien.toString());
-      
-      // Buildings Info (ToaNha)
       const bId = hd.phong?.toaNha?._id || hd.phong?.toaNha;
       if (bId) involvedToaNhaIds.add(bId.toString());
     });
 
-    // Cực kỳ quan trọng: Fetch ToaNha trước, sau đó lấy ID chủ nhà để add vào involvedUserIds
     const allToaNhas = await ToaNha.find({ _id: { $in: Array.from(involvedToaNhaIds) } }).lean();
-    allToaNhas.forEach((t: any) => {
-      if (t.chuSoHuu) {
-        involvedUserIds.add(t.chuSoHuu.toString());
-      }
-    });
+    allToaNhas.forEach((t: any) => { if (t.chuSoHuu) involvedUserIds.add(t.chuSoHuu.toString()); });
 
-    // 2. Fetch dữ liệu bổ sung song song (Users) để điền thông chi tiết
-    const allUsers = await Promise.all([
+    const [kts, nds] = await Promise.all([
        KhachThue.find({ _id: { $in: Array.from(involvedUserIds) } }).lean(),
        NguoiDung.find({ _id: { $in: Array.from(involvedUserIds) } }).lean()
-    ]).then(([kts, nds]) => [...kts, ...nds]);
+    ]);
+    const allUsers = [...kts, ...nds];
 
-    // 3. Tạo map để tra cứu nhanh thông tin User (Party A & B)
     const userLookup = new Map<string, any>();
     allUsers.forEach((u: any) => {
       const id = u._id.toString();
@@ -176,11 +153,8 @@ export async function GET(request: NextRequest) {
 
     const toaNhaLookup = new Map(allToaNhas.map((t: any) => [t._id.toString(), t]));
 
-    // 4. Lắp ráp dữ liệu cuối cùng chuẩn bị trả về cho Client
     const hopDongList = hopDongListRaw.map((hd: any) => {
       const snapshots = hd.snapshotKhachThue || [];
-      
-      // -- Gắn thông tin chi tiết cho Party B --
       const ktIds = hd.khachThueId || [];
       const allKt: any[] = [];
       ktIds.forEach((ktId: any) => {
@@ -203,93 +177,48 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // -- Gắn thông tin chi tiết cho Party A (Tòa nhà & Chủ nhà) --
       if (hd.phong) {
         const bId = hd.phong.toaNha?._id || hd.phong.toaNha;
         if (bId) {
           const fullToaNha = toaNhaLookup.get(bId.toString()) as any;
-          if (fullToaNha) {
-            // Chuẩn hóa thông tin chủ nhà (Owner) bằng cách lookup trực tiếp từ userLookup
-            const ownerId = fullToaNha.chuSoHuu?.toString();
-            if (ownerId) {
-                const owner = userLookup.get(ownerId);
-                if (owner) {
-                    fullToaNha.chuSoHuu = {
-                      _id: owner._id,
-                      hoTen: owner.hoTen,
-                      soDienThoai: owner.soDienThoai,
-                      cccd: owner.cccd,
-                      address: owner.address
-                    };
-                } else {
-                    fullToaNha.chuSoHuu = {};
-                }
-            }
+          if (fullToaNha && fullToaNha.chuSoHuu) {
+            const owner = userLookup.get(fullToaNha.chuSoHuu.toString());
+            if (owner) fullToaNha.chuSoHuu = owner;
             hd.phong.toaNha = fullToaNha;
           }
         }
       }
-
-      return { ...hd, khachThueId: allKt, nguoiDaiDien: nguoiDaiDien, snapshotKhachThue: snapshots };
+      return { ...hd, khachThueId: allKt, nguoiDaiDien, snapshotKhachThue: snapshots };
     });
 
     return NextResponse.json({
       success: true,
       data: hopDongList,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
-
   } catch (error) {
     console.error('Error fetching hop dong:', error);
-    return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { message: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    if (!session || !session.user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
     const validatedData = hopDongSchema.parse(body);
-
     await dbConnect();
 
-    // Check if phong exists
     const phong = await Phong.findById(validatedData.phong);
-    if (!phong) {
-      return NextResponse.json(
-        { message: 'Phòng không tồn tại' },
-        { status: 400 }
-      );
-    }
+    if (!phong) return NextResponse.json({ message: 'Phòng không tồn tại' }, { status: 400 });
 
-    // Validate: phải có ít nhất 1 khách thuê thực sự trong DB
     if (!validatedData.khachThueId || validatedData.khachThueId.length === 0) {
-      return NextResponse.json(
-        { message: 'Phải có ít nhất 1 khách thuê đã có tài khoản và được liên kết' },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: 'Phải có ít nhất 1 khách thuê đã có tài khoản' }, { status: 400 });
     }
 
     const ktIds = validatedData.khachThueId;
-    const chuNhaId = session.user.id;
-
-    // Use aggregation to check for accounts
     const tenantsWithAccounts = await KhachThue.aggregate([
       { $match: { _id: { $in: ktIds.map(id => new mongoose.Types.ObjectId(id)) } } },
       {
@@ -303,12 +232,7 @@ export async function POST(request: NextRequest) {
                   $or: [
                     { $eq: ['$_id', '$$tenantId'] },
                     { $eq: ['$soDienThoai', '$$phone'] },
-                    {
-                      $and: [
-                        { $ne: ['$$email', null] },
-                        { $eq: [{ $toLower: '$email' }, '$$email'] }
-                      ]
-                    }
+                    { $and: [{ $ne: ['$$email', null] }, { $eq: [{ $toLower: '$email' }, '$$email'] }] }
                   ]
                 }
               }
@@ -321,133 +245,79 @@ export async function POST(request: NextRequest) {
     ]);
 
     if (tenantsWithAccounts.length !== ktIds.length) {
-      return NextResponse.json(
-        { message: 'Một hoặc nhiều khách thuê không tồn tại' },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: 'Một hoặc nhiều khách thuê không tồn tại' }, { status: 400 });
     }
 
     const missingAccount = tenantsWithAccounts.find(t => !t.account || t.account.length === 0);
     if (missingAccount) {
-      return NextResponse.json(
-        { message: `Khách thuê "${missingAccount.hoTen}" chưa có tài khoản hoặc chưa được liên kết. Vui lòng kiểm tra lại trang Quản lý khách thuê.` },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: `Khách thuê "${missingAccount.hoTen}" chưa có tài khoản.` }, { status: 400 });
     }
 
     const existingHopDong = await HopDong.findOne({
       phong: validatedData.phong,
       trangThai: { $in: ['hoatDong', 'choDuyet'] },
       $or: [
-        {
-          ngayBatDau: { $lte: new Date() },
-          ngayKetThuc: { $gte: new Date() }
-        },
-        {
-          ngayBatDau: { $lte: new Date(validatedData.ngayKetThuc) },
-          ngayKetThuc: { $gte: new Date(validatedData.ngayBatDau) }
-        }
+        { ngayBatDau: { $lte: new Date(validatedData.ngayKetThuc) }, ngayKetThuc: { $gte: new Date(validatedData.ngayBatDau) } }
       ]
     });
 
-    if (existingHopDong) {
-      return NextResponse.json(
-        { message: 'Phòng đã có hợp đồng trong khoảng thời gian này' },
-        { status: 400 }
-      );
-    }
+    if (existingHopDong) return NextResponse.json({ message: 'Phòng đã có hợp đồng' }, { status: 400 });
 
-    const snapshotKhachThue: Array<{id?: string, hoTen: string, soDienThoai: string, laNoiDaiDien: boolean}> = [];
-    
-    for (const t of tenantsWithAccounts) {
-      snapshotKhachThue.push({
-        id: t._id.toString(),
-        hoTen: t.hoTen || 'Không rõ',
-        soDienThoai: t.soDienThoai || '',
-        laNoiDaiDien: validatedData.nguoiDaiDien ? t._id.toString() === validatedData.nguoiDaiDien : false
-      });
-    }
+    const snapshotKhachThue = tenantsWithAccounts.map(t => ({
+      id: t._id.toString(),
+      hoTen: t.hoTen || 'Không rõ',
+      soDienThoai: t.soDienThoai || '',
+      laNoiDaiDien: validatedData.nguoiDaiDien ? t._id.toString() === validatedData.nguoiDaiDien : false
+    }));
 
     const newHopDong = new HopDong({
       ...validatedData,
-      khachThueId: validatedData.khachThueId || [],
+      khachThueId: ktIds,
       nguoiDaiDien: validatedData.nguoiDaiDien || undefined,
       ngayBatDau: new Date(validatedData.ngayBatDau),
       ngayKetThuc: new Date(validatedData.ngayKetThuc),
-      phiDichVu: validatedData.phiDichVu || [],
-      snapshotKhachThue: snapshotKhachThue,
+      snapshotKhachThue,
       trangThai: 'choDuyet',
     });
 
     await newHopDong.save();
 
-    try {
-      const ThongBao = (await import('@/models/ThongBao')).default;
-      const phongInfo = await Phong.findById(validatedData.phong).select('maPhong');
-      const tenPhong = phongInfo?.maPhong || 'N/A';
-      const khachThueIds = validatedData.khachThueId || [];
-      if (khachThueIds.length > 0) {
-        const nguoiNhanIds = khachThueIds.map((id: string) => new mongoose.Types.ObjectId(id));
+    // Background notifications
+    ;(async () => {
+      try {
+        const ThongBao = (await import('@/models/ThongBao')).default;
+        const phongInfo = await Phong.findById(validatedData.phong).select('maPhong');
+        const tenPhong = phongInfo?.maPhong || 'N/A';
+        const receiverIds = ktIds.map(id => new mongoose.Types.ObjectId(id));
+        
         await ThongBao.create({
           tieuDe: `Hợp đồng mới chờ duyệt - Phòng ${tenPhong}`,
-          noiDung: `Hợp đồng thuê phòng ${tenPhong} (Mã: ${validatedData.maHopDong}) đang chờ xác nhận. Nếu bạn là người đại diện, vui lòng xem chi tiết và ký duyệt.`,
+          noiDung: `Hợp đồng (Mã: ${validatedData.maHopDong}) đang chờ xác nhận.`,
           loai: 'hopDong',
           nguoiGui: new mongoose.Types.ObjectId(session.user.id),
-          nguoiNhan: nguoiNhanIds,
+          nguoiNhan: receiverIds,
           phong: [new mongoose.Types.ObjectId(validatedData.phong)],
-          ngayGui: new Date(),
         });
 
-        for (const ktId of khachThueIds) {
-          try {
-            let ktEmail = '';
-            let ktName = 'Khách thuê';
-            const ktDoc = await KhachThue.findById(ktId).select('hoTen email').lean() as any;
-            if (ktDoc) {
-              ktEmail = ktDoc.email || '';
-              ktName = ktDoc.hoTen || 'Khách thuê';
-            } else {
-              const ndDoc = await NguoiDung.findById(ktId).select('ten name email').lean() as any;
-              if (ndDoc) {
-                ktEmail = ndDoc.email || '';
-                ktName = ndDoc.ten || ndDoc.name || 'Khách thuê';
-              }
-            }
-            if (ktEmail && isValidEmail(ktEmail)) {
-              await sendGeneralNotificationEmail({
-                email: ktEmail,
-                khachThueName: ktName,
-                tieuDe: `Hợp đồng thuê phòng mới chờ duyệt - Phòng ${tenPhong}`,
-                noiDung: `Chủ trọ vừa tạo hợp đồng thuê phòng ${tenPhong} (Mã hợp đồng: ${validatedData.maHopDong}) và đang chờ bạn xác nhận.\n\nVui lòng đăng nhập vào hệ thống để xem chi tiết hợp đồng. Nếu bạn là người đại diện, vui lòng ký duyệt để hợp đồng có hiệu lực.`,
-                ccEmail: '',
-              });
-            }
-          } catch (emailErr) {
-            console.error(`[Email] Lỗi gửi email cho khách thuê ${ktId}:`, emailErr);
+        for (const kt of tenantsWithAccounts) {
+          if (kt.email && isValidEmail(kt.email)) {
+            await sendGeneralNotificationEmail({
+              email: kt.email,
+              khachThueName: kt.hoTen,
+              tieuDe: `Hợp đồng thuê phòng mới chờ duyệt - Phòng ${tenPhong}`,
+              noiDung: `Vui lòng xem chi tiết hợp đồng ${validatedData.maHopDong}.`
+            }).catch(console.error);
           }
         }
+      } catch (e) {
+        console.error('Error in background notification:', e);
       }
-    } catch (notifError) {
-      console.error('Error sending notification:', notifError);
-    }
+    })();
 
-    return NextResponse.json({
-      success: true,
-      data: newHopDong,
-      message: 'Hợp đồng đã được tạo và gửi cho khách thuê duyệt',
-    }, { status: 201 });
-
+    return NextResponse.json({ success: true, data: newHopDong, message: 'Hợp đồng đã được tạo' }, { status: 201 });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { message: error.issues[0].message },
-        { status: 400 }
-      );
-    }
+    if (error instanceof z.ZodError) return NextResponse.json({ message: error.issues[0].message }, { status: 400 });
     console.error('Error creating hop dong:', error);
-    return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
 }

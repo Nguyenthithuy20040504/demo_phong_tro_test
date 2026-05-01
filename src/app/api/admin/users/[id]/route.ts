@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import NguoiDung from '@/models/NguoiDung';
-import ThongBao from '@/models/ThongBao';
 import { ObjectId } from 'mongodb';
 
 export const dynamic = 'force-dynamic';
@@ -143,6 +142,7 @@ export async function PUT(
 
         updatedUser = await KhachThue.findByIdAndUpdate(id, ktUpdate, { new: true }).lean();
         if (!updatedUser) return NextResponse.json({ message: 'Không tìm thấy hồ sơ khách thuê' }, { status: 404 });
+        
         // Map back to User-like object for response
         updatedUser = {
             ...updatedUser,
@@ -185,7 +185,6 @@ export async function DELETE(
 
     await dbConnect();
     
-    // Safety: Don't let admin delete themselves
     if (id === session.user.id) {
        return NextResponse.json({ message: 'Bạn không thể tự xóa chính mình!' }, { status: 400 });
     }
@@ -233,9 +232,7 @@ export async function PATCH(
       return NextResponse.json({ message: 'Không tìm thấy người dùng này' }, { status: 404 });
     }
 
-    // Permission checks
     if (session.user.role === 'chuNha') {
-      // Landlord check
       const managedBy = userToUpdate.nguoiQuanLy?.toString();
       const isActuallyStaffOrTenant = userToUpdate.vaiTro === 'nhanVien' || userToUpdate.vaiTro === 'khachThue';
       
@@ -244,7 +241,6 @@ export async function PATCH(
       }
     }
 
-    // Set password (this will trigger pre-save hook for hashing)
     userToUpdate.matKhau = password;
     userToUpdate.password = password;
     await userToUpdate.save();
@@ -255,4 +251,3 @@ export async function PATCH(
     return NextResponse.json({ message: 'Lỗi hệ thống khi đặt lại mật khẩu' }, { status: 500 });
   }
 }
-
