@@ -241,93 +241,101 @@ export async function PUT(
         } catch(e) {}
       }
 
-      // Gửi thông báo cho chủ nhà (Hợp đồng đã duyệt)
-      if (chuNhaId) {
-        try {
-          await ThongBao.create({
-            tieuDe: isHuy ? `Hợp đồng đã hoàn tất hủy - Phòng ${tenPhong}` : `Hợp đồng đã được duyệt - Phòng ${tenPhong}`,
-            noiDung: isHuy 
-              ? `Khách thuê đã đồng ý hủy hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}). Hợp đồng đã chính thức hủy.` 
-              : `Khách thuê đã đồng ý và duyệt hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}). ${hopDong.tienCoc > 0 ? 'Hóa đơn tiền Đặt cọc đã được phát hành tự động tới khách.' : ''}`,
-            loai: 'hopDong',
-            nguoiGui: new mongoose.Types.ObjectId(userId),
-            nguoiNhan: [chuNhaId],
-            phong: [hopDong.phong._id || hopDong.phong],
-            ngayGui: new Date(),
-          });
-
-          // Gửi email cho chủ nhà báo đã được duyệt (không kèm QR)
-          try {
-            const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
-            const chuNhaDoc = await NguoiDungModel.findById(chuNhaId).select('email ten name').lean() as any;
-            if (chuNhaDoc?.email && isValidEmail(chuNhaDoc.email)) {
-              await sendGeneralNotificationEmail({
-                email: chuNhaDoc.email,
-                khachThueName: chuNhaDoc.ten || chuNhaDoc.name || 'Chủ trọ',
-                tieuDe: isHuy ? `Hợp đồng đã hoàn tất hủy - Phòng ${tenPhong}` : `Hợp đồng đã được ký duyệt - Phòng ${tenPhong}`,
-                noiDung: isHuy ? `Khách thuê đã đồng ý hủy hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}). Hợp đồng đã chính thức hủy.` : `Khách thuê đã đồng ý và ký duyệt hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}).\n\n${hopDong.tienCoc > 0 ? 'Hóa đơn tiền đặt cọc đã được gửi tự động tới khách thuê.' : 'Hợp đồng đã có hiệu lực.'}`,
-                ccEmail: '', // Không CC khi gửi cho chủ nhà
-              });
-            }
-          } catch (emailErr) {
-            console.error('[Email] Lỗi gửi email cho chủ nhà khi duyệt hợp đồng:', emailErr);
-          }
-        } catch (e) {
-          console.error('Error sending approval notification:', e);
-        }
-      }
-
-      // Nếu có hoá đơn cọc: gửi email cho khách thuê (người duyệt) kèm QR (Chỉ cho HD mới)
-      if (!isGiaHan && !isHuy && hopDong.tienCoc > 0) {
-        try {
-          let ktEmail = '';
-          let ktName = 'Khách thuê';
-          const ktDoc = await KhachThue.findById(userId).select('email hoTen').lean() as any;
-          if (ktDoc) {
-            ktEmail = ktDoc.email || '';
-            ktName = ktDoc.hoTen || 'Khách thuê';
-          } else {
-            const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
-            const ndDoc = await NguoiDungModel.findById(userId).select('email ten name').lean() as any;
-            if (ndDoc) {
-              ktEmail = ndDoc.email || '';
-              ktName = ndDoc.ten || ndDoc.name || 'Khách thuê';
-            }
-          }
-          if (ktEmail && isValidEmail(ktEmail)) {
-            const now = new Date();
-            const hoaDonCocData = {
-              maHoaDon: `COC-${hopDong.maHopDong}`,
-              thang: now.getMonth() + 1,
-              nam: now.getFullYear(),
-              tienPhong: 0,
-              tienDien: 0,
-              tienNuoc: 0,
-              phiDichVu: [],
-              tongTien: hopDong.tienCoc,
-              daThanhToan: 0,
-              conLai: hopDong.tienCoc,
-              hanThanhToan: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
-              chiSoDienCuoiKy: 0,
-              chiSoNuocCuoiKy: 0,
-            };
-            await sendDebtNotificationEmail({
-              email: ktEmail,
-              khachThueName: ktName,
-              hoaDonData: hoaDonCocData,
-              qrUrl: checkoutUrl || '',
-            });
-          }
-        } catch (emailErr) {
-          console.error('[Email] Lỗi gửi email hoá đơn cọc cho khách thuê:', emailErr);
-        }
-      }
-
-      return NextResponse.json({
+      // === RESPONSE NGAY LẬP TỨC — các thông báo/email gửi ngầm bên dưới ===
+      const responsePayload = {
         success: true,
         message: isHuy ? 'Hợp đồng đã được hủy theo yêu cầu' : 'Hợp đồng đã được duyệt và có hiệu lực',
         data: { trangThai: isHuy ? 'daHuy' : 'hoatDong' }
-      });
+      };
+
+      // Fire-and-forget: Gửi thông báo + email ngầm (không block response)
+      const backgroundTasks = async () => {
+        try {
+          // Gửi thông báo cho chủ nhà (Hợp đồng đã duyệt)
+          if (chuNhaId) {
+            try {
+              await ThongBao.create({
+                tieuDe: isHuy ? `Hợp đồng đã hoàn tất hủy - Phòng ${tenPhong}` : `Hợp đồng đã được duyệt - Phòng ${tenPhong}`,
+                noiDung: isHuy 
+                  ? `Khách thuê đã đồng ý hủy hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}). Hợp đồng đã chính thức hủy.` 
+                  : `Khách thuê đã đồng ý và duyệt hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}). ${hopDong.tienCoc > 0 ? 'Hóa đơn tiền Đặt cọc đã được phát hành tự động tới khách.' : ''}`,
+                loai: 'hopDong',
+                nguoiGui: new mongoose.Types.ObjectId(userId),
+                nguoiNhan: [chuNhaId],
+                phong: [hopDong.phong._id || hopDong.phong],
+                ngayGui: new Date(),
+              });
+
+              // Gửi email cho chủ nhà báo đã được duyệt
+              const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+              const chuNhaDoc = await NguoiDungModel.findById(chuNhaId).select('email ten name').lean() as any;
+              if (chuNhaDoc?.email && isValidEmail(chuNhaDoc.email)) {
+                sendGeneralNotificationEmail({
+                  email: chuNhaDoc.email,
+                  khachThueName: chuNhaDoc.ten || chuNhaDoc.name || 'Chủ trọ',
+                  tieuDe: isHuy ? `Hợp đồng đã hoàn tất hủy - Phòng ${tenPhong}` : `Hợp đồng đã được ký duyệt - Phòng ${tenPhong}`,
+                  noiDung: isHuy ? `Khách thuê đã đồng ý hủy hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}). Hợp đồng đã chính thức hủy.` : `Khách thuê đã đồng ý và ký duyệt hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}).\n\n${hopDong.tienCoc > 0 ? 'Hóa đơn tiền đặt cọc đã được gửi tự động tới khách thuê.' : 'Hợp đồng đã có hiệu lực.'}`,
+                  ccEmail: '',
+                });
+              }
+            } catch (e) {
+              console.error('Error sending approval notification:', e);
+            }
+          }
+
+          // Nếu có hoá đơn cọc: gửi email cho khách thuê (người duyệt) kèm QR
+          if (!isGiaHan && !isHuy && hopDong.tienCoc > 0) {
+            try {
+              let ktEmail = '';
+              let ktName = 'Khách thuê';
+              const ktDoc = await KhachThue.findById(userId).select('email hoTen').lean() as any;
+              if (ktDoc) {
+                ktEmail = ktDoc.email || '';
+                ktName = ktDoc.hoTen || 'Khách thuê';
+              } else {
+                const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+                const ndDoc = await NguoiDungModel.findById(userId).select('email ten name').lean() as any;
+                if (ndDoc) {
+                  ktEmail = ndDoc.email || '';
+                  ktName = ndDoc.ten || ndDoc.name || 'Khách thuê';
+                }
+              }
+              if (ktEmail && isValidEmail(ktEmail)) {
+                const now = new Date();
+                sendDebtNotificationEmail({
+                  email: ktEmail,
+                  khachThueName: ktName,
+                  hoaDonData: {
+                    maHoaDon: `COC-${hopDong.maHopDong}`,
+                    thang: now.getMonth() + 1,
+                    nam: now.getFullYear(),
+                    tienPhong: 0,
+                    tienDien: 0,
+                    tienNuoc: 0,
+                    phiDichVu: [],
+                    tongTien: hopDong.tienCoc,
+                    daThanhToan: 0,
+                    conLai: hopDong.tienCoc,
+                    hanThanhToan: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
+                    chiSoDienCuoiKy: 0,
+                    chiSoNuocCuoiKy: 0,
+                  },
+                  qrUrl: checkoutUrl || '',
+                });
+              }
+            } catch (emailErr) {
+              console.error('[Email] Lỗi gửi email hoá đơn cọc cho khách thuê:', emailErr);
+            }
+          }
+        } catch (bgErr) {
+          console.error('[Background] Error in post-approval tasks:', bgErr);
+        }
+      };
+
+      // Khởi chạy background tasks KHÔNG chờ
+      backgroundTasks();
+
+      return NextResponse.json(responsePayload);
 
     } else {
       // Từ chối hợp đồng
@@ -358,50 +366,56 @@ export async function PUT(
         await updatePhongStatus(hopDong.phong._id || hopDong.phong);
       }
 
-      // Gửi thông báo cho chủ nhà
-      if (chuNhaId) {
-        try {
-          await ThongBao.create({
-            tieuDe: isHuy ? `Từ chối yêu cầu hủy hợp đồng - Phòng ${tenPhong}` : isGiaHan ? `Yêu cầu gia hạn bị từ chối - Phòng ${tenPhong}` : `Hợp đồng bị từ chối - Phòng ${tenPhong}`,
-            noiDung: isHuy 
-              ? `Khách thuê đã không đồng ý hủy hợp đồng phòng ${tenPhong} (Mã: ${hopDong.maHopDong}). Hợp đồng sẽ tiếp tục có hiệu lực.` : isGiaHan 
-              ? `Khách thuê đã từ chối yêu cầu gia hạn hợp đồng phòng ${tenPhong} (Mã: ${hopDong.maHopDong}). Hợp đồng sẽ giữ nguyên thời hạn cũ.`
-              : `Khách thuê đã từ chối hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}).`,
-            loai: 'hopDong',
-            nguoiGui: new mongoose.Types.ObjectId(userId),
-            nguoiNhan: [chuNhaId],
-            phong: [hopDong.phong._id || hopDong.phong],
-            ngayGui: new Date(),
-          });
-
-          // Gửi email cho chủ nhà báo khách từ chối (không kèm QR)
-          try {
-            const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
-            const chuNhaDoc = await NguoiDungModel.findById(chuNhaId).select('email ten name').lean() as any;
-            if (chuNhaDoc?.email && isValidEmail(chuNhaDoc.email)) {
-              await sendGeneralNotificationEmail({
-                email: chuNhaDoc.email,
-                khachThueName: chuNhaDoc.ten || chuNhaDoc.name || 'Chủ trọ',
-                tieuDe: isGiaHan ? `Khách từ chối gia hạn - Phòng ${tenPhong}` : `Khách thuê từ chối hợp đồng - Phòng ${tenPhong}`,
-                noiDung: isGiaHan
-                  ? `Khách thuê đã từ chối yêu cầu gia hạn hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}).\n\nHợp đồng của khách hiện vẫn được giữ nguyên trạng thái và thời hạn cũ.`
-                  : `Khách thuê đã từ chối ký duyệt hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}).\n\nVui lòng liên hệ với khách thuê để biết thêm chi tiết hoặc xem xét ký lại hợp đồng.`,
-                ccEmail: '', // Không CC khi gửi cho chủ nhà
-              });
-            }
-          } catch (emailErr) {
-            console.error('[Email] Lỗi gửi email cho chủ nhà khi từ chối hợp đồng:', emailErr);
-          }
-        } catch (e) {
-          console.error('Error sending rejection notification:', e);
-        }
-      }
-
-      return NextResponse.json({
+      // === RESPONSE NGAY LẬP TỨC ===
+      const rejectResponse = {
         success: true,
         message: isGiaHan ? 'Yêu cầu gia hạn đã bị từ chối' : 'Hợp đồng đã bị từ chối',
         data: { trangThai: hopDong.trangThai }
-      });
+      };
+
+      // Fire-and-forget: Gửi thông báo + email ngầm
+      const bgRejectTasks = async () => {
+        try {
+          if (chuNhaId) {
+            try {
+              await ThongBao.create({
+                tieuDe: isHuy ? `Từ chối yêu cầu hủy hợp đồng - Phòng ${tenPhong}` : isGiaHan ? `Yêu cầu gia hạn bị từ chối - Phòng ${tenPhong}` : `Hợp đồng bị từ chối - Phòng ${tenPhong}`,
+                noiDung: isHuy 
+                  ? `Khách thuê đã không đồng ý hủy hợp đồng phòng ${tenPhong} (Mã: ${hopDong.maHopDong}). Hợp đồng sẽ tiếp tục có hiệu lực.` : isGiaHan 
+                  ? `Khách thuê đã từ chối yêu cầu gia hạn hợp đồng phòng ${tenPhong} (Mã: ${hopDong.maHopDong}). Hợp đồng sẽ giữ nguyên thời hạn cũ.`
+                  : `Khách thuê đã từ chối hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}).`,
+                loai: 'hopDong',
+                nguoiGui: new mongoose.Types.ObjectId(userId),
+                nguoiNhan: [chuNhaId],
+                phong: [hopDong.phong._id || hopDong.phong],
+                ngayGui: new Date(),
+              });
+
+              const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+              const chuNhaDoc = await NguoiDungModel.findById(chuNhaId).select('email ten name').lean() as any;
+              if (chuNhaDoc?.email && isValidEmail(chuNhaDoc.email)) {
+                sendGeneralNotificationEmail({
+                  email: chuNhaDoc.email,
+                  khachThueName: chuNhaDoc.ten || chuNhaDoc.name || 'Chủ trọ',
+                  tieuDe: isGiaHan ? `Khách từ chối gia hạn - Phòng ${tenPhong}` : `Khách thuê từ chối hợp đồng - Phòng ${tenPhong}`,
+                  noiDung: isGiaHan
+                    ? `Khách thuê đã từ chối yêu cầu gia hạn hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}).\n\nHợp đồng của khách hiện vẫn được giữ nguyên trạng thái và thời hạn cũ.`
+                    : `Khách thuê đã từ chối ký duyệt hợp đồng thuê phòng ${tenPhong} (Mã: ${hopDong.maHopDong}).\n\nVui lòng liên hệ với khách thuê để biết thêm chi tiết hoặc xem xét ký lại hợp đồng.`,
+                  ccEmail: '',
+                });
+              }
+            } catch (e) {
+              console.error('Error sending rejection notification:', e);
+            }
+          }
+        } catch (bgErr) {
+          console.error('[Background] Error in rejection tasks:', bgErr);
+        }
+      };
+
+      bgRejectTasks();
+
+      return NextResponse.json(rejectResponse);
     }
 
   } catch (error) {

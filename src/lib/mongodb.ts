@@ -36,6 +36,12 @@ async function dbConnect() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
+      // Connection pool optimization for Vercel Serverless
+      maxPoolSize: 10,          // Tối đa 10 connections cùng lúc
+      minPoolSize: 2,           // Giữ tối thiểu 2 connections sẵn
+      socketTimeoutMS: 30000,   // Timeout socket 30s
+      serverSelectionTimeoutMS: 10000, // Chọn server tối đa 10s
+      heartbeatFrequencyMS: 10000,     // Check connection health mỗi 10s
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {

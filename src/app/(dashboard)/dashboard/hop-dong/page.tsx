@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { clearAllDashboardCaches } from '@/lib/cache-utils';
 import { useCache } from '@/hooks/use-cache';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -113,21 +114,44 @@ export default function HopDongPage() {
     return () => window.removeEventListener('buildingChange', handleSyncBuilding);
   }, []);
 
+  // Auto-polling: fetch dữ liệu mới mỗi 30s (silent, không hiện loading)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Chỉ poll khi tab đang visible
+      if (document.visibilityState === 'visible') {
+        fetchData(true);
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Tự refresh khi quay lại tab
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchData(true);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+
   const fetchData = async (forceRefresh = false) => {
     try {
-      setLoading(true);
-      
-      // Thử load từ cache trước (nếu không force refresh)
-      if (!forceRefresh) {
-        const cachedData = cache.getCache();
-        if (cachedData) {
-          setHopDongList(cachedData.hopDongList || []);
-          setPhongList(cachedData.phongList || []);
-          setKhachThueList(cachedData.khachThueList || []);
-          setToaNhaList(cachedData.toaNhaList || []);
-          setLoading(false);
-          return;
-        }
+      // Luôn thử load từ cache trước (instant paint)
+      const cachedData = cache.getCache();
+      if (cachedData && cachedData.hopDongList) {
+        setHopDongList(cachedData.hopDongList || []);
+        setPhongList(cachedData.phongList || []);
+        setKhachThueList(cachedData.khachThueList || []);
+        setToaNhaList(cachedData.toaNhaList || []);
+        setLoading(false);
+        
+        // Nếu không force refresh và cache còn mới, dừng luôn
+        if (!forceRefresh) return;
+        // Nếu force refresh, tiếp tục fetch nhưng KHÔNG hiện loading spinner
+      } else {
+        setLoading(true);
       }
 
       const buildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
@@ -150,7 +174,9 @@ export default function HopDongPage() {
       // Kiểm tra nếu bất kỳ API quan trọng nào lỗi thì không ghi đè cache
       if (!hopDongRes.ok || !phongRes.ok) {
         console.error('Core APIs failed:', { hopDong: hopDongRes.status, phong: phongRes.status });
-        toast.error('Máy chủ đang phản hồi chậm hoặc có lỗi. Vui lòng thử lại sau.');
+        if (hopDongList.length === 0) {
+          toast.error('Máy chủ đang phản hồi chậm hoặc có lỗi. Vui lòng thử lại sau.');
+        }
         return;
       }
 
@@ -184,7 +210,10 @@ export default function HopDongPage() {
 
     } catch (error) {
       console.error('Error fetching data:', error);
-      toast.error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra đường truyền.');
+      // Chỉ hiện toast khi lần đầu load, không hiện khi polling ngầm
+      if (!forceRefresh || hopDongList.length === 0) {
+        toast.error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra đường truyền.');
+      }
     } finally {
       setLoading(false);
     }
@@ -346,7 +375,7 @@ export default function HopDongPage() {
       });
       
       if (response.ok) {
-        cache.clearCache();
+        clearAllDashboardCaches();
         setHopDongList(prev => prev.filter(hopDong => hopDong._id !== id));
         toast.success('Đã xóa hợp đồng thành công khỏi hệ thống!');
       } else {
@@ -1119,7 +1148,7 @@ export default function HopDongPage() {
       
       if (response.ok) {
         const result = await response.json();
-        cache.clearCache();
+        clearAllDashboardCaches();
         setHopDongList(prev => prev.map(hd => 
           hd._id === extendingHopDong._id ? result.data : hd
         ));
@@ -1180,7 +1209,7 @@ export default function HopDongPage() {
       
       if (response.ok) {
         const result = await response.json();
-        cache.clearCache();
+        clearAllDashboardCaches();
         setHopDongList(prev => prev.map(hd => 
           hd._id === cancellingHopDong._id ? result.data : hd
         ));

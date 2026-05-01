@@ -83,7 +83,24 @@ export default function ManagePlansPage() {
     fetchPlans();
   }, []);
 
-  const fetchPlans = async () => {
+  // Auto-polling 5s
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchPlans(true);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Refresh khi quay lại tab
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === 'visible') fetchPlans(true);
+    };
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
+  }, []);
+
+  const fetchPlans = async (silent = false) => {
     try {
       const res = await fetch('/api/admin/saas/plans');
       if (!res.ok) throw new Error('Fetch failed');
@@ -94,8 +111,8 @@ export default function ManagePlansPage() {
         setPlans([]);
       }
     } catch (error) {
-      toast.error('Lỗi khi tải danh sách gói.');
-      setPlans([]);
+      if (!silent) toast.error('Lỗi khi tải danh sách gói.');
+      if (!silent) setPlans([]);
     } finally {
       setLoading(false);
     }

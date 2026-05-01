@@ -53,9 +53,26 @@ export default function SaasDashboardPage() {
     fetchStats(timeRange);
   }, [timeRange]);
 
-  const fetchStats = async (range: string) => {
+  // Auto-polling 5s
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchStats(timeRange, true);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [timeRange]);
+
+  // Refresh khi quay lại tab
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === 'visible') fetchStats(timeRange, true);
+    };
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
+  }, [timeRange]);
+
+  const fetchStats = async (range: string, silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await fetch(`/api/admin/saas/stats?range=${range}`);
       const data = await res.json();
       setStats(data);

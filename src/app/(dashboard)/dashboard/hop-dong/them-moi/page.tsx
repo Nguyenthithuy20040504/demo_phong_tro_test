@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { clearAllDashboardCaches } from '@/lib/cache-utils';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -439,11 +440,9 @@ export default function ThemMoiHopDongPage() {
 
       if (response.ok) {
         const result = await response.json();
-        // Xóa cache để force refresh data
-        sessionStorage.removeItem('hop-dong-data');
+        // Xóa toàn bộ cache dashboard (hợp đồng ảnh hưởng phòng, hóa đơn, khách thuê)
+        clearAllDashboardCaches();
         toast.success(result.message || 'Chúc mừng! Hợp đồng mới đã được tạo thành công.');
-        // Sử dụng replace để không tạo history entry mới
-        // và refresh để cập nhật dữ liệu server-side
         router.replace('/dashboard/hop-dong');
         router.refresh();
       } else {

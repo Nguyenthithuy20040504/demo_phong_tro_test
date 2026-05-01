@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { useCache } from '@/hooks/use-cache';
+import { clearAllDashboardCaches } from '@/lib/cache-utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -417,36 +418,44 @@ export default function PhongPage() {
     return () => window.removeEventListener('buildingChange', handleSyncBuilding);
   }, []);
 
-  // Tự động refetch khi chuyển trang hoặc quay lại tab
+  // Tự động refresh khi quay lại tab
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        // Nếu cache đã bị xóa (từ trang khác), tự động fetch lại
-        const cachedData = cache.getCache();
-        if (!cachedData) {
-          fetchPhong(true);
-        }
+        fetchPhong(true);
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
+  // Auto-polling: fetch dữ liệu mới mỗi 30s (silent)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchPhong(true);
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   const fetchPhong = async (forceRefresh = false) => {
     try {
-      setLoading(true);
-      
-      if (!forceRefresh) {
-        const cachedData = cache.getCache();
-        if (cachedData) {
-          setPhongList(cachedData.phongList || []);
-          setToaNhaList(cachedData.toaNhaList || []);
-          if (!selectedToaNhaTab && cachedData.toaNhaList?.length > 0) {
-            setSelectedToaNhaTab(cachedData.toaNhaList[0]._id!);
-          }
-          setLoading(false);
-          return;
+      // Luôn thử load từ cache trước (instant paint)
+      const cachedData = cache.getCache();
+      if (cachedData && cachedData.phongList) {
+        setPhongList(cachedData.phongList || []);
+        setToaNhaList(cachedData.toaNhaList || []);
+        if (!selectedToaNhaTab && cachedData.toaNhaList?.length > 0) {
+          setSelectedToaNhaTab(cachedData.toaNhaList[0]._id!);
         }
+        setLoading(false);
+        
+        // Nếu không force refresh, dừng luôn
+        if (!forceRefresh) return;
+        // Nếu force refresh, tiếp tục fetch nhưng KHÔNG hiện loading spinner
+      } else {
+        setLoading(true);
       }
       
       const buildingId = typeof window !== 'undefined' ? (localStorage.getItem('selected_building_id') || 'all') : 'all';
@@ -597,7 +606,7 @@ export default function PhongPage() {
       const result = await response.json();
       
       if (response.ok && result.success) {
-        cache.clearCache();
+        clearAllDashboardCaches();
         setPhongList(prev => prev.filter(phong => phong._id !== id));
         fetchFeatures(); // Cập nhật lại số lượng phòng và trạng thái nút thêm phòng
         toast.success('Đã xóa phòng.');
@@ -747,7 +756,7 @@ export default function PhongPage() {
                   phongList={phongList}
                   onClose={() => setIsDialogOpen(false)}
                   onSuccess={() => {
-                    cache.clearCache();
+                    clearAllDashboardCaches();
                     setIsDialogOpen(false);
                     fetchPhong(true);
                     fetchFeatures(); // Cập nhật lại số lượng phòng và trạng thái nút thêm phòng

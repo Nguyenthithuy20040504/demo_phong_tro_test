@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { clearAllDashboardCaches } from '@/lib/cache-utils';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -230,7 +231,7 @@ export default function ChinhSuaHoaDonPage() {
 
       if (response.ok) {
         const result = await response.json();
-        sessionStorage.removeItem('hoa-don-data');
+        clearAllDashboardCaches();
         toast.success(result.message || 'Đã cập nhật thông tin hóa đơn thành công!');
         router.replace('/dashboard/hoa-don');
         router.refresh();

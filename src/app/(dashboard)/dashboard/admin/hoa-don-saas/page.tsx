@@ -61,12 +61,23 @@ export default function SaaSInvoicesPage() {
   useEffect(() => {
     fetchPayments(true);
     
-    // Auto-refresh (Polling) every 10 seconds for real-time updates
+    // Auto-refresh (Polling) every 5 seconds for real-time updates
     const interval = setInterval(() => {
-      fetchPayments(false); // background refresh without loading indicator
-    }, 10000);
+      if (document.visibilityState === 'visible') {
+        fetchPayments(false); // background refresh without loading indicator
+      }
+    }, 5000);
     
     return () => clearInterval(interval);
+  }, [currentPage, debouncedSearch]);
+
+  // Refresh khi quay lại tab
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === 'visible') fetchPayments(false);
+    };
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
   }, [currentPage, debouncedSearch]);
 
   const fetchPayments = async (showLoading = true) => {

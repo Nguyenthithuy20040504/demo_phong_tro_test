@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { clearAllDashboardCaches } from '@/lib/cache-utils';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -240,11 +241,9 @@ export default function ChinhSuaHopDongPage() {
 
       if (response.ok) {
         const result = await response.json();
-        // Xóa cache để force refresh data
-        sessionStorage.removeItem('hop-dong-data');
+        // Xóa toàn bộ cache dashboard
+        clearAllDashboardCaches();
         toast.success(result.message || 'Hợp đồng đã được cập nhật.');
-        // Sử dụng replace để không tạo history entry mới
-        // và refresh để cập nhật dữ liệu server-side
         router.replace('/dashboard/hop-dong');
         router.refresh();
       } else {

@@ -85,9 +85,28 @@ export default function HopDongKhachThuePage() {
     fetchHopDongs();
   }, []);
 
-  const fetchHopDongs = async () => {
+  // Auto-polling 5s
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchHopDongs(true);
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Refresh khi quay lại tab
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === 'visible') fetchHopDongs(true);
+    };
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
+  }, []);
+
+  const fetchHopDongs = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const response = await fetch('/api/hop-dong?limit=1000', {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -98,12 +117,12 @@ export default function HopDongKhachThuePage() {
       const result = await response.json();
       if (result.success) {
         setHopDongs(result.data || []);
-      } else {
+      } else if (!silent) {
         toast.error('Không thể tải danh sách hợp đồng');
       }
     } catch (error) {
       console.error('Error fetching contracts:', error);
-      toast.error('Có lỗi xảy ra khi tải dữ liệu');
+      if (!silent) toast.error('Có lỗi xảy ra khi tải dữ liệu');
     } finally {
       setLoading(false);
     }

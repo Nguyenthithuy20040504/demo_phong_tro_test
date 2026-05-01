@@ -40,14 +40,37 @@ export default function KhachThueDashboardPage() {
     }
   }, [status]);
 
-  const fetchDashboardData = async () => {
+  // Auto-polling 5s
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchDashboardData(true);
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [status]);
+
+  // Refresh khi quay lại tab
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === 'visible' && status === "authenticated") {
+        fetchDashboardData(true);
+      }
+    };
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
+  }, [status]);
+
+  const fetchDashboardData = async (silent = false) => {
     try {
-      // Gọi ngầm CRON trong môi trường local để kích hoạt tự động hủy/nhắc nhở 
-      // (Trong thực tế function này sẽ do Vercel Cron chạy tự động)
-      try {
-        await fetch('/api/cron/hop-dong/kiem-tra-duyet');
-      } catch (e) {
-        console.error('Silently ignored cron fetch error');
+      // Chỉ gọi cron ở lần đầu, không gọi khi polling
+      if (!silent) {
+        try {
+          await fetch('/api/cron/hop-dong/kiem-tra-duyet');
+        } catch (e) {
+          console.error('Silently ignored cron fetch error');
+        }
       }
 
       const response = await fetch('/api/auth/khach-thue/me', {
@@ -58,12 +81,14 @@ export default function KhachThueDashboardPage() {
       const result = await response.json();
       if (result.success) {
         setDashboardData(result.data);
-      } else {
+      } else if (!silent) {
         toast.error('Không thể tải thông tin');
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      toast.error('Có lỗi xảy ra');
+      if (!silent) {
+        toast.error('Có lỗi xảy ra');
+      }
     } finally {
       setLoading(false);
     }
@@ -160,7 +185,7 @@ export default function KhachThueDashboardPage() {
       const result = await res.json();
       if (result.success) {
         toast.success(action === 'duyet' ? 'Đã duyệt hợp đồng thành công!' : 'Đã từ chối hợp đồng');
-        fetchDashboardData(); // Refresh data
+        fetchDashboardData(true); // Silent refresh - skip cron
       } else {
         toast.error(result.message || 'Có lỗi xảy ra');
       }

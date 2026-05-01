@@ -208,6 +208,7 @@ function formatYAxis(value: number) {
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [toaNhaList, setToaNhaList] = useState<ToaNha[]>([]);
 
   const searchParams = useSearchParams();
@@ -237,7 +238,15 @@ export default function DashboardPage() {
   const currentYear = new Date().getFullYear();
 
   const fetchStats = useCallback(async (isInitial = false) => {
-    if (!isInitial) setLoading(true);
+    // When switching buildings: keep old data visible but show refreshing overlay
+    if (!isInitial) {
+      setLoading(true);
+    } else if (stats) {
+      // isInitial + has cached data → show subtle refreshing indicator
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     try {
       const params = new URLSearchParams();
       if (selectedToaNha !== 'all') params.append('toaNhaId', selectedToaNha);
@@ -267,6 +276,7 @@ export default function DashboardPage() {
           // Save to persistent cache for instant next load
           localStorage.setItem('dashboard_stats_cache', JSON.stringify({
             data: result.data,
+            selectedToaNha,
             timestamp: Date.now()
           }));
         }
@@ -276,6 +286,7 @@ export default function DashboardPage() {
       toast.error('Lỗi khi tải dữ liệu dashboard');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [selectedToaNha, timeRange]);
 
@@ -341,9 +352,10 @@ export default function DashboardPage() {
   // Trigger refetch when filters change
   useEffect(() => {
     if (status === 'authenticated') {
-      fetchStats(true); // pass true for initial if we want to skip center spinner
+      fetchStats(stats ? true : false);
     }
-  }, [selectedToaNha, timeRange, status, fetchStats]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedToaNha, timeRange, status]);
 
   // Restore Plan Selection Logic
   useEffect(() => {
@@ -454,6 +466,15 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 pb-12 w-full">
+      {/* Refreshing overlay - shows when switching buildings */}
+      {refreshing && (
+        <div className="fixed top-16 left-0 right-0 z-50 flex justify-center">
+          <div className="bg-white/90 backdrop-blur-sm border border-teal-200 shadow-lg rounded-full px-4 py-2 flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+            <RefreshCcw className="h-3.5 w-3.5 animate-spin text-teal-600" />
+            <span className="text-xs font-semibold text-teal-700">Đang cập nhật dữ liệu...</span>
+          </div>
+        </div>
+      )}
       {/* ===== HEADER SECTION ===== */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 md:gap-4 mb-4 md:mb-8">
         <div>
@@ -511,7 +532,7 @@ export default function DashboardPage() {
       </div>
 
       {stats && (
-        <>
+        <div className={`transition-opacity duration-300 ${refreshing ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
           {/* ===== 4 SUMMARY CARDS ===== */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
             {/* Card 1: Tổng doanh thu */}
@@ -656,7 +677,7 @@ export default function DashboardPage() {
                       fill="#0d9488"
                       radius={[4, 4, 0, 0]}
                       maxBarSize={40}
-                      animationDuration={1000}
+                      animationDuration={500}
                     />
                     <Bar
                       dataKey="conNo"
@@ -664,7 +685,7 @@ export default function DashboardPage() {
                       fill="#ef4444"
                       radius={[4, 4, 0, 0]}
                       maxBarSize={40}
-                      animationDuration={1000}
+                      animationDuration={500}
                     />
                   </BarChart>
                 </ResponsiveContainer>
@@ -837,7 +858,7 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

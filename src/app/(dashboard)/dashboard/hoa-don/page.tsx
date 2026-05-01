@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { clearAllDashboardCaches } from '@/lib/cache-utils';
 import { useCache } from '@/hooks/use-cache';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -121,18 +122,25 @@ export default function HoaDonPage() {
     fetchData();
   }, []);
 
-  // Tự động refetch khi chuyển trang hoặc quay lại tab (tránh cache cũ)
+  // Tự động refresh khi quay lại tab
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        const cachedData = cache.getCache();
-        if (!cachedData) {
-          fetchData(true);
-        }
+        fetchData(true);
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  // Auto-polling: fetch dữ liệu mới mỗi 30s (silent)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchData(true);
+      }
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   // Global Building Sync (listen to TopNavbar)
@@ -149,22 +157,23 @@ export default function HoaDonPage() {
 
   const fetchData = async (forceRefresh = false) => {
     try {
-      setLoading(true);
-      
       const buildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') : 'all';
       const buildingParam = (buildingId && buildingId !== 'all') ? `toaNhaId=${buildingId}` : '';
       
-      // Thử load từ cache trước (nếu không force refresh)
-      if (!forceRefresh) {
-        const cachedData = cache.getCache();
-        if (cachedData) {
-          setHoaDonList(cachedData.hoaDonList || []);
-          setHopDongList(cachedData.hopDongList || []);
-          setPhongList(cachedData.phongList || []);
-          setKhachThueList(cachedData.khachThueList || []);
-          setLoading(false);
-          return;
-        }
+      // Luôn thử load từ cache trước (instant paint)
+      const cachedData = cache.getCache();
+      if (cachedData && cachedData.hoaDonList) {
+        setHoaDonList(cachedData.hoaDonList || []);
+        setHopDongList(cachedData.hopDongList || []);
+        setPhongList(cachedData.phongList || []);
+        setKhachThueList(cachedData.khachThueList || []);
+        setLoading(false);
+        
+        // Nếu không force refresh và cache còn mới, dừng luôn
+        if (!forceRefresh) return;
+        // Nếu force refresh, tiếp tục fetch nhưng KHÔNG hiện loading spinner
+      } else {
+        setLoading(true);
       }
       
       const buildingParamString = buildingParam ? `&${buildingParam}` : '';
@@ -325,7 +334,7 @@ export default function HoaDonPage() {
       });
 
       if (response.ok) {
-        cache.clearCache();
+        clearAllDashboardCaches();
         // Cập nhật trạng thái thành 'daHuy' thay vì xóa khỏi list
         setHoaDonList(prev => prev.map(hoaDon => hoaDon._id === id ? { ...hoaDon, trangThai: 'daHuy' } : hoaDon));
         toast.success('Hóa đơn đã được hủy.');
@@ -350,7 +359,7 @@ export default function HoaDonPage() {
       const failedDeletes = results.filter(result => !result.ok);
       
       if (failedDeletes.length === 0) {
-        cache.clearCache();
+        clearAllDashboardCaches();
         // Cập nhật trạng thái thành 'daHuy'
         setHoaDonList(prev => prev.map(hoaDon => ids.includes(hoaDon._id!) ? { ...hoaDon, trangThai: 'daHuy' } : hoaDon));
         toast.success(`Thành công! Đã hủy ${ids.length} hóa đơn.`);

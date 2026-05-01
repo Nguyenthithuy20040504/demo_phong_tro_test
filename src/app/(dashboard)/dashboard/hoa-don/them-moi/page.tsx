@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { clearAllDashboardCaches } from '@/lib/cache-utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -281,17 +282,8 @@ export default function ThemMoiHoaDonPage() {
       if (response.ok) {
         const result = await response.json();
         
-        // Xóa cache động từ useCache để hệ thống load lại dữ liệu mới
-        try {
-          const allKeys = Object.keys(sessionStorage);
-          allKeys.forEach(sKey => {
-            if (sKey.includes('hoa-don-data')) {
-              sessionStorage.removeItem(sKey);
-            }
-          });
-        } catch (e) {
-          sessionStorage.removeItem('hoa-don-data'); // Fallback
-        }
+        // Xóa toàn bộ cache dashboard
+        clearAllDashboardCaches();
         
         toast.success(result.message || 'Tuyệt vời! Hóa đơn đã được tạo thành công.');
         router.replace('/dashboard/hoa-don');

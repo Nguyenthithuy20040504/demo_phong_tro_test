@@ -76,8 +76,9 @@ export default function KhachThuePage() {
   // SWR for data fetching
   const apiUrl = `/api/khach-thue?limit=100${selectedTrangThai && selectedTrangThai !== 'all' ? `&trangThai=${selectedTrangThai}` : ''}${selectedBuilding !== 'all' ? `&toaNhaId=${selectedBuilding}` : ''}`;
   const { data, error, isLoading, isValidating } = useSWR(apiUrl, fetcher, {
-    revalidateOnFocus: false,
-    dedupingInterval: 10000, // 10s deduplication
+    revalidateOnFocus: true,
+    refreshInterval: 5000, // Auto-refresh mỗi 5s
+    dedupingInterval: 3000,
   });
 
   const khachThueList = data?.data || [];

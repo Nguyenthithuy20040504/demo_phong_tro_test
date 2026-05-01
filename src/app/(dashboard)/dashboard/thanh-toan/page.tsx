@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useCache } from '@/hooks/use-cache';
+import { clearAllDashboardCaches } from '@/lib/cache-utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -111,6 +112,27 @@ export default function ThanhToanPage() {
   useEffect(() => {
     fetchData(true);
   }, [globalBuildingId]);
+
+  // Auto-polling: fetch dữ liệu mới mỗi 30s (silent)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchData(true);
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Tự refresh khi quay lại tab
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchData(true);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
 
   const fetchData = async (forceRefresh = false) => {
     try {
@@ -281,7 +303,7 @@ export default function ThanhToanPage() {
       });
 
       if (response.ok) {
-        cache.clearCache();
+        clearAllDashboardCaches();
         setThanhToanList(prev => prev.filter(thanhToan => thanhToan._id !== id));
         toast.success('Lịch sử thanh toán đã được xóa.');
       } else {
@@ -400,7 +422,7 @@ export default function ThanhToanPage() {
               hoaDonList={hoaDonList}
               onClose={() => setIsDialogOpen(false)}
               onSuccess={() => {
-                cache.clearCache();
+                clearAllDashboardCaches();
                 setIsDialogOpen(false);
                 fetchData(true);
               }}

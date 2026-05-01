@@ -121,6 +121,23 @@ export default function AdminLandlordManagementPage() {
     fetchLandlords();
   }, [fetchLandlords]);
 
+  // Auto-polling 5s
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchLandlords(false);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [fetchLandlords]);
+
+  // Refresh khi quay lại tab
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === 'visible') fetchLandlords(false);
+    };
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
+  }, [fetchLandlords]);
+
   const handleCreate = async () => {
     if (!createData.name || !createData.email || !createData.password) {
       return toast.error('Vui lòng điền đầy đủ thông tin bắt buộc');

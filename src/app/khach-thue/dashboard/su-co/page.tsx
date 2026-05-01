@@ -69,19 +69,36 @@ export default function SuCoKhachThuePage() {
     fetchMyRooms();
   }, []);
 
-  const fetchSuCos = async () => {
+  // Auto-polling 5s
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchSuCos(true);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Refresh khi quay lại tab
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === 'visible') fetchSuCos(true);
+    };
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
+  }, []);
+
+  const fetchSuCos = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const response = await fetch('/api/su-co');
       const result = await response.json();
       if (result.success) {
         setSuCos(result.data || []);
-      } else {
+      } else if (!silent) {
         toast.error('Không thể tải danh sách sự cố');
       }
     } catch (error) {
       console.error('Error fetching issues:', error);
-      toast.error('Có lỗi xảy ra khi tải dữ liệu');
+      if (!silent) toast.error('Có lỗi xảy ra khi tải dữ liệu');
     } finally {
       setLoading(false);
     }
