@@ -203,7 +203,7 @@ export default function ThongBaoPage() {
           fetch(`/api/thong-bao${limitQuery}${buildingFilterQuery}`),
           fetch('/api/toa-nha'),
           fetch(`/api/phong${limitQuery}&action=basic`),
-          fetch(`/api/khach-thue${limitQuery}&action=basic`)
+          fetch(`/api/khach-thue${limitQuery}`)
         ]);
 
         const [thongBaoData, toaNhaData, phongData, khachThueData] = await Promise.all([
