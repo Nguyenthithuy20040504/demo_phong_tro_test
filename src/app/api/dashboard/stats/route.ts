@@ -90,9 +90,27 @@ export async function GET(request: NextRequest) {
 
     const phongs = await Phong.find(phongQuery).select('_id');
     const phongIds = phongs.map(p => p._id);
-    const relationQuery = { phong: { $in: phongIds } };
+    const phongIdStrings = phongs.map(p => p._id.toString());
+    
+    // Tạo bộ lọc truy vấn linh hoạt (hỗ trợ cả ObjectId và String ID)
+    const relationQuery = { 
+      $or: [
+        { phong: { $in: phongIds } },
+        { phong: { $in: phongIdStrings } }
+      ]
+    };
 
     const now = new Date();
+    
+    // Tự động cập nhật trạng thái quá hạn toàn hệ thống (không giới hạn theo phòng để đảm bảo tính nhất quán)
+    await HoaDon.updateMany(
+      {
+        trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan'] },
+        hanThanhToan: { $lt: now }
+      },
+      { $set: { trangThai: 'quaHan' } }
+    );
+
     const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
     
@@ -117,12 +135,33 @@ export async function GET(request: NextRequest) {
         trangThai: 'hoatDong'
       }),
       HoaDon.countDocuments({
-        ...relationQuery,
-        trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan', 'quaHan'] },
-        hanThanhToan: { $lt: now }
+        $and: [
+          relationQuery,
+          {
+            $or: [
+              { trangThai: 'quaHan' },
+              { 
+                trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan'] },
+                hanThanhToan: { $lt: now }
+              }
+            ]
+          }
+        ]
       }),
       HoaDon.aggregate([
-        { $match: { ...relationQuery, trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan', 'quaHan'] } } },
+        { 
+          $match: { 
+            $and: [
+              relationQuery,
+              {
+                $or: [
+                  { trangThai: 'quaHan' },
+                  { trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan'] } } 
+                ]
+              }
+            ]
+          } 
+        },
         { $group: { _id: null, total: { $sum: '$conLai' } } }
       ]).then(res => res[0]?.total || 0)
     ]);
@@ -197,21 +236,53 @@ export async function GET(request: NextRequest) {
     }
 
     const hoaDonQuaHanList = await HoaDon.find({
-      ...relationQuery,
-      trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan', 'quaHan'] },
-      hanThanhToan: { $lt: now }
+      $and: [
+        relationQuery,
+        {
+          $or: [
+            { trangThai: 'quaHan' },
+            { 
+              trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan'] },
+              hanThanhToan: { $lt: now }
+            }
+          ]
+        }
+      ]
     })
     .sort({ hanThanhToan: 1 })
     .limit(10)
-    .populate('khachThue', 'hoTen')
     .populate('phong', 'maPhong');
 
-    const formattedHoaDonQuaHan = hoaDonQuaHanList.map((hd: any) => ({
-      _id: hd._id,
-      tenKhach: hd.khachThue?.hoTen || 'N/A',
-      maPhong: hd.phong?.maPhong || 'N/A',
-      soTien: hd.conLai,
-      soNgayQuaHan: Math.ceil((now.getTime() - new Date(hd.hanThanhToan).getTime()) / (24 * 60 * 60 * 1000))
+    const KhachThueModel = mongoose.models.KhachThue || mongoose.model('KhachThue');
+    const NguoiDungModel = mongoose.models.NguoiDung || mongoose.model('NguoiDung');
+    
+    const formattedHoaDonQuaHan = await Promise.all(hoaDonQuaHanList.map(async (hd: any) => {
+      let tenKhach = 'N/A';
+      if (hd.khachThue) {
+        let ktInfo: any = await KhachThueModel.findById(hd.khachThue).select('hoTen').lean();
+        if (!ktInfo) {
+          const ndInfo: any = await NguoiDungModel.findById(hd.khachThue).select('ten name').lean();
+          if (ndInfo) {
+            tenKhach = ndInfo.ten || ndInfo.name || 'Khách thuê';
+          }
+        } else {
+          tenKhach = ktInfo.hoTen;
+        }
+
+        if (tenKhach === 'N/A' && hd.hopDong) {
+          const hdDoc = await HopDong.findById((hd.hopDong as any)._id || hd.hopDong).select('snapshotKhachThue').lean() as any;
+          const snap = hdDoc?.snapshotKhachThue?.find((s: any) => s.id === hd.khachThue.toString());
+          if (snap) tenKhach = snap.hoTen || 'Khách thuê';
+        }
+      }
+
+      return {
+        _id: hd._id,
+        tenKhach,
+        maPhong: hd.phong?.maPhong || 'N/A',
+        soTien: hd.conLai,
+        soNgayQuaHan: Math.ceil((now.getTime() - new Date(hd.hanThanhToan).getTime()) / (24 * 60 * 60 * 1000))
+      };
     }));
 
     const hopDongSapHetHanList = await HopDong.find({

@@ -254,9 +254,8 @@ HoaDonSchema.pre('save', function(next) {
       }
     }
     
-    // Kiểm tra quá hạn: chỉ áp dụng khi CHƯA thanh toán đồng nào
-    // Nếu đã thanh toán một phần thì giữ trạng thái 'daThanhToanMotPhan'
-    if (this.hanThanhToan < new Date() && this.trangThai === 'chuaThanhToan') {
+    // Kiểm tra quá hạn: áp dụng khi chưa thanh toán đủ
+    if (this.hanThanhToan < new Date() && ['chuaThanhToan', 'daThanhToanMotPhan'].includes(this.trangThai)) {
       this.trangThai = 'quaHan';
     }
   }

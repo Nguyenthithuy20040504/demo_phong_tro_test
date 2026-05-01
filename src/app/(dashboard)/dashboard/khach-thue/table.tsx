@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  ChevronsUpDown,
   User,
   CreditCard,
   Calendar,
@@ -109,7 +110,16 @@ type KhachThueTableProps = {
 const createColumns = (props: KhachThueTableProps): ColumnDef<KhachThue>[] => [
   {
     accessorKey: "hoTen",
-    header: "Họ tên",
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        className="p-0 hover:bg-transparent font-semibold"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Họ tên
+        <ChevronsUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
     cell: ({ row }) => (
       <div className="min-w-40">
         <div className="font-medium">{row.original.hoTen}</div>
@@ -219,7 +229,16 @@ const createColumns = (props: KhachThueTableProps): ColumnDef<KhachThue>[] => [
 
   {
     accessorKey: "ngayTao",
-    header: "Ngày tạo hồ sơ",
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        className="p-0 hover:bg-transparent font-semibold"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Ngày tạo hồ sơ
+        <ChevronsUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
     cell: ({ row }) => {
       const date = new Date(row.original.ngayTao);
       return (
@@ -360,7 +379,7 @@ export function KhachThueDataTable(props: KhachThueDataTableProps) {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   );
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [sorting, setSorting] = React.useState<SortingState>([{ id: 'ngayTao', desc: true }]);
   const [pagination, setPagination] = React.useState({
     pageIndex: 0,
     pageSize: 10,
