@@ -15,18 +15,12 @@ export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions);
     
     if (!session) {
-      console.log('Dashboard Stats: No session found');
-      return NextResponse.json(
-        { message: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
-
-    console.log('Dashboard Stats: User role:', session.user.role, 'ID:', session.user.id);
 
     await dbConnect();
 
-    // --- LOGIC DÀNH CHO KHÁCH THUÊ ---
+    // --- LOGIC FOR TENANT ROLE ---
     if (session.user.role === 'khachThue') {
       const userId = new mongoose.Types.ObjectId(session.user.id);
       
@@ -52,29 +46,25 @@ export async function GET(request: NextRequest) {
           hoaDonQuaHan,
           soHopDongHieuLuc: hopDongs.length,
           suCoDangXuLy: suCos.length,
-          // Trả về mock/rỗng cho các field của chủ nhà để tránh crash UI nếu dùng chung component
           tongSoPhong: 0, phongTrong: 0, phongDangThue: 0, 
           doanhThuThang: 0, doanhThuNam: 0, tyLeThayDoiDoanhThu: 0
         }
       });
     }
 
-    // --- LOGIC DÀNH CHO CHỦ NHÀ / ADMIN (Giữ nguyên và tối ưu) ---
+    // --- LOGIC FOR OWNER / ADMIN ---
     const { searchParams } = new URL(request.url);
     const toaNhaIdFilter = searchParams.get('toaNhaId');
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
 
-    // ... (Toàn bộ logic phía dưới dành cho Chủ nhà)
     const accessibleToaNhaIds = await getAccessibleToaNhaIds(session.user);
     
-    // Determine the active buildings for this request
     let activeToaNhaIds: any[] = [];
     if (toaNhaIdFilter && toaNhaIdFilter !== 'all') {
-      // If filtering by specific building, check if it's accessible
       const isAccessible = accessibleToaNhaIds === null || accessibleToaNhaIds.some(id => id.toString() === toaNhaIdFilter);
       if (isAccessible) {
-        activeToaNhaIds = [toaNhaIdFilter];
+        activeToaNhaIds = [new mongoose.Types.ObjectId(toaNhaIdFilter)];
       } else {
         return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
       }
@@ -82,94 +72,183 @@ export async function GET(request: NextRequest) {
       activeToaNhaIds = accessibleToaNhaIds;
     }
 
+    // Common Base Query for Filters
     let phongQuery: any = {};
-    if (activeToaNhaIds.length > 0 || accessibleToaNhaIds !== null) {
-      if (accessibleToaNhaIds !== null && accessibleToaNhaIds.length === 0) {
+    if (accessibleToaNhaIds !== null) {
+      if (accessibleToaNhaIds.length === 0) {
         return NextResponse.json({
           success: true,
           data: {
             tongSoPhong: 0, phongTrong: 0, phongDangThue: 0, phongBaoTri: 0,
-            doanhThuThang: 0, doanhThuNam: 0, hoaDonSapDenHan: 0,
-            suCoCanXuLy: 0, hopDongSapHetHan: 0,
+            doanhThuThang: 0, doanhThuNam: 0, tongNoKhongThu: 0, soHoaDonQuaHan: 0,
+            suCoCanXuLy: 0, hopDongSapHetHan: 0, tyLeThayDoiDoanhThu: 0,
+            doanhThuVaCongNo6Thang: [], hoaDonQuaHanList: [], hopDongSapHetHanList: []
           },
         });
       }
-      phongQuery.toaNha = { $in: (activeToaNhaIds.length > 0 ? activeToaNhaIds : accessibleToaNhaIds) as any };
+      phongQuery.toaNha = { $in: activeToaNhaIds.length > 0 ? activeToaNhaIds : accessibleToaNhaIds };
     }
 
-    // Get room IDs for filtering other collections
+    // Find all room IDs to filter related collections
     const phongs = await Phong.find(phongQuery).select('_id');
     const phongIds = phongs.map(p => p._id);
-    
-    let hoaDonSuCoQuery: any = { phong: { $in: phongIds } };
-    
-    // Tìm tất cả hóa đơn thuộc về các phòng này để tính toán doanh thu/công nợ
-    const allHoaDons = await HoaDon.find({ phong: { $in: phongIds } }).select('_id hopDong');
-    const hoaDonIds = allHoaDons.map(hd => hd._id);
+    const relationQuery = { phong: { $in: phongIds } };
 
-    let thanhToanQuery: any = { hoaDon: { $in: hoaDonIds } };
-
-    // Set time range for revenue
     const now = new Date();
     const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
     
-    const startOfCurrentYear = new Date(now.getFullYear(), 0, 1);
-    const endOfCurrentYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
-
-    // Get room stats in parallel
-    const [totalPhong, phongTrong, phongDangThue, phongBaoTri] = await Promise.all([
+    // 1. Summary Metrics
+    const [
+      totalPhong, 
+      phongTrong, 
+      phongDangThue, 
+      phongBaoTri,
+      suCoCanXuLy,
+      hopDongSapHetHan,
+      hoaDonQuaHanCount,
+      tongNoChuaThu
+    ] = await Promise.all([
       Phong.countDocuments(phongQuery),
       Phong.countDocuments({ ...phongQuery, trangThai: 'trong' }),
       Phong.countDocuments({ ...phongQuery, trangThai: 'dangThue' }),
-      Phong.countDocuments({ ...phongQuery, trangThai: 'baoTri' })
+      Phong.countDocuments({ ...phongQuery, trangThai: 'baoTri' }),
+      SuCo.countDocuments({ ...relationQuery, trangThai: { $in: ['moi', 'dangXuLy'] } }),
+      HopDong.countDocuments({ 
+        ...relationQuery, 
+        ngayKetThuc: { $gte: now, $lte: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) },
+        trangThai: 'hoatDong'
+      }),
+      HoaDon.countDocuments({
+        ...relationQuery,
+        trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan', 'quaHan'] },
+        hanThanhToan: { $lt: now }
+      }),
+      HoaDon.aggregate([
+        { $match: { ...relationQuery, trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan', 'quaHan'] } } },
+        { $group: { _id: null, total: { $sum: '$conLai' } } }
+      ]).then(res => res[0]?.total || 0)
     ]);
 
-    // Revenue aggregation helper
-    const getRevenue = async (start: Date, end: Date) => {
-      const result = await ThanhToan.aggregate([
+    // 2. Revenue calculation
+    const getRevenueInRange = async (start: Date, end: Date) => {
+      const res = await ThanhToan.aggregate([
         {
           $match: {
-            ...thanhToanQuery,
-            ngayThanhToan: { $gte: start, $lte: end }
+            ngayThanhToan: { $gte: start, $lte: end },
+            trangThai: { $ne: 'tuChoi' }
           }
         },
+        // We need to filter based on which building the payment's invoice belongs to
         {
-          $group: {
-            _id: null,
-            total: { $sum: '$soTien' }
+          $lookup: {
+            from: 'hoadons',
+            localField: 'hoaDon',
+            foreignField: '_id',
+            as: 'hoaDonInfo'
           }
-        }
+        },
+        { $unwind: '$hoaDonInfo' },
+        { 
+          $match: { 
+            'hoaDonInfo.phong': { $in: phongIds }
+          }
+        },
+        { $group: { _id: null, total: { $sum: '$soTien' } } }
       ]);
-      return result[0]?.total || 0;
+      return res[0]?.total || 0;
     };
 
-    const [doanhThuThang, doanhThuNam] = await Promise.all([
-      getRevenue(startOfCurrentMonth, endOfCurrentMonth),
-      getRevenue(startOfCurrentYear, endOfCurrentYear)
+    const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+    const [doanhThuThang, doanhThuPrevThang] = await Promise.all([
+      getRevenueInRange(startOfCurrentMonth, endOfCurrentMonth),
+      getRevenueInRange(startOfPrevMonth, endOfPrevMonth)
     ]);
-    
-    // Additional landlord-only metrics...
-    const nextWeek = new Date();
-    nextWeek.setDate(nextWeek.getDate() + 7);
-    
-    const [hoaDonSapDenHan, suCoCanXuLy, hopDongSapHetHan] = await Promise.all([
-      HoaDon.countDocuments({
-        ...hoaDonSuCoQuery,
-        hanThanhToan: { $lte: nextWeek },
-        trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan'] }
-      }),
-      SuCo.countDocuments({
-        ...hoaDonSuCoQuery,
-        trangThai: { $in: ['moi', 'dangXuLy'] }
-      }),
-      HopDong.countDocuments({
-        ...hoaDonSuCoQuery,
-        ngayBatDau: { $lte: now },
-        ngayKetThuc: { $gte: now },
-        trangThai: 'hoatDong'
-      })
-    ]);
+
+    let tyLeThayDoi = 0;
+    if (doanhThuPrevThang > 0) {
+      tyLeThayDoi = Math.round(((doanhThuThang - doanhThuPrevThang) / doanhThuPrevThang) * 100);
+    } else if (doanhThuThang > 0) {
+      tyLeThayDoi = 100;
+    }
+
+    // 3. Trends (Monthly Revenue & Debt)
+    const trendMonths = startDateParam ? 
+      Math.max(1, Math.ceil((new Date(endDateParam || now).getTime() - new Date(startDateParam).getTime()) / (30 * 24 * 60 * 60 * 1000))) 
+      : 6;
+
+    const trendData = [];
+    for (let i = trendMonths - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const m = d.getMonth() + 1;
+      const y = d.getFullYear();
+      const start = new Date(y, m - 1, 1);
+      const end = new Date(y, m, 0, 23, 59, 59);
+
+      // Aggregating collected revenue and remaining debt for each month
+      const [daThu, conNo] = await Promise.all([
+        getRevenueInRange(start, end),
+        HoaDon.aggregate([
+          { 
+            $match: { 
+              ...relationQuery, 
+              thang: m, 
+              nam: y,
+              trangThai: { $ne: 'daHuy' } 
+            } 
+          },
+          { $group: { _id: null, total: { $sum: '$conLai' } } }
+        ]).then(res => res[0]?.total || 0)
+      ]);
+
+      trendData.push({
+        thang: m,
+        nam: y,
+        label: `Tháng ${m}/${y}`,
+        daThu,
+        conNo
+      });
+    }
+
+    // 4. Overdue Invoice List
+    const hoaDonQuaHanList = await HoaDon.find({
+      ...relationQuery,
+      trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan', 'quaHan'] },
+      hanThanhToan: { $lt: now }
+    })
+    .sort({ hanThanhToan: 1 })
+    .limit(10)
+    .populate('khachThue', 'hoTen')
+    .populate('phong', 'maPhong');
+
+    const formattedHoaDonQuaHan = hoaDonQuaHanList.map((hd: any) => ({
+      _id: hd._id,
+      tenKhach: hd.khachThue?.hoTen || 'N/A',
+      maPhong: hd.phong?.maPhong || 'N/A',
+      soTien: hd.conLai,
+      soNgayQuaHan: Math.ceil((now.getTime() - new Date(hd.hanThanhToan).getTime()) / (24 * 60 * 60 * 1000))
+    }));
+
+    // 5. Expiring Contracts List
+    const hopDongSapHetHanList = await HopDong.find({
+      ...relationQuery,
+      ngayKetThuc: { $gte: now, $lte: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) },
+      trangThai: 'hoatDong'
+    })
+    .sort({ ngayKetThuc: 1 })
+    .limit(10)
+    .populate('nguoiDaiDien', 'hoTen')
+    .populate('phong', 'maPhong');
+
+    const formattedHopDongSapHetHan = hopDongSapHetHanList.map((hd: any) => ({
+      _id: hd._id,
+      tenKhach: hd.nguoiDaiDien?.hoTen || 'N/A',
+      maPhong: hd.phong?.maPhong || 'N/A',
+      ngayHetHan: hd.ngayKetThuc,
+      soNgayConLai: Math.ceil((new Date(hd.ngayKetThuc).getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
+    }));
 
     return NextResponse.json({
       success: true,
@@ -179,18 +258,19 @@ export async function GET(request: NextRequest) {
         phongDangThue,
         phongBaoTri,
         doanhThuThang,
-        doanhThuNam,
-        hoaDonSapDenHan,
+        tyLeThayDoiDoanhThu: tyLeThayDoi,
+        tongNoKhongThu: tongNoChuaThu,
+        soHoaDonQuaHan: hoaDonQuaHanCount,
         suCoCanXuLy,
-        hopDongSapHetHan
+        hopDongSapHetHan,
+        doanhThuVaCongNo6Thang: trendData,
+        hoaDonQuaHanList: formattedHoaDonQuaHan,
+        hopDongSapHetHanList: formattedHopDongSapHetHan
       }
     });
 
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
-    return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
 }
