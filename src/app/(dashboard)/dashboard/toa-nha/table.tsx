@@ -283,7 +283,7 @@ export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
     setIsDeleteDialogOpen
   }), [tableProps])
 
-  const table = useReactTable({
+  const table = useReactTable({ autoResetPageIndex: false,
     data: initialData,
     columns,
     state: {
@@ -561,4 +561,5 @@ export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
     </div>
   )
 }
+
 

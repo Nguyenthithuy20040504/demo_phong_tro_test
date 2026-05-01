@@ -390,7 +390,7 @@ export function PhongDataTable(props: PhongDataTableProps) {
     }
   }), [tableProps]);
   
-  const table = useReactTable({
+  const table = useReactTable({ autoResetPageIndex: false,
     data: initialData,
     columns,
     state: {
@@ -656,3 +656,4 @@ export function PhongDataTable(props: PhongDataTableProps) {
     </div>
   );
 }
+

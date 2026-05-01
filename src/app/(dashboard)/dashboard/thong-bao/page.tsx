@@ -144,37 +144,43 @@ export default function ThongBaoPage() {
     const handleSyncBuilding = () => {
       const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
       setSelectedBuildingId(saved);
-      fetchData(true);
+      setThongBaoList([]);
+      setLoading(true);
+      fetchData(true, false);
     };
     window.addEventListener('buildingChange', handleSyncBuilding);
     return () => window.removeEventListener('buildingChange', handleSyncBuilding);
   }, []);
 
   useEffect(() => {
-    fetchData(true);
+    fetchData(true, false);
   }, [selectedBuildingId]);
 
-  const fetchData = async (forceRefresh = false) => {
+  const fetchData = async (forceRefresh = false, isBackgroundPolling = false) => {
+    const buildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
     try {
-      setLoading(true);
-      
-      if (!forceRefresh) {
-        const cachedData = cache.getCache();
-        if (cachedData) {
-          setThongBaoList(cachedData.thongBaoList || []);
-          setToaNhaList(cachedData.toaNhaList || []);
-          setPhongList(cachedData.phongList || []);
-          setKhachThueList(cachedData.khachThueList || []);
+      const cachedData = cache.getCache();
+      if (cachedData && cachedData.thongBaoList) {
+        setThongBaoList(cachedData.thongBaoList || []);
+        setToaNhaList(cachedData.toaNhaList || []);
+        setPhongList(cachedData.phongList || []);
+        setKhachThueList(cachedData.khachThueList || []);
+        
+        if (!forceRefresh) {
           setLoading(false);
           return;
         }
+        
+        if (!isBackgroundPolling) {
+          setLoading(true);
+        }
+      } else {
+        setThongBaoList([]);
+        setToaNhaList([]);
+        setPhongList([]);
+        setKhachThueList([]);
+        setLoading(true);
       }
-
-      // Cache miss or forceRefresh -> Clear old data & show loading
-      setThongBaoList([]);
-      setToaNhaList([]);
-      setPhongList([]);
-      setKhachThueList([]);
       
       // Fetch all data in parallel
       const limitQuery = '?limit=2000';
@@ -203,7 +209,8 @@ export default function ThongBaoPage() {
           khachThueList: mappedChuNha as any,
         });
       } else {
-        const buildingFilterQuery = selectedBuildingId !== 'all' ? `&toaNhaId=${selectedBuildingId}` : '';
+        const currentLocalBuilding = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+        const buildingFilterQuery = currentLocalBuilding !== 'all' ? `&toaNhaId=${currentLocalBuilding}` : '';
         
         const [thongBaoResponse, toaNhaResponse, phongResponse, khachThueResponse] = await Promise.all([
           fetch(`/api/thong-bao${limitQuery}${buildingFilterQuery}`),
@@ -218,6 +225,10 @@ export default function ThongBaoPage() {
           phongResponse.ok ? phongResponse.json() : { data: [] },
           khachThueResponse.ok ? khachThueResponse.json() : { data: [] }
         ]);
+
+        // Ngăn chặn Race Condition: Bỏ qua kết quả nếu người dùng đã đổi tòa nhà trong lúc đợi API
+        const latestBuildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+        if (latestBuildingId !== currentLocalBuilding) return;
 
         const thongBaos = thongBaoData.success ? thongBaoData.data : [];
         const toaNhas = toaNhaData.success ? toaNhaData.data : [];
@@ -243,7 +254,10 @@ export default function ThongBaoPage() {
       setPhongList([]);
       setKhachThueList([]);
     } finally {
-      setLoading(false);
+      const currentBuildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      if (currentBuildingId === buildingId) {
+        setLoading(false);
+      }
     }
   };
 

@@ -450,7 +450,7 @@ export function SuCoDataTable(props: SuCoDataTableProps) {
     setIsDeleteDialogOpen
   }), [tableProps])
 
-  const table = useReactTable({
+  const table = useReactTable({ autoResetPageIndex: false,
     data: initialData,
     columns,
     state: {
@@ -723,4 +723,5 @@ export function SuCoDataTable(props: SuCoDataTableProps) {
     </div>
   )
 }
+
 

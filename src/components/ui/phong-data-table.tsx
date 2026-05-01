@@ -272,7 +272,7 @@ export function PhongDataTable({ data, onEdit, onDelete }: PhongDataTableProps) 
     },
   ]
 
-  const table = useReactTable({
+  const table = useReactTable({ autoResetPageIndex: false,
     data,
     columns,
     onSortingChange: setSorting,
@@ -412,3 +412,4 @@ export function PhongDataTable({ data, onEdit, onDelete }: PhongDataTableProps) 
     </div>
   )
 }
+

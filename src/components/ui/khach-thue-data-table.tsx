@@ -233,7 +233,7 @@ export function KhachThueDataTable({
     React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
 
-  const table = useReactTable({
+  const table = useReactTable({ autoResetPageIndex: false,
     data,
     columns: columns(onEdit, onDelete, onView, actionLoading),
     onSortingChange: setSorting,
@@ -375,3 +375,4 @@ export function KhachThueDataTable({
     </div>
   )
 }
+

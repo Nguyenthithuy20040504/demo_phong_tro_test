@@ -426,7 +426,7 @@ export function LandlordTable(props: LandlordDataTableProps) {
     setIsDeleteDialogOpen 
   }), [tableProps]);
 
-  const table = useReactTable({
+  const table = useReactTable({ autoResetPageIndex: false,
     data: initialData,
     columns,
     state: {
@@ -668,3 +668,4 @@ export function LandlordTable(props: LandlordDataTableProps) {
     </div>
   );
 }
+

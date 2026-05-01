@@ -491,7 +491,7 @@ export function UserDataTable(props: UserDataTableProps) {
   
   const columns = React.useMemo(() => createColumns(tableProps), [tableProps])
 
-  const table = useReactTable({
+  const table = useReactTable({ autoResetPageIndex: false,
     data: initialData,
     columns,
     state: {
@@ -728,4 +728,5 @@ export function UserDataTable(props: UserDataTableProps) {
     </div>
   )
 }
+
 

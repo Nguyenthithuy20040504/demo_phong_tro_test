@@ -350,7 +350,7 @@ export function HopDongDataTable({
     },
   ]
 
-  const table = useReactTable({
+  const table = useReactTable({ autoResetPageIndex: false,
     data,
     columns,
     onSortingChange: setSorting,
@@ -481,3 +481,4 @@ export function HopDongDataTable({
     </div>
   )
 }
+

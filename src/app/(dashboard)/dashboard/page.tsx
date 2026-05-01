@@ -269,6 +269,11 @@ export default function DashboardPage() {
       if (end) params.append('endDate', end);
 
       const response = await fetch(`/api/dashboard/stats?${params.toString()}`);
+      
+      // Ngăn chặn Race Condition: Bỏ qua kết quả nếu người dùng đã đổi tòa nhà trong lúc đợi API
+      const currentBuildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      if (currentBuildingId !== selectedToaNha) return;
+
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
@@ -285,8 +290,11 @@ export default function DashboardPage() {
       console.error('Error:', error);
       toast.error('Lỗi khi tải dữ liệu dashboard');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      const currentBuildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      if (currentBuildingId === selectedToaNha) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [selectedToaNha, timeRange]);
 

@@ -412,7 +412,9 @@ export default function PhongPage() {
       if (globalId && globalId !== 'all') {
         setSelectedToaNhaTab(globalId);
       }
-      fetchPhong(true);
+      setPhongList([]);
+      setLoading(true);
+      fetchPhong(true, false);
     };
     window.addEventListener('buildingChange', handleSyncBuilding);
     return () => window.removeEventListener('buildingChange', handleSyncBuilding);
@@ -422,7 +424,7 @@ export default function PhongPage() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        fetchPhong(true);
+        fetchPhong(true, true);
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -433,13 +435,14 @@ export default function PhongPage() {
   useEffect(() => {
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        fetchPhong(true);
+        fetchPhong(true, true);
       }
     }, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  const fetchPhong = async (forceRefresh = false) => {
+  const fetchPhong = async (forceRefresh = false, isBackgroundPolling = false) => {
+    const buildingId = typeof window !== 'undefined' ? (localStorage.getItem('selected_building_id') || 'all') : 'all';
     try {
       // Luôn thử load từ cache trước (instant paint)
       const cachedData = cache.getCache();
@@ -451,22 +454,30 @@ export default function PhongPage() {
         }
         setLoading(false);
         
-        // Nếu không force refresh, dừng luôn
-        if (!forceRefresh) return;
-        // Nếu force refresh, tiếp tục fetch nhưng KHÔNG hiện loading spinner
+        if (!forceRefresh) {
+          setLoading(false);
+          return;
+        }
+        
+        if (!isBackgroundPolling) {
+          setLoading(true);
+        }
       } else {
         setPhongList([]);
         setToaNhaList([]);
         setLoading(true);
       }
       
-      const buildingId = typeof window !== 'undefined' ? (localStorage.getItem('selected_building_id') || 'all') : 'all';
       const buildingParam = buildingId !== 'all' ? `&toaNhaId=${buildingId}` : '';
       
       const [phongRes, toaNhaRes] = await Promise.all([
         fetch(`/api/phong?limit=1000${buildingParam}`),
         fetch('/api/toa-nha')
       ]);
+
+      // Ngăn chặn Race Condition: Bỏ qua kết quả nếu người dùng đã đổi tòa nhà trong lúc đợi API
+      const currentBuildingId = typeof window !== 'undefined' ? (localStorage.getItem('selected_building_id') || 'all') : 'all';
+      if (currentBuildingId !== buildingId) return;
 
       let phongData: EnrichedPhong[] = [];
       let toaNhaData: ToaNha[] = [];
@@ -502,7 +513,10 @@ export default function PhongPage() {
       console.error('Error fetching phong:', error);
       toast.error('Không thể kết nối với máy chủ. Vui lòng kiểm tra lại mạng!');
     } finally {
-      setLoading(false);
+      const currentBuildingId = typeof window !== 'undefined' ? (localStorage.getItem('selected_building_id') || 'all') : 'all';
+      if (currentBuildingId === buildingId) {
+        setLoading(false);
+      }
     }
   };
 

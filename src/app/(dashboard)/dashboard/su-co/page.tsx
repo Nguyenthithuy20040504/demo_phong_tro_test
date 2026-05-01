@@ -95,14 +95,16 @@ export default function SuCoPage() {
     const handleSyncBuilding = () => {
       const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
       setSelectedBuildingId(saved);
-      fetchData(true);
+      setSuCoList([]);
+      setLoading(true);
+      fetchData(true, false);
     };
     window.addEventListener('buildingChange', handleSyncBuilding);
     return () => window.removeEventListener('buildingChange', handleSyncBuilding);
   }, []);
 
   useEffect(() => {
-    fetchData(true);
+    fetchData(true, false);
   }, [selectedBuildingId]);
 
   // Đồng bộ search term từ URL khi chuyển từ thông báo khác sang
@@ -113,31 +115,34 @@ export default function SuCoPage() {
     }
   }, [searchParams]);
 
-  const fetchData = async (forceRefresh = false) => {
+  const fetchData = async (forceRefresh = false, isBackgroundPolling = false) => {
+    const buildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
     try {
-      setLoading(true);
-
-      if (!forceRefresh) {
-        const cachedData = cache.getCache();
-        if (cachedData) {
-          setSuCoList(cachedData.suCoList || []);
-          setPhongList(cachedData.phongList || []);
-          setKhachThueList(cachedData.khachThueList || []);
-          setHopDongList(cachedData.hopDongList || []);
-          setToaNhaList(cachedData.toaNhaList || []);
+      const cachedData = cache.getCache();
+      if (cachedData && cachedData.suCoList) {
+        setSuCoList(cachedData.suCoList || []);
+        setPhongList(cachedData.phongList || []);
+        setKhachThueList(cachedData.khachThueList || []);
+        setHopDongList(cachedData.hopDongList || []);
+        setToaNhaList(cachedData.toaNhaList || []);
+        
+        if (!forceRefresh) {
           setLoading(false);
           return;
         }
+        
+        if (!isBackgroundPolling) {
+          setLoading(true);
+        }
+      } else {
+        setSuCoList([]);
+        setPhongList([]);
+        setKhachThueList([]);
+        setHopDongList([]);
+        setToaNhaList([]);
+        setLoading(true);
       }
 
-      // Cache miss or forceRefresh -> Clear old data & show loading
-      setSuCoList([]);
-      setPhongList([]);
-      setKhachThueList([]);
-      setHopDongList([]);
-      setToaNhaList([]);
-
-      const buildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
       const buildingParam = buildingId !== 'all' ? `&toaNhaId=${buildingId}` : '';
       const limitParam = '?limit=1000';
       const query = `${limitParam}${buildingParam}`;
@@ -145,6 +150,11 @@ export default function SuCoPage() {
       // Fetch sự cố từ API (chỉ lấy theo buildingId)
       const suCoResponse = await fetch(`/api/su-co${query}`);
       const suCoData = await suCoResponse.json();
+
+      // Ngăn chặn Race Condition: Bỏ qua kết quả nếu người dùng đã đổi tòa nhà trong lúc đợi API
+      const currentBuildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      if (currentBuildingId !== buildingId) return;
+
       const suCos = (suCoData.success ? suCoData.data : []) || [];
       setSuCoList(suCos);
 
@@ -175,6 +185,9 @@ export default function SuCoPage() {
       const toaNhas = (toaNhaData.success ? toaNhaData.data : []) || [];
       setToaNhaList(toaNhas);
 
+      // Final race condition check before caching
+      if ((typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all') !== buildingId) return;
+
       cache.setCache({
         suCoList: suCos,
         phongList: phongs,
@@ -190,7 +203,10 @@ export default function SuCoPage() {
       setHopDongList([]);
       setToaNhaList([]);
     } finally {
-      setLoading(false);
+      const currentBuildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      if (currentBuildingId === buildingId) {
+        setLoading(false);
+      }
     }
   };
 

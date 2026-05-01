@@ -506,7 +506,7 @@ export function HoaDonDataTable(props: HoaDonDataTableProps) {
     setIsDeleteDialogOpen
   }), [tableProps])
 
-  const table = useReactTable({
+  const table = useReactTable({ autoResetPageIndex: false,
     data: initialData,
     columns,
     state: {
@@ -854,4 +854,5 @@ function HoaDonCellViewer({
     </Button>
   )
 }
+
 

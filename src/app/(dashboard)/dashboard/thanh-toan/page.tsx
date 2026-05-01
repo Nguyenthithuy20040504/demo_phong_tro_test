@@ -103,21 +103,23 @@ export default function ThanhToanPage() {
     const handleSyncBuilding = () => {
       const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
       setGlobalBuildingId(saved);
-      fetchData(true);
+      setThanhToanList([]);
+      setLoading(true);
+      fetchData(true, false);
     };
     window.addEventListener('buildingChange', handleSyncBuilding);
     return () => window.removeEventListener('buildingChange', handleSyncBuilding);
   }, []);
 
   useEffect(() => {
-    fetchData(true);
+    fetchData(true, false);
   }, [globalBuildingId]);
 
   // Auto-polling: fetch dữ liệu mới mỗi 30s (silent)
   useEffect(() => {
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        fetchData(true);
+        fetchData(true, true);
       }
     }, 5000);
     return () => clearInterval(interval);
@@ -127,32 +129,35 @@ export default function ThanhToanPage() {
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        fetchData(true);
+        fetchData(true, true);
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
-  const fetchData = async (forceRefresh = false) => {
+  const fetchData = async (forceRefresh = false, isBackgroundPolling = false) => {
+    const buildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
     try {
-      setLoading(true);
-      
-      if (!forceRefresh) {
-        const cachedData = cache.getCache();
-        if (cachedData) {
-          setThanhToanList(cachedData.thanhToanList || []);
-          setHoaDonList(cachedData.hoaDonList || []);
+      const cachedData = cache.getCache();
+      if (cachedData && cachedData.thanhToanList) {
+        setThanhToanList(cachedData.thanhToanList || []);
+        setHoaDonList(cachedData.hoaDonList || []);
+        
+        if (!forceRefresh) {
           setLoading(false);
           return;
         }
+        
+        if (!isBackgroundPolling) {
+          setLoading(true);
+        }
+      } else {
+        setThanhToanList([]);
+        setHoaDonList([]);
+        setLoading(true);
       }
-
-      // Cache miss or forceRefresh -> Clear old data & show loading
-      setThanhToanList([]);
-      setHoaDonList([]);
       
-      const buildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
       const buildingParam = buildingId !== 'all' ? `&toaNhaId=${buildingId}` : '';
       const limitParam = '?limit=1000';
       const query = `${limitParam}${buildingParam}`;
@@ -167,6 +172,10 @@ export default function ThanhToanPage() {
         thanhToanResponse.ok ? thanhToanResponse.json() : { data: [] },
         hoaDonResponse.ok ? hoaDonResponse.json() : { data: [] }
       ]);
+
+      // Ngăn chặn Race Condition: Bỏ qua kết quả nếu người dùng đã đổi tòa nhà trong lúc đợi API
+      const currentBuildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      if (currentBuildingId !== buildingId) return;
       
       const thanhToans = thanhToanData.data || [];
       const hoaDons = hoaDonData.data || [];
@@ -181,7 +190,10 @@ export default function ThanhToanPage() {
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
-      setLoading(false);
+      const currentBuildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      if (currentBuildingId === buildingId) {
+        setLoading(false);
+      }
     }
   };
 

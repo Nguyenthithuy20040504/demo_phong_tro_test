@@ -409,7 +409,7 @@ export function ThanhToanDataTable(props: ThanhToanDataTableProps) {
     setIsDeleteDialogOpen
   }), [tableProps])
 
-  const table = useReactTable({
+  const table = useReactTable({ autoResetPageIndex: false,
     data: initialData,
     columns,
     state: {
@@ -711,4 +711,5 @@ export function ThanhToanDataTable(props: ThanhToanDataTableProps) {
     </div>
   )
 }
+
 

@@ -83,12 +83,16 @@ export default function HoaDonTuDongPage() {
 
   const fetchStatus = async () => {
     setLoading(true);
+    const buildingId = getBuildingId();
     try {
-      const buildingId = getBuildingId();
       const buildingParam = buildingId && buildingId !== 'all' ? `?toaNhaId=${buildingId}` : '';
       const response = await fetch(`/api/auto-invoice${buildingParam}`);
       if (response.ok) {
         const data = await response.json();
+        
+        // Ngăn chặn Race Condition
+        if (getBuildingId() !== buildingId) return;
+
         setStatus(data.data);
 
         // Initialize bulk readings to undefined to force user entry
@@ -106,7 +110,9 @@ export default function HoaDonTuDongPage() {
     } catch (error) {
       toast.error('Lỗi kết nối khi kiểm tra trạng thái.');
     } finally {
-      setLoading(false);
+      if (getBuildingId() === buildingId) {
+        setLoading(false);
+      }
     }
   };
 

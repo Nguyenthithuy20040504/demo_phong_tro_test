@@ -392,7 +392,7 @@ export function KhachThueDataTable(props: KhachThueDataTableProps) {
     ...tableProps
   }), [tableProps]);
 
-  const table = useReactTable({
+  const table = useReactTable({ autoResetPageIndex: false,
     data: initialData,
     columns,
     state: {
@@ -610,3 +610,4 @@ export function KhachThueDataTable(props: KhachThueDataTableProps) {
     </div>
   );
 }
+

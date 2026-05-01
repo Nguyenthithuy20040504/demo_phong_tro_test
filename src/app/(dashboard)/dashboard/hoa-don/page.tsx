@@ -137,7 +137,7 @@ export default function HoaDonPage() {
   useEffect(() => {
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        fetchData(true);
+        fetchData(true, true);
       }
     }, 5000);
     return () => clearInterval(interval);
@@ -145,7 +145,11 @@ export default function HoaDonPage() {
 
   // Global Building Sync (listen to TopNavbar)
   useEffect(() => {
-    const handleSyncBuilding = () => fetchData(true);
+    const handleSyncBuilding = () => {
+      setHoaDonList([]);
+      setLoading(true);
+      fetchData(true, false);
+    };
     window.addEventListener('buildingChange', handleSyncBuilding);
     return () => window.removeEventListener('buildingChange', handleSyncBuilding);
   }, []);
@@ -155,9 +159,9 @@ export default function HoaDonPage() {
     console.log('hopDongList state updated:', hopDongList);
   }, [hopDongList]);
 
-  const fetchData = async (forceRefresh = false) => {
+  const fetchData = async (forceRefresh = false, isBackgroundPolling = false) => {
+    const buildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') : 'all';
     try {
-      const buildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') : 'all';
       const buildingParam = (buildingId && buildingId !== 'all') ? `toaNhaId=${buildingId}` : '';
       
       // Luôn thử load từ cache trước (instant paint)
@@ -170,8 +174,14 @@ export default function HoaDonPage() {
         setLoading(false);
         
         // Nếu không force refresh và cache còn mới, dừng luôn
-        if (!forceRefresh) return;
-        // Nếu force refresh, tiếp tục fetch nhưng KHÔNG hiện loading spinner
+        if (!forceRefresh) {
+          setLoading(false);
+          return;
+        }
+        
+        if (!isBackgroundPolling) {
+          setLoading(true);
+        }
       } else {
         setHoaDonList([]);
         setHopDongList([]);
@@ -192,6 +202,10 @@ export default function HoaDonPage() {
         hoaDonResponse.ok ? hoaDonResponse.json() : { data: [] },
         formDataResponse.ok ? formDataResponse.json() : { data: { hopDongList: [], phongList: [], khachThueList: [] } }
       ]);
+
+      // Ngăn chặn Race Condition: Bỏ qua kết quả nếu người dùng đã đổi tòa nhà trong lúc đợi API
+      const currentBuildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      if (currentBuildingId !== (buildingId || 'all')) return;
 
       const hoaDons = (hoaDonData.data || []).sort((a: any, b: any) => {
         return new Date(b.ngayTao).getTime() - new Date(a.ngayTao).getTime();
@@ -215,7 +229,10 @@ export default function HoaDonPage() {
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
-      setLoading(false);
+      const currentBuildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      if (currentBuildingId === (buildingId || 'all')) {
+        setLoading(false);
+      }
     }
   };
 

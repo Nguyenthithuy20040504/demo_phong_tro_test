@@ -108,7 +108,12 @@ export default function HopDongPage() {
     const handleSyncBuilding = () => {
       const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
       setGlobalBuildingId(saved);
-      fetchData(true);
+      
+      // Xóa state để ép skeleton hiện ra, cho user biết đang tải tòa nhà mới
+      setHopDongList([]);
+      setLoading(true);
+      
+      fetchData(true, false);
     };
     window.addEventListener('buildingChange', handleSyncBuilding);
     return () => window.removeEventListener('buildingChange', handleSyncBuilding);
@@ -119,7 +124,7 @@ export default function HopDongPage() {
     const interval = setInterval(() => {
       // Chỉ poll khi tab đang visible
       if (document.visibilityState === 'visible') {
-        fetchData(true);
+        fetchData(true, true);
       }
     }, 5000);
     return () => clearInterval(interval);
@@ -129,14 +134,15 @@ export default function HopDongPage() {
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        fetchData(true);
+        fetchData(true, true);
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
-  const fetchData = async (forceRefresh = false) => {
+  const fetchData = async (forceRefresh = false, isBackgroundPolling = false) => {
+    const buildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
     try {
       // Luôn thử load từ cache trước (instant paint)
       const cachedData = cache.getCache();
@@ -148,8 +154,15 @@ export default function HopDongPage() {
         setLoading(false);
         
         // Nếu không force refresh và cache còn mới, dừng luôn
-        if (!forceRefresh) return;
-        // Nếu force refresh, tiếp tục fetch nhưng KHÔNG hiện loading spinner
+        if (!forceRefresh) {
+          setLoading(false);
+          return;
+        }
+        
+        // Nếu KHÔNG phải auto-polling ngầm, ta hiện loading để user biết đang tải mới
+        if (!isBackgroundPolling) {
+          setLoading(true);
+        }
       } else {
         // Cache miss -> Clear old data & show loading
         setHopDongList([]);
@@ -159,7 +172,6 @@ export default function HopDongPage() {
         setLoading(true);
       }
 
-      const buildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
       const buildingParam = buildingId !== 'all' ? `toaNhaId=${buildingId}` : '';
       const limitParam = 'limit=1000';
       const query = [limitParam, buildingParam].filter(Boolean).join('&');
@@ -192,6 +204,10 @@ export default function HopDongPage() {
         toaNhaRes.json(),
       ]);
 
+      // Ngăn chặn Race Condition: Bỏ qua kết quả nếu người dùng đã đổi tòa nhà trong lúc đợi API
+      const currentBuildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      if (currentBuildingId !== buildingId) return;
+
       const hopDongs = hopDongData.data || [];
       const phongs = phongData.data || [];
       const khachThues = khachThueData.data || [];
@@ -220,7 +236,10 @@ export default function HopDongPage() {
         toast.error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra đường truyền.');
       }
     } finally {
-      setLoading(false);
+      const currentBuildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+      if (currentBuildingId === buildingId) {
+        setLoading(false);
+      }
     }
   };
 

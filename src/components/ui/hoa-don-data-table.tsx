@@ -392,7 +392,7 @@ export function HoaDonDataTable({
     [phongList, khachThueList, onView, onDownload, onScreenshot, onEdit, onDelete, onShare, onPayment]
   );
 
-  const table = useReactTable({
+  const table = useReactTable({ autoResetPageIndex: false,
     data,
     columns,
     onSortingChange: setSorting,
@@ -602,3 +602,4 @@ export function HoaDonDataTable({
     </div>
   )
 }
+
