@@ -48,12 +48,18 @@ export async function GET(request: NextRequest) {
       ]
     }).select('hoTen ten name soDienThoai phone email').lean();
 
-    const formattedUsers = unlinkedUsers.map((user: any) => ({
-      _id: user._id,
-      hoTen: user.ten || user.name || user.hoTen || '(Trống)',
-      soDienThoai: user.soDienThoai || user.phone || '(Trống)',
-      email: user.email || ''
-    }));
+    const formattedUsers = unlinkedUsers.map((user: any) => {
+      let displayEmail = user.email || '';
+      if (displayEmail.startsWith(`unlinked_${nguoiQuanLyId}_`)) {
+        displayEmail = displayEmail.replace(`unlinked_${nguoiQuanLyId}_`, '');
+      }
+      return {
+        _id: user._id,
+        hoTen: user.ten || user.name || user.hoTen || '(Trống)',
+        soDienThoai: user.soDienThoai || user.phone || '(Trống)',
+        email: displayEmail.includes('@no-email.local') ? '' : displayEmail
+      };
+    });
 
     return NextResponse.json({ success: true, data: formattedUsers });
   } catch (error) {
