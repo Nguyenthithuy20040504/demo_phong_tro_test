@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
         .populate('nguoiGui', 'ten email role vaiTro')
         .populate('phong', 'maPhong')
         .populate('toaNha', 'tenToaNha')
-        .sort({ ngayGui: -1 })
+        .sort({ ngayTao: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
         .lean(),

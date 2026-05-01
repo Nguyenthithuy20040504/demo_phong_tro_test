@@ -29,8 +29,8 @@ export async function GET(request: NextRequest) {
     }
 
     const linkedIds = [new mongoose.Types.ObjectId(userId)];
-    if (khachThueRecord && khachThueRecord._id.toString() !== userId) {
-      linkedIds.push(new mongoose.Types.ObjectId(khachThueRecord._id.toString()));
+    if (khachThueRecord && (khachThueRecord as any)._id.toString() !== userId) {
+      linkedIds.push(new mongoose.Types.ObjectId((khachThueRecord as any)._id.toString()));
     }
 
     const { searchParams } = new URL(request.url);
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
         path: 'phong',
         select: 'toaNha maPhong',
       })
-      .sort({ ngayGui: -1 })
+      .sort({ ngayTao: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean();
