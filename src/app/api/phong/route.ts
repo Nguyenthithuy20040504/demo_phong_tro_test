@@ -84,8 +84,8 @@ export async function GET(request: NextRequest) {
           phong: phong._id
         }).sort({ ngayTao: -1 }).lean();
 
-        // Chỉ chấp nhận nếu là hợp đồng đang hoạt động hoặc đang chờ duyệt
-        if (hopDongRaw && !['hoatDong', 'choDuyet'].includes(hopDongRaw.trangThai)) {
+        // Chấp nhận các trạng thái "đang/sắp có hiệu lực"
+        if (hopDongRaw && !['hoatDong', 'choDuyet', 'choDuyetGiaHan', 'choDuyetHuy'].includes(hopDongRaw.trangThai)) {
           hopDongRaw = null;
         }
 
@@ -115,12 +115,12 @@ export async function GET(request: NextRequest) {
             maHoaDon: { $not: /^(COC-|HC-)/ }
           }).sort({ nam: -1, thang: -1 }).lean() as any;
 
-          if (hoaDonThue && ['quaHan', 'chuaThanhToan', 'daThanhToanMotPhan'].includes(hoaDonThue.trangThai)) {
+          if (hoaDonThue && hoaDonThue.trangThai === 'quaHan') {
             trangThaiTongHop = 'treTien';
-          } else if (hoaDonThue && hoaDonThue.trangThai === 'daThanhToan') {
+          } else if (hoaDonThue && ['daThanhToan'].includes(hoaDonThue.trangThai)) {
             trangThaiTongHop = 'daThanhToan';
           } else {
-            // Phòng đang thuê nhưng chưa có hóa đơn tháng hoặc chỉ có hóa đơn cọc
+            // Phòng đang thuê nhưng chưa có hóa đơn tháng hoặc chỉ có hóa đơn cọc/chưa đến hạn
             trangThaiTongHop = 'dangThue';
           }
         }

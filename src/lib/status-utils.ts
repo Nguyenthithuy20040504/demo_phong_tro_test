@@ -13,7 +13,7 @@ export async function calculatePhongStatus(phongId: string): Promise<'trong' | '
     // Tìm hợp đồng đang hoạt động của phòng
     const hopDongHoatDong = await HopDong.findOne({
       phong: phongId,
-      trangThai: { $in: ['hoatDong', 'choDuyetGiaHan'] },
+      trangThai: { $in: ['hoatDong', 'choDuyetGiaHan', 'choDuyetHuy'] },
       ngayBatDau: { $lte: new Date() },
       ngayKetThuc: { $gte: new Date() }
     });
@@ -53,7 +53,7 @@ export async function calculatePhongStatus(phongId: string): Promise<'trong' | '
     // Kiểm tra có hợp đồng đã đặt nhưng chưa bắt đầu không
     const hopDongDaDat = await HopDong.findOne({
       phong: phongId,
-      trangThai: { $in: ['hoatDong', 'choDuyetGiaHan'] },
+      trangThai: { $in: ['hoatDong', 'choDuyetGiaHan', 'choDuyetHuy'] },
       ngayBatDau: { $gt: new Date() }
     });
 
@@ -82,7 +82,7 @@ export async function calculateKhachThueStatus(khachThueId: string): Promise<'da
         { khachThueId: khachThueId },
         { nguoiDaiDien: khachThueId }
       ],
-      trangThai: { $in: ['hoatDong', 'choDuyetGiaHan'] },
+      trangThai: { $in: ['hoatDong', 'choDuyetGiaHan', 'choDuyetHuy'] },
       ngayBatDau: { $lte: new Date() },
       ngayKetThuc: { $gte: new Date() }
     });
