@@ -6,6 +6,8 @@ import NguoiDung from '@/models/NguoiDung';
 import ThongBao from '@/models/ThongBao';
 import { ObjectId } from 'mongodb';
 
+export const dynamic = 'force-dynamic';
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
