@@ -12,6 +12,8 @@ import { isToaNhaAccessible } from '@/lib/auth-utils';
 import { getOwnerByHoaDon, getVietQrUrl } from '@/lib/payment-utils';
 import ThongBao from '@/models/ThongBao';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);

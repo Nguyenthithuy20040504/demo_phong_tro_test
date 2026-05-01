@@ -9,6 +9,8 @@ import HopDong from '@/models/HopDong';
 import ThanhToan from '@/models/ThanhToan';
 import { getAccessibleToaNhaIds } from '@/lib/auth-utils';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
