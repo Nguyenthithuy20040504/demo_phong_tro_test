@@ -313,7 +313,6 @@ export default function DashboardPage() {
       const globalId = localStorage.getItem('selected_building_id') || 'all';
       if (globalId !== selectedToaNha) {
         setSelectedToaNha(globalId);
-        // fetchStats is called by useEffect [selectedToaNha] dependency indirectly if we use one
       }
     };
     window.addEventListener('buildingChange', handleSyncBuilding);
@@ -328,10 +327,10 @@ export default function DashboardPage() {
     window.dispatchEvent(new Event('buildingChange'));
   };
 
-  // Trigger refetch when selectedToaNha or timeRange changes
+  // Trigger refetch when filters change
   useEffect(() => {
     if (status === 'authenticated') {
-      fetchStats();
+      fetchStats(true); // pass true for initial if we want to skip center spinner
     }
   }, [selectedToaNha, timeRange, status, fetchStats]);
 
@@ -389,29 +388,11 @@ export default function DashboardPage() {
   }, [searchParams, status, session]);
 
   useEffect(() => {
-    // Initial sync with TopNavbar choice
-    const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
-    setSelectedToaNha(saved);
-    fetchStats();
-  }, []);
+    document.title = 'Dashboard | SmartStay';
+    fetchInitialData();
+  }, [fetchInitialData]);
 
-  // Global Building Sync
-  useEffect(() => {
-    const handleSyncBuilding = () => {
-      const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
-      setSelectedToaNha(saved);
-      fetchStats();
-    };
-    window.addEventListener('buildingChange', handleSyncBuilding);
-    return () => window.removeEventListener('buildingChange', handleSyncBuilding);
-  }, []);
 
-  useEffect(() => {
-    // Re-fetch stats khi bộ lọc THỜI GIAN thay đổi (selectedToaNha đã handle ở sync effect)
-    if (!loading && timeRange !== '6_months') {
-      fetchStats();
-    }
-  }, [timeRange]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN').format(amount) + ' ₫';
