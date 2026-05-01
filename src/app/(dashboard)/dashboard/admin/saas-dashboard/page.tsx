@@ -35,19 +35,28 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { formatCurrency } from '@/lib/utils'; // Giả sử có hàm này, nếu không sẽ tự format
+import { formatCurrency } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function SaasDashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [timeRange, setTimeRange] = useState('12m');
 
   useEffect(() => {
-    fetchStats();
-  }, []);
+    fetchStats(timeRange);
+  }, [timeRange]);
 
-  const fetchStats = async () => {
+  const fetchStats = async (range: string) => {
     try {
-      const res = await fetch('/api/admin/saas/stats');
+      setLoading(true);
+      const res = await fetch(`/api/admin/saas/stats?range=${range}`);
       const data = await res.json();
       setStats(data);
     } catch (error) {
@@ -118,9 +127,23 @@ export default function SaasDashboardPage() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="lg:col-span-4 premium-card">
-          <CardHeader>
-            <CardTitle>Biểu đồ Doanh thu</CardTitle>
-            <CardDescription>Thống kê tiền bán phần mềm 12 tháng gần nhất.</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Biểu đồ Doanh thu</CardTitle>
+              <CardDescription>
+                Thống kê tiền bán phần mềm {timeRange === '3m' ? '3' : timeRange === '6m' ? '6' : '12'} tháng gần nhất.
+              </CardDescription>
+            </div>
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Chọn thời gian" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="3m">3 tháng qua</SelectItem>
+                <SelectItem value="6m">6 tháng qua</SelectItem>
+                <SelectItem value="12m">12 tháng qua</SelectItem>
+              </SelectContent>
+            </Select>
           </CardHeader>
           <CardContent className="pl-2">
             <div className="h-[300px] w-full">

@@ -7,7 +7,7 @@ import SaaSPayment from '@/models/SaaSPayment';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (session?.user?.role !== 'admin') {
@@ -16,6 +16,13 @@ export async function GET() {
 
     await dbConnect();
 
+    const { searchParams } = new URL(request.url);
+    const range = searchParams.get('range') || '12m'; // Default to 12 months
+    let monthsToFetch = 12;
+    if (range === '3m') monthsToFetch = 3;
+    if (range === '6m') monthsToFetch = 6;
+    if (range === '12m') monthsToFetch = 12;
+
     // 4. Tài khoản sắp hết hạn (trong vòng 7 ngày)
     const sevenDaysFromNow = new Date();
     sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
@@ -23,7 +30,7 @@ export async function GET() {
     // Chuẩn bị query mảng tháng cho Promise.all
     const now = new Date();
     const monthQueries = [];
-    for (let i = 11; i >= 0; i--) {
+    for (let i = monthsToFetch - 1; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const nextD = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
         monthQueries.push({ d, nextD });

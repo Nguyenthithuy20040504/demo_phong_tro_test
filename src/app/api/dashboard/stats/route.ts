@@ -130,9 +130,13 @@ export async function GET(request: NextRequest) {
       Phong.countDocuments({ ...phongQuery, trangThai: 'baoTri' }),
       SuCo.countDocuments({ ...relationQuery, trangThai: { $in: ['moi', 'dangXuLy'] } }),
       HopDong.countDocuments({ 
-        ...relationQuery, 
-        ngayKetThuc: { $gte: now, $lte: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) },
-        trangThai: 'hoatDong'
+        $and: [
+          relationQuery,
+          {
+            ngayKetThuc: { $gte: now, $lte: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) },
+            trangThai: { $in: ['hoatDong', 'choDuyetGiaHan', 'choDuyetHuy'] }
+          }
+        ]
       }),
       HoaDon.countDocuments({
         $and: [
@@ -286,21 +290,46 @@ export async function GET(request: NextRequest) {
     }));
 
     const hopDongSapHetHanList = await HopDong.find({
-      ...relationQuery,
-      ngayKetThuc: { $gte: now, $lte: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) },
-      trangThai: 'hoatDong'
+      $and: [
+        relationQuery,
+        {
+          ngayKetThuc: { $gte: now, $lte: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) },
+          trangThai: { $in: ['hoatDong', 'choDuyetGiaHan', 'choDuyetHuy'] }
+        }
+      ]
     })
     .sort({ ngayKetThuc: 1 })
     .limit(10)
-    .populate('nguoiDaiDien', 'hoTen')
     .populate('phong', 'maPhong');
 
-    const formattedHopDongSapHetHan = hopDongSapHetHanList.map((hd: any) => ({
-      _id: hd._id,
-      tenKhach: hd.nguoiDaiDien?.hoTen || 'N/A',
-      maPhong: hd.phong?.maPhong || 'N/A',
-      ngayHetHan: hd.ngayKetThuc,
-      soNgayConLai: Math.ceil((new Date(hd.ngayKetThuc).getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
+    const formattedHopDongSapHetHan = await Promise.all(hopDongSapHetHanList.map(async (hd: any) => {
+      let tenKhach = 'N/A';
+      const kId = hd.nguoiDaiDien?._id || hd.nguoiDaiDien;
+      
+      if (kId) {
+        let ktInfo: any = await KhachThueModel.findById(kId).select('hoTen').lean();
+        if (!ktInfo) {
+          const ndInfo: any = await NguoiDungModel.findById(kId).select('ten name').lean();
+          if (ndInfo) {
+            tenKhach = ndInfo.ten || ndInfo.name || 'Khách thuê';
+          }
+        } else {
+          tenKhach = ktInfo.hoTen;
+        }
+
+        if (tenKhach === 'N/A' && hd.snapshotKhachThue) {
+          const snap = hd.snapshotKhachThue.find((s: any) => s.id === kId.toString() || s.laNoiDaiDien);
+          if (snap) tenKhach = snap.hoTen || 'Khách thuê';
+        }
+      }
+
+      return {
+        _id: hd._id,
+        tenKhach,
+        maPhong: hd.phong?.maPhong || 'N/A',
+        ngayHetHan: hd.ngayKetThuc,
+        soNgayConLai: Math.ceil((new Date(hd.ngayKetThuc).getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
+      };
     }));
 
     return NextResponse.json({
