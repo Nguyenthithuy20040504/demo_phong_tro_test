@@ -130,6 +130,13 @@ export default function SuCoPage() {
         }
       }
 
+      // Cache miss or forceRefresh -> Clear old data & show loading
+      setSuCoList([]);
+      setPhongList([]);
+      setKhachThueList([]);
+      setHopDongList([]);
+      setToaNhaList([]);
+
       const buildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
       const buildingParam = buildingId !== 'all' ? `&toaNhaId=${buildingId}` : '';
       const limitParam = '?limit=1000';

@@ -173,6 +173,10 @@ export default function HoaDonPage() {
         if (!forceRefresh) return;
         // Nếu force refresh, tiếp tục fetch nhưng KHÔNG hiện loading spinner
       } else {
+        setHoaDonList([]);
+        setHopDongList([]);
+        setPhongList([]);
+        setKhachThueList([]);
         setLoading(true);
       }
       

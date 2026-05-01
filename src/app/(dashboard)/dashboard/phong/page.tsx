@@ -455,6 +455,8 @@ export default function PhongPage() {
         if (!forceRefresh) return;
         // Nếu force refresh, tiếp tục fetch nhưng KHÔNG hiện loading spinner
       } else {
+        setPhongList([]);
+        setToaNhaList([]);
         setLoading(true);
       }
       

@@ -151,6 +151,11 @@ export default function HopDongPage() {
         if (!forceRefresh) return;
         // Nếu force refresh, tiếp tục fetch nhưng KHÔNG hiện loading spinner
       } else {
+        // Cache miss -> Clear old data & show loading
+        setHopDongList([]);
+        setPhongList([]);
+        setKhachThueList([]);
+        setToaNhaList([]);
         setLoading(true);
       }
 

@@ -169,6 +169,12 @@ export default function ThongBaoPage() {
           return;
         }
       }
+
+      // Cache miss or forceRefresh -> Clear old data & show loading
+      setThongBaoList([]);
+      setToaNhaList([]);
+      setPhongList([]);
+      setKhachThueList([]);
       
       // Fetch all data in parallel
       const limitQuery = '?limit=2000';

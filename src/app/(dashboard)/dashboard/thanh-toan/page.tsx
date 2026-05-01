@@ -147,6 +147,10 @@ export default function ThanhToanPage() {
           return;
         }
       }
+
+      // Cache miss or forceRefresh -> Clear old data & show loading
+      setThanhToanList([]);
+      setHoaDonList([]);
       
       const buildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
       const buildingParam = buildingId !== 'all' ? `&toaNhaId=${buildingId}` : '';

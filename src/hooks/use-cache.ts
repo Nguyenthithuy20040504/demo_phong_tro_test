@@ -18,16 +18,17 @@ export function useCache<T>(config: CacheConfig) {
   
   const { key, duration = 300000 } = config; // 5 phút mặc định
   
-  // Lấy building ID từ localStorage để phân tách cache theo tòa nhà
-  const buildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
-  
-  const storageKey = userId ? `${userId}_${buildingId}_${key}` : `${buildingId}_${key}`;
-  
+  const getStorageKey = useCallback(() => {
+    const bId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
+    return userId ? `${userId}_${bId}_${key}` : `${bId}_${key}`;
+  }, [userId, key]);
+
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Get cached data
   const getCache = useCallback((): T | null => {
     try {
+      const storageKey = getStorageKey();
       const cached = sessionStorage.getItem(storageKey);
       if (!cached) return null;
 
@@ -47,11 +48,12 @@ export function useCache<T>(config: CacheConfig) {
       console.error('Error reading cache:', error);
       return null;
     }
-  }, [storageKey, duration, userId]);
+  }, [getStorageKey, duration, userId]);
 
   // Set cached data
   const setCache = useCallback((data: T) => {
     try {
+      const storageKey = getStorageKey();
       const cacheData: CachedData<T> = {
         timestamp: Date.now(),
         data,
@@ -61,7 +63,7 @@ export function useCache<T>(config: CacheConfig) {
     } catch (error) {
       console.error('Error setting cache:', error);
     }
-  }, [storageKey, userId]);
+  }, [getStorageKey, userId]);
 
   // Clear all dashboard caches for all buildings or specific ones
   const clearAllCaches = useCallback(() => {
