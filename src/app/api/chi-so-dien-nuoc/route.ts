@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       ChiSoDienNuoc.find(query)
         .populate('phong', 'maPhong toaNha')
         .populate('nguoiGhi', 'ten email')
-        .sort({ nam: -1, thang: -1 })
+        .sort({ ngayTao: -1 })
         .skip((page - 1) * limit)
         .limit(limit),
       ChiSoDienNuoc.countDocuments(query)

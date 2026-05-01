@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
           }
         })
         .populate('nguoiXuLy', 'ten email')
-        .sort({ ngayBaoCao: -1 })
+        .sort({ ngayTao: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
         .lean(),

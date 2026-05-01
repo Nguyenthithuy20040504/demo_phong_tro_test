@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
           ]
         })
         .populate('nguoiNhan', 'hoTen email')   
-        .sort({ ngayThanhToan: -1 })
+        .sort({ ngayTao: -1 })
         .skip(skip)
         .limit(limit),
       ThanhToan.countDocuments(query)

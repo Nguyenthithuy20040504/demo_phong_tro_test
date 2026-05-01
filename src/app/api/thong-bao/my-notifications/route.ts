@@ -15,17 +15,36 @@ export async function GET(request: NextRequest) {
     }
 
     await dbConnect();
-    const userId = new mongoose.Types.ObjectId(session.user.id);
+    const userId = session.user.id;
+    
+    // Tìm các ID liên kết (KhachThue vs NguoiDung)
+    const KhachThue = (await import('@/models/KhachThue')).default;
+    let khachThueRecord = await KhachThue.findById(userId);
+    if (!khachThueRecord && session.user.phone) {
+      khachThueRecord = await KhachThue.findOne({ soDienThoai: session.user.phone });
+    }
+    if (!khachThueRecord && session.user.email) {
+      khachThueRecord = await KhachThue.findOne({ email: session.user.email });
+    }
+
+    const linkedIds = [new mongoose.Types.ObjectId(userId)];
+    if (khachThueRecord && (khachThueRecord as any)._id.toString() !== userId) {
+      linkedIds.push(new mongoose.Types.ObjectId((khachThueRecord as any)._id.toString()));
+    }
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '20');
     const page = parseInt(searchParams.get('page') || '1');
 
-    const query = { nguoiNhan: userId };
+    const query = { nguoiNhan: { $in: linkedIds } };
     const total = await ThongBao.countDocuments(query);
 
     const notifications = await ThongBao.find(query)
-      .populate('nguoiGui', 'ten name email')
-      .sort({ ngayGui: -1 })
+      .populate('nguoiGui', 'ten name email role vaiTro')
+      .populate({
+        path: 'phong',
+        select: 'toaNha maPhong',
+      })
+      .sort({ ngayTao: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean();
