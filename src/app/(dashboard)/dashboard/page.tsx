@@ -247,6 +247,7 @@ export default function DashboardPage() {
     } else {
       setLoading(true);
     }
+
     try {
       const params = new URLSearchParams();
       if (selectedToaNha !== 'all') params.append('toaNhaId', selectedToaNha);
@@ -254,6 +255,23 @@ export default function DashboardPage() {
       const now = new Date();
       let start = '';
       let end = now.toISOString().split('T')[0];
+      
+      // Load from cache first for instant paint
+      const cached = typeof window !== 'undefined' ? localStorage.getItem('dashboard_stats_cache') : null;
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed.selectedToaNha === selectedToaNha) {
+            setStats(parsed.data);
+            setLoading(false);
+          }
+        } catch (e) {}
+      }
+
+      // Chỉ hiện loading nếu chưa có data
+      if (!stats) {
+        setLoading(true);
+      }
 
       if (timeRange === '3_months') {
         start = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString().split('T')[0];
@@ -340,9 +358,11 @@ export default function DashboardPage() {
   // Global Building Sync (listen to TopNavbar)
   useEffect(() => {
     const handleSyncBuilding = () => {
-      const globalId = localStorage.getItem('selected_building_id') || 'all';
+      const globalId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
       if (globalId !== selectedToaNha) {
         setSelectedToaNha(globalId);
+        // KHÔNG xóa stats ngay lập tức để tránh nháy màn hình trắng.
+        // fetchStats sẽ tự load từ cache (do prefetcher đã nạp sẵn).
       }
     };
     window.addEventListener('buildingChange', handleSyncBuilding);
@@ -351,10 +371,12 @@ export default function DashboardPage() {
 
   // When local filter changes, sync to global
   const handleLocalBuildingChange = (val: string) => {
-    setSelectedToaNha(val);
-    localStorage.setItem('selected_building_id', val);
-    // Dispatch event so TopNavbar can sync if it doesn't reload
-    window.dispatchEvent(new Event('buildingChange'));
+    if (val !== selectedToaNha) {
+      setSelectedToaNha(val);
+      localStorage.setItem('selected_building_id', val);
+      // Dispatch event so TopNavbar can sync if it doesn't reload
+      window.dispatchEvent(new Event('buildingChange'));
+    }
   };
 
   // Trigger refetch when filters change

@@ -412,8 +412,7 @@ export default function PhongPage() {
       if (globalId && globalId !== 'all') {
         setSelectedToaNhaTab(globalId);
       }
-      setPhongList([]);
-      setLoading(true);
+      // KHÔNG xóa list cũ ở đây để tránh giật lag.
       fetchPhong(true, false);
     };
     window.addEventListener('buildingChange', handleSyncBuilding);
@@ -455,12 +454,14 @@ export default function PhongPage() {
         setLoading(false);
         
         if (!forceRefresh) {
-          setLoading(false);
           return;
         }
         
-        if (!isBackgroundPolling) {
-          setLoading(true);
+        // Soft loading: Chỉ hiện loading spinner nếu danh sách hiện tại đang trống
+        if (phongList.length === 0) {
+          if (!isBackgroundPolling) {
+            setLoading(true);
+          }
         }
       } else {
         setPhongList([]);
@@ -468,32 +469,39 @@ export default function PhongPage() {
         setLoading(true);
       }
       
+      // Nếu toaNhaList đã có dữ liệu (từ cache), không cần fetch lại để tăng tốc độ!
+      const shouldFetchToaNha = toaNhaList.length === 0;
       const buildingParam = buildingId !== 'all' ? `&toaNhaId=${buildingId}` : '';
       
-      const [phongRes, toaNhaRes] = await Promise.all([
-        fetch(`/api/phong?limit=1000${buildingParam}`),
-        fetch('/api/toa-nha')
-      ]);
+      const fetchPromises = [fetch(`/api/phong?limit=1000${buildingParam}`, { cache: 'no-store' })];
+      if (shouldFetchToaNha) {
+        fetchPromises.push(fetch('/api/toa-nha', { cache: 'no-store' }));
+      }
+
+      const responses = await Promise.all(fetchPromises);
+      const phongRes = responses[0];
 
       // Ngăn chặn Race Condition: Bỏ qua kết quả nếu người dùng đã đổi tòa nhà trong lúc đợi API
       const currentBuildingId = typeof window !== 'undefined' ? (localStorage.getItem('selected_building_id') || 'all') : 'all';
       if (currentBuildingId !== buildingId) return;
 
       let phongData: EnrichedPhong[] = [];
-      let toaNhaData: ToaNha[] = [];
+      let toaNhaData: ToaNha[] = toaNhaList; // Dùng lại data cũ mặc định
 
       if (phongRes.ok) {
         const result = await phongRes.json();
         if (result.success) phongData = result.data;
       }
       
-      if (toaNhaRes.ok) {
-        const result = await toaNhaRes.json();
+      if (shouldFetchToaNha && responses[1] && responses[1].ok) {
+        const result = await responses[1].json();
         if (result.success) toaNhaData = result.data;
       }
       
       setPhongList(phongData);
-      setToaNhaList(toaNhaData);
+      if (shouldFetchToaNha) {
+        setToaNhaList(toaNhaData);
+      }
       
       // Nếu có chọn tòa nhà global, ưu tiên chọn tab đó luôn
       const globalId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') : null;
@@ -503,7 +511,7 @@ export default function PhongPage() {
         setSelectedToaNhaTab(toaNhaData[0]._id!);
       }
       
-      if (phongData.length > 0 || toaNhaData.length > 0) {
+      if (phongRes.ok) {
         cache.setCache({
           phongList: phongData,
           toaNhaList: toaNhaData,

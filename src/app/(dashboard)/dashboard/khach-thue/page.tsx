@@ -88,6 +88,7 @@ export default function KhachThuePage() {
     const handleSyncBuilding = () => {
       const id = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
       setSelectedBuilding(id);
+      // Giữ data cũ (Stale-while-revalidate) để tránh màn hình trắng
       mutate(apiUrl);
     };
     window.addEventListener('buildingChange', handleSyncBuilding);

@@ -29,13 +29,14 @@ export function GlobalPrefetcher() {
     const buildingQS = buildingParam ? `&${buildingParam}` : '';
     
     try {
-      const [phongRes, toaNhaRes, khachThueRes, hopDongRes, hoaDonRes, hoaDonFormRes] = await Promise.all([
+      const [phongRes, toaNhaRes, khachThueRes, hopDongRes, hoaDonRes, hoaDonFormRes, statsRes] = await Promise.all([
         fetch(`/api/phong?limit=500${buildingQS}`, { signal }).catch(() => null),
         fetch('/api/toa-nha', { signal }).catch(() => null),
         fetch(`/api/khach-thue?limit=500${buildingQS}`, { signal }).catch(() => null),
         fetch(`/api/hop-dong?limit=1000${buildingQS}`, { signal }).catch(() => null),
         fetch(`/api/hoa-don?limit=1000${buildingQS}`, { signal }).catch(() => null),
         fetch(`/api/hoa-don/form-data?${buildingParam}`, { signal }).catch(() => null),
+        fetch(`/api/dashboard/stats?${buildingParam}`, { signal }).catch(() => null),
       ]);
 
       if (signal.aborted) return;
@@ -46,6 +47,7 @@ export function GlobalPrefetcher() {
       const hopDongData = hopDongRes?.ok ? (await hopDongRes.json()).data : [];
       const hoaDonData = hoaDonRes?.ok ? (await hoaDonRes.json()).data : [];
       const hoaDonFormData = hoaDonFormRes?.ok ? (await hoaDonFormRes.json()).data : null;
+      const statsData = statsRes?.ok ? (await statsRes.json()).data : null;
 
       if (signal.aborted) return;
 
@@ -89,6 +91,15 @@ export function GlobalPrefetcher() {
         phongList: formDataPhong, 
         khachThueList: formDataKhachThue 
       });
+      
+      // Ghi cache cho Dashboard Stats (localStorage để tương thích với Dashboard page)
+      if (statsData) {
+        localStorage.setItem('dashboard_stats_cache', JSON.stringify({
+          data: statsData,
+          selectedToaNha: buildingId,
+          timestamp
+        }));
+      }
 
       console.log(`[Prefetch] ✅ Preloaded all data for building: ${buildingId} (${phongData.length} phòng, ${hopDongData.length} hợp đồng, ${hoaDonData.length} hóa đơn)`);
     } catch (e: any) {

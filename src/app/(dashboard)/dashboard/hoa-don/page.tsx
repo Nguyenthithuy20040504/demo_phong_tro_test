@@ -146,8 +146,7 @@ export default function HoaDonPage() {
   // Global Building Sync (listen to TopNavbar)
   useEffect(() => {
     const handleSyncBuilding = () => {
-      setHoaDonList([]);
-      setLoading(true);
+      // KHÔNG xóa list cũ ở đây để tránh giật lag.
       fetchData(true, false);
     };
     window.addEventListener('buildingChange', handleSyncBuilding);
@@ -175,12 +174,14 @@ export default function HoaDonPage() {
         
         // Nếu không force refresh và cache còn mới, dừng luôn
         if (!forceRefresh) {
-          setLoading(false);
           return;
         }
         
-        if (!isBackgroundPolling) {
-          setLoading(true);
+        // Soft loading: Chỉ hiện loading spinner nếu danh sách hiện tại đang trống
+        if (hoaDonList.length === 0) {
+          if (!isBackgroundPolling) {
+            setLoading(true);
+          }
         }
       } else {
         setHoaDonList([]);
@@ -192,16 +193,23 @@ export default function HoaDonPage() {
       
       const buildingParamString = buildingParam ? `&${buildingParam}` : '';
       
-      // Fetch both hoa-don and form-data in parallel with building filter and high limit
-      const [hoaDonResponse, formDataResponse] = await Promise.all([
-        fetch(`/api/hoa-don?limit=1000${buildingParamString}`, { cache: 'no-store' }),
-        fetch(`/api/hoa-don/form-data?${buildingParam}`, { cache: 'no-store' })
-      ]);
+      // Chỉ fetch form-data (tất cả phòng, hợp đồng, khách thuê) nếu chưa có dữ liệu để tránh nặng server
+      const shouldFetchFormData = hopDongList.length === 0 || phongList.length === 0;
 
-      const [hoaDonData, formDataResult] = await Promise.all([
-        hoaDonResponse.ok ? hoaDonResponse.json() : { data: [] },
-        formDataResponse.ok ? formDataResponse.json() : { data: { hopDongList: [], phongList: [], khachThueList: [] } }
-      ]);
+      const fetchPromises = [fetch(`/api/hoa-don?limit=1000${buildingParamString}`, { cache: 'no-store' })];
+      if (shouldFetchFormData) {
+        fetchPromises.push(fetch(`/api/hoa-don/form-data?${buildingParam}`, { cache: 'no-store' }));
+      }
+
+      const responses = await Promise.all(fetchPromises);
+      const hoaDonResponse = responses[0];
+      
+      const hoaDonData = hoaDonResponse.ok ? await hoaDonResponse.json() : { data: [] };
+      let formDataResult = { data: { hopDongList, phongList, khachThueList } }; // Dùng state cũ
+
+      if (shouldFetchFormData && responses[1]) {
+        formDataResult = responses[1].ok ? await responses[1].json() : { data: { hopDongList: [], phongList: [], khachThueList: [] } };
+      }
 
       // Ngăn chặn Race Condition: Bỏ qua kết quả nếu người dùng đã đổi tòa nhà trong lúc đợi API
       const currentBuildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';

@@ -109,10 +109,8 @@ export default function HopDongPage() {
       const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
       setGlobalBuildingId(saved);
       
-      // Xóa state để ép skeleton hiện ra, cho user biết đang tải tòa nhà mới
-      setHopDongList([]);
-      setLoading(true);
-      
+      // KHÔNG xóa list cũ ở đây để tránh giật lag. 
+      // fetchData sẽ tự động check cache và update ngầm.
       fetchData(true, false);
     };
     window.addEventListener('buildingChange', handleSyncBuilding);
@@ -155,13 +153,15 @@ export default function HopDongPage() {
         
         // Nếu không force refresh và cache còn mới, dừng luôn
         if (!forceRefresh) {
-          setLoading(false);
           return;
         }
         
-        // Nếu KHÔNG phải auto-polling ngầm, ta hiện loading để user biết đang tải mới
-        if (!isBackgroundPolling) {
-          setLoading(true);
+        // Soft loading: Nếu đã có data, KHÔNG set loading(true) để tránh nháy màn hình
+        // Ta chỉ fetch ngầm để cập nhật dữ liệu mới nhất
+        if (hopDongList.length === 0) {
+          if (!isBackgroundPolling) {
+            setLoading(true);
+          }
         }
       } else {
         // Cache miss -> Clear old data & show loading

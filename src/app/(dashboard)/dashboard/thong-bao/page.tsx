@@ -144,8 +144,7 @@ export default function ThongBaoPage() {
     const handleSyncBuilding = () => {
       const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
       setSelectedBuildingId(saved);
-      setThongBaoList([]);
-      setLoading(true);
+      // KHÔNG xóa list cũ ở đây để tránh giật lag.
       fetchData(true, false);
     };
     window.addEventListener('buildingChange', handleSyncBuilding);
@@ -166,13 +165,17 @@ export default function ThongBaoPage() {
         setPhongList(cachedData.phongList || []);
         setKhachThueList(cachedData.khachThueList || []);
         
+        setLoading(false);
+        
         if (!forceRefresh) {
-          setLoading(false);
           return;
         }
         
-        if (!isBackgroundPolling) {
-          setLoading(true);
+        // Soft loading: Chỉ hiện loading spinner nếu danh sách hiện tại đang trống
+        if (thongBaoList.length === 0) {
+          if (!isBackgroundPolling) {
+            setLoading(true);
+          }
         }
       } else {
         setThongBaoList([]);
@@ -212,33 +215,45 @@ export default function ThongBaoPage() {
         const currentLocalBuilding = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
         const buildingFilterQuery = currentLocalBuilding !== 'all' ? `&toaNhaId=${currentLocalBuilding}` : '';
         
-        const [thongBaoResponse, toaNhaResponse, phongResponse, khachThueResponse] = await Promise.all([
-          fetch(`/api/thong-bao${limitQuery}${buildingFilterQuery}`),
-          fetch('/api/toa-nha'),
-          fetch(`/api/phong${limitQuery}&action=basic`),
-          fetch(`/api/khach-thue${limitQuery}`)
-        ]);
+        // Chỉ fetch dữ liệu phụ nếu chưa có trong state để tăng tốc độ load
+        const shouldFetchSecondary = toaNhaList.length === 0 || phongList.length === 0 || khachThueList.length === 0;
 
-        const [thongBaoData, toaNhaData, phongData, khachThueData] = await Promise.all([
-          thongBaoResponse.ok ? thongBaoResponse.json() : { data: [] },
-          toaNhaResponse.ok ? toaNhaResponse.json() : { data: [] },
-          phongResponse.ok ? phongResponse.json() : { data: [] },
-          khachThueResponse.ok ? khachThueResponse.json() : { data: [] }
-        ]);
+        const fetchPromises = [fetch(`/api/thong-bao${limitQuery}${buildingFilterQuery}`, { cache: 'no-store' })];
+        if (shouldFetchSecondary) {
+          fetchPromises.push(fetch('/api/toa-nha', { cache: 'no-store' }));
+          fetchPromises.push(fetch(`/api/phong${limitQuery}&action=basic`, { cache: 'no-store' }));
+          fetchPromises.push(fetch(`/api/khach-thue${limitQuery}`, { cache: 'no-store' }));
+        }
+
+        const responses = await Promise.all(fetchPromises);
+        const thongBaoResponse = responses[0];
+        const thongBaoData = thongBaoResponse.ok ? await thongBaoResponse.json() : { data: [] };
 
         // Ngăn chặn Race Condition: Bỏ qua kết quả nếu người dùng đã đổi tòa nhà trong lúc đợi API
         const latestBuildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
         if (latestBuildingId !== currentLocalBuilding) return;
 
         const thongBaos = thongBaoData.success ? thongBaoData.data : [];
-        const toaNhas = toaNhaData.success ? toaNhaData.data : [];
-        const phongs = phongData.success ? phongData.data : [];
-        const khachThues = khachThueData.success ? khachThueData.data : [];
-
         setThongBaoList(thongBaos);
-        setToaNhaList(toaNhas);
-        setPhongList(phongs);
-        setKhachThueList(khachThues);
+
+        let toaNhas = toaNhaList;
+        let phongs = phongList;
+        let khachThues = khachThueList;
+
+        if (shouldFetchSecondary && responses.length > 1) {
+          const [toaNhaData, phongData, khachThueData] = await Promise.all([
+            responses[1].json(),
+            responses[2].json(),
+            responses[3].json()
+          ]);
+          toaNhas = toaNhaData.success ? toaNhaData.data : [];
+          phongs = phongData.success ? phongData.data : [];
+          khachThues = khachThueData.success ? khachThueData.data : [];
+
+          setToaNhaList(toaNhas);
+          setPhongList(phongs);
+          setKhachThueList(khachThues);
+        }
         
         cache.setCache({
           thongBaoList: thongBaos,

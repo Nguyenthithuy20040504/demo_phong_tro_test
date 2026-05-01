@@ -103,8 +103,7 @@ export default function ThanhToanPage() {
     const handleSyncBuilding = () => {
       const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
       setGlobalBuildingId(saved);
-      setThanhToanList([]);
-      setLoading(true);
+      // KHÔNG xóa list cũ ở đây để tránh giật lag.
       fetchData(true, false);
     };
     window.addEventListener('buildingChange', handleSyncBuilding);
@@ -144,13 +143,17 @@ export default function ThanhToanPage() {
         setThanhToanList(cachedData.thanhToanList || []);
         setHoaDonList(cachedData.hoaDonList || []);
         
+        setLoading(false);
+        
         if (!forceRefresh) {
-          setLoading(false);
           return;
         }
         
-        if (!isBackgroundPolling) {
-          setLoading(true);
+        // Soft loading: Chỉ hiện loading spinner nếu danh sách hiện tại đang trống
+        if (thanhToanList.length === 0) {
+          if (!isBackgroundPolling) {
+            setLoading(true);
+          }
         }
       } else {
         setThanhToanList([]);
@@ -162,16 +165,23 @@ export default function ThanhToanPage() {
       const limitParam = '?limit=1000';
       const query = `${limitParam}${buildingParam}`;
 
-      // Fetch both thanh toan and hoa don in parallel
-      const [thanhToanResponse, hoaDonResponse] = await Promise.all([
-        fetch(`/api/thanh-toan${query}`),
-        fetch(`/api/hoa-don${query}`)
-      ]);
+      // Chỉ fetch danh sách hóa đơn nếu chưa có để dùng cho form thêm mới
+      const shouldFetchHoaDon = hoaDonList.length === 0;
+      
+      const fetchPromises = [fetch(`/api/thanh-toan${query}`, { cache: 'no-store' })];
+      if (shouldFetchHoaDon) {
+        fetchPromises.push(fetch(`/api/hoa-don${query}`, { cache: 'no-store' }));
+      }
 
-      const [thanhToanData, hoaDonData] = await Promise.all([
-        thanhToanResponse.ok ? thanhToanResponse.json() : { data: [] },
-        hoaDonResponse.ok ? hoaDonResponse.json() : { data: [] }
-      ]);
+      const responses = await Promise.all(fetchPromises);
+      const thanhToanResponse = responses[0];
+      
+      const thanhToanData = thanhToanResponse.ok ? await thanhToanResponse.json() : { data: [] };
+      let hoaDonData = { data: hoaDonList }; // Dùng lại data cũ mặc định
+
+      if (shouldFetchHoaDon && responses[1]) {
+        hoaDonData = responses[1].ok ? await responses[1].json() : { data: [] };
+      }
 
       // Ngăn chặn Race Condition: Bỏ qua kết quả nếu người dùng đã đổi tòa nhà trong lúc đợi API
       const currentBuildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';

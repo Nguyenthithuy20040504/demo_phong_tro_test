@@ -95,8 +95,7 @@ export default function SuCoPage() {
     const handleSyncBuilding = () => {
       const saved = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
       setSelectedBuildingId(saved);
-      setSuCoList([]);
-      setLoading(true);
+      // KHÔNG xóa list cũ ở đây để tránh giật lag.
       fetchData(true, false);
     };
     window.addEventListener('buildingChange', handleSyncBuilding);
@@ -126,13 +125,17 @@ export default function SuCoPage() {
         setHopDongList(cachedData.hopDongList || []);
         setToaNhaList(cachedData.toaNhaList || []);
         
+        setLoading(false);
+        
         if (!forceRefresh) {
-          setLoading(false);
           return;
         }
         
-        if (!isBackgroundPolling) {
-          setLoading(true);
+        // Soft loading: Chỉ hiện loading spinner nếu danh sách hiện tại đang trống
+        if (suCoList.length === 0) {
+          if (!isBackgroundPolling) {
+            setLoading(true);
+          }
         }
       } else {
         setSuCoList([]);
@@ -147,8 +150,19 @@ export default function SuCoPage() {
       const limitParam = '?limit=1000';
       const query = `${limitParam}${buildingParam}`;
 
-      // Fetch sự cố từ API (chỉ lấy theo buildingId)
-      const suCoResponse = await fetch(`/api/su-co${query}`);
+      // Chỉ fetch dữ liệu phụ nếu chưa có trong state để tăng tốc độ load
+      const shouldFetchFormData = phongList.length === 0 || khachThueList.length === 0 || toaNhaList.length === 0;
+      
+      const fetchPromises = [fetch(`/api/su-co${query}`, { cache: 'no-store' })];
+      if (shouldFetchFormData) {
+        fetchPromises.push(fetch(`/api/phong?limit=1000`, { cache: 'no-store' }));
+        fetchPromises.push(fetch(`/api/khach-thue?limit=1000`, { cache: 'no-store' }));
+        fetchPromises.push(fetch(`/api/hop-dong?limit=1000`, { cache: 'no-store' }));
+        fetchPromises.push(fetch('/api/toa-nha', { cache: 'no-store' }));
+      }
+
+      const responses = await Promise.all(fetchPromises);
+      const suCoResponse = responses[0];
       const suCoData = await suCoResponse.json();
 
       // Ngăn chặn Race Condition: Bỏ qua kết quả nếu người dùng đã đổi tòa nhà trong lúc đợi API
@@ -158,32 +172,28 @@ export default function SuCoPage() {
       const suCos = (suCoData.success ? suCoData.data : []) || [];
       setSuCoList(suCos);
 
-      // Fetch data dùng chung cho Form tạo mới (KHÔNG filter theo buildingId, lấy toàn bộ)
-      const allQuery = '?limit=2000';
+      let phongs = phongList;
+      let khachThues = khachThueList;
+      let hopDongs = hopDongList;
+      let toaNhas = toaNhaList;
 
-      // Fetch phòng từ API
-      const phongResponse = await fetch(`/api/phong${allQuery}`);
-      const phongData = await phongResponse.json();
-      const phongs = (phongData.success ? phongData.data : []) || [];
-      setPhongList(phongs);
-
-      // Fetch khách thuê từ API
-      const khachThueResponse = await fetch(`/api/khach-thue${allQuery}`);
-      const khachThueData = await khachThueResponse.json();
-      const khachThues = (khachThueData.success ? khachThueData.data : []) || [];
-      setKhachThueList(khachThues);
-
-      // Fetch hợp đồng từ API
-      const hopDongResponse = await fetch(`/api/hop-dong${allQuery}`);
-      const hopDongData = await hopDongResponse.json();
-      const hopDongs = (hopDongData.success ? hopDongData.data : []) || [];
-      setHopDongList(hopDongs);
-
-      // Fetch tòa nhà từ API
-      const toaNhaResponse = await fetch('/api/toa-nha');
-      const toaNhaData = await toaNhaResponse.json();
-      const toaNhas = (toaNhaData.success ? toaNhaData.data : []) || [];
-      setToaNhaList(toaNhas);
+      if (shouldFetchFormData && responses.length > 1) {
+        const [phongData, khachThueData, hopDongData, toaNhaData] = await Promise.all([
+          responses[1].json(),
+          responses[2].json(),
+          responses[3].json(),
+          responses[4].json()
+        ]);
+        phongs = (phongData.success ? phongData.data : []) || [];
+        khachThues = (khachThueData.success ? khachThueData.data : []) || [];
+        hopDongs = (hopDongData.success ? hopDongData.data : []) || [];
+        toaNhas = (toaNhaData.success ? toaNhaData.data : []) || [];
+        
+        setPhongList(phongs);
+        setKhachThueList(khachThues);
+        setHopDongList(hopDongs);
+        setToaNhaList(toaNhas);
+      }
 
       // Final race condition check before caching
       if ((typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all') !== buildingId) return;
