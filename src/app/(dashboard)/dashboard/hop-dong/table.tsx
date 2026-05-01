@@ -383,7 +383,7 @@ type HopDongDataTableProps = HopDongTableProps & {
 
 export function HopDongDataTable(props: HopDongDataTableProps) {
   const { data: initialData, searchTerm, onSearchChange, statusFilter, onStatusChange, toaNhaFilter, onToaNhaChange, allToaNhaList, ...tableProps } = props
-  const [data, setData] = React.useState(() => initialData)
+  
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [hopDongToDelete, setHopDongToDelete] = React.useState<HopDong | null>(null);
   const [rowSelection, setRowSelection] = React.useState({})
@@ -410,7 +410,7 @@ export function HopDongDataTable(props: HopDongDataTableProps) {
   }), [tableProps])
 
   const table = useReactTable({
-    data,
+    data: initialData,
     columns,
     state: {
       sorting,

@@ -362,7 +362,7 @@ type PhongDataTableProps = PhongTableProps & {
 
 export function PhongDataTable(props: PhongDataTableProps) {
   const { data: initialData, searchTerm, onSearchChange, selectedToaNha, onToaNhaChange, selectedTrangThai, onTrangThaiChange, allToaNhaList, ...tableProps } = props;
-  const [data, setData] = React.useState(() => initialData);
+  
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -380,9 +380,7 @@ export function PhongDataTable(props: PhongDataTableProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
 
   // Sync data when prop changes
-  React.useEffect(() => {
-    setData(initialData);
-  }, [initialData]);
+  
   
   const columns = React.useMemo(() => createColumns({
     ...tableProps,
@@ -393,7 +391,7 @@ export function PhongDataTable(props: PhongDataTableProps) {
   }), [tableProps]);
   
   const table = useReactTable({
-    data,
+    data: initialData,
     columns,
     state: {
       sorting,

@@ -472,7 +472,7 @@ export function UserDataTable(props: UserDataTableProps) {
     statusFilter, onStatusChange,
     ...tableProps 
   } = props
-  const [data, setData] = React.useState(() => initialData)
+  
 
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
@@ -494,7 +494,7 @@ export function UserDataTable(props: UserDataTableProps) {
   const columns = React.useMemo(() => createColumns(tableProps), [tableProps])
 
   const table = useReactTable({
-    data,
+    data: initialData,
     columns,
     state: {
       sorting,

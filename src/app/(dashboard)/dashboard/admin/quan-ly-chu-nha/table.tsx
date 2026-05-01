@@ -404,7 +404,7 @@ type LandlordDataTableProps = LandlordTableProps & {
 
 export function LandlordTable(props: LandlordDataTableProps) {
   const { data: initialData, searchTerm, onSearchChange, ...tableProps } = props;
-  const [data, setData] = React.useState(() => initialData);
+  
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [landlordToDelete, setLandlordToDelete] = React.useState<Landlord | null>(null);
   
@@ -418,9 +418,7 @@ export function LandlordTable(props: LandlordDataTableProps) {
   });
   
   // Sync data when prop changes
-  React.useEffect(() => {
-    setData(initialData);
-  }, [initialData]);
+  
   
   const columns = React.useMemo(() => createColumns({ 
     ...tableProps, 
@@ -429,7 +427,7 @@ export function LandlordTable(props: LandlordDataTableProps) {
   }), [tableProps]);
 
   const table = useReactTable({
-    data,
+    data: initialData,
     columns,
     state: {
       sorting,

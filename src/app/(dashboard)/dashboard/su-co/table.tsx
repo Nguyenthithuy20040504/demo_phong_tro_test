@@ -426,7 +426,7 @@ type SuCoDataTableProps = SuCoTableProps & {
 
 export function SuCoDataTable(props: SuCoDataTableProps) {
   const { data: initialData, searchTerm, onSearchChange, statusFilter, onStatusFilterChange, typeFilter, onTypeChange, priorityFilter, onPriorityChange, ...tableProps } = props
-  const [data, setData] = React.useState(() => initialData)
+  
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [suCoToDelete, setSuCoToDelete] = React.useState<SuCo | null>(null);
   const [rowSelection, setRowSelection] = React.useState({})
@@ -453,7 +453,7 @@ export function SuCoDataTable(props: SuCoDataTableProps) {
   }), [tableProps])
 
   const table = useReactTable({
-    data,
+    data: initialData,
     columns,
     state: {
       sorting,

@@ -385,7 +385,7 @@ export function ThanhToanDataTable(props: ThanhToanDataTableProps) {
     onEndDateChange,
     ...tableProps 
   } = props
-  const [data, setData] = React.useState(() => initialData)
+  
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [thanhToanToDelete, setThanhToanToDelete] = React.useState<ThanhToanPopulated | null>(null);
   const [rowSelection, setRowSelection] = React.useState({})
@@ -412,7 +412,7 @@ export function ThanhToanDataTable(props: ThanhToanDataTableProps) {
   }), [tableProps])
 
   const table = useReactTable({
-    data,
+    data: initialData,
     columns,
     state: {
       sorting,

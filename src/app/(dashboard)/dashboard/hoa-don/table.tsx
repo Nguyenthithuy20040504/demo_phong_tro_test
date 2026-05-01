@@ -482,7 +482,7 @@ type HoaDonDataTableProps = HoaDonTableProps & {
 
 export function HoaDonDataTable(props: HoaDonDataTableProps) {
   const { data: initialData, onDeleteMultiple, searchTerm, onSearchChange, statusFilter, onStatusChange, monthFilter, onMonthChange, yearFilter, onYearChange, getMonthOptions, getYearOptions, ...tableProps } = props
-  const [data, setData] = React.useState(() => initialData)
+  
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [hoaDonToDelete, setHoaDonToDelete] = React.useState<HoaDon | null>(null);
   const [rowSelection, setRowSelection] = React.useState({})
@@ -509,7 +509,7 @@ export function HoaDonDataTable(props: HoaDonDataTableProps) {
   }), [tableProps])
 
   const table = useReactTable({
-    data,
+    data: initialData,
     columns,
     state: {
       sorting,

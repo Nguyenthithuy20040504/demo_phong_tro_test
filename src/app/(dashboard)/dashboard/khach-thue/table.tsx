@@ -353,7 +353,7 @@ type KhachThueDataTableProps = KhachThueTableProps & {
 
 export function KhachThueDataTable(props: KhachThueDataTableProps) {
   const { data: initialData, searchTerm, onSearchChange, selectedTrangThai, onTrangThaiChange, ...tableProps } = props;
-  const [data, setData] = React.useState(() => initialData);
+  
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -367,16 +367,14 @@ export function KhachThueDataTable(props: KhachThueDataTableProps) {
   });
   
   // Sync data when prop changes
-  React.useEffect(() => {
-    setData(initialData);
-  }, [initialData]);
+  
   
   const columns = React.useMemo(() => createColumns({ 
     ...tableProps
   }), [tableProps]);
 
   const table = useReactTable({
-    data,
+    data: initialData,
     columns,
     state: {
       sorting,

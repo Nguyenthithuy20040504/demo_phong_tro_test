@@ -258,7 +258,7 @@ type ToaNhaDataTableProps = ToaNhaTableProps & {
 
 export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
   const { data: initialData, searchTerm, onSearchChange, ...tableProps } = props
-  const [data, setData] = React.useState(() => initialData)
+  
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [toaNhaToDelete, setToaNhaToDelete] = React.useState<ToaNha | null>(null);
   const [selectedToaNha, setSelectedToaNha] = React.useState<ToaNha | null>(null);
@@ -286,7 +286,7 @@ export function ToaNhaDataTable(props: ToaNhaDataTableProps) {
   }), [tableProps])
 
   const table = useReactTable({
-    data,
+    data: initialData,
     columns,
     state: {
       sorting,
