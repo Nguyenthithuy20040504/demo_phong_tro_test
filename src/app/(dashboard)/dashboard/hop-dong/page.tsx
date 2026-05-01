@@ -176,55 +176,59 @@ export default function HopDongPage() {
       const limitParam = 'limit=1000';
       const query = [limitParam, buildingParam].filter(Boolean).join('&');
 
-      // Fetch tất cả dữ liệu song song
-      const [hopDongRes, phongRes, khachThueRes, toaNhaRes] = await Promise.all([
-        fetch(`/api/hop-dong?${query}`, { cache: 'no-store' }),
-        fetch(`/api/phong?${query}`, { cache: 'no-store' }),
-        fetch(`/api/khach-thue?${query}`, { cache: 'no-store' }),
-        fetch('/api/toa-nha', { cache: 'no-store' }),
-      ]);
+      // Nếu toaNhaList đã có dữ liệu (từ cache), không cần fetch lại để tăng tốc độ!
+      const shouldFetchToaNha = toaNhaList.length === 0;
 
-      if (hopDongRes.status === 401 || phongRes.status === 401) {
+      const fetchPromises = [fetch(`/api/hop-dong?${query}`, { cache: 'no-store' })];
+      if (shouldFetchToaNha) {
+        fetchPromises.push(fetch('/api/toa-nha', { cache: 'no-store' }));
+      }
+
+      const responses = await Promise.all(fetchPromises);
+      const hopDongRes = responses[0];
+
+      if (hopDongRes.status === 401) {
         return; // Silent block: Session is invalid/locked, Layout will handle redirect
       }
 
-      // Kiểm tra nếu bất kỳ API quan trọng nào lỗi thì không ghi đè cache
-      if (!hopDongRes.ok || !phongRes.ok) {
-        console.error('Core APIs failed:', { hopDong: hopDongRes.status, phong: phongRes.status });
+      // Kiểm tra nếu API quan trọng lỗi
+      if (!hopDongRes.ok) {
+        console.error('Core APIs failed:', { hopDong: hopDongRes.status });
         if (hopDongList.length === 0) {
           toast.error('Máy chủ đang phản hồi chậm hoặc có lỗi. Vui lòng thử lại sau.');
         }
         return;
       }
 
-      const [hopDongData, phongData, khachThueData, toaNhaData] = await Promise.all([
-        hopDongRes.json(),
-        phongRes.json(),
-        khachThueRes.json(),
-        toaNhaRes.json(),
-      ]);
+      const hopDongData = await hopDongRes.json();
+      let toaNhas = toaNhaList; // Dùng lại data cũ nếu không fetch
+
+      if (shouldFetchToaNha && responses[1]) {
+        const toaNhaRes = responses[1];
+        const toaNhaData = await toaNhaRes.json();
+        toaNhas = toaNhaData.data || [];
+      }
 
       // Ngăn chặn Race Condition: Bỏ qua kết quả nếu người dùng đã đổi tòa nhà trong lúc đợi API
       const currentBuildingId = typeof window !== 'undefined' ? localStorage.getItem('selected_building_id') || 'all' : 'all';
       if (currentBuildingId !== buildingId) return;
 
       const hopDongs = hopDongData.data || [];
-      const phongs = phongData.data || [];
-      const khachThues = khachThueData.data || [];
-      const toaNhas = toaNhaData.data || [];
 
       // Cập nhật state
       setHopDongList(hopDongs);
-      setPhongList(phongs);
-      setKhachThueList(khachThues);
-      setToaNhaList(toaNhas);
+      setPhongList([]);
+      setKhachThueList([]);
+      if (shouldFetchToaNha) {
+        setToaNhaList(toaNhas);
+      }
 
       // Chỉ lưu vào cache nếu có dữ liệu hoặc là mảng rỗng hợp lệ (không phải do lỗi)
-      if (hopDongData.success && phongData.success) {
+      if (hopDongData.success) {
         cache.setCache({
           hopDongList: hopDongs,
-          phongList: phongs,
-          khachThueList: khachThues,
+          phongList: [],
+          khachThueList: [],
           toaNhaList: toaNhas,
         });
       }
