@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     // Find all pending contracts or extension requests
     const pendingContracts = await HopDong.find({ 
-      trangThai: { $in: ['choDuyet', 'choDuyetGiaHan'] } 
+      trangThai: { $in: ['choDuyet', 'choDuyetGiaHan', 'choDuyetHuy'] } 
     }).populate({
       path: 'phong',
       select: 'maPhong toaNha',
@@ -51,6 +51,10 @@ export async function GET(request: NextRequest) {
            const expirationDate = new Date(hd.ngayKetThuc);
            hd.trangThai = now > expirationDate ? 'hetHan' : 'hoatDong';
            hd.ngayKetThucGiaHan = undefined;
+        } else if (hd.trangThai === 'choDuyetHuy') {
+           // Từ chối hủy tự động (quay lại hoạt động)
+           const expirationDate = new Date(hd.ngayKetThuc);
+           hd.trangThai = now > expirationDate ? 'hetHan' : 'hoatDong';
         } else {
            // Hủy bỏ hợp đồng mới
            hd.trangThai = 'daHuy';
@@ -60,10 +64,18 @@ export async function GET(request: NextRequest) {
 
         // Gửi thông báo tự động hủy/hết hạn yêu cầu
         if (nguoiDaiDienId && landlordId) {
-          const tieuDe = isGiaHan ? 'Yêu cầu gia hạn đã tự động hết hạn' : 'Hợp đồng đã bị hủy tự động';
-          const noiDung = isGiaHan 
+          const isHuyAction = hd.trangThai === 'daHuy' && !isGiaHan; // Trường hợp thực sự hủy HĐ mới
+          const isHuyExpired = hd.trangThai === 'hoatDong' || hd.trangThai === 'hetHan'; // Đã quay lại trạng thái cũ
+          
+          let tieuDe = isGiaHan ? 'Yêu cầu gia hạn đã tự động hết hạn' : 'Hợp đồng đã bị hủy tự động';
+          let noiDung = isGiaHan 
             ? `Yêu cầu gia hạn phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) đã hết hạn do bạn không duyệt sau 7 ngày. Hợp đồng giữ nguyên thời hạn cũ.`
             : `Hợp đồng phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) đã tự động bị hủy do quá hạn 7 ngày nhưng chưa được xác nhận.`;
+
+          if (isHuyExpired && !isGiaHan) {
+            tieuDe = 'Yêu cầu hủy hợp đồng đã hết hạn';
+            noiDung = `Yêu cầu hủy hợp đồng phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) đã quá hạn 7 ngày mà bạn không duyệt. Hợp đồng tiếp tục có hiệu lực.`;
+          }
 
           await ThongBao.create({
             tieuDe,
@@ -77,11 +89,19 @@ export async function GET(request: NextRequest) {
           });
 
           // Thông báo cho chủ nhà
+          let tieuDeChuNha = isGiaHan ? 'Yêu cầu gia hạn bị bỏ qua' : 'Hợp đồng bị hủy do quá hạn';
+          let noiDungChuNha = isGiaHan 
+            ? `Yêu cầu gia hạn cho phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) đã quá hạn 7 ngày mà khách không duyệt. Yêu cầu đã bị hủy bỏ.`
+            : `Hợp đồng phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) đã tự động bị hủy vì khách thuê không xác nhận sau 7 ngày.`;
+
+          if (isHuyExpired && !isGiaHan) {
+            tieuDeChuNha = 'Yêu cầu hủy hợp đồng bị bỏ qua';
+            noiDungChuNha = `Yêu cầu hủy hợp đồng phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) đã quá hạn 7 ngày mà khách không duyệt. Yêu cầu đã bị hủy bỏ.`;
+          }
+
           await ThongBao.create({
-            tieuDe: isGiaHan ? 'Yêu cầu gia hạn bị bỏ qua' : 'Hợp đồng bị hủy do quá hạn',
-            noiDung: isGiaHan 
-              ? `Yêu cầu gia hạn cho phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) đã quá hạn 7 ngày mà khách không duyệt. Yêu cầu đã bị hủy bỏ.`
-              : `Hợp đồng phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) đã tự động bị hủy vì khách thuê không xác nhận sau 7 ngày.`,
+            tieuDe: tieuDeChuNha,
+            noiDung: noiDungChuNha,
             loai: 'hopDong',
             nguoiGui: landlordId,
             nguoiNhan: [landlordId],
@@ -95,9 +115,12 @@ export async function GET(request: NextRequest) {
       } else if (minutesSinceAction >= 5 * 1440 && !hd.daNhacChoDuyet) {
         // NHẮC NHỞ Ở NGÀY THỨ 5 (CÒN 2 NGÀY)
         if (nguoiDaiDienId && landlordId) {
-          const tieuDe = isGiaHan ? 'Nhắc nhở duyệt gia hạn' : 'Nhắc nhở xác nhận hợp đồng';
+          const isHuyReq = hd.trangThai === 'choDuyetHuy';
+          const tieuDe = isGiaHan ? 'Nhắc nhở duyệt gia hạn' : isHuyReq ? 'Nhắc nhở duyệt hủy hợp đồng' : 'Nhắc nhở xác nhận hợp đồng';
           const noiDung = isGiaHan
             ? `Yêu cầu gia hạn phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) của bạn sẽ hết hiệu lực sau 2 ngày nữa. Vui lòng xác nhận ngay để gia hạn.`
+            : isHuyReq
+            ? `Yêu cầu hủy hợp đồng phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) sẽ hết hạn sau 2 ngày nữa. Nếu không duyệt, yêu cầu sẽ bị hủy bỏ.`
             : `Hợp đồng phòng ${rPhong?.maPhong || ''} (Mã: ${hd.maHopDong}) của bạn sẽ bị hủy sau 2 ngày nữa. Vui lòng xác nhận hợp đồng để hoàn tất quá trình thuê.`;
 
           await ThongBao.create({
